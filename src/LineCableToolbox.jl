@@ -1,4 +1,15 @@
 module LineCableToolbox
+"""
+# LineCableToolbox
+
+- Frequency-domain calculations of impedances (series R and L) and admittances (shunt C and G) of arbitrary line/cable arrangements, accounting for skin effect, conductor and insulation properties, and earth-return impedances with frequency-dependent soil models.
+
+- Uncertainty quantification using the `Measurements.jl` package, to accurately represent and propagate uncertainties related to cross-section information, internal and external radii of conductors and insulation layers, and electromagnetic properties of materials. 
+
+## Features
+- Materials library
+
+"""
 
 # Load required packages
 using Measurements
@@ -16,17 +27,31 @@ const μ₀ = 4π * 1e-7  # Permeability of free space (H/m)
 const ε₀ = 8.8541878128e-12
 const TOL = 1e-6
 
-## 1. Materials management
+# Define module-level functions and macros
+_equals(x, y; atol = TOL) = isapprox(x, y, atol = atol)
+_to_nominal(x) = x isa Measurement ? value(x) : x
+
+# Materials library
 include("Materials.jl")
 
-export init_materials_db,
-	get_material,
-	save_materials_db,
-	display_materials_db,
-	get_material_color,
-	overlay_colors,
-	visualize_gradient,
-	overlay_multiple_colors
+export Material,
+	MaterialsLibrary,
+	add_material!,
+	remove_material!,
+	save_materials_library,
+	display_materials_library,
+	get_material
 
+# Lines and cables data model
+include("DataModel.jl")
+
+export WireArray,
+	Strip,
+	Tubular,
+	ConductorParts,
+	Conductor,
+	add_conductor_part!,
+	preview_conductor_cross_section,
+	conductor_data
 
 end
