@@ -48,8 +48,14 @@ export WireArray,
 	Tubular,
 	ConductorParts,
 	Conductor,
+	Semicon,
+	Insulator,
+	CableComponent,
+	CableParts,
 	add_conductor_part!,
 	preview_conductor_cross_section,
-	conductor_data
+	conductor_data,
+	cable_parts_data,
+	cable_component_data
 
 end

@@ -58,13 +58,17 @@ struct WireArray
 	- None.
 	"""
 	function WireArray(
-		radius_in::Number,
+		radius_in::Union{Number, <:Any},
 		diameter::Number,
 		num_wires::Int,
 		lay_ratio::Number,
 		material_props::Material;
 		temperature::Number = 20,
 	)
+
+		# Extract `radius_in` from `radius_ext` if a custom type is provided
+		radius_in = radius_in isa Number ? radius_in : getfield(radius_in, :radius_ext)
+
 		rho = material_props.rho
 		T0 = material_props.T0
 		alpha = material_props.alpha
@@ -233,11 +237,14 @@ mutable struct Tubular
 	- None.
 	"""
 	function Tubular(
-		radius_in::Number,
+		radius_in::Union{Number, <:Any},
 		radius_ext::Number,
 		material_props::Material;
 		temperature::Number = 20,
 	)
+
+		# Extract `radius_in` from `radius_ext` if a custom type is provided
+		radius_in = radius_in isa Number ? radius_in : getfield(radius_in, :radius_ext)
 
 		rho = material_props.rho
 		T0 = material_props.T0
@@ -407,89 +414,6 @@ function get_wirearray_coords(wa::WireArray)
 		push!(wire_coords, (x, y))  # Add wire center
 	end
 	return wire_coords
-end
-
-"""
-calc_gmd: Computes the geometric mean distance (GMD) between two conductor parts.
-
-# Arguments
-- `co1`: A `ConductorParts` object representing the first conductor part (e.g., `WireArray`, `Strip`, or `Tubular`).
-- `co2`: A `ConductorParts` object representing the second conductor part (e.g., `WireArray`, `Strip`, or `Tubular`).
-
-# Returns
-- The GMD as a `Number` [m], which represents the logarithmic average of pairwise distances between the conductor parts.
-
-# Dependencies
-- `get_wirearray_coords`: Computes the coordinates of wires in a `WireArray`.
-
-# Examples
-```julia
-material_props = Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393)
-wire_array1 = WireArray(0.01, 0.002, 7, 10, material_props)
-wire_array2 = WireArray(0.02, 0.002, 7, 15, material_props)
-gmd = calc_gmd(wire_array1, wire_array2)
-println(gmd) # Outputs: GMD value [m]
-
-strip = Strip(0.01, 0.002, 0.05, 10, material_props)
-tubular = Tubular(0.01, 0.02, material_props)
-gmd = calc_gmd(strip, tubular)
-println(gmd) # Outputs: GMD value [m]
-```
-
-# Notes
-- For concentric structures (e.g., a `Strip` within a `Tubular`), the GMD defaults to the outermost radius.
-
-# References
-- None.
-"""
-function calc_gmd(co1::ConductorParts, co2::ConductorParts)
-
-	if co1 isa WireArray
-		coords1 = get_wirearray_coords(co1)
-		n1 = co1.num_wires
-		r1 = co1.diameter / 2
-		s1 = pi * (r1)^2
-	else
-		coords1 = [(0, 0)]
-		n1 = 1
-		r1 = co1.radius_ext
-		s1 = co1.cross_section
-	end
-
-	if co2 isa WireArray
-		coords2 = get_wirearray_coords(co2)
-		n2 = co2.num_wires
-		r2 = co2.diameter / 2
-		s2 = pi * (co2.diameter / 2)^2
-	else
-		coords2 = [(0, 0)]
-		n2 = 1
-		r2 = co2.radius_ext
-		s2 = co2.cross_section
-	end
-
-	log_sum = 0.0
-	area_weights = 0.0
-
-	for i in 1:n1
-		for j in 1:n2
-			# Pair-wise distances
-			x1, y1 = coords1[i]
-			x2, y2 = coords2[j]
-			d_ij = sqrt((x1 - x2)^2 + (y1 - y2)^2)
-			if d_ij > eps()
-				# The GMD is computed as the Euclidean distance from center-to-center
-				log_dij = log(d_ij)
-			else
-				# This means two concentric structures (solid/strip or tubular, tubular/strip or tubular, strip/strip or tubular)
-				# In all cases the GMD is the outermost radius
-				log_dij = log(max(r1, r2))
-			end
-			log_sum += (s1 * s2) * log_dij
-			area_weights += (s1 * s2)
-		end
-	end
-	return exp(log_sum / area_weights)
 end
 
 """
@@ -1157,6 +1081,7 @@ mutable struct Semicon
 	temperature::Number
 	cross_section::Number
 	resistance::Number
+	gmr::Number
 	shunt_capacitance::Number
 	shunt_conductance::Number
 
@@ -1174,11 +1099,13 @@ mutable struct Semicon
 	- `radius_ext`: External radius of the semiconducting layer [m].
 	- `cross_section`: Cross-sectional area of the layer [m²].
 	- `resistance`: Electrical resistance of the layer [Ω].
+	- `gmr`: Geometric mean radius of the semiconductor [m].
 	- `shunt_capacitance`: Shunt capacitance per unit length of the layer [F/m].
 	- `shunt_conductance`: Shunt conductance per unit length of the layer [S/m].
 
 	# Dependencies
 	- `calc_tubular_resistance`: Computes the DC resistance of the semiconducting layer.
+	- `calc_tubular_gmr`: Calculates the geometric mean radius (GMR) of the tubular element.
 	- `calc_shunt_capacitance`: Computes the shunt capacitance per unit length.
 	- `calc_shunt_conductance`: Computes the shunt conductance per unit length.
 
@@ -1188,6 +1115,7 @@ mutable struct Semicon
 	semicon_layer = Semicon(0.01, 0.002, material_props, temperature=25)
 	println(semicon_layer.cross_section)    # Outputs: Cross-sectional area in m²
 	println(semicon_layer.resistance)       # Outputs: Resistance in Ω
+	println(semicon_layer.gmr)       		# Outputs: GMR in m
 	println(semicon_layer.shunt_capacitance) # Outputs: Capacitance in F/m
 	println(semicon_layer.shunt_conductance) # Outputs: Conductance in S/m
 	```
@@ -1196,7 +1124,7 @@ mutable struct Semicon
 	- None.
 	"""
 	function Semicon(
-		radius_in::Number,
+		radius_in::Union{Number, <:Any},
 		thickness::Number,
 		material_props::Material;
 		temperature::Number = 20,
@@ -1207,12 +1135,16 @@ mutable struct Semicon
 		alpha = material_props.alpha
 		epsr_r = material_props.eps_r
 
+		# Extract `radius_in` from `radius_ext` if a custom type is provided
+		radius_in = radius_in isa Number ? radius_in : getfield(radius_in, :radius_ext)
+
+
 		radius_ext = radius_in + thickness
 		cross_section = π * (radius_ext^2 - radius_in^2)
 
 		resistance =
 			calc_tubular_resistance(radius_in, radius_ext, rho, alpha, T0, temperature)
-
+		gmr = calc_tubular_gmr(radius_ext, radius_in, material_props.mu_r)
 		shunt_capacitance = calc_shunt_capacitance(radius_in, radius_ext, epsr_r)
 		shunt_conductance = calc_shunt_conductance(radius_in, radius_ext, rho)
 
@@ -1224,6 +1156,7 @@ mutable struct Semicon
 			temperature,
 			cross_section,
 			resistance,
+			gmr,
 			shunt_capacitance,
 			shunt_conductance,
 		)
@@ -1240,6 +1173,7 @@ mutable struct Insulator
 	temperature::Number
 	cross_section::Number
 	resistance::Number
+	gmr::Number
 	shunt_capacitance::Number
 	shunt_conductance::Number
 
@@ -1257,11 +1191,13 @@ mutable struct Insulator
 	- `radius_ext`: External radius of the insulating layer [m].
 	- `cross_section`: Cross-sectional area of the layer [m²].
 	- `resistance`: Electrical resistance of the layer [Ω].
+	- `gmr`: Geometric mean radius of the insulator [m].
 	- `shunt_capacitance`: Shunt capacitance per unit length of the layer [F/m].
 	- `shunt_conductance`: Shunt conductance per unit length of the layer [S/m].
 
 	# Dependencies
 	- `calc_tubular_resistance`: Computes the DC resistance of the insulating layer.
+	- `calc_tubular_gmr`: Calculates the geometric mean radius (GMR) of the tubular element.
 	- `calc_shunt_capacitance`: Computes the shunt capacitance per unit length.
 	- `calc_shunt_conductance`: Computes the shunt conductance per unit length.
 
@@ -1279,11 +1215,14 @@ mutable struct Insulator
 	- None.
 	"""
 	function Insulator(
-		radius_in::Number,
+		radius_in::Union{Number, <:Any},
 		thickness::Number,
 		material_props::Material;
 		temperature::Number = 20,
 	)
+
+		# Extract `radius_in` from `radius_ext` if a custom type is provided
+		radius_in = radius_in isa Number ? radius_in : getfield(radius_in, :radius_ext)
 
 		rho = material_props.rho
 		T0 = material_props.T0
@@ -1295,7 +1234,7 @@ mutable struct Insulator
 
 		resistance =
 			calc_tubular_resistance(radius_in, radius_ext, rho, alpha, T0, temperature)
-
+		gmr = calc_tubular_gmr(radius_ext, radius_in, material_props.mu_r)
 		shunt_capacitance = calc_shunt_capacitance(radius_in, radius_ext, epsr_r)
 		shunt_conductance = calc_shunt_conductance(radius_in, radius_ext, rho)
 
@@ -1307,6 +1246,7 @@ mutable struct Insulator
 			temperature,
 			cross_section,
 			resistance,
+			gmr,
 			shunt_capacitance,
 			shunt_conductance,
 		)
@@ -1322,14 +1262,14 @@ const CableParts = Union{Conductor, Strip, WireArray, Tubular, Semicon, Insulato
 calc_equivalent_gmr: Computes the equivalent geometric mean radius (GMR) of a `Conductor` after adding a new layer.
 
 # Arguments
-- `sc`: A `Conductor` or `ConductorParts` object representing the existing conductor.
-- `layer`: A `ConductorParts` object representing the new layer being added.
+- `sc`: A `CableParts` object representing the existing cable part.
+- `layer`: A `CableParts` object representing the new layer being added.
 
 # Returns
-- The updated equivalent GMR of the `Conductor` as a `Number` [m].
+- The updated equivalent GMR of the `CablePart` as a `Number` [m].
 
 # Dependencies
-- `calc_gmd`: Computes the geometric mean distance (GMD) between the last layer of the conductor and the new layer.
+- `calc_gmd`: Computes the geometric mean distance (GMD) between the last layer of the cable and the new layer.
 
 # Examples
 ```julia
@@ -1350,6 +1290,90 @@ function calc_equivalent_gmr(sc::CableParts, layer::CableParts)
 	current_conductor = sc isa Conductor ? sc.layers[end] : sc
 	gmd = calc_gmd(current_conductor, layer)
 	return sc.gmr^(alph^2) * layer.gmr^(beta^2) * gmd^(2 * alph * beta)
+end
+
+"""
+calc_gmd: Computes the geometric mean distance (GMD) between two cable parts.
+
+# Arguments
+- `co1`: A `CableParts` object representing the first cable part (e.g., `WireArray`, `Strip`, `Tubular`, `Semicon` or `Insulator`).
+- `co2`: A `CableParts` object representing the second cable part (e.g., `WireArray`, `Strip`, `Tubular`, `Semicon` or `Insulator`).
+
+# Returns
+- The GMD as a `Number` [m], which represents the logarithmic average of pairwise distances between the cable parts.
+
+# Dependencies
+- `get_wirearray_coords`: Computes the coordinates of wires in a `WireArray`.
+
+# Examples
+```julia
+material_props = Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393)
+wire_array1 = WireArray(0.01, 0.002, 7, 10, material_props)
+wire_array2 = WireArray(0.02, 0.002, 7, 15, material_props)
+gmd = calc_gmd(wire_array1, wire_array2)
+println(gmd) # Outputs: GMD value [m]
+
+strip = Strip(0.01, 0.002, 0.05, 10, material_props)
+tubular = Tubular(0.01, 0.02, material_props)
+gmd = calc_gmd(strip, tubular)
+println(gmd) # Outputs: GMD value [m]
+```
+
+# Notes
+- For concentric structures (e.g., a `Strip` within a `Tubular`), the GMD defaults to the outermost radius.
+
+# References
+- None.
+"""
+function calc_gmd(co1::CableParts, co2::CableParts)
+
+	if co1 isa WireArray
+		coords1 = get_wirearray_coords(co1)
+		n1 = co1.num_wires
+		r1 = co1.diameter / 2
+		s1 = pi * (r1)^2
+	else
+		coords1 = [(0, 0)]
+		n1 = 1
+		r1 = co1.radius_ext
+		s1 = co1.cross_section
+	end
+
+	if co2 isa WireArray
+		coords2 = get_wirearray_coords(co2)
+		n2 = co2.num_wires
+		r2 = co2.diameter / 2
+		s2 = pi * (co2.diameter / 2)^2
+	else
+		coords2 = [(0, 0)]
+		n2 = 1
+		r2 = co2.radius_ext
+		s2 = co2.cross_section
+	end
+
+	log_sum = 0.0
+	area_weights = 0.0
+
+	for i in 1:n1
+		for j in 1:n2
+			# Pair-wise distances
+			x1, y1 = coords1[i]
+			x2, y2 = coords2[j]
+			d_ij = sqrt((x1 - x2)^2 + (y1 - y2)^2)
+			if d_ij > eps()
+				# The GMD is computed as the Euclidean distance from center-to-center
+				log_dij = log(d_ij)
+			else
+				# This means two concentric structures (solid/strip or tubular, tubular/strip or tubular, strip/strip or tubular)
+				# In all cases the GMD is the outermost radius
+				max(r1, r2)
+				log_dij = log(max(r1, r2))
+			end
+			log_sum += (s1 * s2) * log_dij
+			area_weights += (s1 * s2)
+		end
+	end
+	return exp(log_sum / area_weights)
 end
 
 """
@@ -1389,15 +1413,15 @@ function insulator_data(insu::Union{Insulator, Semicon})
 		("radius_ext", insu.radius_ext),
 		("cross_section", insu.cross_section),
 		("resistance", insu.resistance),
+		("gmr", insu.gmr),
 		("shunt_capacitance", insu.shunt_capacitance),
 		("shunt_conductance", insu.shunt_conductance)]
 	df = DataFrame(data, [:property, :value])
 	return df
 end
 
-
 mutable struct CableComponent
-	name::String          # Component name (e.g., "core", "sheath", or user-defined)
+	name::String
 	radius_in_con::Number
 	radius_ext_con::Number
 	rho_con::Number
@@ -1432,7 +1456,6 @@ mutable struct CableComponent
 		radius_ext_ins = 0.0
 		eps_ins = 0.0
 		mu_ins = 0.0
-		total_cross_section_ins = 0.0
 		loss_factor_ins = 0.0
 		equiv_resistance = Inf
 		equiv_admittance = Inf
@@ -1441,74 +1464,22 @@ mutable struct CableComponent
 		previous_part = nothing
 		total_num_wires = 0
 		weighted_num_turns = 0.0
-		radius_ext_ins = 0.0
+		total_cross_section_ins = 0.0
+		total_cross_section_con = 0.0
 
-		function calc_magnetic_equivalents(
-			gmr_eff::Union{Nothing, Number},
-			total_num_wires::Number,
-			weighted_num_turns::Number,
-			# previous_part::Union{Nothing, CableParts},
-			part::CableParts,
-		)
-			# Update gmr_eff
-			if gmr_eff === nothing
-				gmr_eff = part.gmr
-				previous_part = part
-			else
-				gmr_eff = calc_equivalent_gmr(part, previous_part)
-				previous_part = part
-			end
-
-			# Update state for specific part types
+		# Helper function to extract equivalent parameters from conductor parts
+		function calc_weighted_num_turns(part)
 			if part isa Conductor
 				for sub_part in part.layers
-					gmr_eff, total_num_wires, weighted_num_turns, previous_part =
-						calc_magnetic_equivalents(
-							gmr_eff,
-							total_num_wires,
-							weighted_num_turns,
-							# previous_part,
-							sub_part,
-						)
+					calc_weighted_num_turns(sub_part)
 				end
 			elseif part isa WireArray || part isa Strip
 				num_wires = part isa WireArray ? part.num_wires : 1
 				total_num_wires += num_wires
 				weighted_num_turns +=
-					part.pitch_length > 0 ? num_wires / part.pitch_length : 0
+					part.pitch_length > 0 ? num_wires * 1 / part.pitch_length : 0
 			end
-
-			return gmr_eff, total_num_wires, weighted_num_turns, previous_part
 		end
-
-		# # Helper function to extract equivalent parameters from conductor parts
-		# function calc_magnetic_equivalents(part)
-
-		# 	if gmr_eff === nothing
-		# 		gmr_eff = part.gmr
-		# 		previous_part = part
-		# 	else
-		# 		gmr_eff = calc_equivalent_gmr(part, previous_part)
-		# 		previous_part = part
-		# 	end
-
-		# 	if part isa Conductor
-		# 		for sub_part in part.layers
-		# 			calc_magnetic_equivalents(sub_part)
-		# 		end
-		# 	elseif part isa WireArray || part isa Strip
-		# 		num_wires = part isa WireArray ? part.num_wires : 1
-		# 		total_num_wires += num_wires
-		# 		weighted_num_turns +=
-		# 			part.pitch_length > 0 ? num_wires * 1 / part.pitch_length : 0
-		# 		# mu_con =
-		# 		# 	(
-		# 		# 		mu_con * total_cross_section_con +
-		# 		# 		part.material_props.mu_r * part.cross_section
-		# 		# 	) / (total_cross_section_con + part.cross_section)
-		# 		# total_cross_section_con += part.cross_section
-		# 	end
-		# end
 
 		for (index, part) in enumerate(component_data)
 			if part isa Conductor || part isa Strip || part isa WireArray ||
@@ -1518,34 +1489,34 @@ mutable struct CableComponent
 				equiv_resistance =
 					calc_parallel_equivalent(equiv_resistance, part.resistance)
 				total_num_wires += part.num_wires
-				# calc_magnetic_equivalents(part)
-				gmr_eff_con, total_num_wires, weighted_num_turns, previous_part =
-					calc_magnetic_equivalents(
-						gmr_eff_con,
-						total_num_wires,
-						weighted_num_turns,
-						# previous_part,
-						part,
-					)
+				calc_weighted_num_turns(part)
+
+				if gmr_eff_con === nothing
+					gmr_eff_con = part.gmr
+				else
+					alph =
+						total_cross_section_con /
+						(total_cross_section_con + part.cross_section)
+					beta = 1 - alph
+					gmd = calc_gmd(previous_part, part)
+					gmr_eff_con =
+						gmr_eff_con^(alph^2) * part.gmr^(beta^2) * gmd^(2 * alph * beta)
+				end
+				total_cross_section_con += part.cross_section
+
 			elseif part isa Semicon || part isa Insulator
 				radius_ext_ins += (part.radius_ext - part.radius_in)
 				Y = Complex(part.shunt_conductance, ω * part.shunt_capacitance)
 				equiv_admittance = calc_parallel_equivalent(equiv_admittance, Y)
-				# mu_ins =
-				# 	(
-				# 		mu_ins * total_cross_section_ins +
-				# 		part.material_props.mu_r * part.cross_section
-				# 	) / (total_cross_section_ins + part.cross_section)
-				# total_cross_section_ins += part.cross_section
-				gmr_eff_ins, _, _, _ =
-					calc_magnetic_equivalents(
-						gmr_eff,
-						0,
-						0,
-						# previous_part,
-						part,
-					)
+				mu_ins =
+					(
+						mu_ins * total_cross_section_ins +
+						part.material_props.mu_r * part.cross_section
+					) / (total_cross_section_ins + part.cross_section)
+
+				total_cross_section_ins += part.cross_section
 			end
+			previous_part = part
 		end
 
 		# Conductor effective parameters
@@ -1562,7 +1533,6 @@ mutable struct CableComponent
 			C_eq = imag(equiv_admittance) / ω
 			eps_ins = (C_eq * log(radius_ext_ins / radius_ext_con)) / (2 * pi) / ε₀
 			loss_factor_ins = G_eq / (ω * C_eq)
-			mu_ins = gmr_to_mu(gmr_eff_ins, radius_ext_ins, radius_ext_con)
 			correction_mu_ins = (
 				1 +
 				2 * num_turns^2 * pi^2 * (radius_ext_ins^2 - radius_ext_con^2) /
@@ -1590,4 +1560,60 @@ mutable struct CableComponent
 			component_data,
 		)
 	end
+end
+
+function cable_parts_data(component::CableComponent)
+	properties = [
+		"diam_in",
+		"diam_ext",
+		"cross_section",
+		"num_wires",
+		"resistance",
+		"gmr",
+		"alpha",
+	]
+
+	# Initialize the DataFrame with property names
+	data = DataFrame(property = properties)
+
+	# Iterate over each part in component_data with an index
+	for (i, part) in enumerate(component.component_data)
+		# Generate column name with type and index
+		col = string(i) * "-" * lowercase(string(typeof(part)))
+
+		# Collect values for each property, or `missing` if not available
+		new_col = [
+			:radius_in in fieldnames(typeof(part)) ? 2 * getfield(part, :radius_in) :
+			missing,
+			:radius_ext in fieldnames(typeof(part)) ? 2 * getfield(part, :radius_ext) :
+			missing,
+			:cross_section in fieldnames(typeof(part)) ?
+			getfield(part, :cross_section) : missing,
+			:num_wires in fieldnames(typeof(part)) ? getfield(part, :num_wires) : missing,
+			:resistance in fieldnames(typeof(part)) ? getfield(part, :resistance) : missing,
+			:gmr in fieldnames(typeof(part)) ? getfield(part, :gmr) : missing,
+			getfield(part, :gmr) / getfield(part, :radius_ext),
+		]
+
+		# Add the new column to the DataFrame
+		data[!, col] = new_col
+	end
+
+	return data
+end
+
+function cable_component_data(component::CableComponent)
+	data = [
+		("name", component.name),
+		("radius_in_con", component.radius_in_con),
+		("radius_ext_con", component.radius_ext_con),
+		("rho_con", component.rho_con),
+		("mu_con", component.mu_con),
+		("radius_ext_ins", component.radius_ext_ins),
+		("eps_ins", component.eps_ins),
+		("mu_ins", component.mu_ins),
+		("loss_factor_ins", component.loss_factor_ins),
+	]
+	df = DataFrame(data, [:property, :value])
+	return df
 end
