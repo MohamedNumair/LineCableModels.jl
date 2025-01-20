@@ -7,8 +7,9 @@ module LineCableToolbox
 - Uncertainty quantification using the `Measurements.jl` package, to accurately represent and propagate uncertainties related to cross-section information, internal and external radii of conductors and insulation layers, and electromagnetic properties of materials. 
 
 ## Features
+- Auxiliary functions for uncertainty analysis and quantification
 - Materials library
-
+- Consistent data model with constructors for different lines and cables components
 """
 
 # Load required packages
@@ -21,19 +22,17 @@ using Plots
 using Plots.PlotMeasures
 using Statistics
 using LinearAlgebra
+using SpecialFunctions
 
-# Define module-level constants
-const μ₀ = 4π * 1e-7  # Permeability of free space (H/m)
-const ε₀ = 8.8541878128e-12
-const TOL = 1e-6
-
-# Define module-level functions and macros
-_equals(x, y; atol = TOL) = isapprox(x, y, atol = atol)
-_to_nominal(x) = x isa Measurement ? value(x) : x
+# Module-level utilities
+include("Utils.jl")
+export error_with_bias,
+	ubound_error,
+	lbound_error,
+	percent_error
 
 # Materials library
 include("Materials.jl")
-
 export Material,
 	MaterialsLibrary,
 	add_material!,
@@ -44,7 +43,6 @@ export Material,
 
 # Lines and cables data model
 include("DataModel.jl")
-
 export WireArray,
 	Strip,
 	Tubular,
