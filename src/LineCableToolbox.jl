@@ -24,7 +24,13 @@ using Statistics
 using LinearAlgebra
 using SpecialFunctions
 
-# Module-level utilities
+
+
+# Module-level constants and utilities
+const μ₀ = 4π * 1e-7  # Permeability of free space (H/m)
+const ε₀ = 8.8541878128e-12
+const TOL = 1e-6
+
 include("Utils.jl")
 export error_with_bias,
 	ubound_error,

@@ -1,7 +1,3 @@
-const μ₀ = 4π * 1e-7  # Permeability of free space (H/m)
-const ε₀ = 8.8541878128e-12
-const TOL = 1e-6
-
 _equals(x, y; atol = TOL) = isapprox(x, y, atol = atol)
 _to_nominal(x) = x isa Measurement ? Measurements.value(x) : x
 

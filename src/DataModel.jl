@@ -526,6 +526,73 @@ function calc_strip_resistance(
 end
 
 """
+calc_tubular_inductance: Compute the inductance of a tubular conductor.
+
+# Arguments
+- `radius_in`: Internal radius of the tubular conductor [m].
+- `radius_ext`: External radius of the tubular conductor [m].
+- `mu_r`: Relative permeability of the conductor material (dimensionless).
+
+# Returns
+- Inductance of the tubular conductor per unit length [H/m].
+
+# Examples
+```julia
+L = calc_tubular_inductance(0.01, 0.02, 1.0)
+println(L) # Output: Inductance in H/m
+```
+
+# Dependencies
+- None.
+
+# References
+- None.
+"""
+function calc_tubular_inductance(radius_in::Number, radius_ext::Number, mu_r::Number)
+	return mu_r * μ₀ / (2 * π) * log(radius_ext / radius_in)
+end
+
+"""
+calc_inductance_flat: Calculate the inductance per phase for a flat horizontal cable arrangement using the simplified formula. This is meant for quick verification of datasheet parameters and should not be used for detailed analysis.
+
+# Arguments
+- `mu_r`: Relative permeability of the conductor material (dimensionless).
+- `r`: Radius of the cable (outer radius) [m].
+
+# Keyword Arguments
+- `S`: Separation between adjacent cables in the flat arrangement [m] (default: 7e-2).
+- `t`: Thickness of the screen wires [m] (default: 3e-3).
+
+# Returns
+- Inductance per phase of the cable arrangement [H/m].
+
+# Examples
+```julia
+L = calc_inductance_flat(1.0, 0.01, S=0.07, t=0.003)
+println(L) # Output: Inductance per phase in H/m
+```
+
+# Dependencies
+- None.
+
+# References
+- None.
+"""
+function calc_inductance_flat(mu_r::Number, r::Number; S::Number = 7e-2, t::Number = 3e-3)
+
+	# Equivalent distance for flat cable arrangement
+	Deq = (S * S * 2S)^(1 / 3)
+
+	# Simplified reduction factor due screen wires
+	dL = t / (mu_r * r)
+
+	# Inductance per phase formula
+	Lphase = (μ₀ / (2π)) * (log(2 * Deq / r) + (mu_r / 4) - dL)
+
+	return Lphase
+end
+
+"""
 calc_wirearray_gmr: Computes the geometric mean radius (GMR) of a circular wire array.
 
 # Arguments
@@ -1564,8 +1631,11 @@ end
 
 function cable_parts_data(component::CableComponent)
 	properties = [
+		"radius_in",
+		"radius_ext",
 		"diam_in",
 		"diam_ext",
+		"thickness",
 		"cross_section",
 		"num_wires",
 		"resistance",
@@ -1583,9 +1653,16 @@ function cable_parts_data(component::CableComponent)
 
 		# Collect values for each property, or `missing` if not available
 		new_col = [
+			:radius_in in fieldnames(typeof(part)) ? getfield(part, :radius_in) :
+			missing,
+			:radius_ext in fieldnames(typeof(part)) ? getfield(part, :radius_ext) :
+			missing,
 			:radius_in in fieldnames(typeof(part)) ? 2 * getfield(part, :radius_in) :
 			missing,
 			:radius_ext in fieldnames(typeof(part)) ? 2 * getfield(part, :radius_ext) :
+			missing,
+			:radius_ext in fieldnames(typeof(part)) ?
+			(getfield(part, :radius_ext) - getfield(part, :radius_in)) :
 			missing,
 			:cross_section in fieldnames(typeof(part)) ?
 			getfield(part, :cross_section) : missing,
