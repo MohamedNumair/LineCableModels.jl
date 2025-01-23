@@ -53,8 +53,9 @@ export Material,
 
 # Lines and cables data model
 include("DataModel.jl")
-export @thickness,
+export @thick,
 	Thickness,
+	@diam,
 	WireArray,
 	Strip,
 	Tubular,
@@ -63,13 +64,14 @@ export @thickness,
 	Semicon,
 	Insulator,
 	CableDesign,
+	NominalData,
 	CableComponent,
 	CableParts,
 	add_cable_component!,
 	add_conductor_part!,
-	preview_conductor_cross_section,
-	conductor_data,
 	cable_parts_data,
-	cable_data
+	cable_data,
+	core_parameters,
+	preview_cable_cross_section
 
 end
