@@ -1,3 +1,11 @@
+struct Thickness
+	value::Number
+end
+
+macro thickness(value)
+	esc(:(Thickness($value)))
+end
+
 """
 WireArray: Represents an array of wires equally spaced around a circumference of arbitrary radius.
 """
@@ -63,7 +71,7 @@ struct WireArray
 		num_wires::Int,
 		lay_ratio::Number,
 		material_props::Material;
-		temperature::Number = 20,
+		temperature::Number = T₀,
 	)
 
 		# Extract `radius_in` from `radius_ext` if a custom type is provided
@@ -156,13 +164,16 @@ struct Strip
 	- None.
 	"""
 	function Strip(
-		radius_in::Number,
+		radius_in::Union{Number, <:Any},
 		thickness::Number,
 		width::Number,
 		lay_ratio::Number,
 		material_props::Material;
-		temperature::Number = 20,
+		temperature::Number = T₀,
 	)
+		# Extract `radius_in` from `radius_ext` if a custom type is provided
+		radius_in = radius_in isa Number ? radius_in : getfield(radius_in, :radius_ext)
+
 		rho = material_props.rho
 		T0 = material_props.T0
 		alpha = material_props.alpha
@@ -238,13 +249,16 @@ mutable struct Tubular
 	"""
 	function Tubular(
 		radius_in::Union{Number, <:Any},
-		radius_ext::Number,
+		radius_ext::Union{Number, Thickness},
 		material_props::Material;
-		temperature::Number = 20,
+		temperature::Number = T₀,
 	)
 
 		# Extract `radius_in` from `radius_ext` if a custom type is provided
 		radius_in = radius_in isa Number ? radius_in : getfield(radius_in, :radius_ext)
+
+		# Handle external radius: absolute value or relative to radius_in
+		radius_ext = radius_ext isa Thickness ? radius_in + radius_ext.value : radius_ext
 
 		rho = material_props.rho
 		T0 = material_props.T0
@@ -1194,7 +1208,7 @@ mutable struct Semicon
 		radius_in::Union{Number, <:Any},
 		thickness::Number,
 		material_props::Material;
-		temperature::Number = 20,
+		temperature::Number = T₀,
 	)
 
 		rho = material_props.rho
@@ -1285,7 +1299,7 @@ mutable struct Insulator
 		radius_in::Union{Number, <:Any},
 		thickness::Number,
 		material_props::Material;
-		temperature::Number = 20,
+		temperature::Number = T₀,
 	)
 
 		# Extract `radius_in` from `radius_ext` if a custom type is provided
@@ -1488,7 +1502,7 @@ function insulator_data(insu::Union{Insulator, Semicon})
 end
 
 mutable struct CableComponent
-	name::String
+	# name::String
 	radius_in_con::Number
 	radius_ext_con::Number
 	rho_con::Number
@@ -1501,9 +1515,9 @@ mutable struct CableComponent
 
 	# Constructor
 	function CableComponent(
-		name::String,
+		# name::String,
 		component_data::Vector{<:CableParts},
-		f::Number = 50,
+		f::Number = f₀,
 	)
 		# Validate the geometry
 		radius_exts = [part.radius_ext for part in component_data]
@@ -1527,7 +1541,6 @@ mutable struct CableComponent
 		equiv_resistance = Inf
 		equiv_admittance = Inf
 		gmr_eff_con = nothing
-		gmr_eff_ins = nothing
 		previous_part = nothing
 		total_num_wires = 0
 		weighted_num_turns = 0.0
@@ -1600,11 +1613,13 @@ mutable struct CableComponent
 			C_eq = imag(equiv_admittance) / ω
 			eps_ins = (C_eq * log(radius_ext_ins / radius_ext_con)) / (2 * pi) / ε₀
 			loss_factor_ins = G_eq / (ω * C_eq)
-			correction_mu_ins = (
-				1 +
-				2 * num_turns^2 * pi^2 * (radius_ext_ins^2 - radius_ext_con^2) /
-				log(radius_ext_ins / radius_ext_con)
-			)
+			correction_mu_ins =
+				isnan(num_turns) ? 1 :
+				(
+					1 +
+					2 * num_turns^2 * pi^2 * (radius_ext_ins^2 - radius_ext_con^2) /
+					log(radius_ext_ins / radius_ext_con)
+				)
 			mu_ins = mu_ins * correction_mu_ins
 		else
 			radius_ext_ins = NaN
@@ -1615,7 +1630,7 @@ mutable struct CableComponent
 
 		# Initialize object
 		return new(
-			name,
+			# name,
 			radius_in_con,
 			radius_ext_con,
 			rho_con,
@@ -1629,8 +1644,86 @@ mutable struct CableComponent
 	end
 end
 
-function cable_parts_data(component::CableComponent)
+mutable struct CableDesign
+	cable_id::String
+	components::OrderedDict{String, CableComponent}  # Key: component name, Value: CableComponent object
+
+	# Constructor
+	function CableDesign(
+		cable_id::String,
+		component_name::String,
+		component_parts::Vector{<:Any},
+		f::Number = f₀,
+	)
+		components = OrderedDict{String, CableComponent}()
+		# Create and add the first component
+		components[component_name] =
+			CableComponent(Vector{CableParts}(component_parts), f)
+		return new(cable_id, components)
+	end
+end
+
+function add_cable_component!(
+	design::CableDesign,
+	component_name::String,
+	component_parts::Vector{<:Any},
+	f::Number = f₀,
+)
+	if haskey(design.components, component_name)
+		@warn "Component with name '$component_name' already exists in the CableDesign and will be overwritten."
+	end
+	# Construct the CableComponent internally
+	design.components[component_name] =
+		CableComponent(Vector{CableParts}(component_parts), f)
+end
+
+function cable_data(design::CableDesign)
+	# Extract properties dynamically
 	properties = [
+		:radius_in_con,
+		:radius_ext_con,
+		:rho_con,
+		:mu_con,
+		:radius_ext_ins,
+		:eps_ins,
+		:mu_ins,
+		:loss_factor_ins,
+	]
+
+	# Initialize the DataFrame with property names
+	data = DataFrame(property = properties)
+
+	for (key, part) in design.components
+		# Use the key of the dictionary as the column name
+		col = key
+
+		# Collect values for each property, or `missing` if not available
+		new_col = [
+			:radius_in_con in fieldnames(typeof(part)) ?
+			getfield(part, :radius_in_con) : missing,
+			:radius_ext_con in fieldnames(typeof(part)) ?
+			getfield(part, :radius_ext_con) : missing,
+			:rho_con in fieldnames(typeof(part)) ? getfield(part, :rho_con) : missing,
+			:mu_con in fieldnames(typeof(part)) ? getfield(part, :mu_con) : missing,
+			:radius_ext_ins in fieldnames(typeof(part)) ?
+			getfield(part, :radius_ext_ins) : missing,
+			:eps_ins in fieldnames(typeof(part)) ? getfield(part, :eps_ins) : missing,
+			:mu_ins in fieldnames(typeof(part)) ? getfield(part, :mu_ins) : missing,
+			:loss_factor_ins in fieldnames(typeof(part)) ?
+			getfield(part, :loss_factor_ins) : missing,
+		]
+
+		# Add the new column to the DataFrame
+		data[!, col] = new_col
+	end
+
+	return data
+end
+
+function cable_parts_data(design::CableDesign)
+	# Updated properties list
+	properties = [
+		"type",
 		"radius_in",
 		"radius_ext",
 		"diam_in",
@@ -1646,51 +1739,43 @@ function cable_parts_data(component::CableComponent)
 	# Initialize the DataFrame with property names
 	data = DataFrame(property = properties)
 
-	# Iterate over each part in component_data with an index
-	for (i, part) in enumerate(component.component_data)
-		# Generate column name with type and index
-		col = string(i) * "-" * lowercase(string(typeof(part)))
+	# Iterate over components in the OrderedDict
+	for (component_name, component) in design.components
+		# Iterate over each part in component_data with an index
+		for (i, part) in enumerate(component.component_data)
+			# Generate column name with layer number
+			col = lowercase(component_name) * ", layer " * string(i)
 
-		# Collect values for each property, or `missing` if not available
-		new_col = [
-			:radius_in in fieldnames(typeof(part)) ? getfield(part, :radius_in) :
-			missing,
-			:radius_ext in fieldnames(typeof(part)) ? getfield(part, :radius_ext) :
-			missing,
-			:radius_in in fieldnames(typeof(part)) ? 2 * getfield(part, :radius_in) :
-			missing,
-			:radius_ext in fieldnames(typeof(part)) ? 2 * getfield(part, :radius_ext) :
-			missing,
-			:radius_ext in fieldnames(typeof(part)) ?
-			(getfield(part, :radius_ext) - getfield(part, :radius_in)) :
-			missing,
-			:cross_section in fieldnames(typeof(part)) ?
-			getfield(part, :cross_section) : missing,
-			:num_wires in fieldnames(typeof(part)) ? getfield(part, :num_wires) : missing,
-			:resistance in fieldnames(typeof(part)) ? getfield(part, :resistance) : missing,
-			:gmr in fieldnames(typeof(part)) ? getfield(part, :gmr) : missing,
-			getfield(part, :gmr) / getfield(part, :radius_ext),
-		]
+			# Collect values for each property, or `missing` if not available
+			new_col = [
+				lowercase(string(typeof(part))),  # type
+				:radius_in in fieldnames(typeof(part)) ? getfield(part, :radius_in) :
+				missing,
+				:radius_ext in fieldnames(typeof(part)) ? getfield(part, :radius_ext) :
+				missing,
+				:radius_in in fieldnames(typeof(part)) ?
+				2 * getfield(part, :radius_in) : missing,
+				:radius_ext in fieldnames(typeof(part)) ?
+				2 * getfield(part, :radius_ext) : missing,
+				:radius_ext in fieldnames(typeof(part)) &&
+				:radius_in in fieldnames(typeof(part)) ?
+				(getfield(part, :radius_ext) - getfield(part, :radius_in)) : missing,
+				:cross_section in fieldnames(typeof(part)) ?
+				getfield(part, :cross_section) : missing,
+				:num_wires in fieldnames(typeof(part)) ? getfield(part, :num_wires) :
+				missing,
+				:resistance in fieldnames(typeof(part)) ? getfield(part, :resistance) :
+				missing,
+				:gmr in fieldnames(typeof(part)) ? getfield(part, :gmr) : missing,
+				:gmr in fieldnames(typeof(part)) &&
+				:radius_ext in fieldnames(typeof(part)) ?
+				(getfield(part, :gmr) / getfield(part, :radius_ext)) : missing,
+			]
 
-		# Add the new column to the DataFrame
-		data[!, col] = new_col
+			# Add the new column to the DataFrame
+			data[!, col] = new_col
+		end
 	end
 
 	return data
-end
-
-function cable_component_data(component::CableComponent)
-	data = [
-		("name", component.name),
-		("radius_in_con", component.radius_in_con),
-		("radius_ext_con", component.radius_ext_con),
-		("rho_con", component.rho_con),
-		("mu_con", component.mu_con),
-		("radius_ext_ins", component.radius_ext_ins),
-		("eps_ins", component.eps_ins),
-		("mu_ins", component.mu_ins),
-		("loss_factor_ins", component.loss_factor_ins),
-	]
-	df = DataFrame(data, [:property, :value])
-	return df
 end

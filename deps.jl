@@ -10,3 +10,5 @@ Pkg.add("ColorSchemes")
 Pkg.add("Plots")
 Pkg.add("Statistics")
 Pkg.add("LinearAlgebra")
+Pkg.add("DataStructures")
+

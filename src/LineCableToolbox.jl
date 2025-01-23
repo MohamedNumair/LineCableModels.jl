@@ -23,12 +23,16 @@ using Plots.PlotMeasures
 using Statistics
 using LinearAlgebra
 using SpecialFunctions
+using DataStructures
 
 
 
 # Module-level constants and utilities
-const μ₀ = 4π * 1e-7  # Permeability of free space (H/m)
+const f₀ = 50 # Base power system frequency
+const μ₀ = 4π * 1e-7
 const ε₀ = 8.8541878128e-12
+const ρ₀ = 1.724e-08 # Annealed copper reference resistivity
+const T₀ = 20 # Base temperature
 const TOL = 1e-6
 
 include("Utils.jl")
@@ -49,19 +53,23 @@ export Material,
 
 # Lines and cables data model
 include("DataModel.jl")
-export WireArray,
+export @thickness,
+	Thickness,
+	WireArray,
 	Strip,
 	Tubular,
 	ConductorParts,
 	Conductor,
 	Semicon,
 	Insulator,
+	CableDesign,
 	CableComponent,
 	CableParts,
+	add_cable_component!,
 	add_conductor_part!,
 	preview_conductor_cross_section,
 	conductor_data,
 	cable_parts_data,
-	cable_component_data
+	cable_data
 
 end
