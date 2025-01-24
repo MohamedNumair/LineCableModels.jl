@@ -27,3 +27,4 @@ Manifest.toml
 temp/
 bibliography/
 presentations/
+package_stats.jl

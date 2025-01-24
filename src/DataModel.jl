@@ -347,6 +347,7 @@ mutable struct Conductor
 	cross_section::Number
 	num_wires::Number
 	resistance::Number
+	alpha::Number
 	gmr::Number
 	layers::Vector{ConductorParts}
 
@@ -373,8 +374,6 @@ mutable struct Conductor
 	"""
 	function Conductor(central_conductor::ConductorParts)
 
-		R0 = central_conductor.resistance
-		gmr = central_conductor.gmr
 		num_wires = central_conductor isa WireArray ? central_conductor.num_wires : 0
 
 		# Initialize object
@@ -383,8 +382,9 @@ mutable struct Conductor
 			central_conductor.radius_ext,
 			central_conductor.cross_section,
 			num_wires,
-			R0,
-			gmr,
+			central_conductor.resistance,
+			central_conductor.material_props.alpha,
+			central_conductor.gmr,
 			[central_conductor],
 		)
 	end
@@ -401,7 +401,7 @@ add_conductor_part!: Adds a new part to an existing `Conductor` object and updat
 
 # Returns
 - None. Modifies the `Conductor` instance in place by adding the specified part and updating its properties:
-- Updates `gmr`, `resistance`, `radius_ext`, `cross_section`, and `num_wires` to account for the new part.
+- Updates `gmr`, `resistance`, `alpha`, `radius_ext`, `cross_section`, and `num_wires` to account for the new part.
 
 # Dependencies
 - `calc_equivalent_gmr`: Calculates the equivalent geometric mean radius (GMR) after adding the new part.
@@ -437,6 +437,9 @@ function add_conductor_part!(
 
 	# Update the Conductor with the new part
 	sc.gmr = calc_equivalent_gmr(sc, new_part)
+	sc.alpha =
+		(sc.alpha * new_part.resistance + new_part.material_props.alpha * sc.resistance) /
+		(sc.resistance + new_part.resistance) # composite temperature coefficient 
 	sc.resistance = calc_parallel_equivalent(sc.resistance, new_part.resistance)
 	sc.radius_ext += (new_part.radius_ext - new_part.radius_in)
 	sc.cross_section += new_part.cross_section
@@ -1288,13 +1291,11 @@ println(equivalent_gmr) # Outputs: Updated GMR value [m]
 # References
 - None.
 """
-# function calc_equivalent_gmr(sc::Union{Conductor, ConductorParts}, layer::ConductorParts)
 function calc_equivalent_gmr(sc::CableParts, layer::CableParts)
-	alph = sc.cross_section / (sc.cross_section + layer.cross_section)
-	beta = 1 - alph
+	beta = sc.cross_section / (sc.cross_section + layer.cross_section)
 	current_conductor = sc isa Conductor ? sc.layers[end] : sc
 	gmd = calc_gmd(current_conductor, layer)
-	return sc.gmr^(alph^2) * layer.gmr^(beta^2) * gmd^(2 * alph * beta)
+	return sc.gmr^(beta^2) * layer.gmr^((1 - beta)^2) * gmd^(2 * beta * (1 - beta))
 end
 
 """
@@ -1388,6 +1389,7 @@ mutable struct CableComponent
 	radius_in_con::Number
 	radius_ext_con::Number
 	rho_con::Number
+	alpha_con::Number
 	mu_con::Number
 	radius_ext_ins::Number
 	eps_ins::Number
@@ -1407,6 +1409,7 @@ mutable struct CableComponent
 	- `radius_in_con`: Inner radius of the conductor [m].
 	- `radius_ext_con`: Outer radius of the conductor [m].
 	- `rho_con`: Resistivity of the conductor material [Ω·m].
+	- `alpha_con`: Temperature coefficient of resistance of the conductor [1/°C].
 	- `mu_con`: Magnetic permeability of the conductor material [H/m].
 	- `radius_ext_ins`: Outer radius of the insulator [m].
 	- `eps_ins`: Permittivity of the insulator material [F/m].
@@ -1450,13 +1453,14 @@ mutable struct CableComponent
 		radius_in_con = Inf
 		radius_ext_con = 0.0
 		rho_con = 0.0
+		alpha_con = nothing
 		mu_con = 0.0
 		radius_ext_ins = 0.0
 		eps_ins = 0.0
 		mu_ins = 0.0
 		loss_factor_ins = 0.0
-		equiv_resistance = Inf
-		equiv_admittance = Inf
+		equiv_resistance = nothing
+		equiv_admittance = nothing
 		gmr_eff_con = nothing
 		previous_part = nothing
 		total_num_wires = 0
@@ -1481,30 +1485,49 @@ mutable struct CableComponent
 		for (index, part) in enumerate(component_data)
 			if part isa Conductor || part isa Strip || part isa WireArray ||
 			   part isa Tubular
+
+				if equiv_resistance === nothing
+					alpha_con = part isa Conductor ? part.alpha : part.material_props.alpha
+					equiv_resistance = part.resistance
+				else
+					alpha_new = part isa Conductor ? part.alpha : part.material_props.alpha
+					alpha_con =
+						(
+							alpha_con * part.resistance +
+							alpha_new * equiv_resistance
+						) /
+						(equiv_resistance + part.resistance) # composite temperature coefficient
+
+					equiv_resistance =
+						calc_parallel_equivalent(equiv_resistance, part.resistance)
+				end
+
 				radius_in_con = min(radius_in_con, part.radius_in)
 				radius_ext_con += (part.radius_ext - part.radius_in)
-				equiv_resistance =
-					calc_parallel_equivalent(equiv_resistance, part.resistance)
 				total_num_wires += part.num_wires
 				calc_weighted_num_turns(part)
 
 				if gmr_eff_con === nothing
 					gmr_eff_con = part.gmr
 				else
-					alph =
+					beta =
 						total_cross_section_con /
 						(total_cross_section_con + part.cross_section)
-					beta = 1 - alph
 					gmd = calc_gmd(previous_part, part)
 					gmr_eff_con =
-						gmr_eff_con^(alph^2) * part.gmr^(beta^2) * gmd^(2 * alph * beta)
+						gmr_eff_con^(beta^2) * part.gmr^((1 - beta)^2) *
+						gmd^(2 * beta * (1 - beta))
 				end
 				total_cross_section_con += part.cross_section
 
 			elseif part isa Semicon || part isa Insulator
 				radius_ext_ins += (part.radius_ext - part.radius_in)
 				Y = Complex(part.shunt_conductance, ω * part.shunt_capacitance)
-				equiv_admittance = calc_parallel_equivalent(equiv_admittance, Y)
+				if equiv_admittance === nothing
+					equiv_admittance = Y
+				else
+					equiv_admittance = calc_parallel_equivalent(equiv_admittance, Y)
+				end
 				mu_ins =
 					(
 						mu_ins * total_cross_section_ins +
@@ -1551,6 +1574,7 @@ mutable struct CableComponent
 			radius_in_con,
 			radius_ext_con,
 			rho_con,
+			alpha_con,
 			mu_con,
 			radius_ext_ins,
 			eps_ins,
@@ -1846,6 +1870,7 @@ function cable_data(design::CableDesign)
 		:radius_in_con,
 		:radius_ext_con,
 		:rho_con,
+		:alpha_con,
 		:mu_con,
 		:radius_ext_ins,
 		:eps_ins,
@@ -1867,6 +1892,7 @@ function cable_data(design::CableDesign)
 			:radius_ext_con in fieldnames(typeof(part)) ?
 			getfield(part, :radius_ext_con) : missing,
 			:rho_con in fieldnames(typeof(part)) ? getfield(part, :rho_con) : missing,
+			:alpha_con in fieldnames(typeof(part)) ? getfield(part, :alpha_con) : missing,
 			:mu_con in fieldnames(typeof(part)) ? getfield(part, :mu_con) : missing,
 			:radius_ext_ins in fieldnames(typeof(part)) ?
 			getfield(part, :radius_ext_ins) : missing,
@@ -1928,8 +1954,9 @@ function cable_parts_data(design::CableDesign)
 		"cross_section",
 		"num_wires",
 		"resistance",
-		"gmr",
 		"alpha",
+		"gmr",
+		"gmr/radius",
 		"shunt_capacitance",
 		"shunt_conductance",
 	]
@@ -1963,6 +1990,8 @@ function cable_parts_data(design::CableDesign)
 				:num_wires in fieldnames(typeof(part)) ? getfield(part, :num_wires) :
 				missing,
 				:resistance in fieldnames(typeof(part)) ? getfield(part, :resistance) :
+				missing,
+				:alpha in fieldnames(typeof(part)) ? getfield(part, :alpha) :
 				missing,
 				:gmr in fieldnames(typeof(part)) ? getfield(part, :gmr) : missing,
 				:gmr in fieldnames(typeof(part)) &&
