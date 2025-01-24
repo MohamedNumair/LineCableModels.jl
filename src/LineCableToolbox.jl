@@ -36,10 +36,11 @@ const T₀ = 20 # Base temperature
 const TOL = 1e-6
 
 include("Utils.jl")
-export error_with_bias,
-	ubound_error,
-	lbound_error,
-	percent_error
+export bias_to_uncertain,
+	_to_nominal,
+	_to_upper,
+	_to_lower,
+	_percent_error
 
 # Materials library
 include("Materials.jl")

@@ -1719,6 +1719,43 @@ function add_cable_component!(
 		CableComponent(Vector{CableParts}(component_parts), f)
 end
 
+"""
+core_parameters: Computes the core parameters (R, L, and C) for a given `CableDesign` and evaluates compliance with nominal values.
+
+# Arguments
+- `design`: A `CableDesign` object containing the cable components and nominal data.
+
+# Returns
+A `DataFrame` with the following columns:
+- `parameter`: Names of the parameters (`R [Ω/km]`, `L [mH/km]`, `C [μF/km]`).
+- `computed`: Computed values of the parameters based on the core component.
+- `nominal`: Nominal values of the parameters from the `CableDesign`.
+- `lower`: Lower bounds for the computed values (accounting for error margins).
+- `upper`: Upper bounds for the computed values (accounting for error margins).
+- `complies?`: A Boolean column indicating whether the nominal value is within the computed bounds.
+
+# Dependencies
+- `calc_tubular_resistance`: Computes the resistance of the tubular conductor.
+- `calc_inductance_flat`: Computes the inductance of the conductor.
+- `calc_shunt_capacitance`: Computes the shunt capacitance of the insulator.
+- `_to_lower`: Computes the lower bound for a given value based on error margins.
+- `_to_upper`: Computes the upper bound for a given value based on error margins.
+- `DataFrame`: Constructs a tabular representation of the computed and nominal values.
+
+# Examples
+```julia
+core_component = CableComponent([...]) # Define the core component
+nominal_data = NominalData(resistance=0.02, inductance=0.5, capacitance=200)
+design = CableDesign("Cable001", "core", [core_component]; nominal_data=nominal_data)
+
+data = core_parameters(design)
+println(data)
+# Output: DataFrame with computed values and compliance checks.
+```
+
+# References
+- None.
+"""
 function core_parameters(design::CableDesign)
 	# Extract the core component
 	cable_core = design.components["core"]
@@ -1758,8 +1795,8 @@ function core_parameters(design::CableDesign)
 		parameter = ["R [Ω/km]", "L [mH/km]", "C [μF/km]"],
 		computed = [R, L, C],
 		nominal = nominals,
-		lower = [lbound_error(R), lbound_error(L), lbound_error(C)],
-		upper = [ubound_error(R), ubound_error(L), ubound_error(C)],
+		lower = [_to_lower(R), _to_lower(L), _to_lower(C)],
+		upper = [_to_upper(R), _to_upper(L), _to_upper(C)],
 	)
 
 	# Add compliance column
@@ -1772,37 +1809,32 @@ function core_parameters(design::CableDesign)
 end
 
 """
-core_parameters: Computes the core parameters (R, L, and C) for a given `CableDesign` and evaluates compliance with nominal values.
+cable_data: Extracts and displays the properties of components in a `CableDesign` object as a `DataFrame`.
 
 # Arguments
-- `design`: A `CableDesign` object containing the cable components and nominal data.
+- `design`: A `CableDesign` object containing the components and their respective properties.
 
 # Returns
-A `DataFrame` with the following columns:
-- `parameter`: Names of the parameters (`R [Ω/km]`, `L [mH/km]`, `C [μF/km]`).
-- `computed`: Computed values of the parameters based on the core component.
-- `nominal`: Nominal values of the parameters from the `CableDesign`.
-- `lower`: Lower bounds for the computed values (accounting for error margins).
-- `upper`: Upper bounds for the computed values (accounting for error margins).
-- `complies?`: A Boolean column indicating whether the nominal value is within the computed bounds.
+- A `DataFrame` object with the following structure:
+  - `property`: The name of each property (e.g., `radius_in_con`, `rho_con`, etc.).
+  - Additional columns: Each component of the cable, with property values or `missing` if the property is not available for the component.
 
 # Dependencies
-- `calc_tubular_resistance`: Computes the resistance of the tubular conductor.
-- `calc_inductance_flat`: Computes the inductance of the conductor.
-- `calc_shunt_capacitance`: Computes the shunt capacitance of the insulator.
-- `lbound_error`: Computes the lower bound for a given value based on error margins.
-- `ubound_error`: Computes the upper bound for a given value based on error margins.
-- `DataFrame`: Constructs a tabular representation of the computed and nominal values.
+- `DataFrame`: Used to organize and display the component properties in tabular form.
 
 # Examples
 ```julia
-core_component = CableComponent([...]) # Define the core component
-nominal_data = NominalData(resistance=0.02, inductance=0.5, capacitance=200)
-design = CableDesign("Cable001", "core", [core_component]; nominal_data=nominal_data)
+design = CableDesign(
+	"cable1",
+	components = Dict(
+		"conductor" => Component(radius_in_con=0.01, radius_ext_con=0.02, rho_con=1.68e-8),
+		"insulator" => Component(radius_ext_ins=0.03, eps_ins=2.5, loss_factor_ins=0.01),
+	)
+)
 
-data = core_parameters(design)
-println(data)
-# Output: DataFrame with computed values and compliance checks.
+# Extract and display the component properties
+data = cable_data(design)
+println(data) # Outputs a DataFrame with properties and values for each component
 ```
 
 # References

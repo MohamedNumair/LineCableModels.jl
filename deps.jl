@@ -12,4 +12,5 @@ Pkg.add("PlotlyJS")
 Pkg.add("Statistics")
 Pkg.add("LinearAlgebra")
 Pkg.add("DataStructures")
+Pkg.add("Serialization")
 
