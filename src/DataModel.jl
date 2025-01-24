@@ -852,7 +852,7 @@ function calc_shunt_conductance(radius_in::Number, radius_ext::Number, rho::Numb
 end
 
 """
-get_material_color: Generates a color representation for a material based on its physical properties.
+_get_material_color: Generates a color representation for a material based on its physical properties.
 
 # Arguments
 - `material_props`: A dictionary containing the material's properties:
@@ -877,19 +877,51 @@ material_props = Dict(
 	:eps_r => 2.3,
 	:mu_r => 1.0
 )
-color = get_material_color(material_props)
+color = _get_material_color(material_props)
 println(color) # Outputs: RGBA color based on material properties
 ```
 
 # References
 - None.
 """
-function get_material_color(
+function _get_material_color(
 	material_props;
 	rho_weight = 0.8,
 	epsr_weight = 0.1,
 	mur_weight = 0.1,
 )
+
+	# Auxiliar function to combine colors
+	function _overlay_colors(colors::Vector{<:RGBA})
+		# Handle edge cases
+		if length(colors) == 0
+			return RGBA(0, 0, 0, 0)
+		elseif length(colors) == 1
+			return colors[1]
+		end
+
+		# Initialize with the first color
+		r, g, b, a = red(colors[1]), green(colors[1]), blue(colors[1]), alpha(colors[1])
+
+		# Single-pass overlay for the remaining colors
+		for i in 2:length(colors)
+			r2, g2, b2, a2 =
+				red(colors[i]), green(colors[i]), blue(colors[i]), alpha(colors[i])
+			a_new = a2 + a * (1 - a2)
+
+			if a_new == 0
+				r, g, b, a = 0, 0, 0, 0
+			else
+				r = (r2 * a2 + r * a * (1 - a2)) / a_new
+				g = (g2 * a2 + g * a * (1 - a2)) / a_new
+				b = (b2 * a2 + b * a * (1 - a2)) / a_new
+				a = a_new
+			end
+		end
+
+		return RGBA(r, g, b, a)
+	end
+
 	# Fixed normalization bounds
 	epsr_min, epsr_max = 1.0, 1000.0  # Adjusted permittivity range for semiconductors
 	mur_min, mur_max = 1.0, 300.0  # Relative permeability range
@@ -954,124 +986,9 @@ function get_material_color(
 	mur_color_w = Colors.RGBA(mur_color.r, mur_color.g, mur_color.b, mur_weight)
 
 	# Combine weighted colors
-	final_color = overlay_multiple_colors([rho_color_w, epsr_color_w, mur_color_w])
+	final_color = _overlay_colors([rho_color_w, epsr_color_w, mur_color_w])
 
 	return final_color
-end
-
-"""
-overlay_colors: Blends two RGBA colors using alpha compositing.
-
-# Arguments
-- `color1`: An `RGBA` object representing the first color.
-- `color2`: An `RGBA` object representing the second color.
-
-# Returns
-- An `RGBA` object representing the blended color based on alpha compositing.
-
-# Notes
-- The blending considers the alpha transparency of each color.
-- If the resulting alpha (`a_result`) is 0, the function returns a fully transparent black (`RGBA(0, 0, 0, 0)`).
-
-# Examples
-```julia
-color1 = RGBA(1.0, 0.0, 0.0, 0.5)  # Semi-transparent red
-color2 = RGBA(0.0, 0.0, 1.0, 0.5)  # Semi-transparent blue
-result_color = overlay_colors(color1, color2)
-println(result_color) # Outputs the blended color
-```
-
-# References
-- None.
-"""
-function overlay_colors(color1::RGBA, color2::RGBA)
-	# Extract components
-	r1, g1, b1, a1 = red(color1), green(color1), blue(color1), alpha(color1)
-	r2, g2, b2, a2 = red(color2), green(color2), blue(color2), alpha(color2)
-
-	# Compute resulting alpha
-	a_result = a2 + a1 * (1 - a2)
-
-	# Avoid division by zero if resulting alpha is 0
-	if a_result == 0
-		return RGBA(0, 0, 0, 0)
-	end
-
-	# Compute resulting RGB channels
-	r_result = (r2 * a2 + r1 * a1 * (1 - a2)) / a_result
-	g_result = (g2 * a2 + g1 * a1 * (1 - a2)) / a_result
-	b_result = (b2 * a2 + b1 * a1 * (1 - a2)) / a_result
-
-	return RGBA(r_result, g_result, b_result, a_result)
-end
-
-"""
-visualize_gradient: Displays a color gradient for visualization.
-
-# Arguments
-- `gradient`: A color gradient object to be visualized (e.g., `cgrad`).
-- `n_steps`: The number of steps to sample from the gradient (default: 100).
-- `title`: A string representing the title of the visualization (default: "Color gradient").
-
-# Returns
-- None. Displays a plot of the color gradient.
-
-# Examples
-```julia
-gradient = cgrad([:blue, :green, :yellow, :red])
-visualize_gradient(gradient, 200; title = "My Custom Gradient")
-```
-
-# Notes
-- This function creates a bar plot with colored bars representing the gradient.
-- The x-axis and y-axis are hidden for better visualization.
-
-# References
-- None.
-"""
-function visualize_gradient(gradient, n_steps = 100; title = "Color gradient")
-	# Generate evenly spaced values between 0 and 1
-	x = range(0, stop = 1, length = n_steps)
-	colors = [get(gradient, xi) for xi in x]  # Sample the gradient
-
-	# Create a plot using colored bars
-	bar(x, ones(length(x)); color = colors, legend = false, xticks = false, yticks = false)
-	title!(title)
-end
-
-"""
-overlay_multiple_colors: Blends multiple RGBA colors using sequential alpha compositing.
-
-# Arguments
-- `colors`: A vector of `RGBA` objects representing the colors to be blended.
-
-# Returns
-- An `RGBA` object representing the final blended color.
-
-# Notes
-- Colors are composited sequentially, starting with the first color in the vector.
-- If the vector contains only one color, that color is returned as the result.
-
-# Examples
-```julia
-colors = [RGBA(1.0, 0.0, 0.0, 0.5), RGBA(0.0, 1.0, 0.0, 0.5), RGBA(0.0, 0.0, 1.0, 0.5)]
-result_color = overlay_multiple_colors(colors)
-println(result_color) # Outputs the blended color
-```
-
-# References
-- None.
-"""
-function overlay_multiple_colors(colors::Vector{<:RGBA})
-	# Start with the first color
-	result = colors[1]
-
-	# Overlay each subsequent color
-	for i in 2:length(colors)
-		result = overlay_colors(result, colors[i])
-	end
-
-	return result
 end
 
 """
@@ -2026,7 +1943,7 @@ Displays an interactive plot of the cable's cross-section, with distinct layers 
 # Dependencies
 - `plotlyjs`: For interactive plotting.
 - `Plots`: For creating shapes and handling graphical elements.
-- `get_material_color`: Determines the color associated with a material's properties.
+- `_get_material_color`: Determines the color associated with a material's properties.
 - `_to_nominal`: Converts the dimensions of a layer to its nominal value for plotting.
 
 # Notes
@@ -2064,7 +1981,7 @@ function preview_cable_cross_section(design::CableDesign)
 
 			lay_radius = num_wires == 1 ? 0 : _to_nominal(layer.radius_in) + radius_wire
 			material_props = layer.material_props
-			color = get_material_color(material_props)
+			color = _get_material_color(material_props)
 
 			# Calculate the angle between each wire
 			angle_step = 2 * π / num_wires
@@ -2090,7 +2007,7 @@ function preview_cable_cross_section(design::CableDesign)
 			radius_in = _to_nominal(layer.radius_in)
 			radius_ext = _to_nominal(layer.radius_ext)
 			material_props = layer.material_props
-			color = get_material_color(material_props)
+			color = _get_material_color(material_props)
 
 			arcshape(θ1, θ2, rin, rext, N = 100) = Shape(
 				vcat(Plots.partialcircle(θ1, θ2, N, rext),
