@@ -30,7 +30,7 @@ end
 Constructor: Initializes a `MaterialsLibrary` object with materials loaded from a CSV file or a default database.
 
 # Arguments
-- `file_name`: Name of the CSV file containing material data (default: "materials.csv").
+- `file_name`: Name of the CSV file containing material data (default: "materials_library.csv").
 
 # Returns
 - An instance of `MaterialsLibrary` containing material data either loaded from the specified file or initialized with default materials.
@@ -41,7 +41,7 @@ Constructor: Initializes a `MaterialsLibrary` object with materials loaded from 
 
 # Examples
 ```julia
-library = MaterialsLibrary("custom_materials.csv")
+library = MaterialsLibrary("custom_materials_library.csv")
 println(length(library.materials)) # Outputs the number of materials loaded
 
 library = MaterialsLibrary()
@@ -51,7 +51,7 @@ println(length(library.materials)) # Outputs the number of default materials ini
 # References
 - None.
 """
-function MaterialsLibrary(file_name::String = "materials.csv")::MaterialsLibrary
+function MaterialsLibrary(file_name::String = "materials_library.csv")::MaterialsLibrary
 	library = MaterialsLibrary(Dict{String, Material}())
 	if isfile(file_name)
 		println("Loading materials database from $file_name...")
@@ -117,7 +117,7 @@ _load_from_csv!: Loads material data from a CSV file into the `MaterialsLibrary`
 # Examples
 ```julia
 library = MaterialsLibrary()
-_load_from_csv!(library, "materials.csv")
+_load_from_csv!(library, "materials_library.csv")
 println(keys(library.materials)) # Outputs names of materials loaded from the file
 ```
 
@@ -191,7 +191,7 @@ save_materials_library: Saves the materials from the `MaterialsLibrary` instance
 
 # Arguments
 - `library`: A `MaterialsLibrary` instance whose materials will be saved.
-- `file_name`: Name of the CSV file where the materials will be saved (default: "materials.csv").
+- `file_name`: Name of the CSV file where the materials will be saved (default: "materials_library.csv").
 
 # Returns
 - None. Writes the materials data to the specified file.
@@ -211,7 +211,7 @@ println("Materials saved to materials_backup.csv")
 """
 function save_materials_library(
 	library::MaterialsLibrary,
-	file_name::String = "materials.csv",
+	file_name::String = "materials_library.csv",
 )
 	rows = [
 		(
@@ -295,62 +295,3 @@ function get_material(library::MaterialsLibrary, name::String)::Union{Nothing, M
 		return material
 	end
 end
-
-# function add_material!(library::MaterialsLibrary, name::String, material::Material)
-# 	if haskey(library.materials, name)
-# 		error("Material $name already exists in the library.")
-# 	end
-# 	library.materials[name] = material
-# end
-
-# function remove_material!(library::MaterialsLibrary, name::String)
-# 	if !haskey(library.materials, name)
-# 		error("Material $name not found in the library.")
-# 	end
-# 	delete!(library.materials, name)
-# end
-
-# function save_materials_library(
-# 	library::MaterialsLibrary,
-# 	file_name::String = "materials.csv",
-# )
-# 	rows = [
-# 		(
-# 			name = name,
-# 			rho = m.rho,
-# 			eps_r = m.eps_r,
-# 			mu_r = m.mu_r,
-# 			T0 = m.T0,
-# 			alpha = m.alpha,
-# 		)
-# 		for (name, m) in library.materials
-# 	]
-# 	df = DataFrame(rows)
-# 	CSV.write(file_name, df)
-# end
-
-# function display_materials_library(library::MaterialsLibrary)::DataFrame
-# 	rows = [
-# 		(
-# 			name = name,
-# 			rho = m.rho,
-# 			eps_r = m.eps_r,
-# 			mu_r = m.mu_r,
-# 			T0 = m.T0,
-# 			alpha = m.alpha,
-# 		)
-# 		for (name, m) in library.materials
-# 	]
-# 	return DataFrame(rows)
-# end
-
-# function get_material(library::MaterialsLibrary, name::String)::Union{Nothing, Material}
-# 	material = get(library.materials, name, nothing)
-# 	if material === nothing
-# 		println("Material '$name' not found in the library.")
-# 		return nothing
-# 	else
-# 		return material
-# 	end
-# end
-

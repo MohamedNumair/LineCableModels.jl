@@ -1,15 +1,57 @@
+"""
+Thickness: Represents the thickness of a cable component. This custom type ensures flexibility in data entry and consistency with engineering practices, where component layers (insulation, metallic tapes etc.) are typically described by thickness rather than laying radius. It standardizes components requiring `radius_ext` for calculations.
+"""
 struct Thickness
 	value::Number
 end
 
+"""
+thick: A macro for constructing `Thickness` objects.
+
+# Arguments
+- `value`: The numerical value representing the thickness to be encapsulated in a `Thickness` object.
+
+# Returns
+- A `Thickness` object with the specified `value`.
+
+# Examples
+```julia
+using .LineCableToolbox
+
+thick_obj = @thick(5.0)
+println(thick_obj) # Output: Thickness(5.0)
+```
+
+# References
+- None.
+"""
 macro thick(value)
 	esc(:(Thickness($value)))
 end
 
+"""
+diam: A macro that calculates the radius from a given diameter. As trivial and overkill as it may seem, this macro is intended to improve clarity in cases where typical engineering data is commonly referred to in terms of diameters, e.g. wires used in stranded cores and screens.
+
+# Arguments
+- `value`: The numerical value representing the diameter to be halved.
+
+# Returns
+- A numerical value equal to half of the provided diameter (radius).
+
+# Examples
+```julia
+using .LineCableToolbox
+
+radius = @diam(10.0)
+println(radius) # Output: 5.0
+```
+
+# References
+- None.
+"""
 macro diam(value)
 	esc(:(($value) / 2))
 end
-
 
 """
 WireArray: Represents an array of wires equally spaced around a circumference of arbitrary radius.
@@ -1545,7 +1587,7 @@ mutable struct NominalData
 	An instance of `NominalData` with the specified nominal properties.
 
 	# Dependencies
-	None.
+	- None.
 
 	# Examples
 	```julia
@@ -2019,4 +2061,274 @@ function preview_cable_cross_section(design::CableDesign)
 	end
 
 	display(plt)
+end
+
+"""
+CablesLibrary: Represents a library of cable designs stored as a dictionary.
+"""
+mutable struct CablesLibrary
+	cable_designs::Dict{String, CableDesign}  # Key: cable ID, Value: CableDesign object
+
+	"""
+	Constructor: Initializes a `CablesLibrary` object, optionally loading cable designs from a file.
+
+	# Arguments
+	- `file_name`: The name of the file to load cable designs from (default: "cables_library.jls").
+
+	# Returns
+	An instance of `CablesLibrary` containing:
+	- `cable_designs`: A dictionary with keys as cable IDs (String) and values as `CableDesign` objects.
+
+	# Dependencies
+	- `_load_cables_from_jls!`: A function to load cable designs from a `.jls` file into the library.
+	- `isfile`: A function to check if the specified file exists.
+
+	# Examples
+	```julia
+	# Create a new library without loading any file
+	library = CablesLibrary()
+
+	# Create a library and load designs from a file
+	library_with_data = CablesLibrary("existing_library.jls")
+	```
+
+	# References
+	- None.
+	"""
+	function CablesLibrary(file_name::String = "cables_library.jls")::CablesLibrary
+		library = new(Dict{String, CableDesign}())
+		if isfile(file_name)
+			println("Loading cables database from $file_name...")
+			_load_cables_from_jls!(library, file_name)
+		else
+			println("No $file_name found. Initializing empty cables database...")
+		end
+		return library
+	end
+end
+
+"""
+_load_cables_from_jls!: Loads cable designs from a serialized file into a `CablesLibrary` object.
+
+# Arguments
+- `library`: An instance of `CablesLibrary` to populate with the loaded cable designs.
+- `file_name`: The name of the file to deserialize and load the cable designs from.
+
+# Returns
+- None. Modifies the `cable_designs` field of the `CablesLibrary` object in-place.
+
+# Dependencies
+- `deserialize`: A function to deserialize the data from the specified file.
+- `println`: Used to provide feedback messages to the user.
+
+# Examples
+```julia
+library = CablesLibrary()
+_load_cables_from_jls!(library, "cables_library.jls")
+println(library.cable_designs) # Prints the loaded cable designs if successful
+```
+
+# References
+- None.
+"""
+function _load_cables_from_jls!(library::CablesLibrary, file_name::String)
+	try
+		loaded_data = deserialize(file_name)
+		if isa(loaded_data, Dict{String, CableDesign})
+			library.cable_designs = loaded_data
+			println("Cables database successfully loaded!")
+		else
+			println("Invalid file format in $file_name. Initializing empty database.")
+		end
+	catch e
+		println("Error loading file $file_name: $e. Initializing empty database.")
+	end
+end
+
+"""
+save_cables_library: Saves the cable designs from a `CablesLibrary` object to a `.jls` file.
+
+# Arguments
+- `library`: An instance of `CablesLibrary` whose cable designs are to be saved.
+- `file_name`: The name of the file to save the cable designs to (default: "cables_library.jls").
+
+# Returns
+- None. Writes the serialized cable designs to the specified file.
+
+# Dependencies
+- `serialize`: A function to serialize and save data to a file.
+- `println`: Used to provide feedback messages to the user.
+
+# Examples
+```julia
+library = CablesLibrary()
+# Add cable designs to the library
+save_cables_library(library, "new_cables_library.jls")
+```
+
+# References
+- None.
+"""
+function save_cables_library(
+	library::CablesLibrary,
+	file_name::String = "cables_library.jls",
+)
+	try
+		serialize(file_name, library.cable_designs)
+		println("Cables library saved to $file_name.")
+	catch e
+		println("Error saving library to $file_name: $e")
+	end
+end
+
+"""
+add_cable_design!: Adds a new cable design to a `CablesLibrary` object.
+
+# Arguments
+- `library`: An instance of `CablesLibrary` to which the cable design will be added.
+- `design`: A `CableDesign` object representing the cable design to be added. This object must have a `cable_id` field to uniquely identify it.
+
+# Returns
+- None. Modifies the `cable_designs` field of the `CablesLibrary` object in-place by adding the new cable design.
+
+# Dependencies
+- None.
+
+# Examples
+```julia
+library = CablesLibrary()
+design = CableDesign("cable1", ...) # Initialize CableDesign with required fields
+add_cable_design!(library, design)
+println(library.cable_designs) # Prints the updated dictionary containing the new cable design
+```
+
+# References
+- None.
+"""
+function add_cable_design!(library::CablesLibrary, design::CableDesign)
+	library.cable_designs[design.cable_id] = design
+	println("Cable design with ID `$(design.cable_id)` added to the library.")
+end
+
+"""
+remove_cable_design!: Removes a cable design from a `CablesLibrary` object by its ID.
+
+# Arguments
+- `library`: An instance of `CablesLibrary` from which the cable design will be removed.
+- `cable_id`: The ID of the cable design to remove (String).
+
+# Returns
+- None. Modifies the `cable_designs` field of the `CablesLibrary` object in-place by removing the specified cable design if it exists.
+
+# Dependencies
+- None.
+
+# Examples
+```julia
+library = CablesLibrary()
+design = CableDesign("cable1", ...) # Initialize and add a CableDesign
+add_cable_design!(library, design)
+
+# Remove the cable design
+remove_cable_design!(library, "cable1")
+println(library.cable_designs) # Prints the dictionary without the removed cable design
+```
+
+# References
+- None.
+"""
+function remove_cable_design!(library::CablesLibrary, cable_id::String)
+	if haskey(library.cable_designs, cable_id)
+		delete!(library.cable_designs, cable_id)
+		println("Cable design with ID `$cable_id` removed from the library.")
+	else
+		println("Cable design with ID `$cable_id` not found in the library.")
+	end
+end
+
+"""
+get_cable_design: Retrieves a cable design from a `CablesLibrary` object by its ID.
+
+# Arguments
+- `library`: An instance of `CablesLibrary` from which the cable design will be retrieved.
+- `cable_id`: The ID of the cable design to retrieve (String).
+
+# Returns
+- A `CableDesign` object corresponding to the given `cable_id` if found, otherwise `nothing`.
+
+# Dependencies
+- None.
+
+# Examples
+```julia
+library = CablesLibrary()
+design = CableDesign("cable1", ...) # Initialize and add a CableDesign
+add_cable_design!(library, design)
+
+# Retrieve the cable design
+retrieved_design = get_cable_design(library, "cable1")
+println(retrieved_design) # Prints the retrieved CableDesign object
+
+# Attempt to retrieve a non-existent design
+missing_design = get_cable_design(library, "nonexistent_id")
+println(missing_design) # Prints nothing
+```
+
+# References
+- None.
+"""
+function get_cable_design(
+	library::CablesLibrary,
+	cable_id::String,
+)::Union{Nothing, CableDesign}
+	if haskey(library.cable_designs, cable_id)
+		return library.cable_designs[cable_id]
+	else
+		println("Cable design with ID `$cable_id` not found.")
+		return nothing
+	end
+end
+
+"""
+display_cables_library: Displays the cable designs in a `CablesLibrary` object as a `DataFrame`.
+
+# Arguments
+- `library`: An instance of `CablesLibrary` whose cable designs are to be displayed.
+
+# Returns
+- A `DataFrame` object with the following columns:
+  - `cable_id`: The unique identifier for each cable design.
+  - `nominal_data`: A string representation of the nominal data for each cable design.
+  - `components`: A comma-separated string listing the components of each cable design.
+
+# Dependencies
+- `DataFrame`: Used to create the tabular representation of the cable designs.
+
+# Examples
+```julia
+library = CablesLibrary()
+design1 = CableDesign("cable1", nominal_data=..., components=Dict("A"=>..., "B"=>...))
+design2 = CableDesign("cable2", nominal_data=..., components=Dict("C"=>...))
+add_cable_design!(library, design1)
+add_cable_design!(library, design2)
+
+# Display the library as a DataFrame
+df = display_cables_library(library)
+println(df) # Outputs the DataFrame with cable details
+```
+
+# References
+- None.
+"""
+function display_cables_library(library::CablesLibrary)
+	ids = keys(library.cable_designs)
+	nominal_data = [string(design.nominal_data) for design in values(library.cable_designs)]
+	components =
+		[join(keys(design.components), ", ") for design in values(library.cable_designs)]
+	df = DataFrame(
+		cable_id = collect(ids),
+		nominal_data = nominal_data,
+		components = components,
+	)
+	return (df)
 end

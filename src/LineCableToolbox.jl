@@ -24,7 +24,7 @@ using Statistics
 using LinearAlgebra
 using SpecialFunctions
 using DataStructures
-
+using Serialization
 
 
 # Module-level constants and utilities
@@ -72,6 +72,12 @@ export @thick,
 	cable_parts_data,
 	cable_data,
 	core_parameters,
-	preview_cable_cross_section
+	preview_cable_cross_section,
+	CablesLibrary,
+	save_cables_library,
+	add_cable_design!,
+	remove_cable_design!,
+	get_cable_design,
+	display_cables_library
 
 end
