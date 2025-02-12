@@ -26,7 +26,6 @@ using SpecialFunctions
 using DataStructures
 using Serialization
 
-
 # Module-level constants and utilities
 const f₀ = 50 # Base power system frequency
 const μ₀ = 4π * 1e-7
@@ -79,6 +78,7 @@ export @thick,
 	add_cable_design!,
 	remove_cable_design!,
 	get_cable_design,
-	display_cables_library
+	display_cables_library,
+	calc_inductance_trifoil
 
 end

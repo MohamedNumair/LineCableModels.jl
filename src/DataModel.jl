@@ -620,43 +620,94 @@ function calc_tubular_inductance(radius_in::Number, radius_ext::Number, mu_r::Nu
 end
 
 """
-calc_inductance_flat: Calculate the inductance per phase for a flat horizontal cable arrangement using the simplified formula. This is meant for quick verification of datasheet parameters and should not be used for detailed analysis.
+calc_inductance_trifoil: Computes the inductance per unit length of a phase conductor in a flat formation considering earth return effects.
 
 # Arguments
-- `mu_r`: Relative permeability of the conductor material (dimensionless).
-- `r`: Radius of the cable (outer radius) [m].
-
-# Keyword Arguments
-- `S`: Separation between adjacent cables in the flat arrangement [m] (default: 7e-2).
-- `t`: Thickness of the screen wires [m] (default: 3e-3).
+- `r_in_co`: Internal radius of the phase conductor [m].
+- `r_ext_co`: External radius of the phase conductor [m].
+- `rho_co`: Electrical resistivity of the phase conductor material [Ω·m].
+- `mu_r_co`: Relative permeability of the phase conductor material.
+- `r_in_scr`: Internal radius of the screen conductor [m].
+- `r_ext_scr`: External radius of the screen conductor [m].
+- `rho_scr`: Electrical resistivity of the screen conductor material [Ω·m].
+- `S`: Separation distance between phase conductors in a flat formation [m] (default: 0.07).
+- `rho_e`: Soil resistivity [Ω·m] (default: 100).
+- `f`: Frequency [Hz] (default: f₀).
 
 # Returns
-- Inductance per phase of the cable arrangement [H/m].
+- Inductance per unit length of the phase conductor in a flat formation [H/m].
+
+# Dependencies
+- `calc_tubular_gmr`: Computes the geometric mean radius (GMR) of a tubular conductor.
 
 # Examples
 ```julia
-L = calc_inductance_flat(1.0, 0.01, S=0.07, t=0.003)
-println(L) # Output: Inductance per phase in H/m
+L = calc_inductance_trifoil(0.01, 0.015, 1.72e-8, 1.0, 0.02, 0.025, 2.65e-8)
+println(L) # Output: Inductance value in H/m
 ```
 
-# Dependencies
-- None.
-
 # References
-- None.
+- CIGRE Technical Brochure 531, Section 4.2.4.3
 """
-function calc_inductance_flat(mu_r::Number, r::Number; S::Number = 7e-2, t::Number = 3e-3)
 
-	# Equivalent distance for flat cable arrangement
-	Deq = (S * S * 2S)^(1 / 3)
+function calc_inductance_trifoil(
+	r_in_co::Number,
+	r_ext_co::Number,
+	rho_co::Number,
+	mu_r_co::Number,
+	r_in_scr::Number,
+	r_ext_scr::Number,
+	rho_scr::Number;
+	S::Number = 7e-2,
+	rho_e::Number = 100,
+	f::Number = f₀,
+)
 
-	# Simplified reduction factor due screen wires
-	dL = t / (mu_r * r)
+	# μ₀ = 4π * 1e-7
+	ω = 2 * π * f
+	C = μ₀ / (2π)
 
-	# Inductance per phase formula
-	Lphase = (μ₀ / (2π)) * (log(2 * Deq / r) + (mu_r / 4) - dL)
+	# Compute simplified earth return depth
+	DE = 659 * sqrt(rho_e / f)
 
-	return Lphase
+	# Compute R'_E
+	RpE = (ω * μ₀) / 8
+
+	# Compute Xa
+	GMRa = calc_tubular_gmr(r_ext_co, r_in_co, mu_r_co)
+	Xa = (ω * C) * log(DE / GMRa)
+
+	# Self impedance of a phase conductor with earth return
+	Ra = rho_co / (π * (r_ext_co^2 - r_in_co^2))
+	Za = RpE + Ra + im * Xa
+
+	# Compute rs
+	rs = (r_in_scr + r_ext_scr) / 2
+
+	# Compute Xs
+	Xs = (ω * C) * log(DE / rs)
+
+	# Self impedance of metal screen with earth return
+	Rs = rho_scr / (π * (r_ext_scr^2 - r_in_scr^2))
+	Zs = RpE + Rs + im * Xs
+
+	# Mutual impedance between phase conductor and screen
+	Zm = RpE + im * Xs
+
+	# Compute GMD
+	GMD = S # trifoil, for flat use: 2^(1/3) * S
+
+	# Compute Xap
+	Xap = (ω * C) * log(DE / GMD)
+
+	# Equivalent mutual impedances between cables
+	Zx = RpE + im * Xap
+
+	# Formula from CIGRE TB-531, 4.2.4.3, solid bonding
+	Z1_sb = (Za - Zx) - ((Zm - Zx)^2 / (Zs - Zx))
+	# Likewise, but for single point bonding
+	Z1_sp = (Za - Zx)
+	return imag(Z1_sb) / ω
 end
 
 """
@@ -1522,7 +1573,7 @@ mutable struct NominalData
 	- `armor_cross_section`: Cross-sectional area of the armor [mm²] (default: `nothing`).
 	- `resistance`: Electrical resistance of the cable [Ω/km] (default: `nothing`).
 	- `capacitance`: Electrical capacitance of the cable [μF/km] (default: `nothing`).
-	- `inductance`: Electrical inductance of the cable [mH/km] (default: `nothing`).
+	- `inductance`: Electrical inductance of the cable, trifoil formation [mH/km] (default: `nothing`).
 
 	# Returns
 	An instance of `NominalData` with the specified nominal properties.
@@ -1677,7 +1728,7 @@ A `DataFrame` with the following columns:
 
 # Dependencies
 - `calc_tubular_resistance`: Computes the resistance of the tubular conductor.
-- `calc_inductance_flat`: Computes the inductance of the conductor.
+- `calc_inductance_trifoil`: Computes the inductance of the conductor.
 - `calc_shunt_capacitance`: Computes the shunt capacitance of the insulator.
 - `_to_lower`: Computes the lower bound for a given value based on error margins.
 - `_to_upper`: Computes the upper bound for a given value based on error margins.
@@ -1699,7 +1750,9 @@ println(data)
 """
 function core_parameters(design::CableDesign)
 	# Extract the core component
-	cable_core = design.components["core"]
+	# cable_core = design.components["core"]
+	cable_core = collect(values(design.components))[1]
+	cable_shield = collect(values(design.components))[2]
 
 	# Compute R, L, and C using given formulas
 	R =
@@ -1712,10 +1765,20 @@ function core_parameters(design::CableDesign)
 			20,
 		) * 1e3
 
-	L = calc_inductance_flat(
-		cable_core.mu_con,
-		cable_core.radius_ext_con,
-	) * 1e6
+	L =
+		calc_inductance_trifoil(
+			cable_core.radius_in_con,
+			cable_core.radius_ext_con,
+			cable_core.rho_con,
+			cable_core.mu_con,
+			cable_shield.radius_in_con,
+			cable_shield.radius_ext_con,
+			cable_shield.rho_con,
+		) * 1e6
+	# calc_inductance_trifoil(
+	# 	cable_core.mu_con,
+	# 	cable_core.radius_ext_con,
+	# ) * 1e6
 
 	C =
 		calc_shunt_capacitance(
