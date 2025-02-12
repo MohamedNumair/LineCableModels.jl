@@ -620,7 +620,7 @@ function calc_tubular_inductance(radius_in::Number, radius_ext::Number, mu_r::Nu
 end
 
 """
-calc_inductance_trifoil: Computes the inductance per unit length of a phase conductor in a flat formation considering earth return effects.
+calc_inductance_trifoil: Computes the inductance per unit length of a phase conductor in a trifoil formation considering earth return effects.
 
 # Arguments
 - `r_in_co`: Internal radius of the phase conductor [m].
