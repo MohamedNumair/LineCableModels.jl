@@ -11,14 +11,26 @@ function bias_to_uncertain(nominal::Float64, measurements::Vector{<:Measurement}
 	return mean_value ± (sigma_mean + bias)
 end
 
-function _to_upper(m::Measurement)
-	return Measurements.value(m) + Measurements.uncertainty(m)
+function _to_upper(m::Number)
+	if m isa Measurement
+		return Measurements.value(m) + Measurements.uncertainty(m)
+	else
+		return NaN
+	end
 end
 
-function _to_lower(m::Measurement)
-	return Measurements.value(m) - Measurements.uncertainty(m)
+function _to_lower(m::Number)
+	if m isa Measurement
+		return Measurements.value(m) - Measurements.uncertainty(m)
+	else
+		return NaN
+	end
 end
 
-function _percent_error(m::Measurement)
-	return (Measurements.uncertainty(m) / Measurements.value(m)) * 100
+function _percent_error(m::Number)
+	if m isa Measurement
+		return 100 * Measurements.uncertainty(m) / Measurements.value(m)
+	else
+		return NaN
+	end
 end

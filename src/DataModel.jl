@@ -1749,14 +1749,18 @@ println(data)
 # References
 - None.
 """
-function core_parameters(design::CableDesign)
+function core_parameters(
+	design::CableDesign;
+	S::Number = 7e-2,
+	rho_e::Number = 100,
+)
 	# Extract the core component
 	# cable_core = design.components["core"]
 	cable_core = collect(values(design.components))[1]
 	cable_shield = collect(values(design.components))[2]
 
 	# Compute R, L, and C using given formulas
-	@show R =
+	R =
 		calc_tubular_resistance(
 			cable_core.radius_in_con,
 			cable_core.radius_ext_con,
@@ -1775,6 +1779,8 @@ function core_parameters(design::CableDesign)
 			cable_shield.radius_in_con,
 			cable_shield.radius_ext_con,
 			cable_shield.rho_con,
+			S = S,
+			rho_e = rho_e,
 		) * 1e6
 	# calc_inductance_trifoil(
 	# 	cable_core.mu_con,
