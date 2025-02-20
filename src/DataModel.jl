@@ -706,7 +706,8 @@ function calc_inductance_trifoil(
 	# Formula from CIGRE TB-531, 4.2.4.3, solid bonding
 	Z1_sb = (Za - Zx) - ((Zm - Zx)^2 / (Zs - Zx))
 	# Likewise, but for single point bonding
-	Z1_sp = (Za - Zx)
+	# Z1_sp = (Za - Zx)
+	real(Z1_sb)
 	return imag(Z1_sb) / ω
 end
 
@@ -1755,7 +1756,7 @@ function core_parameters(design::CableDesign)
 	cable_shield = collect(values(design.components))[2]
 
 	# Compute R, L, and C using given formulas
-	R =
+	@show R =
 		calc_tubular_resistance(
 			cable_core.radius_in_con,
 			cable_core.radius_ext_con,
