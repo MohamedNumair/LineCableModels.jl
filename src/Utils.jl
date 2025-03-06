@@ -1,5 +1,14 @@
-_equals(x, y; atol = TOL) = isapprox(x, y, atol = atol)
-_to_nominal(x) = x isa Measurement ? Measurements.value(x) : x
+function _equals(x, y; atol = TOL)
+	return isapprox(x, y, atol = atol)
+end
+
+function _to_nominal(x)
+	return x isa Measurement ? Measurements.value(x) : x
+end
+
+function percent_to_uncertain(val, perc) #perc from 0 to 100
+	measurement(val, (perc * val) / 100)
+end
 
 function bias_to_uncertain(nominal::Float64, measurements::Vector{<:Measurement})
 	# Compute the mean value and uncertainty from the measurements

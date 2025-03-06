@@ -10,6 +10,7 @@ module LineCableToolbox
 - Auxiliary functions for uncertainty analysis and quantification
 - Materials library
 - Consistent data model with constructors for different lines and cables components
+- Frequency-dependent soil models and equivalent homogeneous parameters
 """
 
 # Load required packages
@@ -36,6 +37,7 @@ const TOL = 1e-6
 
 include("Utils.jl")
 export bias_to_uncertain,
+	percent_to_uncertain,
 	_to_nominal,
 	_to_upper,
 	_to_lower,
@@ -78,7 +80,14 @@ export @thick,
 	add_cable_design!,
 	remove_cable_design!,
 	get_cable_design,
-	display_cables_library,
-	calc_inductance_trifoil
+	display_cables_library
+
+# Soil properties
+include("SoilProps.jl")
+export ConstantProperties,
+	EarthLayer,
+	EarthModel,
+	EnforceLayer,
+	add_earth_layer!
 
 end

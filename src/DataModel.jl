@@ -64,6 +64,7 @@ struct WireArray
 	lay_ratio::Number
 	mean_diameter::Number
 	pitch_length::Number
+	twist_direction::Int
 	material_props::Material
 	temperature::Number
 	cross_section::Number
@@ -80,6 +81,7 @@ struct WireArray
 	- `lay_ratio`: Ratio defining the lay length of the wires (twisting factor).
 	- `material_props`: A `Material` object representing the material properties (e.g., resistivity, temperature coefficient).
 	- `temperature`: Temperature at which the properties are evaluated [°C] (default: 20).
+	- `twist_direction`: Twisting direction of the strands (1 = unilay, -1 = contralay). Optional, defaults to 1.
 
 	# Returns
 	An instance of `WireArray` initialized with calculated geometric and electrical properties:
@@ -90,10 +92,11 @@ struct WireArray
 	- `lay_ratio`: Ratio defining the lay length of the wires (twisting factor).
 	- `mean_diameter`: Mean diameter of the wire array [m].
 	- `pitch_length`: Pitch length of the wire array [m].
+	- `twist_direction`: Twisting direction of the strands (1 = unilay, -1 = contralay).
 	- `material_props`: A `Material` object representing the physical properties of the wire material.
 	- `temperature`: Temperature at which the properties are evaluated [°C].
 	- `cross_section`: Cross-sectional area of all wires in the array [m²].
-	- `resistance`: Electrical resistance per wire in the array [Ω].
+	- `resistance`: Electrical resistance per wire in the array [Ω/m].
 	- `gmr`: Geometric mean radius of the wire array [m].
 
 	# Dependencies
@@ -119,10 +122,14 @@ struct WireArray
 		lay_ratio::Number,
 		material_props::Material;
 		temperature::Number = T₀,
+		twist_direction::Int = 1,
 	)
 
 		# Extract `radius_in` from `radius_ext` if a custom type is provided
 		radius_in = radius_in isa Number ? radius_in : getfield(radius_in, :radius_ext)
+		# Reset uncertainty to avoid propagation from different components
+		radius_in =
+			radius_in isa Measurement ? (Measurements.value(radius_in) ± 0.0) : radius_in
 		diameter = radius_wire * 2
 		rho = material_props.rho
 		T0 = material_props.T0
@@ -155,6 +162,7 @@ struct WireArray
 			lay_ratio,
 			mean_diameter,
 			pitch_length,
+			twist_direction,
 			material_props,
 			temperature,
 			cross_section,
@@ -175,6 +183,7 @@ struct Strip
 	lay_ratio::Number
 	mean_diameter::Number
 	pitch_length::Number
+	twist_direction::Int
 	material_props::Material
 	temperature::Number
 	cross_section::Number
@@ -191,9 +200,22 @@ struct Strip
 	- `lay_ratio`: Ratio defining the lay length of the strip (twisting factor).
 	- `material_props`: A `Material` object representing the physical properties of the strip material.
 	- `temperature`: Temperature at which the properties are evaluated [°C] (default: 20).
+	- `twist_direction`: Twisting direction of the strip (1 = unilay, -1 = contralay). Optional, defaults to 1.
 
 	# Returns
-	An instance of `Strip` initialized with calculated geometric and electrical properties.
+	An instance of `Strip` initialized with calculated geometric and electrical properties:
+	- `radius_in`: Internal radius of the strip [m].
+	- `radius_ext`: External radius of the strip [m].
+	- `width`: Width of the strip [m].
+	- `lay_ratio`: Ratio defining the lay length of the strip (twisting factor).
+	- `mean_diameter`: Mean diameter of the strip [m].
+	- `pitch_length`: Pitch length of the strip [m].
+	- `twist_direction`: Twisting direction of the strip (1 = unilay, -1 = contralay).
+	- `material_props`: A `Material` object representing the physical properties of the strip material.
+	- `temperature`: Temperature at which the properties are evaluated [°C].
+	- `cross_section`: Cross-sectional area of the strip [m²].
+	- `resistance`: Electrical resistance of the strip [Ω/m].
+	- `gmr`: Geometric mean radius of the strip [m].
 
 	# Dependencies
 	- `calc_strip_resistance`: Computes the DC resistance of the strip.
@@ -217,9 +239,13 @@ struct Strip
 		lay_ratio::Number,
 		material_props::Material;
 		temperature::Number = T₀,
+		twist_direction::Int = 1,
 	)
 		# Extract `radius_in` from `radius_ext` if a custom type is provided
 		radius_in = radius_in isa Number ? radius_in : getfield(radius_in, :radius_ext)
+		# Reset uncertainty to avoid propagation from different components
+		radius_in =
+			radius_in isa Measurement ? (Measurements.value(radius_in) ± 0.0) : radius_in
 
 		# Handle external radius: absolute value or relative to radius_in
 		radius_ext = radius_ext isa Thickness ? radius_in + radius_ext.value : radius_ext
@@ -249,6 +275,7 @@ struct Strip
 			lay_ratio,
 			mean_diameter,
 			pitch_length,
+			twist_direction,
 			material_props,
 			temperature,
 			cross_section,
@@ -306,6 +333,9 @@ mutable struct Tubular
 
 		# Extract `radius_in` from `radius_ext` if a custom type is provided
 		radius_in = radius_in isa Number ? radius_in : getfield(radius_in, :radius_ext)
+		# Reset uncertainty to avoid propagation from different components
+		radius_in =
+			radius_in isa Measurement ? (Measurements.value(radius_in) ± 0.0) : radius_in
 
 		# Handle external radius: absolute value or relative to radius_in
 		radius_ext = radius_ext isa Thickness ? radius_in + radius_ext.value : radius_ext
@@ -620,36 +650,36 @@ function calc_tubular_inductance(radius_in::Number, radius_ext::Number, mu_r::Nu
 end
 
 """
-calc_inductance_trifoil: Computes the inductance per unit length of a phase conductor in a trifoil formation considering earth return effects.
+calc_inductance_trifoil: Computes the inductance of a trifoil-configured cable system.
 
 # Arguments
 - `r_in_co`: Internal radius of the phase conductor [m].
 - `r_ext_co`: External radius of the phase conductor [m].
 - `rho_co`: Electrical resistivity of the phase conductor material [Ω·m].
 - `mu_r_co`: Relative permeability of the phase conductor material.
-- `r_in_scr`: Internal radius of the screen conductor [m].
-- `r_ext_scr`: External radius of the screen conductor [m].
-- `rho_scr`: Electrical resistivity of the screen conductor material [Ω·m].
-- `S`: Separation distance between phase conductors in a flat formation [m] (default: 0.07).
-- `rho_e`: Soil resistivity [Ω·m] (default: 100).
-- `f`: Frequency [Hz] (default: f₀).
+- `r_in_scr`: Internal radius of the metallic screen [m].
+- `r_ext_scr`: External radius of the metallic screen [m].
+- `mu_r_scr`: Relative permeability of the screen conductor material.
+- `rho_scr`: Electrical resistivity of the metallic screen material [Ω·m].
+- `S`: Spacing between conductors in trifoil configuration [m] (default: 0.07 m).
+- `rho_e`: Soil resistivity [Ω·m] (default: 100 Ω·m).
+- `f`: Frequency [Hz] (default: `f₀`).
 
 # Returns
-- Inductance per unit length of the phase conductor in a flat formation [H/m].
+- Inductance per unit length of the cable system [H/m].
 
 # Dependencies
 - `calc_tubular_gmr`: Computes the geometric mean radius (GMR) of a tubular conductor.
 
 # Examples
 ```julia
-L = calc_inductance_trifoil(0.01, 0.015, 1.72e-8, 1.0, 0.02, 0.025, 2.65e-8)
+L = calc_inductance_trifoil(0.01, 0.015, 1.72e-8, 1.0, 0.02, 0.025, 2.83e-8, 1.0, S=0.1, rho_e=50, f=50)
 println(L) # Output: Inductance value in H/m
 ```
 
 # References
-- CIGRE Technical Brochure 531, Section 4.2.4.3
+- CIGRE TB-531, Section 4.2.4.3 (Solid Bonding Calculation Formula).
 """
-
 function calc_inductance_trifoil(
 	r_in_co::Number,
 	r_ext_co::Number,
@@ -657,13 +687,13 @@ function calc_inductance_trifoil(
 	mu_r_co::Number,
 	r_in_scr::Number,
 	r_ext_scr::Number,
-	rho_scr::Number;
+	rho_scr::Number,
+	mu_r_scr::Number;
 	S::Number = 7e-2,
 	rho_e::Number = 100,
 	f::Number = f₀,
 )
 
-	# μ₀ = 4π * 1e-7
 	ω = 2 * π * f
 	C = μ₀ / (2π)
 
@@ -682,10 +712,9 @@ function calc_inductance_trifoil(
 	Za = RpE + Ra + im * Xa
 
 	# Compute rs
-	rs = (r_in_scr + r_ext_scr) / 2
-
+	GMRscr = calc_tubular_gmr(r_ext_scr, r_in_scr, mu_r_scr)
 	# Compute Xs
-	Xs = (ω * C) * log(DE / rs)
+	Xs = (ω * C) * log(DE / GMRscr)
 
 	# Self impedance of metal screen with earth return
 	Rs = rho_scr / (π * (r_ext_scr^2 - r_in_scr^2))
@@ -705,9 +734,9 @@ function calc_inductance_trifoil(
 
 	# Formula from CIGRE TB-531, 4.2.4.3, solid bonding
 	Z1_sb = (Za - Zx) - ((Zm - Zx)^2 / (Zs - Zx))
+
 	# Likewise, but for single point bonding
 	# Z1_sp = (Za - Zx)
-	real(Z1_sb)
 	return imag(Z1_sb) / ω
 end
 
@@ -1070,7 +1099,7 @@ mutable struct Semicon
 	An instance of `Semicon` initialized with the following calculated properties:
 	- `radius_ext`: External radius of the semiconducting layer [m].
 	- `cross_section`: Cross-sectional area of the layer [m²].
-	- `resistance`: Electrical resistance of the layer [Ω].
+	- `resistance`: Electrical resistance of the layer [Ω/m].
 	- `gmr`: Geometric mean radius of the semiconductor [m].
 	- `shunt_capacitance`: Shunt capacitance per unit length of the layer [F/m].
 	- `shunt_conductance`: Shunt conductance per unit length of the layer [S/m].
@@ -1109,6 +1138,9 @@ mutable struct Semicon
 
 		# Extract `radius_in` from `radius_ext` if a custom type is provided
 		radius_in = radius_in isa Number ? radius_in : getfield(radius_in, :radius_ext)
+		# Reset uncertainty to avoid propagation from different components
+		radius_in =
+			radius_in isa Measurement ? (Measurements.value(radius_in) ± 0.0) : radius_in
 
 		# Handle external radius: absolute value or relative to radius_in
 		radius_ext = radius_ext isa Thickness ? radius_in + radius_ext.value : radius_ext
@@ -1164,7 +1196,7 @@ mutable struct Insulator
 	An instance of `Insulator` initialized with the following calculated properties:
 	- `radius_ext`: External radius of the insulating layer [m].
 	- `cross_section`: Cross-sectional area of the layer [m²].
-	- `resistance`: Electrical resistance of the layer [Ω].
+	- `resistance`: Electrical resistance of the layer [Ω/m].
 	- `gmr`: Geometric mean radius of the insulator [m].
 	- `shunt_capacitance`: Shunt capacitance per unit length of the layer [F/m].
 	- `shunt_conductance`: Shunt conductance per unit length of the layer [S/m].
@@ -1197,6 +1229,9 @@ mutable struct Insulator
 
 		# Extract `radius_in` from `radius_ext` if a custom type is provided
 		radius_in = radius_in isa Number ? radius_in : getfield(radius_in, :radius_ext)
+		# Reset uncertainty to avoid propagation from different components
+		radius_in =
+			radius_in isa Measurement ? (Measurements.value(radius_in) ± 0.0) : radius_in
 
 		# Handle external radius: absolute value or relative to radius_in
 		radius_ext = radius_ext isa Thickness ? radius_in + radius_ext.value : radius_ext
@@ -1751,8 +1786,8 @@ println(data)
 """
 function core_parameters(
 	design::CableDesign;
-	S::Number = 7e-2,
-	rho_e::Number = 100,
+	S::Number = 7e-2, # trifoil spacing
+	rho_e::Number = 100, # resistivity of the earth
 )
 	# Extract the core component
 	# cable_core = design.components["core"]
@@ -1779,13 +1814,10 @@ function core_parameters(
 			cable_shield.radius_in_con,
 			cable_shield.radius_ext_con,
 			cable_shield.rho_con,
+			cable_shield.mu_con,
 			S = S,
 			rho_e = rho_e,
 		) * 1e6
-	# calc_inductance_trifoil(
-	# 	cable_core.mu_con,
-	# 	cable_core.radius_ext_con,
-	# ) * 1e6
 
 	C =
 		calc_shunt_capacitance(
