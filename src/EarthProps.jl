@@ -226,8 +226,6 @@ mutable struct EarthModel
 	EHEMformulation::Union{EHEMFormulation, Nothing}
 	vertical_layers::Bool
 	layers::Vector{EarthLayer}
-	frequencies::Vector{Number}
-
 
 	# Effective homogeneous parameters (start as `missing`)
 	rho_eff::Union{Vector{Number}, Missing}
@@ -254,7 +252,6 @@ mutable struct EarthModel
 	- `EHEMformulation`: The selected equivalent homogeneous earth formulation (or `nothing`).
 	- `vertical_layers`: Boolean flag for vertically-layered earth.
 	- `layers`: A vector of `EarthLayer` objects, starting with an air layer and the specified first earth layer.
-	- `frequencies`: A vector of frequency values used for EM properties calculations.
 	- `rho_eff`: The effective resistivity values [Ω·m] at the given frequencies (`missing` initially, computed later if needed).
 	- `eps_eff`: The effective permittivity values [F/m] at the given frequencies (`missing` initially, computed later if needed).
 	- `mu_eff`: The effective permeability values [H/m] at the given frequencies (`missing` initially, computed later if needed).
@@ -290,8 +287,7 @@ mutable struct EarthModel
 			FDformulation,
 			EHEMformulation,
 			vertical_layers,
-			[air_layer, top_layer],
-			frequencies)
+			[air_layer, top_layer])
 
 		# Set effective parameters as `missing` initially
 		model.rho_eff = missing
@@ -307,6 +303,7 @@ add_earth_layer!: Adds a new earth layer to an existing `EarthModel`.
 
 # Arguments
 - `model`: An instance of `EarthModel` to which the new layer will be added.
+- `frequencies`: A vector of frequency values [Hz].
 - `base_rho_g`: The base electrical resistivity of the new earth layer [Ω·m].
 - `base_epsr_g`: The base relative permittivity of the new earth layer (unitless).
 - `base_mur_g`: The base relative permeability of the new earth layer (unitless).
@@ -342,23 +339,23 @@ frequencies = [1e3, 1e4, 1e5]
 horz_earth_model = EarthModel(frequencies, 100, 10, 1, t=5)
 
 # Add a second horizontal earth layer
-add_earth_layer!(horz_earth_model, 200, 15, 1, t=10)
+add_earth_layer!(horz_earth_model, frequencies, 200, 15, 1, t=10)
 println(horz_earth_model.num_layers) # Output: 3
 
 # The bottom layer should be set to infinite thickness
-add_earth_layer!(horz_earth_model, 300, 15, 1, t=Inf)
+add_earth_layer!(horz_earth_model, frequencies, 300, 15, 1, t=Inf)
 println(horz_earth_model.num_layers) # Output: 4
 
 # Initialize a vertical-layered model with first interface at y = 0.
 vert_earth_model = EarthModel(frequencies, 100, 10, 1, t=Inf, vertical_layers=true)
 
 # Add a second vertical layer at y = 0 (this can also be infinite)
-add_earth_layer!(vert_earth_model, 150, 12, 1, t=Inf)
+add_earth_layer!(vert_earth_model, frequencies, 150, 12, 1, t=Inf)
 println(vert_earth_model.num_layers) # Output: 3
 
 # Attempt to add a third infinite layer (invalid case)
 try
-	add_earth_layer!(vert_earth_model, 120, 12, 1, t=Inf)
+	add_earth_layer!(vert_earth_model, frequencies, 120, 12, 1, t=Inf)
 catch e
 	println(e) # Error: Cannot add consecutive vertical layers with infinite thickness.
 end
@@ -367,7 +364,7 @@ end
 vert_earth_model.layers[end].t = 3
 
 # Add the third layer with infinite thickness now
-add_earth_layer!(vert_earth_model, 120, 12, 1, t=Inf)
+add_earth_layer!(vert_earth_model, frequencies, 120, 12, 1, t=Inf)
 println(vert_earth_model.num_layers) # Output: 4
 ```
 
@@ -376,6 +373,7 @@ println(vert_earth_model.num_layers) # Output: 4
 """
 function add_earth_layer!(
 	model::EarthModel,
+	frequencies::Vector{<:Number},
 	base_rho_g::Number,
 	base_epsr_g::Number,
 	base_mur_g::Number;
@@ -405,7 +403,7 @@ function add_earth_layer!(
 
 	# Create the new earth layer
 	new_layer = EarthLayer(
-		model.frequencies,
+		frequencies,
 		base_rho_g,
 		base_epsr_g,
 		base_mur_g,
@@ -417,7 +415,7 @@ function add_earth_layer!(
 
 	# Compute effective parameters **only if we have at least 2 earth layers**
 	if model.num_layers > 2 && !isnothing(model.EHEMformulation) && !(model.vertical_layers)
-		compute_ehem_properties!(model, model.EHEMformulation)
+		compute_ehem_properties!(model, frequencies, model.EHEMformulation)
 	end
 end
 
@@ -426,6 +424,7 @@ compute_ehem_properties!: Computes the effective homogeneous earth model (EHEM) 
 
 # Arguments
 - `model`: An instance of `EarthModel` for which effective properties are computed.
+- `frequencies`: A vector of frequency values [Hz].
 - `formulation`: An `EHEMFormulation` specifying how the effective properties should be determined.
 
 # Multi-dispatch formulation
@@ -450,7 +449,7 @@ This function is part of a **multi-dispatch framework** for computing EHEM prope
 frequencies = [1e3, 1e4, 1e5]
 earth_model = EarthModel(frequencies, 100, 10, 1, t=5)
 earth_model.EHEMformulation = EnforceLayer(-1)  # Enforce the last layer as the effective
-add_earth_layer!(earth_model, 200, 15, 1, t=Inf) # Inclusion of an extra layer will invoke the compute_ehem_properties! method
+add_earth_layer!(earth_model, frequencies, 200, 15, 1, t=Inf) # Inclusion of an extra layer will invoke the compute_ehem_properties! method
 
 println(earth_model.rho_eff) # Should match the last layer rho_g = 200
 println(earth_model.eps_eff) # Should match the last layer eps_g = 15*ε₀
@@ -460,7 +459,11 @@ println(earth_model.mu_eff)  # Should match the last layer mu_g = 1*μ₀
 # References
 - None.
 """
-function compute_ehem_properties!(model::EarthModel, formulation::EnforceLayer)
+function compute_ehem_properties!(
+	model::EarthModel,
+	frequencies::Vector{<:Number},
+	formulation::EnforceLayer,
+)
 	layer_idx = formulation.layer
 
 	if layer_idx == -1

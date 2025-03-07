@@ -83,7 +83,7 @@ export @thick,
 	display_cables_library
 
 # Soil properties
-include("SoilProps.jl")
+include("EarthProps.jl")
 export ConstantProperties,
 	EarthLayer,
 	EarthModel,
