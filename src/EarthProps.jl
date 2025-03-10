@@ -481,3 +481,44 @@ function compute_ehem_properties!(
 	model.eps_eff = layer.eps_g
 	model.mu_eff = layer.mu_g
 end
+
+"""
+earth_data: Generate a DataFrame summarizing basic properties of earth layers from an EarthModel.
+
+# Arguments
+- `earth_model`: An `EarthModel` object containing earth layers.
+
+# Returns
+- A `DataFrame` with columns:
+	- `rho_g`: Base resistivity of each layer [Ω·m].
+	- `epsr_g`: Relative permittivity of each layer [dimensionless].
+	- `mur_g`: Relative permeability of each layer [dimensionless].
+	- `thickness`: Thickness of each layer [m].
+
+# Dependencies
+- DataFrames.jl
+
+# Examples
+```julia
+df = earth_data(earth_model)
+println(df)
+```
+
+# References
+- None.
+"""
+function earth_data(earth_model::EarthModel)
+	layers = earth_model.layers
+
+	base_rho_g = [layer.base_rho_g for layer in layers]
+	base_epsr_g = [layer.base_epsr_g for layer in layers]
+	base_mur_g = [layer.base_mur_g for layer in layers]
+	thickness = [layer.t for layer in layers]
+
+	return DataFrame(
+		rho_g = base_rho_g,
+		epsr_g = base_epsr_g,
+		mur_g = base_mur_g,
+		thickness = thickness,
+	)
+end

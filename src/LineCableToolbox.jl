@@ -53,6 +53,15 @@ export Material,
 	display_materials_library,
 	get_material
 
+# Soil properties
+include("EarthProps.jl")
+export ConstantProperties,
+	EarthLayer,
+	EarthModel,
+	EnforceLayer,
+	add_earth_layer!,
+	earth_data
+
 # Lines and cables data model
 include("DataModel.jl")
 export @thick,
@@ -74,20 +83,19 @@ export @thick,
 	cable_parts_data,
 	cable_data,
 	core_parameters,
-	preview_cable_cross_section,
+	preview_cable_design,
 	CablesLibrary,
 	save_cables_library,
-	add_cable_design!,
+	store_cable_design!,
 	remove_cable_design!,
 	get_cable_design,
-	display_cables_library
-
-# Soil properties
-include("EarthProps.jl")
-export ConstantProperties,
-	EarthLayer,
-	EarthModel,
-	EnforceLayer,
-	add_earth_layer!
+	display_cables_library,
+	LineCableSystem,
+	CableDef,
+	add_cable_definition!,
+	preview_system_cross_section,
+	trifoil_formation,
+	flat_formation,
+	cross_section_data
 
 end
