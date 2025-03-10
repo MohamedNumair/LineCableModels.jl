@@ -2654,19 +2654,6 @@ function preview_system_cross_section(system::LineCableSystem; zoom_factor = 0.2
 		xlabel = "y [m]",
 		ylabel = "z [m]")
 
-	for cabledef in system.cables
-		x_offset = _to_nominal(cabledef.horz)
-		y_offset = _to_nominal(cabledef.vert)
-		preview_cable_design(
-			cabledef.cable;
-			x_offset,
-			y_offset,
-			plt,
-			display_plot = false,
-			display_legend = false,
-		)
-	end
-
 	# Plot the air/earth interface at y=0
 	hline!(
 		plt,
@@ -2712,6 +2699,20 @@ function preview_system_cross_section(system::LineCableSystem; zoom_factor = 0.2
 				label = "")
 		end
 	end
+
+	for cabledef in system.cables
+		x_offset = _to_nominal(cabledef.horz)
+		y_offset = _to_nominal(cabledef.vert)
+		preview_cable_design(
+			cabledef.cable;
+			x_offset,
+			y_offset,
+			plt,
+			display_plot = false,
+			display_legend = false,
+		)
+	end
+
 	plot!(plt, xlim = (x_limits[1], x_limits[2]) .* zoom_factor)
 
 	display(plt)
