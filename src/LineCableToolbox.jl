@@ -26,6 +26,8 @@ using LinearAlgebra
 using SpecialFunctions
 using DataStructures
 using Serialization
+using EzXML
+using Dates
 
 # Module-level constants and utilities
 const f₀ = 50 # Base power system frequency
@@ -97,5 +99,9 @@ export @thick,
 	trifoil_formation,
 	flat_formation,
 	cross_section_data
+
+# Import and export data
+include("ImportExport.jl")
+export export_to_pscad
 
 end
