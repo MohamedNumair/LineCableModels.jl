@@ -1,0 +1,19 @@
+num_wires = 49
+lay_ratio = 10
+w_cut = 10e-3 # width of copper tape
+d_wire_nominal = 4.67e-3
+d_core_nominal = 38.1e-3
+d_wsc_nominal = .94e-3  # nominal wire screen diameter
+t_cut_nominal = 0.1e-3 # nominal thickness of the copper tape
+t_wbt_nominal = .3e-3 # nominal thickness of the water blocking tape
+t_alt_nominal = .15e-3 # nominal thickness of the aluminum tape
+t_pet_nominal = .05e-3 # nominal thickness of the pe face in the aluminum tape
+t_jac_nominal = 3e-3
+
+d_w = d_wire_nominal
+d_ws = d_wsc_nominal
+t_cut = t_cut_nominal
+t_wbt = t_wbt_nominal
+t_alt = t_alt_nominal
+t_pet = t_pet_nominal
+t_jac = t_jac_nominal
