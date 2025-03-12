@@ -1,6 +1,6 @@
-module LineCableToolbox
+module LineCableModels
 """
-# LineCableToolbox
+# LineCableModels
 
 - Frequency-domain calculations of impedances (series R and L) and admittances (shunt C and G) of arbitrary line/cable arrangements, accounting for skin effect, conductor and insulation properties, and earth-return impedances with frequency-dependent soil models.
 

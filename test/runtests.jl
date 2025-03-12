@@ -1,6 +1,6 @@
-using LineCableToolbox
+using LineCableModels
 using Test
 
-@testset "LineCableToolbox.jl" begin
-    # Write your tests here.
+@testset "LineCableModels.jl" begin
+	# Write your tests here.
 end

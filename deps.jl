@@ -13,4 +13,6 @@ Pkg.add("Statistics")
 Pkg.add("LinearAlgebra")
 Pkg.add("DataStructures")
 Pkg.add("Serialization")
+Pkg.add("EzXML")
+Pkg.add("Dates")
 

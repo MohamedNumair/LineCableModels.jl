@@ -16,7 +16,7 @@ thick: A macro for constructing `Thickness` objects.
 
 # Examples
 ```julia
-using .LineCableToolbox
+using .LineCableModels
 
 thick_obj = @thick(5.0)
 println(thick_obj) # Output: Thickness(5.0)
@@ -40,7 +40,7 @@ diam: A macro that calculates the radius from a given diameter. As trivial and o
 
 # Examples
 ```julia
-using .LineCableToolbox
+using .LineCableModels
 
 radius = @diam(10.0)
 println(radius) # Output: 5.0

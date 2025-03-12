@@ -27,9 +27,24 @@ export_to_pscad(cable_system, base_freq=50)
 # References
 - None.
 """
-function export_to_pscad(cable_system::LineCableSystem; base_freq = f₀)
+function export_to_pscad(cable_system::LineCableSystem; base_freq = f₀, folder_path = pwd())
 	# ID generator
 	next_id!(gen::PSCIdGen) = (id = gen.current; gen.current += 1; return string(id))
+
+	format_nominal =
+		(X; sigdigits = 4, minval = -1e30, maxval = 1e30) -> begin
+			value = round(_to_nominal(X), sigdigits = sigdigits)
+
+			value = max(value, minval)
+			value = min(value, maxval)
+
+			# Explicitly force zero if it's below rounding noise
+			if abs(value) < eps(Float64)
+				value = 0.0
+			end
+
+			return string(value)
+		end
 
 	# Initialize ID generator and mapping
 	id_gen = PSCIdGen()
@@ -52,7 +67,7 @@ function export_to_pscad(cable_system::LineCableSystem; base_freq = f₀)
 	settings["name"] = "Settings"
 	timestamp = round(Int, datetime2unix(now()))
 	settings_params = [
-		("creator", "LineCableToolbox.jl,$timestamp"),
+		("creator", "LineCableModels.jl,$timestamp"),
 		("time_duration", "0.5"),
 		("time_step", "5"),
 		("sample_step", "250"),
@@ -76,7 +91,7 @@ function export_to_pscad(cable_system::LineCableSystem; base_freq = f₀)
 		("Check", "0"),
 		(
 			"description",
-			"Created with LineCableToolbox.jl (https://github.com/Electa-Git/LineCableToolbox.jl)",
+			"Created with LineCableModels.jl (https://github.com/Electa-Git/LineCableModels.jl)",
 		),
 		("Debug", "0"),
 	]
@@ -301,13 +316,13 @@ function export_to_pscad(cable_system::LineCableSystem; base_freq = f₀)
 	cable_pl["crc"] = "-1"
 	cable_params = [
 		("Name", "CableSystem_1"), ("R", "#NaN"), ("X", "#NaN"),
-		("B", "#NaN"), ("Freq", "$(base_freq) [Hz]"),
-		("Length", "$(cable_system.line_length/1000) [km]"),
+		("B", "#NaN"), ("Freq", format_nominal(base_freq)),
+		("Length", format_nominal(cable_system.line_length / 1000)),
 		("Dim", "0"), ("Mode", "0"), ("CoupleEnab", "0"),
 		("CoupleName", "row"), ("CoupleOffset", "0.0 [m]"),
 		("CoupleRef", "0"), ("tname", "tandem_segment"),
 		("sfault", "0"), ("linc", "10.0 [km]"), ("steps", "3"),
-		("gen_cnst", "1"), ("const_path", "C:\\Temp\\my_constants_file.tlo"),
+		("gen_cnst", "1"), ("const_path", "%TEMP%\\my_constants_file.tlo"),
 		("Date", "$timestamp"),
 	]
 	for (name, value) in cable_params
@@ -423,17 +438,17 @@ function export_to_pscad(cable_system::LineCableSystem; base_freq = f₀)
 		elim3 = length(conn) >= 4 && conn[4] == 0 ? "1" : "0"
 
 		# Base parameters
-		cable_x = _to_nominal(cabledef.horz)
-		cable_y = _to_nominal(cabledef.vert)
+		cable_x = cabledef.horz
+		cable_y = cabledef.vert
 		coax1_params = [
 			("CABNUM", "$(i)"),
 			("Name", "$(cabledef.cable.cable_id)"),
-			("X", cable_x),
+			("X", format_nominal(cable_x)),
 			("OHC", "$(cable_y < 0 ? 0 : 1)"), #placement above/below earth, 0=underground, 1=aerial
-			("Y", "$(cable_y < 0 ? abs(cable_y) : 0.0)"),  #depth (underground)
-			("Y2", "$(cable_y < 0 ? 0.0 : abs(cable_y)) [m]"), #height (aerial)
+			("Y", (cable_y < 0 ? format_nominal(abs(cable_y)) : "0.0")),  #depth (underground)
+			("Y2", (cable_y > 0 ? format_nominal(cable_y) : "0.0")), #height (aerial)
 			("ShuntA", "1.0e-11 [mho/m]"), #air shunt conductance
-			("FLT", "$(base_freq)"), #frequency for loss tangents
+			("FLT", format_nominal(base_freq)), #frequency for loss tangents
 			("RorT", "0"), #specify 0=radii, 1=thickness
 			("LL", "$(2*num_cable_parts-1)"), # layer configuration, 5 for C1 | I1 | C2 | I2 | C3 | I3 -> odd numbers end with insulators
 			("CROSSBOND", "0"), #ideal crossbonding
@@ -451,20 +466,23 @@ function export_to_pscad(cable_system::LineCableSystem; base_freq = f₀)
 			coax1_params,
 			("CONNAM1", uppercasefirst(collect(keys(cabledef.cable.components))[1])),
 		)
-		push!(coax1_params, ("R1", "$(_to_nominal(core.radius_in_con))")) # core inner
-		push!(coax1_params, ("R2", "$(_to_nominal(core.radius_ext_con))")) # core outer
-		push!(coax1_params, ("RHOC", "$(_to_nominal(core.rho_con))"))
-		push!(coax1_params, ("PERMC", "$(_to_nominal(core.mu_con))"))
+		push!(coax1_params, ("R1", format_nominal(core.radius_in_con))) # core inner
+		push!(coax1_params, ("R2", format_nominal(core.radius_ext_con))) # core outer
+		push!(coax1_params, ("RHOC", format_nominal(core.rho_con, sigdigits = 6)))
+		push!(coax1_params, ("PERMC", format_nominal(core.mu_con, sigdigits = 6)))
 
 		# First insulation (mandatory, from core)
-		push!(coax1_params, ("R3", "$(_to_nominal(core.radius_ext_ins))")) # 1st insulation
+		push!(coax1_params, ("R3", format_nominal(core.radius_ext_ins))) # 1st insulation
 		push!(coax1_params, ("T3", "0.0000")) # thickness not used (RorT=0)
 		push!(coax1_params, ("SemiCL", "0")) # assume no semicon for now
 		push!(coax1_params, ("SL2", "0.0000"))
 		push!(coax1_params, ("SL1", "0.0000"))
-		push!(coax1_params, ("EPS1", "$(_to_nominal(core.eps_ins))"))
-		push!(coax1_params, ("PERM1", "$(_to_nominal(core.mu_ins))"))
-		push!(coax1_params, ("LT1", "$(min(_to_nominal(core.loss_factor_ins),10.0))"))
+		push!(coax1_params, ("EPS1", format_nominal(core.eps_ins, sigdigits = 6)))
+		push!(coax1_params, ("PERM1", format_nominal(core.mu_ins, sigdigits = 6)))
+		push!(
+			coax1_params,
+			("LT1", format_nominal(core.loss_factor_ins, sigdigits = 6, maxval = 10.0)),
+		)
 
 		# Optional layers (sheath, armor, outer)
 		if num_cable_parts >= 2 # Sheath
@@ -473,16 +491,22 @@ function export_to_pscad(cable_system::LineCableSystem; base_freq = f₀)
 				coax1_params,
 				("CONNAM2", uppercasefirst(collect(keys(cabledef.cable.components))[2])),
 			)
-			push!(coax1_params, ("R4", "$(_to_nominal(sheath.radius_ext_con))")) # sheath outer
+			push!(coax1_params, ("R4", format_nominal(sheath.radius_ext_con))) # sheath outer
 			push!(coax1_params, ("T4", "0.0000"))
-			push!(coax1_params, ("RHOS", "$(_to_nominal(sheath.rho_con))"))
-			push!(coax1_params, ("PERMS", "$(_to_nominal(sheath.mu_con))"))
+			push!(coax1_params, ("RHOS", format_nominal(sheath.rho_con, sigdigits = 6)))
+			push!(coax1_params, ("PERMS", format_nominal(sheath.mu_con, sigdigits = 6)))
 			push!(coax1_params, ("elim1", "$elim1"))
-			push!(coax1_params, ("R5", "$(_to_nominal(sheath.radius_ext_ins))")) # 2nd insulation
+			push!(coax1_params, ("R5", format_nominal(sheath.radius_ext_ins))) # 2nd insulation
 			push!(coax1_params, ("T5", "0.0000"))
-			push!(coax1_params, ("EPS2", "$(_to_nominal(sheath.eps_ins))"))
-			push!(coax1_params, ("PERM2", "$(_to_nominal(sheath.mu_ins))"))
-			push!(coax1_params, ("LT2", "$(min(_to_nominal(sheath.loss_factor_ins),10.0))"))
+			push!(coax1_params, ("EPS2", format_nominal(sheath.eps_ins, sigdigits = 6)))
+			push!(coax1_params, ("PERM2", format_nominal(sheath.mu_ins, sigdigits = 6)))
+			push!(
+				coax1_params,
+				(
+					"LT2",
+					format_nominal(sheath.loss_factor_ins, sigdigits = 6, maxval = 10.0),
+				),
+			)
 		else
 			push!(coax1_params, ("CONNAM2", "none"))
 			push!(coax1_params, ("R4", "0.0"))
@@ -503,16 +527,22 @@ function export_to_pscad(cable_system::LineCableSystem; base_freq = f₀)
 				coax1_params,
 				("CONNAM3", uppercasefirst(collect(keys(cabledef.cable.components))[3])),
 			)
-			push!(coax1_params, ("R6", "$(_to_nominal(armor.radius_ext_con))")) # armor outer
+			push!(coax1_params, ("R6", format_nominal(armor.radius_ext_con))) # armor outer
 			push!(coax1_params, ("T6", "0.0000"))
-			push!(coax1_params, ("RHOA", "$(_to_nominal(armor.rho_con))"))
-			push!(coax1_params, ("PERMA", "$(_to_nominal(armor.mu_con))"))
+			push!(coax1_params, ("RHOA", format_nominal(armor.rho_con, sigdigits = 6)))
+			push!(coax1_params, ("PERMA", format_nominal(armor.mu_con, sigdigits = 6)))
 			push!(coax1_params, ("elim2", "$elim2"))
-			push!(coax1_params, ("R7", "$(_to_nominal(armor.radius_ext_ins))")) # 3rd insulation
+			push!(coax1_params, ("R7", format_nominal(armor.radius_ext_ins))) # 3rd insulation
 			push!(coax1_params, ("T7", "0.0000"))
-			push!(coax1_params, ("EPS3", "$(_to_nominal(armor.eps_ins))"))
-			push!(coax1_params, ("PERM3", "$(_to_nominal(armor.mu_ins))"))
-			push!(coax1_params, ("LT3", "$(min(_to_nominal(armor.loss_factor_ins),10.0))"))
+			push!(coax1_params, ("EPS3", format_nominal(armor.eps_ins, sigdigits = 6)))
+			push!(coax1_params, ("PERM3", format_nominal(armor.mu_ins, sigdigits = 6)))
+			push!(
+				coax1_params,
+				(
+					"LT3",
+					format_nominal(armor.loss_factor_ins, sigdigits = 6, maxval = 10.0),
+				),
+			)
 		else
 			push!(coax1_params, ("CONNAM3", "none"))
 			push!(coax1_params, ("R6", "0.0"))
@@ -533,16 +563,22 @@ function export_to_pscad(cable_system::LineCableSystem; base_freq = f₀)
 				coax1_params,
 				("CONNAM4", uppercasefirst(collect(keys(cabledef.cable.components))[4])),
 			)
-			push!(coax1_params, ("R8", "$(_to_nominal(outer.radius_ext_con))")) # outer conductor
+			push!(coax1_params, ("R8", format_nominal(outer.radius_ext_con))) # outer conductor
 			push!(coax1_params, ("T8", "0.0000"))
-			push!(coax1_params, ("RHOO", "$(_to_nominal(outer.rho_con))"))
-			push!(coax1_params, ("PERMO", "$(_to_nominal(outer.mu_con))"))
+			push!(coax1_params, ("RHOO", format_nominal(outer.rho_con, sigdigits = 6)))
+			push!(coax1_params, ("PERMO", format_nominal(outer.mu_con, sigdigits = 6)))
 			push!(coax1_params, ("elim3", "$elim3"))
-			push!(coax1_params, ("R9", "$(_to_nominal(outer.radius_ext_ins))")) # 4th insulation
+			push!(coax1_params, ("R9", format_nominal(outer.radius_ext_ins))) # 4th insulation
 			push!(coax1_params, ("T9", "0.0000"))
-			push!(coax1_params, ("EPS4", "$(_to_nominal(outer.eps_ins))"))
-			push!(coax1_params, ("PERM4", "$(_to_nominal(outer.mu_ins))"))
-			push!(coax1_params, ("LT4", "$(min(_to_nominal(outer.loss_factor_ins),10.0))"))
+			push!(coax1_params, ("EPS4", format_nominal(outer.eps_ins, sigdigits = 6)))
+			push!(coax1_params, ("PERM4", format_nominal(outer.mu_ins, sigdigits = 6)))
+			push!(
+				coax1_params,
+				(
+					"LT4",
+					format_nominal(outer.loss_factor_ins, sigdigits = 6, maxval = 10.0),
+				),
+			)
 		else
 			push!(coax1_params, ("CONNAM4", "none"))
 			push!(coax1_params, ("R8", "0.0"))
@@ -581,15 +617,15 @@ function export_to_pscad(cable_system::LineCableSystem; base_freq = f₀)
 	ground_pl["link"] = "-1"
 	ground_pl["name"] = ""
 	ground_pl["crc"] = "-1"
-	base_rho_g = _to_nominal(cable_system.earth_props.layers[end].base_rho_g)
-	base_epsr_g = _to_nominal(cable_system.earth_props.layers[end].base_epsr_g)
-	base_mur_g = _to_nominal(cable_system.earth_props.layers[end].base_mur_g)
+	base_rho_g = format_nominal(cable_system.earth_props.layers[end].base_rho_g)
+	base_epsr_g = format_nominal(cable_system.earth_props.layers[end].base_epsr_g)
+	base_mur_g = format_nominal(cable_system.earth_props.layers[end].base_mur_g)
 
 	ground_params = [
 		("EarthForm2", "0"), ("EarthForm", "3"), ("EarthForm3", "2"),
-		("GrRho", "0"), ("GRRES", "$(base_rho_g)"), ("GPERM", "$(base_mur_g)"),
+		("GrRho", "0"), ("GRRES", base_rho_g), ("GPERM", base_mur_g),
 		("K0", "0.001"), ("K1", "0.01"), ("alpha", "0.7"),
-		("GRP", "$(base_epsr_g)"),
+		("GRP", base_epsr_g),
 	]
 	for (name, value) in ground_params
 		param = addelement!(ground_pl, "param")
@@ -622,7 +658,20 @@ function export_to_pscad(cable_system::LineCableSystem; base_freq = f₀)
 	call3["view"] = "true"
 	call3["instance"] = "0"
 
+	# Ensure folder_path exists
+	if !isdir(folder_path)
+		error("Folder path does not exist: $folder_path")
+	end
+
+	# Construct the full file path
+	filename = joinpath(folder_path, "$project_id.pscx")
+
 	# Write to file
-	filename = "$project_id.pscx"
-	write(filename, doc)
+	try
+		write(filename, doc)
+		println("File successfully created at: $filename")
+	catch e
+		println("Failed to create file: ", e)
+	end
+
 end
