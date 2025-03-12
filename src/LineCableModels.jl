@@ -11,6 +11,7 @@ module LineCableModels
 - Materials library
 - Consistent data model with constructors for different lines and cables components
 - Frequency-dependent soil models and equivalent homogeneous parameters
+- Data export to PSCAD for EMT simulations
 """
 
 # Load required packages
@@ -102,6 +103,6 @@ export @thick,
 
 # Import and export data
 include("ImportExport.jl")
-export export_to_pscad
+export export_pscad_model
 
 end

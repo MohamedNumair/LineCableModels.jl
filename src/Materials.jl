@@ -51,7 +51,7 @@ println(length(library.materials)) # Outputs the number of default materials ini
 # References
 - None.
 """
-function MaterialsLibrary(file_name::String = "materials_library.csv")::MaterialsLibrary
+function MaterialsLibrary(; file_name::String = "materials_library.csv")::MaterialsLibrary
 	library = MaterialsLibrary(Dict{String, Material}())
 	if isfile(file_name)
 		println("Loading materials database from $file_name...")

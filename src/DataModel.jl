@@ -2211,11 +2211,11 @@ mutable struct CablesLibrary
 	# References
 	- None.
 	"""
-	function CablesLibrary(file_name::String = "cables_library.jls")::CablesLibrary
+	function CablesLibrary(; file_name::String = "cables_library.jls")::CablesLibrary
 		library = new(Dict{String, CableDesign}())
 		if isfile(file_name)
 			println("Loading cables database from $file_name...")
-			_load_cables_from_jls!(library, file_name)
+			_load_cables_from_jls!(library, file_name = file_name)
 		else
 			println("No $file_name found. Initializing empty cables database...")
 		end
@@ -2247,7 +2247,7 @@ println(library.cable_designs) # Prints the loaded cable designs if successful
 # References
 - None.
 """
-function _load_cables_from_jls!(library::CablesLibrary, file_name::String)
+function _load_cables_from_jls!(library::CablesLibrary; file_name::String)
 	try
 		loaded_data = deserialize(file_name)
 		if isa(loaded_data, Dict{String, CableDesign})
@@ -2286,7 +2286,7 @@ save_cables_library(library, "new_cables_library.jls")
 - None.
 """
 function save_cables_library(
-	library::CablesLibrary,
+	library::CablesLibrary;
 	file_name::String = "cables_library.jls",
 )
 	try

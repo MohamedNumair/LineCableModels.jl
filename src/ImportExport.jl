@@ -7,11 +7,12 @@ mutable struct PSCIdGen
 end
 
 """
-export_to_pscad: Exports a `LineCableSystem` to a PSCAD-compatible file format.
+export_pscad_model: Exports a `LineCableSystem` to a PSCAD-compatible file format.
 
 # Arguments
 - `cable_system`: A `LineCableSystem` object representing the cable system to be exported.
 - `base_freq`: The base frequency [Hz] used for the PSCAD export. Defaults to `f₀`.
+- `folder_path`: The folder path where the PSCAD file will be saved. Defaults to the current working directory.
 
 # Returns
 - None. The function writes the exported data to a PSCAD `.pscx` file.
@@ -27,7 +28,11 @@ export_to_pscad(cable_system, base_freq=50)
 # References
 - None.
 """
-function export_to_pscad(cable_system::LineCableSystem; base_freq = f₀, folder_path = pwd())
+function export_pscad_model(
+	cable_system::LineCableSystem;
+	base_freq = f₀,
+	folder_path = pwd(),
+)
 	# ID generator
 	next_id!(gen::PSCIdGen) = (id = gen.current; gen.current += 1; return string(id))
 
@@ -590,7 +595,7 @@ function export_to_pscad(cable_system::LineCableSystem; base_freq = f₀, folder
 			push!(coax1_params, ("T9", "0.0000"))
 			push!(coax1_params, ("EPS4", "0.0"))
 			push!(coax1_params, ("PERM4", "0.0"))
-			push!(coax1_params, ("LT4", "0.0001"))
+			push!(coax1_params, ("LT4", "0.0000"))
 		end
 
 		for (name, value) in coax1_params
