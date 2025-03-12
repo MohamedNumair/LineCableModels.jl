@@ -2398,6 +2398,7 @@ function get_cable_design(
 	cable_id::String,
 )::Union{Nothing, CableDesign}
 	if haskey(library.cable_designs, cable_id)
+		println("Cable design with ID `$cable_id` loaded from the library.")
 		return library.cable_designs[cable_id]
 	else
 		println("Cable design with ID `$cable_id` not found.")

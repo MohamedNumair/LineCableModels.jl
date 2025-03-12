@@ -29,3 +29,7 @@ bibliography/
 presentations/
 package_stats.jl
 projects/*/MeasuredDims.jl
+projects/*/cables_library.jls
+projects/*/materials_library.csv
+projects/*/*.pscx
+projects/*/data/

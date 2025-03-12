@@ -17,3 +17,6 @@ t_wbt = t_wbt_nominal
 t_alt = t_alt_nominal
 t_pet = t_pet_nominal
 t_jac = t_jac_nominal
+t_sc_in = 0.8e-3
+t_sc_out = 0.5e-3
+t_ins = 8e-3
