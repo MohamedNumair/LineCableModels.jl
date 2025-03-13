@@ -33,3 +33,5 @@ projects/*/cables_library.jls
 projects/*/materials_library.csv
 projects/*/*.pscx
 projects/*/data/
+projects/confidential_*
+*.ipynb

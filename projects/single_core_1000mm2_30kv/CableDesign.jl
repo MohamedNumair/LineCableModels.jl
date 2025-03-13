@@ -1,3 +1,28 @@
+"""
+CableDesign.jl: Typical design of a single-core cable with 1000 mm² cross-section area and 35 mm² screen area, ref. NA2XS(FL)2Y 18/30 kV.
+"""
+
+# Define main dimensions
+d_core = 38.1e-3 # nominal core overall diameter
+d_w = 4.67e-3 # nominal strand diameter of the core
+t_sc_in = 0.6e-3 # nominal internal semicon thickness
+t_ins = 8e-3 # nominal main insulation thickness
+t_sc_out = 0.3e-3 # nominal external semicon thickness
+num_sc_wires = 49 # number of screem wires
+d_ws = .94e-3  # nominal wire screen diameter
+t_cut = 0.1e-3 # nominal thickness of the copper tape (around wire screens)
+w_cut = 10e-3 # nominal width of copper tape
+t_wbt = .3e-3 # nominal thickness of the water blocking tape
+t_alt = .15e-3 # nominal thickness of the aluminum tape
+t_pet = .05e-3 # nominal thickness of the pe face in the aluminum tape
+t_jac = 2.4e-3 # nominal PE jacket thickness
+
+# Load measurements with uncertainties, if available
+measur_file = joinpath(proj_dir, "MeasuredDims.jl")
+if isfile(measur_file)
+	include(measur_file)
+end
+
 # Stranded conductor core
 material = get_material(materials_db, "aluminum")
 core = Conductor(WireArray(0, @diam(d_w), 1, 0, material))
@@ -40,8 +65,10 @@ cable_design =
 	CableDesign(cable_id, "core", core_parts, nominal_data = datasheet_info)
 
 # Wire screens - Continue building on top of wb_tape_co
+lay_ratio = 10 # typical value for wire screens
 material = get_material(materials_db, "copper")
-wire_screen = Conductor(WireArray(wb_tape_co, @diam(d_ws), num_wires, lay_ratio, material))
+wire_screen =
+	Conductor(WireArray(wb_tape_co, @diam(d_ws), num_sc_wires, lay_ratio, material))
 add_conductor_part!(wire_screen, Strip, @thick(t_cut), w_cut, lay_ratio, material)
 # @show wire_screen.resistance
 # @show _percent_error(wire_screen.resistance)
@@ -59,7 +86,7 @@ alu_tape = Conductor(Tubular(wb_tape_scr, @thick(t_alt), material))
 
 # PE layer after aluminum foil 
 material = get_material(materials_db, "pe")
-alu_tape_pe = Insulator(alu_tape, @thick(t_pet_nominal), material)
+alu_tape_pe = Insulator(alu_tape, @thick(t_pet), material)
 
 # PE jacket
 material = get_material(materials_db, "xlpe")
