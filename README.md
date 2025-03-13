@@ -26,3 +26,13 @@
 ## Formulation
 
 An overview of the methods implemented in `LineCableModels.jl` is given in the document titled [Cable modeling for assessment of uncertainties](https://www.overleaf.com/read/xhmvbjgdqjxn#5e6f69).
+
+## Acknowledgements
+
+This work is supported by the Etch Competence Hub of EnergyVille, financed by the Flemish Government. The primary developer is Amauri Martins ([@amaurigmartins](https://github.com/amaurigmartins)).
+
+![Etch](assets/img/etch_logo.png)
+
+![EnergyVille](assets/img/energyville_logo.png)
+
+![KUL](assets/img/kul_logo.png)
