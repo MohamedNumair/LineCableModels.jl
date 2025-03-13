@@ -6,7 +6,7 @@
 
 ## Highlight of the main features
 
-| ![Cable cross-section](assets/img/cable_light_theme.svg#gh-light-mode-only.svg) ![Cable cross-section](assets/img/cable_dark_theme.svg#gh-dark-mode-only.svg)| 
+| <span style="background-color:white; padding:5px;"> ![Cable cross-section](assets/img/cable_light_theme.svg#gh-light-mode-only.svg) </span>| 
 |:--:| 
 | **Fig. 1 - Cross-section representation of a cable composed of core, sheath and armor and its uncertain characteristics.** |
 
