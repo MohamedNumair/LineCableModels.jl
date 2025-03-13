@@ -13,17 +13,13 @@ Represents an earth model with frequency-invariant electromagnetic properties.
 A `ConstantProperties` object with the following attribute:
 - `description`: A tag/label to identify the formu;ation in parametric analyses.
 
-# Dependencies
-- None.
-
 # Examples
 ```julia
 cp_model = ConstantProperties()
 println(cp_model.description) # Output: "CP model"
 ```
 
-# References
-- None.
+
 """
 struct ConstantProperties <: FDPropsFormulation
 	description::String
@@ -51,9 +47,6 @@ A tuple containing:
 - `epsilon`: A vector of permittivity values \\[F/m\\] at the given frequencies.
 - `mu`: A vector of permeability values \\[H/m\\] at the given frequencies.
 
-# Dependencies
-- None.
-
 # Examples
 ```julia
 frequencies = [1e3, 1e4, 1e5]
@@ -69,8 +62,7 @@ rho, epsilon, mu = _calculate_earth_properties(frequencies, 200, 5, 1, CIGRE())
 println(rho)     # Output: [computed values based on CIGRE model]
 ```
 
-# References
-- None.
+
 """
 function _calculate_earth_properties(
 	frequencies::Vector{<:Number},
@@ -104,8 +96,7 @@ An instance of `EnforceLayer` with the following attributes:
 - `layer`: The enforced layer index.
 - `description`: A string describing the chosen layer.
 
-# Dependencies
-- None.
+
 
 # Examples
 ```julia
@@ -122,8 +113,7 @@ specific_layer = EnforceLayer(3)
 println(specific_layer.description) # Output: "Layer 3"
 ```
 
-# References
-- None.
+
 """
 struct EnforceLayer <: EHEMFormulation
 	layer::Int
@@ -187,8 +177,7 @@ mutable struct EarthLayer
 	println(layer.mu_g)  # Output: [1.2566e-6, 1.2566e-6, 1.2566e-6]
 	```
 
-	# References
-	- None.
+
 	"""
 	function EarthLayer(
 		frequencies,
@@ -267,8 +256,7 @@ mutable struct EarthModel
 	println(earth_model.rho_eff) # Output: missing
 	```
 
-	# References
-	- None.
+
 	"""
 	function EarthModel(
 		frequencies::Vector{<:Number},
@@ -368,8 +356,7 @@ add_earth_layer!(vert_earth_model, frequencies, 120, 12, 1, t=Inf)
 println(vert_earth_model.num_layers) # Output: 4
 ```
 
-# References
-- None.
+
 """
 function add_earth_layer!(
 	model::EarthModel,
@@ -456,8 +443,7 @@ println(earth_model.eps_eff) # Should match the last layer eps_g = 15*ε₀
 println(earth_model.mu_eff)  # Should match the last layer mu_g = 1*μ₀
 ```
 
-# References
-- None.
+
 """
 function _compute_ehem_properties!(
 	model::EarthModel,
@@ -495,8 +481,7 @@ Generate a `DataFrame` summarizing basic properties of earth layers from an Eart
 	- `mur_g`: Relative permeability of each layer [dimensionless].
 	- `thickness`: Thickness of each layer \\[m\\].
 
-# Dependencies
-- None.
+
 
 # Examples
 ```julia
@@ -504,8 +489,7 @@ df = earth_data(earth_model)
 println(df)
 ```
 
-# References
-- None.
+
 """
 function earth_data(earth_model::EarthModel)
 	layers = earth_model.layers

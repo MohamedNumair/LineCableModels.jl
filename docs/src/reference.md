@@ -1,18 +1,7 @@
 # Toolbox reference
 
-## Utilities
-```@docs
-bias_to_uncertain
-percent_to_uncertain
-_to_nominal
-_to_upper
-_to_lower
-_percent_error
-LineCableModels._equals
-```
 ## Materials library
 ```@docs
-LineCableModels._load_from_csv!
 Material
 MaterialsLibrary
 add_material!
@@ -21,23 +10,10 @@ save_materials_library
 display_materials_library
 get_material
 LineCableModels._add_default_materials!
+LineCableModels._load_from_csv!
 ```
 
-## Soil properties
-```@docs
-LineCableModels.EHEMFormulation
-ConstantProperties
-EarthLayer
-EarthModel
-EnforceLayer
-add_earth_layer!
-earth_data
-LineCableModels._calculate_earth_properties
-LineCableModels._compute_ehem_properties!
-LineCableModels.FDPropsFormulation
-```
-
-## Data model
+## Data entry model
 ```@docs
 LineCableModels._load_cables_from_jls! 
 LineCableModels.calc_tubular_resistance
@@ -89,7 +65,32 @@ flat_formation
 cross_section_data
 ```
 
+## Soil properties
+```@docs
+LineCableModels.EHEMFormulation
+ConstantProperties
+EarthLayer
+EarthModel
+EnforceLayer
+add_earth_layer!
+earth_data
+LineCableModels._calculate_earth_properties
+LineCableModels._compute_ehem_properties!
+LineCableModels.FDPropsFormulation
+```
+
 ## Import and export
 ```@docs
 export_pscad_model
+```
+
+## Utilities
+```@docs
+bias_to_uncertain
+percent_to_uncertain
+_to_nominal
+_to_upper
+_to_lower
+_percent_error
+LineCableModels._equals
 ```

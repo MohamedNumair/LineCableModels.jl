@@ -15,16 +15,14 @@ Exports a `LineCableSystem` to a PSCAD-compatible file format.
 # Returns
 - None. The function writes the exported data to a PSCAD `.pscx` file.
 
-# Dependencies
-- None.
+
 
 # Examples
 ```julia
 cable_system = LineCableSystem(...)
 export_to_pscad(cable_system, base_freq=50)
 ```
-# References
-- None.
+
 """
 function export_pscad_model(
 	cable_system::LineCableSystem;

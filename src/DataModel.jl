@@ -22,8 +22,7 @@ thick_obj = @thick(5.0)
 println(thick_obj) # Output: Thickness(5.0)
 ```
 
-# References
-- None.
+
 """
 macro thick(value)
 	esc(:(Thickness($value)))
@@ -46,8 +45,7 @@ radius = @diam(10.0)
 println(radius) # Output: 5.0
 ```
 
-# References
-- None.
+
 """
 macro diam(value)
 	esc(:(($value) / 2))
@@ -112,8 +110,7 @@ struct WireArray
 	println(wire_array.resistance)    # Outputs: Resistance in Ω
 	```
 
-	# References
-	- None.
+
 	"""
 	function WireArray(
 		radius_in::Union{Number, <:Any},
@@ -229,8 +226,7 @@ struct Strip
 	println(strip.resistance)    # Outputs: Resistance in Ω
 	```
 
-	# References
-	- None.
+
 	"""
 	function Strip(
 		radius_in::Union{Number, <:Any},
@@ -321,8 +317,7 @@ mutable struct Tubular
 	println(tubular.resistance)    # Outputs: Resistance in Ω
 	```
 
-	# References
-	- None.
+
 	"""
 	function Tubular(
 		radius_in::Union{Number, <:Any},
@@ -399,8 +394,7 @@ mutable struct Conductor
 	println(conductor.resistance) # Outputs: Resistance in Ω
 	```
 
-	# References
-	- None.
+
 	"""
 	function Conductor(central_conductor::ConductorParts)
 
@@ -449,8 +443,7 @@ println(conductor.cross_section) # Outputs: Updated cross-sectional area
 println(conductor.layers)       # Outputs: Updated layers including the new part
 ```
 
-# References
-- None.
+
 """
 function add_conductor_part!(
 	sc::Conductor,
@@ -493,8 +486,7 @@ wire_coords = get_wirearray_coords(wa)
 println(wire_coords) # Outputs: [(x1, y1), (x2, y2), ...] for all wires
 ```
 
-# References
-- None.
+
 """
 function get_wirearray_coords(wa::WireArray)
 	wire_coords = []  # Global coordinates of all wires
@@ -531,8 +523,7 @@ parallel_R = calc_parallel_equivalent(total_R, layer_R)
 println(parallel_R) # Outputs: 3.3333333333333335
 ```
 
-# References
-- None.
+
 """
 function calc_parallel_equivalent(total_R::Number, layer_R::Number)
 	return 1 / (1 / total_R + 1 / layer_R)
@@ -564,8 +555,7 @@ resistance = calc_tubular_resistance(radius_in, radius_ext, rho, alpha, T0, T)
 println(resistance) # Outputs: Resistance in Ω
 ```
 
-# References
-- None.
+
 """
 function calc_tubular_resistance(
 	radius_in::Number,
@@ -606,8 +596,7 @@ resistance = calc_strip_resistance(thickness, width, rho, alpha, T0, T)
 println(resistance) # Outputs: Resistance in Ω
 ```
 
-# References
-- None.
+
 """
 function calc_strip_resistance(
 	thickness::Number,
@@ -639,11 +628,9 @@ L = calc_tubular_inductance(0.01, 0.02, 1.0)
 println(L) # Output: Inductance in H/m
 ```
 
-# Dependencies
-- None.
 
-# References
-- None.
+
+
 """
 function calc_tubular_inductance(radius_in::Number, radius_ext::Number, mu_r::Number)
 	return mu_r * μ₀ / (2 * π) * log(radius_ext / radius_in)
@@ -762,8 +749,7 @@ gmr = calc_wirearray_gmr(lay_rad, N, rad_wire, mu_r)
 println(gmr) # Outputs: GMR value \\[m\\]
 ```
 
-# References
-- None.
+
 """
 function calc_wirearray_gmr(lay_rad::Number, N::Number, rad_wire::Number, mu_r::Number)
 	gmr_wire = rad_wire * exp(-mu_r / 4)
@@ -796,8 +782,7 @@ gmr = calc_tubular_gmr(radius_ext, radius_in, mu_r)
 println(gmr) # Outputs: GMR value \\[m\\]
 ```
 
-# References
-- None.
+
 """
 function calc_tubular_gmr(radius_ext::Number, radius_in::Number, mu_r::Number)
 	if radius_ext < radius_in
@@ -849,8 +834,7 @@ println(mu_r) # Outputs: Relative permeability value
 - If `radius_ext` is less than `radius_in`, an `ArgumentError` is thrown.
 - Assumes a tubular geometry for the conductor, reducing to the solid case if `radius_in` is zero.
 
-# References
-- None.
+
 """
 function gmr_to_mu(gmr::Number, radius_ext::Number, radius_in::Number)
 	if radius_ext < radius_in
@@ -894,8 +878,7 @@ println(capacitance) # Outputs: Capacitance in F/m
 - Uses the vacuum permittivity constant `ε₀`.
 - Assumes a uniform dielectric material between the inner and outer radii.
 
-# References
-- None.
+
 """
 function calc_shunt_capacitance(radius_in::Number, radius_ext::Number, epsr::Number)
 	return 2 * π * ε₀ * epsr / log(radius_ext / radius_in)
@@ -925,8 +908,7 @@ println(conductance) # Outputs: Conductance in S/m
 - Assumes a uniform dielectric material between the inner and outer radii.
 - Inverse of resistivity (`1 / rho`) is used to calculate conductance.
 
-# References
-- None.
+
 """
 function calc_shunt_conductance(radius_in::Number, radius_ext::Number, rho::Number)
 	return 2 * π * (1 / rho) / log(radius_ext / radius_in)
@@ -962,8 +944,7 @@ color = _get_material_color(material_props)
 println(color) # Outputs: RGBA color based on material properties
 ```
 
-# References
-- None.
+
 """
 function _get_material_color(
 	material_props;
@@ -1121,8 +1102,7 @@ mutable struct Semicon
 	println(semicon_layer.shunt_conductance) # Outputs: Conductance in S/m
 	```
 
-	# References
-	- None.
+
 	"""
 	function Semicon(
 		radius_in::Union{Number, <:Any},
@@ -1217,8 +1197,7 @@ mutable struct Insulator
 	println(insulator_layer.shunt_conductance) # Outputs: Conductance in S/m
 	```
 
-	# References
-	- None.
+
 	"""
 	function Insulator(
 		radius_in::Union{Number, <:Any},
@@ -1271,7 +1250,7 @@ Defines a generic type for any cable part.
 const CableParts = Union{Conductor, Strip, WireArray, Tubular, Semicon, Insulator}
 
 """
-calc_equivalent_gmr: Computes the equivalent geometric mean radius (GMR) of a `Conductor` after adding a new layer.
+Computes the equivalent geometric mean radius (GMR) of a `Conductor` after adding a new layer.
 
 # Arguments
 - `sc`: A `CableParts` object representing the existing cable part.
@@ -1292,8 +1271,7 @@ equivalent_gmr = calc_equivalent_gmr(conductor, new_layer)
 println(equivalent_gmr) # Outputs: Updated GMR value \\[m\\]
 ```
 
-# References
-- None.
+
 """
 function calc_equivalent_gmr(sc::CableParts, layer::CableParts)
 	beta = sc.cross_section / (sc.cross_section + layer.cross_section)
@@ -1332,8 +1310,7 @@ println(gmd) # Outputs: GMD value \\[m\\]
 # Notes
 - For concentric structures (e.g., a `Strip` within a `Tubular`), the GMD defaults to the outermost radius.
 
-# References
-- None.
+
 """
 function calc_gmd(co1::CableParts, co2::CableParts)
 
@@ -1435,8 +1412,7 @@ mutable struct CableComponent
 	println(cable.eps_ins) # Output: Permittivity of the insulator \\[F/m\\]
 	```
 
-	# References
-	- None.
+
 	"""
 	function CableComponent(
 		# name::String,
@@ -1629,8 +1605,7 @@ mutable struct NominalData
 	println(nominal_data.capacitance) # Output: 1e-9
 	```
 
-	# References
-	- None.
+
 	"""
 	function NominalData(;
 		conductor_cross_section::Union{Nothing, Number} = nothing,
@@ -1687,8 +1662,7 @@ mutable struct CableDesign
 	println(design.components["ComponentA"]) # Output: CableComponent object
 	```
 
-	# References
-	- None.
+
 	"""
 	function CableDesign(
 		cable_id::String,
@@ -1718,7 +1692,7 @@ Adds or replaces a cable component in an existing `CableDesign`.
 Modifies the `CableDesign` object in-place by adding or replacing the specified cable component.
 
 # Dependencies
-- `CableComponent`: Constructs a cable component based on its parts and frequency.
+- [`CableComponent`](@ref): Constructs a cable component based on its parts and frequency.
 
 # Examples
 ```julia
@@ -1730,8 +1704,7 @@ println(design.components["ComponentB"]) # Output: CableComponent object
 # Notes
 - If a component with the specified name already exists, it will be overwritten, and a warning will be logged.
 
-# References
-- None.
+
 """
 function add_cable_component!(
 	design::CableDesign,
@@ -1780,8 +1753,7 @@ println(data)
 # Output: DataFrame with computed values and compliance checks.
 ```
 
-# References
-- None.
+
 """
 function core_parameters(
 	design::CableDesign;
@@ -1861,8 +1833,7 @@ Extracts and displays the properties of components in a `CableDesign` object as 
   - `property`: The name of each property (e.g., `radius_in_con`, `rho_con`, etc.).
   - Additional columns: Each component of the cable, with property values or `missing` if the property is not available for the component.
 
-# Dependencies
-- None.
+
 
 # Examples
 ```julia
@@ -1879,8 +1850,7 @@ data = cable_data(design)
 println(data) # Outputs a DataFrame with properties and values for each component
 ```
 
-# References
-- None.
+
 """
 function cable_data(design::CableDesign)
 	# Extract properties dynamically
@@ -1939,8 +1909,7 @@ A `DataFrame` with the following structure:
 - Columns corresponding to each layer of each component in the design (e.g., `component_name, layer N`).
   Each column contains the respective values for the specified property, or `missing` if the property is not defined for the part.
 
-# Dependencies
-- None.
+
 
 # Notes
 - The function iterates over all components and their parts to extract and organize their properties.
@@ -1956,8 +1925,7 @@ println(data)
 # Output: DataFrame summarizing properties of all parts in the design.
 ```
 
-# References
-- None.
+
 """
 function cable_parts_data(design::CableDesign)
 	# Updated properties list
@@ -2060,8 +2028,7 @@ preview_cable_design(design)
 # Output: Displays the cable cross-section in an interactive plot.
 ```
 
-# References
-- None.
+
 """
 function preview_cable_design(
 	design::CableDesign;
@@ -2205,8 +2172,7 @@ mutable struct CablesLibrary
 	library_with_data = CablesLibrary("existing_library.jls")
 	```
 
-	# References
-	- None.
+
 	"""
 	function CablesLibrary(; file_name::String = "cables_library.jls")::CablesLibrary
 		library = new(Dict{String, CableDesign}())
@@ -2230,8 +2196,7 @@ Loads cable designs from a serialized file into a `CablesLibrary` object.
 # Returns
 - None. Modifies the `cable_designs` field of the `CablesLibrary` object in-place.
 
-# Dependencies
-- None.
+
 
 # Examples
 ```julia
@@ -2240,8 +2205,7 @@ _load_cables_from_jls!(library, "cables_library.jls")
 println(library.cable_designs) # Prints the loaded cable designs if successful
 ```
 
-# References
-- None.
+
 """
 function _load_cables_from_jls!(library::CablesLibrary; file_name::String)
 	try
@@ -2267,8 +2231,7 @@ Saves the cable designs from a `CablesLibrary` object to a `.jls` file.
 # Returns
 - None. Writes the serialized cable designs to the specified file.
 
-# Dependencies
-- None.
+
 
 # Examples
 ```julia
@@ -2277,8 +2240,7 @@ library = CablesLibrary()
 save_cables_library(library, "new_cables_library.jls")
 ```
 
-# References
-- None.
+
 """
 function save_cables_library(
 	library::CablesLibrary;
@@ -2302,8 +2264,7 @@ Stores a cable design in a `CablesLibrary` object.
 # Returns
 - None. Modifies the `cable_designs` field of the `CablesLibrary` object in-place by adding the new cable design.
 
-# Dependencies
-- None.
+
 
 # Examples
 ```julia
@@ -2313,8 +2274,7 @@ store_cable_design!(library, design)
 println(library.cable_designs) # Prints the updated dictionary containing the new cable design
 ```
 
-# References
-- None.
+
 """
 function store_cable_design!(library::CablesLibrary, design::CableDesign)
 	library.cable_designs[design.cable_id] = design
@@ -2331,8 +2291,7 @@ Removes a cable design from a `CablesLibrary` object by its ID.
 # Returns
 - None. Modifies the `cable_designs` field of the `CablesLibrary` object in-place by removing the specified cable design if it exists.
 
-# Dependencies
-- None.
+
 
 # Examples
 ```julia
@@ -2345,8 +2304,7 @@ remove_cable_design!(library, "cable1")
 println(library.cable_designs) # Prints the dictionary without the removed cable design
 ```
 
-# References
-- None.
+
 """
 function remove_cable_design!(library::CablesLibrary, cable_id::String)
 	if haskey(library.cable_designs, cable_id)
@@ -2367,8 +2325,7 @@ Retrieves a cable design from a `CablesLibrary` object by its ID.
 # Returns
 - A `CableDesign` object corresponding to the given `cable_id` if found, otherwise `nothing`.
 
-# Dependencies
-- None.
+
 
 # Examples
 ```julia
@@ -2385,8 +2342,7 @@ missing_design = get_cable_design(library, "nonexistent_id")
 println(missing_design) # Prints nothing
 ```
 
-# References
-- None.
+
 """
 function get_cable_design(
 	library::CablesLibrary,
@@ -2413,8 +2369,7 @@ Displays the cable designs in a `CablesLibrary` object as a `DataFrame`.
   - `nominal_data`: A string representation of the nominal data for each cable design.
   - `components`: A comma-separated string listing the components of each cable design.
 
-# Dependencies
-- None.
+
 
 # Examples
 ```julia
@@ -2429,8 +2384,7 @@ df = display_cables_library(library)
 println(df) # Outputs the DataFrame with cable details
 ```
 
-# References
-- None.
+
 """
 function display_cables_library(library::CablesLibrary)
 	ids = keys(library.cable_designs)
@@ -2488,8 +2442,7 @@ mutable struct CableDef
 	println(default_cabledef.conn)  # Output: [1, 0, 0] if components exist
 	```
 
-	# References
-	- None.
+
 	"""
 	function CableDef(
 		cable::CableDesign,
@@ -2556,8 +2509,7 @@ mutable struct LineCableSystem
 	println(cable_system.num_phases)  # Output: Number of unique phase assignments
 	```
 
-	# References
-	- None.
+
 	"""
 	function LineCableSystem(
 		case_id::String,
@@ -2590,8 +2542,7 @@ Adds a new cable definition to an existing `LineCableSystem`, updating its phase
 # Returns
 - Modifies `system` in place by adding a new `CableDef` and updating `num_cables` and `num_phases`.
 
-# Dependencies
-- None.
+
 
 # Examples
 ```julia
@@ -2610,8 +2561,7 @@ println(cable_system.num_cables)  # Output: 2
 println(cable_system.num_phases)  # Output: Number of unique phase assignments
 ```
 
-# References
-- None.
+
 """
 function add_cable_definition!(
 	system::LineCableSystem,
@@ -2662,8 +2612,7 @@ system = LineCableSystem([...])
 preview_system_cross_section(system, zoom_factor=0.5)
 ```
 
-# References
-- None.
+
 """
 function preview_system_cross_section(system::LineCableSystem; zoom_factor = 0.25)
 	plotlyjs()
@@ -2751,8 +2700,7 @@ Computes the coordinates of three cables arranged in a trifoil pattern.
 - `xb`, `yb`: Coordinates of the bottom-left cable.
 - `xc`, `yc`: Coordinates of the bottom-right cable.
 
-# Dependencies
-- None.
+
 
 # Examples
 ```julia
@@ -2760,8 +2708,7 @@ xa, ya, xb, yb, xc, yc = trifoil_formation(0.0, 0.0, 0.035)
 println((xa, ya, xb, yb, xc, yc))  # Output: (0.0, 0.0303, -0.035, -0.0175, 0.035, -0.0175)
 ```
 
-# References
-- None.
+
 """
 function trifoil_formation(xc, yc, r_ext)
 	# Horizontal distance between centers of adjacent circles (equal to twice the radius of each circle)
@@ -2796,8 +2743,7 @@ Computes the coordinates of three conductors arranged in a flat (horizontal or v
 - `xb`, `yb`: Coordinates of the second conductor.
 - `xc`, `yc`: Coordinates of the third conductor.
 
-# Dependencies
-- None.
+
 
 # Examples
 ```julia
@@ -2810,8 +2756,7 @@ xa, ya, xb, yb, xc, yc = flat_formation(0.0, 0.0, 0.1, vertical=true)
 println((xa, ya, xb, yb, xc, yc))  # Output: (0.0, 0.0, 0.0, -0.1, 0.0, -0.2)
 ```
 
-# References
-- None.
+
 """
 function flat_formation(xc, yc, s; vertical = false)
 	if vertical
@@ -2842,8 +2787,7 @@ A `DataFrame` containing:
 - `vert`: Vertical coordinate of each cable \\[m\\].
 - `phase_mapping`: Human-readable string representation mapping each cable component to its assigned phase.
 
-# Dependencies
-- None.
+
 
 # Examples
 ```julia
@@ -2856,8 +2800,7 @@ println(cross_section_df)
 # │ "Cable2"   │ 0.35 │ -1.25 │ core: 2, sheath: 0      │
 ```
 
-# References
-- None.
+
 """
 function cross_section_data(system::LineCableSystem)
 	cable_ids = String[]

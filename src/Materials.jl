@@ -19,21 +19,18 @@ end
 """
 Stores a collection of materials and their corresponding properties.
 
-# Fields
-- `materials`: A dictionary where keys are material names (String) and values are `Material` objects.
-"""
-mutable struct MaterialsLibrary
-	materials::Dict{String, Material}  # Key: Material name, Value: Material object
-end
+# Constructor
 
-"""
-Constructor: Initializes a `MaterialsLibrary` object with materials loaded from a CSV file or a default database.
+- Initializes a `MaterialsLibrary` object with materials loaded from a CSV file or a default database.
 
 # Arguments
 - `file_name`: Name of the CSV file containing material data (default: "materials_library.csv").
 
 # Returns
 - An instance of `MaterialsLibrary` containing material data either loaded from the specified file or initialized with default materials.
+
+# Fields
+- `materials`: A dictionary where keys are material names (String) and values are `Material` objects.
 
 # Dependencies
 - `_load_from_csv!`: Loads material data from a CSV file into the library.
@@ -48,9 +45,11 @@ library = MaterialsLibrary()
 println(length(library.materials)) # Outputs the number of default materials initialized
 ```
 
-# References
-- None.
 """
+mutable struct MaterialsLibrary
+	materials::Dict{String, Material}  # Key: Material name, Value: Material object
+end
+
 function MaterialsLibrary(; file_name::String = "materials_library.csv")::MaterialsLibrary
 	library = MaterialsLibrary(Dict{String, Material}())
 	if isfile(file_name)
@@ -83,8 +82,7 @@ _add_default_materials!(library)
 println(keys(library.materials)) # Outputs names of default materials added
 ```
 
-# References
-- None.
+
 """
 function _add_default_materials!(library::MaterialsLibrary)
 	add_material!(library, "air", Material(Inf, 1.0, 1.0, 20.0, 0.0))
@@ -119,8 +117,7 @@ _load_from_csv!(library, "materials_library.csv")
 println(keys(library.materials)) # Outputs names of materials loaded from the file
 ```
 
-# References
-- None.
+
 """
 function _load_from_csv!(library::MaterialsLibrary, file_name::String)
 	df = DataFrame(CSV.File(file_name))
@@ -148,8 +145,7 @@ add_material!(library, "copper", material)
 println(keys(library.materials)) # Outputs: ["copper"]
 ```
 
-# References
-- None.
+
 """
 function add_material!(library::MaterialsLibrary, name::String, material::Material)
 	if haskey(library.materials, name)
@@ -174,8 +170,7 @@ remove_material!(library, "copper")
 println(keys(library.materials)) # Outputs: []
 ```
 
-# References
-- None.
+
 """
 function remove_material!(library::MaterialsLibrary, name::String)
 	if !haskey(library.materials, name)
@@ -203,8 +198,7 @@ save_materials_library(library, "materials_backup.csv")
 println("Materials saved to materials_backup.csv")
 ```
 
-# References
-- None.
+
 """
 function save_materials_library(
 	library::MaterialsLibrary,
@@ -243,8 +237,7 @@ df = display_materials_library(library)
 println(df) # Displays materials and their properties
 ```
 
-# References
-- None.
+
 """
 function display_materials_library(library::MaterialsLibrary)::DataFrame
 	rows = [
@@ -280,8 +273,7 @@ missing_material = get_material(library, "gold")
 println(missing_material) # Outputs: nothing
 ```
 
-# References
-- None.
+
 """
 function get_material(library::MaterialsLibrary, name::String)::Union{Nothing, Material}
 	material = get(library.materials, name, nothing)

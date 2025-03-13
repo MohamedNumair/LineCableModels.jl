@@ -24,8 +24,7 @@ Wrapper around `isapprox` to handle floating-point comparison.
 Use this instead of `==` for all numerical comparisons to avoid
 precision errors that shouldn't require explanation.
 
-# References
-- None.
+
 """
 function _equals(x, y; atol = TOL)
 	return isapprox(x, y, atol = atol)
@@ -55,8 +54,7 @@ _to_nominal(5.2 ± 0.3)  # Output: 5.2
 Utility function for handling both deterministic values and measurements
 in calculations where only the central value is needed.
 
-# References
-- None.
+
 """
 function _to_nominal(x)
 	return x isa Measurement ? Measurements.value(x) : x
@@ -87,8 +85,7 @@ percent_to_uncertain(10.0, 10)  # Output: 10.0 ± 1.0
 Convenient way to specify uncertainty as a percentage rather than absolute value.
 The uncertainty is calculated as val × (perc/100).
 
-# References
-- None.
+
 """
 function percent_to_uncertain(val, perc) #perc from 0 to 100
 	measurement(val, (perc * val) / 100)
@@ -122,8 +119,7 @@ result = bias_to_uncertain(nominal, measurements)
 println(result)  # Output: Measurement with adjusted uncertainty
 ```
 
-# References
-- None.
+
 """
 function bias_to_uncertain(nominal::Float64, measurements::Vector{<:Measurement})
 	# Compute the mean value and uncertainty from the measurements
@@ -159,8 +155,7 @@ not_a_measurement = 5.0
 upper_invalid = _to_upper(not_a_measurement)  # Output: NaN
 ```
 
-# References
-- None.
+
 """
 function _to_upper(m::Number)
 	if m isa Measurement
@@ -196,8 +191,7 @@ upper_invalid = _to_upper(not_a_measurement)  # Output: NaN
 lower_invalid = _to_lower(not_a_measurement)  # Output: NaN
 ```
 
-# References
-- None.
+
 """
 function _to_lower(m::Number)
 	if m isa Measurement
@@ -231,8 +225,7 @@ not_a_measurement = 5.0
 percent_err_invalid = _percent_error(not_a_measurement)  # Output: NaN
 ```
 
-# References
-- None.
+
 """
 function _percent_error(m::Number)
 	if m isa Measurement
