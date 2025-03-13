@@ -50,8 +50,10 @@ The source code is provided under the [BSD 3-Clause License](LICENSE).
 This work is supported by the Etch Competence Hub of EnergyVille, financed by the Flemish Government. The primary developer is Amauri Martins ([@amaurigmartins](https://github.com/amaurigmartins)).
 
 <p align="center">
-  <img src="assets/img/etch_logo.png" width="150" style="margin: 0 50px;">
-  <img src="assets/img/energyville_logo.png" width="150" style="margin: 0 50px;">
-  <img src="assets/img/kul_logo.png" width="150" style="margin: 0 50px;">
+  <img src="assets/img/etch_logo.png" width="150">
+  <img src="https://dummyimage.com/50x1/000000/000000&text=+" width="50">
+  <img src="assets/img/energyville_logo.png" width="150">
+  <img src="https://dummyimage.com/50x1/000000/000000&text=+" width="50">
+  <img src="assets/img/kul_logo.png" width="150">
 </p>
 
