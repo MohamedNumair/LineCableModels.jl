@@ -1,12 +1,12 @@
 """
-Thickness: Represents the thickness of a cable component. This custom type ensures flexibility in data entry and consistency with engineering practices, where component layers (insulation, metallic tapes etc.) are typically described by thickness rather than laying radius. It standardizes components requiring `radius_ext` for calculations.
+Represents the thickness of a cable component. This custom type ensures flexibility in data entry and consistency with engineering practices, where component layers (insulation, metallic tapes etc.) are typically described by thickness rather than laying radius. It standardizes components requiring `radius_ext` for calculations.
 """
 struct Thickness
 	value::Number
 end
 
 """
-thick: A macro for constructing `Thickness` objects.
+A macro for constructing `Thickness` objects.
 
 # Arguments
 - `value`: The numerical value representing the thickness to be encapsulated in a `Thickness` object.
@@ -30,7 +30,7 @@ macro thick(value)
 end
 
 """
-diam: A macro that calculates the radius from a given diameter. As trivial and overkill as it may seem, this macro is intended to improve clarity in cases where typical engineering data is commonly referred to in terms of diameters, e.g. wires used in stranded cores and screens.
+A macro that calculates the radius from a given diameter. As trivial and overkill as it may seem, this macro is intended to improve clarity in cases where typical engineering data is commonly referred to in terms of diameters, e.g. wires used in stranded cores and screens.
 
 # Arguments
 - `value`: The numerical value representing the diameter to be halved.
@@ -54,7 +54,7 @@ macro diam(value)
 end
 
 """
-WireArray: Represents an array of wires equally spaced around a circumference of arbitrary radius.
+Represents an array of wires equally spaced around a circumference of arbitrary radius.
 """
 struct WireArray
 	radius_in::Number
@@ -75,29 +75,29 @@ struct WireArray
 	Constructor: Initializes a `WireArray` object based on specified geometric and material parameters.
 
 	# Arguments
-	- `radius_in`: Internal radius of the wire array [m].
-	- `radius_wire`: Radius of each individual wire [m].
+	- `radius_in`: Internal radius of the wire array \\[m\\].
+	- `radius_wire`: Radius of each individual wire \\[m\\].
 	- `num_wires`: Number of wires in the array.
 	- `lay_ratio`: Ratio defining the lay length of the wires (twisting factor).
 	- `material_props`: A `Material` object representing the material properties (e.g., resistivity, temperature coefficient).
-	- `temperature`: Temperature at which the properties are evaluated [°C] (default: 20).
+	- `temperature`: Temperature at which the properties are evaluated \\[°C\\] (default: 20).
 	- `twist_direction`: Twisting direction of the strands (1 = unilay, -1 = contralay). Optional, defaults to 1.
 
 	# Returns
 	An instance of `WireArray` initialized with calculated geometric and electrical properties:
-	- `radius_in`: Internal radius of the wire array [m].
-	- `radius_ext`: External radius of the wire array [m].
-	- `radius_wire`: Radius of each individual wire [m].
+	- `radius_in`: Internal radius of the wire array \\[m\\].
+	- `radius_ext`: External radius of the wire array \\[m\\].
+	- `radius_wire`: Radius of each individual wire \\[m\\].
 	- `num_wires`: Number of wires in the array.
 	- `lay_ratio`: Ratio defining the lay length of the wires (twisting factor).
-	- `mean_diameter`: Mean diameter of the wire array [m].
-	- `pitch_length`: Pitch length of the wire array [m].
+	- `mean_diameter`: Mean diameter of the wire array \\[m\\].
+	- `pitch_length`: Pitch length of the wire array \\[m\\].
 	- `twist_direction`: Twisting direction of the strands (1 = unilay, -1 = contralay).
 	- `material_props`: A `Material` object representing the physical properties of the wire material.
-	- `temperature`: Temperature at which the properties are evaluated [°C].
+	- `temperature`: Temperature at which the properties are evaluated \\[°C\\].
 	- `cross_section`: Cross-sectional area of all wires in the array [m²].
 	- `resistance`: Electrical resistance per wire in the array [Ω/m].
-	- `gmr`: Geometric mean radius of the wire array [m].
+	- `gmr`: Geometric mean radius of the wire array \\[m\\].
 
 	# Dependencies
 	This constructor uses the following custom functions:
@@ -173,7 +173,7 @@ struct WireArray
 end
 
 """
-Strip: Represents a flat conductive strip with defined geometric and material properties.
+Represents a flat conductive strip with defined geometric and material properties.
 """
 struct Strip
 	radius_in::Number
@@ -194,28 +194,28 @@ struct Strip
 	Constructor: Initializes a `Strip` object with specified geometric and material parameters.
 
 	# Arguments
-	- `radius_in`: Internal radius of the strip [m].
-	- `radius_ext`: External radius of the strip [m].
-	- `width`: Width of the strip [m].
+	- `radius_in`: Internal radius of the strip \\[m\\].
+	- `radius_ext`: External radius of the strip \\[m\\].
+	- `width`: Width of the strip \\[m\\].
 	- `lay_ratio`: Ratio defining the lay length of the strip (twisting factor).
 	- `material_props`: A `Material` object representing the physical properties of the strip material.
-	- `temperature`: Temperature at which the properties are evaluated [°C] (default: 20).
+	- `temperature`: Temperature at which the properties are evaluated \\[°C\\] (default: 20).
 	- `twist_direction`: Twisting direction of the strip (1 = unilay, -1 = contralay). Optional, defaults to 1.
 
 	# Returns
 	An instance of `Strip` initialized with calculated geometric and electrical properties:
-	- `radius_in`: Internal radius of the strip [m].
-	- `radius_ext`: External radius of the strip [m].
-	- `width`: Width of the strip [m].
+	- `radius_in`: Internal radius of the strip \\[m\\].
+	- `radius_ext`: External radius of the strip \\[m\\].
+	- `width`: Width of the strip \\[m\\].
 	- `lay_ratio`: Ratio defining the lay length of the strip (twisting factor).
-	- `mean_diameter`: Mean diameter of the strip [m].
-	- `pitch_length`: Pitch length of the strip [m].
+	- `mean_diameter`: Mean diameter of the strip \\[m\\].
+	- `pitch_length`: Pitch length of the strip \\[m\\].
 	- `twist_direction`: Twisting direction of the strip (1 = unilay, -1 = contralay).
 	- `material_props`: A `Material` object representing the physical properties of the strip material.
-	- `temperature`: Temperature at which the properties are evaluated [°C].
+	- `temperature`: Temperature at which the properties are evaluated \\[°C\\].
 	- `cross_section`: Cross-sectional area of the strip [m²].
 	- `resistance`: Electrical resistance of the strip [Ω/m].
-	- `gmr`: Geometric mean radius of the strip [m].
+	- `gmr`: Geometric mean radius of the strip \\[m\\].
 
 	# Dependencies
 	- `calc_strip_resistance`: Computes the DC resistance of the strip.
@@ -286,7 +286,7 @@ struct Strip
 end
 
 """
-Tubular: Represents a tubular or solid (radius_in=0) conductor with defined geometric and material properties.
+Represents a tubular or solid (radius_in=0) conductor with defined geometric and material properties.
 """
 mutable struct Tubular
 	radius_in::Number
@@ -301,10 +301,10 @@ mutable struct Tubular
 	Constructor: Initializes a `Tubular` object with specified geometric and material parameters.
 
 	# Arguments
-	- `radius_in`: Internal radius of the tubular conductor [m].
-	- `radius_ext`: External radius of the tubular conductor [m].
+	- `radius_in`: Internal radius of the tubular conductor \\[m\\].
+	- `radius_ext`: External radius of the tubular conductor \\[m\\].
 	- `material_props`: A `Material` object representing the physical properties of the conductor material.
-	- `temperature`: Temperature at which the properties are evaluated [°C] (default: 20).
+	- `temperature`: Temperature at which the properties are evaluated \\[°C\\] (default: 20).
 
 	# Returns
 	An instance of `Tubular` initialized with calculated geometric and electrical properties.
@@ -364,7 +364,7 @@ mutable struct Tubular
 end
 
 """
-ConductorParts: Defines an abstract conductor type which may be a `WireArray`, `Tubular` or `Strip`, used for composite conductor modeling.
+Defines an abstract conductor type which may be a `WireArray`, `Tubular` or `Strip`, used for composite conductor modeling.
 """
 const ConductorParts = Union{WireArray, Tubular, Strip}
 
@@ -421,7 +421,7 @@ mutable struct Conductor
 end
 
 """
-add_conductor_part!: Adds a new part to an existing `Conductor` object and updates its properties.
+Adds a new part to an existing `Conductor` object and updates its properties.
 
 # Arguments
 - `sc`: A `Conductor` object to which the new part will be added.
@@ -478,13 +478,13 @@ function add_conductor_part!(
 end
 
 """
-get_wirearray_coords: Computes the global coordinates of wires in a `WireArray`.
+Computes the global coordinates of wires in a `WireArray`.
 
 # Arguments
 - `wa`: A `WireArray` object containing the geometric and material properties of the wire array.
 
 # Returns
-- A vector of tuples, where each tuple represents the `(x, y)` coordinates [m] of the center of a wire.
+- A vector of tuples, where each tuple represents the `(x, y)` coordinates \\[m\\] of the center of a wire.
 
 # Examples
 ```julia
@@ -514,14 +514,14 @@ function get_wirearray_coords(wa::WireArray)
 end
 
 """
-calc_parallel_equivalent: Computes the parallel equivalent resistance of two impedances (or series equivalent of two admittances).
+Computes the parallel equivalent resistance of two impedances (or series equivalent of two admittances).
 
 # Arguments
-- `total_R`: The total impedance of the existing system [Ω].
-- `layer_R`: The impedance of the new layer being added [Ω].
+- `total_R`: The total impedance of the existing system \\[Ω\\].
+- `layer_R`: The impedance of the new layer being added \\[Ω\\].
 
 # Returns
-- The parallel equivalent impedance as a `Number` [Ω].
+- The parallel equivalent impedance as a `Number` \\[Ω\\].
 
 # Examples
 ```julia
@@ -539,18 +539,18 @@ function calc_parallel_equivalent(total_R::Number, layer_R::Number)
 end
 
 """
-calc_tubular_resistance: Computes the DC resistance of a tubular conductor based on its geometric and material properties, with temperature correction.
+Computes the DC resistance of a tubular conductor based on its geometric and material properties, with temperature correction.
 
 # Arguments
-- `radius_in`: Internal radius of the tubular conductor [m].
-- `radius_ext`: External radius of the tubular conductor [m].
-- `rho`: Electrical resistivity of the conductor material [Ω·m].
-- `alpha`: Temperature coefficient of resistivity [1/°C].
-- `T0`: Reference temperature for the material properties [°C].
-- `T`: Operating temperature of the system [°C].
+- `radius_in`: Internal radius of the tubular conductor \\[m\\].
+- `radius_ext`: External radius of the tubular conductor \\[m\\].
+- `rho`: Electrical resistivity of the conductor material \\[Ω·m\\].
+- `alpha`: Temperature coefficient of resistivity \\[1/°C\\].
+- `T0`: Reference temperature for the material properties \\[°C\\].
+- `T`: Operating temperature of the system \\[°C\\].
 
 # Returns
-- The DC resistance of the tubular conductor as a `Number` [Ω].
+- The DC resistance of the tubular conductor as a `Number` \\[Ω\\].
 
 # Examples
 ```julia
@@ -581,18 +581,18 @@ function calc_tubular_resistance(
 end
 
 """
-calc_strip_resistance: Computes the DC resistance of a strip conductor based on its geometric and material properties.
+Computes the DC resistance of a strip conductor based on its geometric and material properties.
 
 # Arguments
-- `thickness`: Thickness of the strip [m].
-- `width`: Width of the strip [m].
-- `rho`: Electrical resistivity of the conductor material [Ω·m].
-- `alpha`: Temperature coefficient of resistivity [1/°C].
-- `T0`: Reference temperature for the material properties [°C].
-- `T`: Operating temperature of the system [°C].
+- `thickness`: Thickness of the strip \\[m\\].
+- `width`: Width of the strip \\[m\\].
+- `rho`: Electrical resistivity of the conductor material \\[Ω·m\\].
+- `alpha`: Temperature coefficient of resistivity \\[1/°C\\].
+- `T0`: Reference temperature for the material properties \\[°C\\].
+- `T`: Operating temperature of the system \\[°C\\].
 
 # Returns
-- The DC resistance of the strip conductor as a `Number` [Ω].
+- The DC resistance of the strip conductor as a `Number` \\[Ω\\].
 
 # Examples
 ```julia
@@ -623,15 +623,15 @@ function calc_strip_resistance(
 end
 
 """
-calc_tubular_inductance: Compute the inductance of a tubular conductor.
+Compute the inductance of a tubular conductor.
 
 # Arguments
-- `radius_in`: Internal radius of the tubular conductor [m].
-- `radius_ext`: External radius of the tubular conductor [m].
+- `radius_in`: Internal radius of the tubular conductor \\[m\\].
+- `radius_ext`: External radius of the tubular conductor \\[m\\].
 - `mu_r`: Relative permeability of the conductor material (dimensionless).
 
 # Returns
-- Inductance of the tubular conductor per unit length [H/m].
+- Inductance of the tubular conductor per unit length \\[H/m\\].
 
 # Examples
 ```julia
@@ -650,23 +650,23 @@ function calc_tubular_inductance(radius_in::Number, radius_ext::Number, mu_r::Nu
 end
 
 """
-calc_inductance_trifoil: Computes the inductance of a trifoil-configured cable system.
+Computes the inductance of a trifoil-configured cable system.
 
 # Arguments
-- `r_in_co`: Internal radius of the phase conductor [m].
-- `r_ext_co`: External radius of the phase conductor [m].
-- `rho_co`: Electrical resistivity of the phase conductor material [Ω·m].
+- `r_in_co`: Internal radius of the phase conductor \\[m\\].
+- `r_ext_co`: External radius of the phase conductor \\[m\\].
+- `rho_co`: Electrical resistivity of the phase conductor material \\[Ω·m\\].
 - `mu_r_co`: Relative permeability of the phase conductor material.
-- `r_in_scr`: Internal radius of the metallic screen [m].
-- `r_ext_scr`: External radius of the metallic screen [m].
+- `r_in_scr`: Internal radius of the metallic screen \\[m\\].
+- `r_ext_scr`: External radius of the metallic screen \\[m\\].
 - `mu_r_scr`: Relative permeability of the screen conductor material.
-- `rho_scr`: Electrical resistivity of the metallic screen material [Ω·m].
-- `S`: Spacing between conductors in trifoil configuration [m] (default: 0.07 m).
-- `rho_e`: Soil resistivity [Ω·m] (default: 100 Ω·m).
-- `f`: Frequency [Hz] (default: `f₀`).
+- `rho_scr`: Electrical resistivity of the metallic screen material \\[Ω·m\\].
+- `S`: Spacing between conductors in trifoil configuration \\[m\\] (default: 0.07 m).
+- `rho_e`: Soil resistivity \\[Ω·m\\] (default: 100 Ω·m).
+- `f`: Frequency \\[Hz\\] (default: `f₀`).
 
 # Returns
-- Inductance per unit length of the cable system [H/m].
+- Inductance per unit length of the cable system \\[H/m\\].
 
 # Dependencies
 - `calc_tubular_gmr`: Computes the geometric mean radius (GMR) of a tubular conductor.
@@ -741,16 +741,16 @@ function calc_inductance_trifoil(
 end
 
 """
-calc_wirearray_gmr: Computes the geometric mean radius (GMR) of a circular wire array.
+Computes the geometric mean radius (GMR) of a circular wire array.
 
 # Arguments
-- `lay_rad`: Layout radius of the wire array [m].
+- `lay_rad`: Layout radius of the wire array \\[m\\].
 - `N`: Number of wires in the array.
-- `rad_wire`: Radius of an individual wire [m].
+- `rad_wire`: Radius of an individual wire \\[m\\].
 - `mu_r`: Relative permeability of the wire material (dimensionless).
 
 # Returns
-- The GMR of the wire array as a `Number` [m].
+- The GMR of the wire array as a `Number` \\[m\\].
 
 # Examples
 ```julia
@@ -759,7 +759,7 @@ N = 7
 rad_wire = 0.002
 mu_r = 1.0
 gmr = calc_wirearray_gmr(lay_rad, N, rad_wire, mu_r)
-println(gmr) # Outputs: GMR value [m]
+println(gmr) # Outputs: GMR value \\[m\\]
 ```
 
 # References
@@ -772,15 +772,15 @@ function calc_wirearray_gmr(lay_rad::Number, N::Number, rad_wire::Number, mu_r::
 end
 
 """
-calc_tubular_gmr: Computes the geometric mean radius (GMR) of a tubular conductor.
+Computes the geometric mean radius (GMR) of a tubular conductor.
 
 # Arguments
-- `radius_ext`: External radius of the tubular conductor [m].
-- `radius_in`: Internal radius of the tubular conductor [m].
+- `radius_ext`: External radius of the tubular conductor \\[m\\].
+- `radius_in`: Internal radius of the tubular conductor \\[m\\].
 - `mu_r`: Relative permeability of the conductor material (dimensionless).
 
 # Returns
-- The GMR of the tubular conductor as a `Number` [m].
+- The GMR of the tubular conductor as a `Number` \\[m\\].
 
 # Notes
 - If `radius_ext` is approximately equal to `radius_in`, the tube collapses into a thin shell, and the GMR is equal to `radius_ext`.
@@ -793,7 +793,7 @@ radius_ext = 0.02
 radius_in = 0.01
 mu_r = 1.0
 gmr = calc_tubular_gmr(radius_ext, radius_in, mu_r)
-println(gmr) # Outputs: GMR value [m]
+println(gmr) # Outputs: GMR value \\[m\\]
 ```
 
 # References
@@ -826,12 +826,12 @@ function calc_tubular_gmr(radius_ext::Number, radius_in::Number, mu_r::Number)
 end
 
 """
-gmr_to_mu: Computes the relative permeability (mu_r) based on the geometric mean radius (GMR) and conductor dimensions.
+Computes the relative permeability (mu_r) based on the geometric mean radius (GMR) and conductor dimensions.
 
 # Arguments
-- `gmr`: Geometric mean radius of the conductor [m].
-- `radius_ext`: External radius of the conductor [m].
-- `radius_in`: Internal radius of the conductor [m].
+- `gmr`: Geometric mean radius of the conductor \\[m\\].
+- `radius_ext`: External radius of the conductor \\[m\\].
+- `radius_in`: Internal radius of the conductor \\[m\\].
 
 # Returns
 - The relative permeability (`mu_r`) as a `Number` (dimensionless).
@@ -871,15 +871,15 @@ function gmr_to_mu(gmr::Number, radius_ext::Number, radius_in::Number)
 end
 
 """
-calc_shunt_capacitance: Computes the shunt capacitance per unit length of a coaxial structure.
+Computes the shunt capacitance per unit length of a coaxial structure.
 
 # Arguments
-- `radius_in`: Internal radius of the coaxial structure [m].
-- `radius_ext`: External radius of the coaxial structure [m].
+- `radius_in`: Internal radius of the coaxial structure \\[m\\].
+- `radius_ext`: External radius of the coaxial structure \\[m\\].
 - `epsr`: Relative permittivity of the dielectric material (dimensionless).
 
 # Returns
-- The shunt capacitance per unit length as a `Number` [F/m].
+- The shunt capacitance per unit length as a `Number` \\[F/m\\].
 
 # Examples
 ```julia
@@ -902,15 +902,15 @@ function calc_shunt_capacitance(radius_in::Number, radius_ext::Number, epsr::Num
 end
 
 """
-calc_shunt_conductance: Computes the shunt conductance per unit length of a coaxial structure.
+Computes the shunt conductance per unit length of a coaxial structure.
 
 # Arguments
-- `radius_in`: Internal radius of the coaxial structure [m].
-- `radius_ext`: External radius of the coaxial structure [m].
-- `rho`: Resistivity of the dielectric material [Ω·m].
+- `radius_in`: Internal radius of the coaxial structure \\[m\\].
+- `radius_ext`: External radius of the coaxial structure \\[m\\].
+- `rho`: Resistivity of the dielectric material \\[Ω·m\\].
 
 # Returns
-- The shunt conductance per unit length as a `Number` [S/m].
+- The shunt conductance per unit length as a `Number` \\[S/m\\].
 
 # Examples
 ```julia
@@ -933,11 +933,11 @@ function calc_shunt_conductance(radius_in::Number, radius_ext::Number, rho::Numb
 end
 
 """
-_get_material_color: Generates a color representation for a material based on its physical properties.
+Generates a color representation for a material based on its physical properties.
 
 # Arguments
 - `material_props`: A dictionary containing the material's properties:
-  - `rho`: Electrical resistivity [Ω·m].
+  - `rho`: Electrical resistivity \\[Ω·m\\].
   - `eps_r`: Relative permittivity (dimensionless).
   - `mu_r`: Relative permeability (dimensionless).
 - `rho_weight`: Weight assigned to the resistivity in the color blending (default: 0.8).
@@ -1073,7 +1073,7 @@ function _get_material_color(
 end
 
 """
-Semicon: Represents a semiconducting layer with defined geometric, material, and electrical properties.
+Represents a semiconducting layer with defined geometric, material, and electrical properties.
 """
 mutable struct Semicon
 	radius_in::Number
@@ -1090,19 +1090,19 @@ mutable struct Semicon
 	Constructor: Initializes a `Semicon` object based on specified geometric and material parameters.
 
 	# Arguments
-	- `radius_in`: Internal radius of the semiconducting layer [m].
-	- `radius_ext`: External radius of the layer [m].
+	- `radius_in`: Internal radius of the semiconducting layer \\[m\\].
+	- `radius_ext`: External radius of the layer \\[m\\].
 	- `material_props`: A `Material` object representing the physical properties of the semiconducting material.
-	- `temperature`: Operating temperature of the layer [°C] (default: 20).
+	- `temperature`: Operating temperature of the layer \\[°C\\] (default: 20).
 
 	# Returns
 	An instance of `Semicon` initialized with the following calculated properties:
-	- `radius_ext`: External radius of the semiconducting layer [m].
+	- `radius_ext`: External radius of the semiconducting layer \\[m\\].
 	- `cross_section`: Cross-sectional area of the layer [m²].
 	- `resistance`: Electrical resistance of the layer [Ω/m].
-	- `gmr`: Geometric mean radius of the semiconductor [m].
-	- `shunt_capacitance`: Shunt capacitance per unit length of the layer [F/m].
-	- `shunt_conductance`: Shunt conductance per unit length of the layer [S/m].
+	- `gmr`: Geometric mean radius of the semiconductor \\[m\\].
+	- `shunt_capacitance`: Shunt capacitance per unit length of the layer \\[F/m\\].
+	- `shunt_conductance`: Shunt conductance per unit length of the layer \\[S/m\\].
 
 	# Dependencies
 	- `calc_tubular_resistance`: Computes the DC resistance of the semiconducting layer.
@@ -1170,7 +1170,7 @@ mutable struct Semicon
 end
 
 """
-Insulator: Represents an insulating layer with defined geometric, material, and electrical properties.
+Represents an insulating layer with defined geometric, material, and electrical properties.
 """
 mutable struct Insulator
 	radius_in::Number
@@ -1187,19 +1187,19 @@ mutable struct Insulator
 	Constructor: Initializes an `Insulator` object based on specified geometric and material parameters.
 
 	# Arguments
-	- `radius_in`: Internal radius of the insulating layer [m].
-	- `radius_ext`: External radius of the layer [m].
+	- `radius_in`: Internal radius of the insulating layer \\[m\\].
+	- `radius_ext`: External radius of the layer \\[m\\].
 	- `material_props`: A `Material` object representing the physical properties of the insulating material.
-	- `temperature`: Operating temperature of the layer [°C] (default: 20).
+	- `temperature`: Operating temperature of the layer \\[°C\\] (default: 20).
 
 	# Returns
 	An instance of `Insulator` initialized with the following calculated properties:
-	- `radius_ext`: External radius of the insulating layer [m].
+	- `radius_ext`: External radius of the insulating layer \\[m\\].
 	- `cross_section`: Cross-sectional area of the layer [m²].
 	- `resistance`: Electrical resistance of the layer [Ω/m].
-	- `gmr`: Geometric mean radius of the insulator [m].
-	- `shunt_capacitance`: Shunt capacitance per unit length of the layer [F/m].
-	- `shunt_conductance`: Shunt conductance per unit length of the layer [S/m].
+	- `gmr`: Geometric mean radius of the insulator \\[m\\].
+	- `shunt_capacitance`: Shunt capacitance per unit length of the layer \\[F/m\\].
+	- `shunt_conductance`: Shunt conductance per unit length of the layer \\[S/m\\].
 
 	# Dependencies
 	- `calc_tubular_resistance`: Computes the DC resistance of the insulating layer.
@@ -1266,7 +1266,7 @@ mutable struct Insulator
 end
 
 """
-CableParts: Defines a generic type for any cable part.
+Defines a generic type for any cable part.
 """
 const CableParts = Union{Conductor, Strip, WireArray, Tubular, Semicon, Insulator}
 
@@ -1278,7 +1278,7 @@ calc_equivalent_gmr: Computes the equivalent geometric mean radius (GMR) of a `C
 - `layer`: A `CableParts` object representing the new layer being added.
 
 # Returns
-- The updated equivalent GMR of the `CablePart` as a `Number` [m].
+- The updated equivalent GMR of the `CablePart` as a `Number` \\[m\\].
 
 # Dependencies
 - `calc_gmd`: Computes the geometric mean distance (GMD) between the last layer of the cable and the new layer.
@@ -1289,7 +1289,7 @@ material_props = Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393)
 conductor = Conductor(Strip(0.01, 0.002, 0.05, 10, material_props))
 new_layer = WireArray(0.02, 0.002, 7, 15, material_props)
 equivalent_gmr = calc_equivalent_gmr(conductor, new_layer)
-println(equivalent_gmr) # Outputs: Updated GMR value [m]
+println(equivalent_gmr) # Outputs: Updated GMR value \\[m\\]
 ```
 
 # References
@@ -1303,14 +1303,14 @@ function calc_equivalent_gmr(sc::CableParts, layer::CableParts)
 end
 
 """
-calc_gmd: Computes the geometric mean distance (GMD) between two cable parts.
+Computes the geometric mean distance (GMD) between two cable parts.
 
 # Arguments
 - `co1`: A `CableParts` object representing the first cable part (e.g., `WireArray`, `Strip`, `Tubular`, `Semicon` or `Insulator`).
 - `co2`: A `CableParts` object representing the second cable part (e.g., `WireArray`, `Strip`, `Tubular`, `Semicon` or `Insulator`).
 
 # Returns
-- The GMD as a `Number` [m], which represents the logarithmic average of pairwise distances between the cable parts.
+- The GMD as a `Number` \\[m\\], which represents the logarithmic average of pairwise distances between the cable parts.
 
 # Dependencies
 - `get_wirearray_coords`: Computes the coordinates of wires in a `WireArray`.
@@ -1321,12 +1321,12 @@ material_props = Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393)
 wire_array1 = WireArray(0.01, 0.002, 7, 10, material_props)
 wire_array2 = WireArray(0.02, 0.002, 7, 15, material_props)
 gmd = calc_gmd(wire_array1, wire_array2)
-println(gmd) # Outputs: GMD value [m]
+println(gmd) # Outputs: GMD value \\[m\\]
 
 strip = Strip(0.01, 0.002, 0.05, 10, material_props)
 tubular = Tubular(0.01, 0.02, material_props)
 gmd = calc_gmd(strip, tubular)
-println(gmd) # Outputs: GMD value [m]
+println(gmd) # Outputs: GMD value \\[m\\]
 ```
 
 # Notes
@@ -1387,7 +1387,7 @@ function calc_gmd(co1::CableParts, co2::CableParts)
 end
 
 """
-CableComponent: Represents a cable component with its geometric and material properties.
+Represents a cable component with its geometric and material properties.
 """
 mutable struct CableComponent
 	radius_in_con::Number
@@ -1406,18 +1406,18 @@ mutable struct CableComponent
 
 	# Arguments
 	- `component_data`: A vector of `CableParts` representing the subcomponents of the cable.
-	- `f`: The frequency of operation [Hz] (default: `f₀`).
+	- `f`: The frequency of operation \\[Hz\\] (default: `f₀`).
 
 	# Returns
 	An instance of `CableComponent` initialized with the following attributes:
-	- `radius_in_con`: Inner radius of the conductor [m].
-	- `radius_ext_con`: Outer radius of the conductor [m].
-	- `rho_con`: Resistivity of the conductor material [Ω·m].
-	- `alpha_con`: Temperature coefficient of resistance of the conductor [1/°C].
-	- `mu_con`: Magnetic permeability of the conductor material [H/m].
-	- `radius_ext_ins`: Outer radius of the insulator [m].
-	- `eps_ins`: Permittivity of the insulator material [F/m].
-	- `mu_ins`: Magnetic permeability of the insulator material [H/m].
+	- `radius_in_con`: Inner radius of the conductor \\[m\\].
+	- `radius_ext_con`: Outer radius of the conductor \\[m\\].
+	- `rho_con`: Resistivity of the conductor material \\[Ω·m\\].
+	- `alpha_con`: Temperature coefficient of resistance of the conductor \\[1/°C\\].
+	- `mu_con`: Magnetic permeability of the conductor material \\[H/m\\].
+	- `radius_ext_ins`: Outer radius of the insulator \\[m\\].
+	- `eps_ins`: Permittivity of the insulator material \\[F/m\\].
+	- `mu_ins`: Magnetic permeability of the insulator material \\[H/m\\].
 	- `loss_factor_ins`: Loss factor of the insulator (dimensionless).
 	- `component_data`: A vector of `CableParts` representing the subcomponents of the cable.
 
@@ -1431,8 +1431,8 @@ mutable struct CableComponent
 	```julia
 	components = [Conductor(...), Insulator(...)] # Define individual cable parts
 	cable = CableComponent(components, f=50)
-	println(cable.rho_con) # Output: Resistivity of the conductor [Ω·m]
-	println(cable.eps_ins) # Output: Permittivity of the insulator [F/m]
+	println(cable.rho_con) # Output: Resistivity of the conductor \\[Ω·m\\]
+	println(cable.eps_ins) # Output: Permittivity of the insulator \\[F/m\\]
 	```
 
 	# References
@@ -1590,7 +1590,7 @@ mutable struct CableComponent
 end
 
 """
-NominalData: Represents nominal electrical and geometric parameters for a cable.
+Represents nominal electrical and geometric parameters for a cable.
 """
 mutable struct NominalData
 	conductor_cross_section::Union{Nothing, Number}
@@ -1652,7 +1652,7 @@ mutable struct NominalData
 end
 
 """
-CableDesign: Represents the design of a cable, including its unique identifier, nominal data, and components.
+Represents the design of a cable, including its unique identifier, nominal data, and components.
 """
 mutable struct CableDesign
 	cable_id::String
@@ -1666,7 +1666,7 @@ mutable struct CableDesign
 	- `cable_id`: A string representing the unique identifier for the cable design.
 	- `component_name`: The name of the first cable component (String).
 	- `component_parts`: A vector of parts representing the subcomponents of the first cable component.
-	- `f`: The frequency of operation [Hz] (default: `f₀`).
+	- `f`: The frequency of operation \\[Hz\\] (default: `f₀`).
 	- `nominal_data`: A `NominalData` object containing reference data (default: `NominalData()`).
 
 	# Returns
@@ -1706,13 +1706,13 @@ mutable struct CableDesign
 end
 
 """
-add_cable_component!: Adds or replaces a cable component in an existing `CableDesign`.
+Adds or replaces a cable component in an existing `CableDesign`.
 
 # Arguments
 - `design`: A `CableDesign` object where the component will be added.
 - `component_name`: The name of the cable component to be added (String).
 - `component_parts`: A vector of parts representing the subcomponents of the cable component.
-- `f`: The frequency of operation [Hz] (default: `f₀`).
+- `f`: The frequency of operation \\[Hz\\] (default: `f₀`).
 
 # Returns
 Modifies the `CableDesign` object in-place by adding or replacing the specified cable component.
@@ -1748,7 +1748,7 @@ function add_cable_component!(
 end
 
 """
-core_parameters: Computes the core parameters (R, L, and C) for a given `CableDesign` and evaluates compliance with nominal values.
+Computes the core parameters (R, L, and C) for a given `CableDesign` and evaluates compliance with nominal values.
 
 # Arguments
 - `design`: A `CableDesign` object containing the cable components and nominal data.
@@ -1768,7 +1768,6 @@ A `DataFrame` with the following columns:
 - `calc_shunt_capacitance`: Computes the shunt capacitance of the insulator.
 - `_to_lower`: Computes the lower bound for a given value based on error margins.
 - `_to_upper`: Computes the upper bound for a given value based on error margins.
-- `DataFrame`: Constructs a tabular representation of the computed and nominal values.
 
 # Examples
 ```julia
@@ -1852,7 +1851,7 @@ function core_parameters(
 end
 
 """
-cable_data: Extracts and displays the properties of components in a `CableDesign` object as a `DataFrame`.
+Extracts and displays the properties of components in a `CableDesign` object as a `DataFrame`.
 
 # Arguments
 - `design`: A `CableDesign` object containing the components and their respective properties.
@@ -1863,7 +1862,7 @@ cable_data: Extracts and displays the properties of components in a `CableDesign
   - Additional columns: Each component of the cable, with property values or `missing` if the property is not available for the component.
 
 # Dependencies
-- `DataFrame`: Used to organize and display the component properties in tabular form.
+- None.
 
 # Examples
 ```julia
@@ -1929,7 +1928,7 @@ function cable_data(design::CableDesign)
 end
 
 """
-cable_parts_data: Generates a detailed `DataFrame` summarizing the properties of all cable parts in a `CableDesign`.
+Generates a detailed `DataFrame` summarizing the properties of all cable parts in a `CableDesign`.
 
 # Arguments
 - `design`: A `CableDesign` object containing components and their respective parts.
@@ -1941,8 +1940,7 @@ A `DataFrame` with the following structure:
   Each column contains the respective values for the specified property, or `missing` if the property is not defined for the part.
 
 # Dependencies
-- `DataFrame`: Used for tabular representation of the data.
-- `getfield`: Accesses field values dynamically based on their names.
+- None.
 
 # Notes
 - The function iterates over all components and their parts to extract and organize their properties.
@@ -2031,12 +2029,12 @@ function cable_parts_data(design::CableDesign)
 end
 
 """
-preview_cable_design: Visualizes the cross-section of a cable design.
+Visualizes the cross-section of a cable design.
 
 # Arguments
 - `design`: A `CableDesign` object representing the cable structure.
-- `x_offset`: Horizontal offset for the plot [m] (default: 0.0).
-- `y_offset`: Vertical offset for the plot [m] (default: 0.0).
+- `x_offset`: Horizontal offset for the plot \\[m\\] (default: 0.0).
+- `y_offset`: Vertical offset for the plot \\[m\\] (default: 0.0).
 - `plt`: An optional `Plots.Plot` object to use for plotting (default: `nothing`).
 - `display_plot`: Boolean flag to display the plot after rendering (default: `true`).
 - `display_legend`: Boolean flag to display the legend in the plot (default: `true`).
@@ -2079,8 +2077,8 @@ function preview_cable_design(
 			aspect_ratio = :equal,
 			legend = (0.875, 1.0),
 			title = "Cable design preview",
-			xlabel = "y [m]",
-			ylabel = "z [m]")
+			xlabel = "y \\[m\\]",
+			ylabel = "z \\[m\\]")
 	end
 
 	# Helper function to plot a layer
@@ -2180,7 +2178,7 @@ function preview_cable_design(
 end
 
 """
-CablesLibrary: Represents a library of cable designs stored as a dictionary.
+Represents a library of cable designs stored as a dictionary.
 """
 mutable struct CablesLibrary
 	cable_designs::Dict{String, CableDesign}  # Key: cable ID, Value: CableDesign object
@@ -2197,7 +2195,6 @@ mutable struct CablesLibrary
 
 	# Dependencies
 	- `_load_cables_from_jls!`: A function to load cable designs from a `.jls` file into the library.
-	- `isfile`: A function to check if the specified file exists.
 
 	# Examples
 	```julia
@@ -2224,7 +2221,7 @@ mutable struct CablesLibrary
 end
 
 """
-_load_cables_from_jls!: Loads cable designs from a serialized file into a `CablesLibrary` object.
+Loads cable designs from a serialized file into a `CablesLibrary` object.
 
 # Arguments
 - `library`: An instance of `CablesLibrary` to populate with the loaded cable designs.
@@ -2234,8 +2231,7 @@ _load_cables_from_jls!: Loads cable designs from a serialized file into a `Cable
 - None. Modifies the `cable_designs` field of the `CablesLibrary` object in-place.
 
 # Dependencies
-- `deserialize`: A function to deserialize the data from the specified file.
-- `println`: Used to provide feedback messages to the user.
+- None.
 
 # Examples
 ```julia
@@ -2262,7 +2258,7 @@ function _load_cables_from_jls!(library::CablesLibrary; file_name::String)
 end
 
 """
-save_cables_library: Saves the cable designs from a `CablesLibrary` object to a `.jls` file.
+Saves the cable designs from a `CablesLibrary` object to a `.jls` file.
 
 # Arguments
 - `library`: An instance of `CablesLibrary` whose cable designs are to be saved.
@@ -2272,8 +2268,7 @@ save_cables_library: Saves the cable designs from a `CablesLibrary` object to a 
 - None. Writes the serialized cable designs to the specified file.
 
 # Dependencies
-- `serialize`: A function to serialize and save data to a file.
-- `println`: Used to provide feedback messages to the user.
+- None.
 
 # Examples
 ```julia
@@ -2298,7 +2293,7 @@ function save_cables_library(
 end
 
 """
-store_cable_design!: Stores a cable design in a `CablesLibrary` object.
+Stores a cable design in a `CablesLibrary` object.
 
 # Arguments
 - `library`: An instance of `CablesLibrary` to which the cable design will be added.
@@ -2327,7 +2322,7 @@ function store_cable_design!(library::CablesLibrary, design::CableDesign)
 end
 
 """
-remove_cable_design!: Removes a cable design from a `CablesLibrary` object by its ID.
+Removes a cable design from a `CablesLibrary` object by its ID.
 
 # Arguments
 - `library`: An instance of `CablesLibrary` from which the cable design will be removed.
@@ -2363,7 +2358,7 @@ function remove_cable_design!(library::CablesLibrary, cable_id::String)
 end
 
 """
-get_cable_design: Retrieves a cable design from a `CablesLibrary` object by its ID.
+Retrieves a cable design from a `CablesLibrary` object by its ID.
 
 # Arguments
 - `library`: An instance of `CablesLibrary` from which the cable design will be retrieved.
@@ -2407,7 +2402,7 @@ function get_cable_design(
 end
 
 """
-display_cables_library: Displays the cable designs in a `CablesLibrary` object as a `DataFrame`.
+Displays the cable designs in a `CablesLibrary` object as a `DataFrame`.
 
 # Arguments
 - `library`: An instance of `CablesLibrary` whose cable designs are to be displayed.
@@ -2419,7 +2414,7 @@ display_cables_library: Displays the cable designs in a `CablesLibrary` object a
   - `components`: A comma-separated string listing the components of each cable design.
 
 # Dependencies
-- `DataFrame`: Used to create the tabular representation of the cable designs.
+- None.
 
 # Examples
 ```julia
@@ -2451,12 +2446,12 @@ function display_cables_library(library::CablesLibrary)
 end
 
 """
-CableDef: Defines the position and phase mapping of a cable within a system.
+Defines the position and phase mapping of a cable within a system.
 """
 mutable struct CableDef
 	cable::CableDesign             # The CableDesign object assigned
-	horz::Number                   # Horizontal coordinate [m]
-	vert::Number                   # Vertical coordinate [m]
+	horz::Number                   # Horizontal coordinate \\[m\\]
+	vert::Number                   # Vertical coordinate \\[m\\]
 	conn::Vector{Int}               # Phase mapping (aligned with cable.components)
 
 	"""	
@@ -2464,15 +2459,15 @@ mutable struct CableDef
 
 	# Arguments
 	- `cable`: A `CableDesign` object defining the cable structure.
-	- `horz`: Horizontal coordinate of the cable placement [m].
-	- `vert`: Vertical coordinate of the cable placement [m].
+	- `horz`: Horizontal coordinate of the cable placement \\[m\\].
+	- `vert`: Vertical coordinate of the cable placement \\[m\\].
 	- `conn`: A dictionary mapping component names to phase indices, or `nothing` for default mapping.
 
 	# Returns
 	An instance of `CableDef` with the following attributes:
 	- `cable`: Assigned `CableDesign` object.
-	- `horz`: Horizontal coordinate [m].
-	- `vert`: Vertical coordinate [m].
+	- `horz`: Horizontal coordinate \\[m\\].
+	- `vert`: Vertical coordinate \\[m\\].
 	- `conn`: Vector representing the phase mapping of each cable component.
 
 	# Notes
@@ -2514,13 +2509,13 @@ mutable struct CableDef
 end
 
 """
-LineCableSystem: Represents a cable system configuration, defining its structure, environmental properties, and phase assignments.
+Represents a cable system configuration, defining its structure, environmental properties, and phase assignments.
 """
 mutable struct LineCableSystem
 	case_id::String         # Unique identifier for the system
-	T::Number               # Operating temperature [°C]
+	T::Number               # Operating temperature \\[°C\\]
 	earth_props::EarthModel # Earth properties
-	line_length::Number     # Length of the cable system [m]
+	line_length::Number     # Length of the cable system \\[m\\]
 	num_cables::Int         # Number of cables in the system
 	num_phases::Int         # Number of actual phases in the system
 	cables::Vector{CableDef} # Cross-section cable definition
@@ -2530,17 +2525,17 @@ mutable struct LineCableSystem
 
 	# Arguments
 	- `case_id`: Identifier for the cable system.
-	- `T`: Operating temperature [°C].
+	- `T`: Operating temperature \\[°C\\].
 	- `earth_props`: Instance of `EarthModel` defining ground parameters.
-	- `line_length`: Length of the cable system [m].
+	- `line_length`: Length of the cable system \\[m\\].
 	- `cable`: Initial `CableDef` object defining a cable's position and phase mapping.
 
 	# Returns
 	An instance of `LineCableSystem` with the following attributes:
 	- `case_id`: System identifier.
-	- `T`: Operating temperature [°C].
+	- `T`: Operating temperature \\[°C\\].
 	- `earth_props`: Ground properties affecting electromagnetic behavior.
-	- `line_length`: Cable system length [m].
+	- `line_length`: Cable system length \\[m\\].
 	- `num_cables`: Initial number of cables (set to 1).
 	- `num_phases`: Count of unique nonzero phase assignments.
 	- `cables`: List containing the first `CableDef` instance.
@@ -2582,6 +2577,42 @@ mutable struct LineCableSystem
 	end
 end
 
+"""
+Adds a new cable definition to an existing `LineCableSystem`, updating its phase mapping and cable count.
+
+# Arguments
+- `system`: Instance of `LineCableSystem` to which the cable will be added.
+- `cable`: Instance of `CableDesign` defining the cable structure.
+- `horz`: Horizontal coordinate \\[m\\].
+- `vert`: Vertical coordinate \\[m\\].
+- `conn`: Dictionary mapping component names to phase indices, or `nothing` for automatic assignment.
+
+# Returns
+- Modifies `system` in place by adding a new `CableDef` and updating `num_cables` and `num_phases`.
+
+# Dependencies
+- None.
+
+# Examples
+```julia
+material = get_material(materials_db, "aluminum")
+cable_design = CableDesign("SomeCable", "core", [core])
+earth_params = EarthModel(10.0 .^ range(0, stop=6, length=10), 100, 10, 1)
+
+xa, ya = percent_to_uncertain(0, 0), percent_to_uncertain(-1, 0)
+xb, yb = percent_to_uncertain(1, 0), percent_to_uncertain(-2, 0)
+
+cabledef1 = CableDef(cable_design, xa, ya, Dict("core" => 1))
+cable_system = LineCableSystem("test_case_1", 20.0, earth_params, 1000.0, cabledef1)
+
+add_cable_definition!(cable_system, cable_design, xb, yb, Dict("core" => 2))
+println(cable_system.num_cables)  # Output: 2
+println(cable_system.num_phases)  # Output: Number of unique phase assignments
+```
+
+# References
+- None.
+"""
 function add_cable_definition!(
 	system::LineCableSystem,
 	cable::CableDesign,
@@ -2611,36 +2642,24 @@ function add_cable_definition!(
 end
 
 """
-add_cable_definition!: Adds a new cable definition to an existing `LineCableSystem`, updating its phase mapping and cable count.
+Visualizes the cross-section of a cable system, including earth layers and cables.
 
 # Arguments
-- `system`: Instance of `LineCableSystem` to which the cable will be added.
-- `cable`: Instance of `CableDesign` defining the cable structure.
-- `horz`: Horizontal coordinate [m].
-- `vert`: Vertical coordinate [m].
-- `conn`: Dictionary mapping component names to phase indices, or `nothing` for automatic assignment.
+- `system`: A `LineCableSystem` object containing the cable arrangement and earth properties.
+- `zoom_factor`: A scaling factor for adjusting the x-axis limits (default: 0.25).
 
 # Returns
-- Modifies `system` in place by adding a new `CableDef` and updating `num_cables` and `num_phases`.
+- Displays a plot of the cable system's cross-section with cables, earth layers (if applicable), and the air/earth interface.
 
 # Dependencies
-- None.
+- `plotlyjs()`: Initializes the plotting backend.
+- `_to_nominal`: Converts cable position coordinates to nominal values.
+- `preview_cable_design`: Visualizes individual cable designs within the system.
 
 # Examples
 ```julia
-material = get_material(materials_db, "aluminum")
-cable_design = CableDesign("SomeCable", "core", [core])
-earth_params = EarthModel(10.0 .^ range(0, stop=6, length=10), 100, 10, 1)
-
-xa, ya = percent_to_uncertain(0, 0), percent_to_uncertain(-1, 0)
-xb, yb = percent_to_uncertain(1, 0), percent_to_uncertain(-2, 0)
-
-cabledef1 = CableDef(cable_design, xa, ya, Dict("core" => 1))
-cable_system = LineCableSystem("test_case_1", 20.0, earth_params, 1000.0, cabledef1)
-
-add_cable_definition!(cable_system, cable_design, xb, yb, Dict("core" => 2))
-println(cable_system.num_cables)  # Output: 2
-println(cable_system.num_phases)  # Output: Number of unique phase assignments
+system = LineCableSystem([...])
+preview_system_cross_section(system, zoom_factor=0.5)
 ```
 
 # References
@@ -2652,8 +2671,8 @@ function preview_system_cross_section(system::LineCableSystem; zoom_factor = 0.2
 		aspect_ratio = :equal,
 		legend = (0.8, 0.9),
 		title = "Cable system cross-section",
-		xlabel = "y [m]",
-		ylabel = "z [m]")
+		xlabel = "y \\[m\\]",
+		ylabel = "z \\[m\\]")
 
 	# Plot the air/earth interface at y=0
 	hline!(
@@ -2720,12 +2739,12 @@ function preview_system_cross_section(system::LineCableSystem; zoom_factor = 0.2
 end
 
 """
-trifoil_formation: Computes the coordinates of three cables arranged in a trifoil pattern.
+Computes the coordinates of three cables arranged in a trifoil pattern.
 
 # Arguments
 - `xc`: X-coordinate of the center point.
 - `yc`: Y-coordinate of the center point.
-- `r_ext`: External radius of the circular layout [m].
+- `r_ext`: External radius of the circular layout \\[m\\].
 
 # Returns
 - `xa`, `ya`: Coordinates of the top cable.
@@ -2764,12 +2783,12 @@ function trifoil_formation(xc, yc, r_ext)
 end
 
 """
-flat_formation: Computes the coordinates of three conductors arranged in a flat (horizontal or vertical) formation.
+Computes the coordinates of three conductors arranged in a flat (horizontal or vertical) formation.
 
 # Arguments
 - `xc`: X-coordinate of the reference point.
 - `yc`: Y-coordinate of the reference point.
-- `s`: Spacing between adjacent conductors [m].
+- `s`: Spacing between adjacent conductors \\[m\\].
 - `vertical`: Boolean flag indicating whether the formation is vertical (default: `false`).
 
 # Returns
@@ -2811,7 +2830,7 @@ function flat_formation(xc, yc, s; vertical = false)
 end
 
 """
-cross_section_data: Generate a summary DataFrame for cable positions and phase mappings within a LineCableSystem.
+Generate a summary DataFrame for cable positions and phase mappings within a LineCableSystem.
 
 # Arguments
 - `system`: A `LineCableSystem` object containing the cable definitions and their configurations.
@@ -2819,8 +2838,8 @@ cross_section_data: Generate a summary DataFrame for cable positions and phase m
 # Returns
 A `DataFrame` containing:
 - `cable_id`: Identifier of each cable design.
-- `horz`: Horizontal coordinate of each cable [m].
-- `vert`: Vertical coordinate of each cable [m].
+- `horz`: Horizontal coordinate of each cable \\[m\\].
+- `vert`: Vertical coordinate of each cable \\[m\\].
 - `phase_mapping`: Human-readable string representation mapping each cable component to its assigned phase.
 
 # Dependencies

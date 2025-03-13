@@ -1,18 +1,4 @@
 module LineCableModels
-"""
-# LineCableModels
-
-- Frequency-domain calculations of impedances (series R and L) and admittances (shunt C and G) of arbitrary line/cable arrangements, accounting for skin effect, conductor and insulation properties, and earth-return impedances with frequency-dependent soil models.
-
-- Uncertainty quantification using the `Measurements.jl` package, to accurately represent and propagate uncertainties related to cross-section information, internal and external radii of conductors and insulation layers, and electromagnetic properties of materials. 
-
-## Features
-- Auxiliary functions for uncertainty analysis and quantification
-- Materials library
-- Consistent data model with constructors for different lines and cables components
-- Frequency-dependent soil models and equivalent homogeneous parameters
-- Data export to PSCAD for EMT simulations
-"""
 
 # Load required packages
 using Measurements

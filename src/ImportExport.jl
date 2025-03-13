@@ -1,13 +1,11 @@
-"""
-PSCIdGen: Generates unique IDs for PSCAD exports.
-"""
+# PSCIdGen: Generates unique IDs for PSCAD exports.
 mutable struct PSCIdGen
 	current::Int
 	PSCIdGen(start = 100000000) = new(start)
 end
 
 """
-export_pscad_model: Exports a `LineCableSystem` to a PSCAD-compatible file format.
+Exports a `LineCableSystem` to a PSCAD-compatible file format.
 
 # Arguments
 - `cable_system`: A `LineCableSystem` object representing the cable system to be exported.

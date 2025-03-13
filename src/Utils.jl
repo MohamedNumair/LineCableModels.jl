@@ -1,5 +1,5 @@
 """
-_equals: Checks if two numerical values are approximately equal within a given tolerance.
+Checks if two numerical values are approximately equal within a given tolerance.
 
 # Arguments
 - `x`: First numeric value.
@@ -32,7 +32,7 @@ function _equals(x, y; atol = TOL)
 end
 
 """
-_to_nominal: Extracts the nominal value from a measurement or returns the original value.
+Extracts the nominal value from a measurement or returns the original value.
 
 # Arguments
 - `x`: Input value which can be a `Measurement` type or any other type.
@@ -63,7 +63,7 @@ function _to_nominal(x)
 end
 
 """
-percent_to_uncertain: Converts a value to a measurement with uncertainty based on percentage.
+Converts a value to a measurement with uncertainty based on percentage.
 
 # Arguments
 - `val`: The nominal value.
@@ -95,7 +95,7 @@ function percent_to_uncertain(val, perc) #perc from 0 to 100
 end
 
 """
-bias_to_uncertain: Computes the uncertainty of a measurement by incorporating systematic bias.
+Computes the uncertainty of a measurement by incorporating systematic bias.
 
 # Arguments
 - `nominal`: The deterministic nominal value (Float64).
@@ -136,7 +136,7 @@ function bias_to_uncertain(nominal::Float64, measurements::Vector{<:Measurement}
 end
 
 """
-_to_upper: Computes the upper bound of a measurement value.
+Computes the upper bound of a measurement value.
 
 # Arguments
 - `m`: A numerical value, expected to be of type `Measurement` from the `Measurements.jl` package.
@@ -171,14 +171,13 @@ function _to_upper(m::Number)
 end
 
 """
-_to_upper and _to_lower: Compute the upper and lower bounds of a measurement value.
+Computes the lower bound of a measurement value.
 
 # Arguments
 - `m`: A numerical value, expected to be of type `Measurement` from the `Measurements.jl` package.
 
 # Returns
-- `_to_upper(m)`: The upper bound, computed as `value(m) + uncertainty(m)` if `m` is a `Measurement`.
-- `_to_lower(m)`: The lower bound, computed as `value(m) - uncertainty(m)` if `m` is a `Measurement`.
+- The lower bound, computed as `value(m) - uncertainty(m)` if `m` is a `Measurement`.
 - `NaN` if `m` is not a `Measurement`.
 
 # Dependencies
@@ -209,7 +208,7 @@ function _to_lower(m::Number)
 end
 
 """
-_percent_error: Computes the percentage uncertainty of a measurement.
+Computes the percentage uncertainty of a measurement.
 
 # Arguments
 - `m`: A numerical value, expected to be of type `Measurement` from the `Measurements.jl` package.

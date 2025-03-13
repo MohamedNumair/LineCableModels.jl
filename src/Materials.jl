@@ -1,23 +1,23 @@
 """
-Material: Represents the fundamental physical properties of a material.
+Represents the fundamental physical properties of a material.
 
 # Fields
-- `rho`: Electrical resistivity of the material [Ω·m].
+- `rho`: Electrical resistivity of the material \\[Ω·m\\].
 - `eps_r`: Relative permittivity of the material (dimensionless).
 - `mu_r`: Relative permeability of the material (dimensionless).
-- `T0`: Reference temperature at which properties are evaluated [°C].
-- `alpha`: Temperature coefficient of resistivity [1/°C].
+- `T0`: Reference temperature at which properties are evaluated \\[°C\\].
+- `alpha`: Temperature coefficient of resistivity \\[1/°C\\].
 """
 struct Material
-	rho::Number      # Resistivity [Ω·m]
+	rho::Number      # Resistivity \\[Ω·m\\]
 	eps_r::Number    # Relative permittivity
 	mu_r::Number     # Relative permeability
-	T0::Number       # Reference temperature [°C]
-	alpha::Number    # Temperature coefficient [1/°C]
+	T0::Number       # Reference temperature \\[°C\\]
+	alpha::Number    # Temperature coefficient \\[1/°C\\]
 end
 
 """
-MaterialsLibrary: Stores a collection of materials and their corresponding properties.
+Stores a collection of materials and their corresponding properties.
 
 # Fields
 - `materials`: A dictionary where keys are material names (String) and values are `Material` objects.
@@ -64,7 +64,7 @@ function MaterialsLibrary(; file_name::String = "materials_library.csv")::Materi
 end
 
 """
-_add_default_materials!: Adds a predefined set of materials to the `MaterialsLibrary` instance.
+Adds a predefined set of materials to the `MaterialsLibrary` instance.
 
 # Arguments
 - `library`: A `MaterialsLibrary` instance to which default materials will be added.
@@ -99,7 +99,7 @@ function _add_default_materials!(library::MaterialsLibrary)
 end
 
 """
-_load_from_csv!: Loads material data from a CSV file into the `MaterialsLibrary` instance.
+Loads material data from a CSV file into the `MaterialsLibrary` instance.
 
 # Arguments
 - `library`: A `MaterialsLibrary` instance where the material data will be loaded.
@@ -111,8 +111,6 @@ _load_from_csv!: Loads material data from a CSV file into the `MaterialsLibrary`
 # Dependencies
 - `Material`: Constructs material objects with specified properties.
 - `add_material!`: Adds a single material to the library.
-- `DataFrame`: Represents the data read from the CSV file.
-- `CSV.File`: Reads CSV data into a `DataFrame`.
 
 # Examples
 ```julia
@@ -133,7 +131,7 @@ function _load_from_csv!(library::MaterialsLibrary, file_name::String)
 end
 
 """
-add_material!: Adds a material to the `MaterialsLibrary` instance.
+Adds a material to the `MaterialsLibrary` instance.
 
 # Arguments
 - `library`: A `MaterialsLibrary` instance to which the material will be added.
@@ -161,7 +159,7 @@ function add_material!(library::MaterialsLibrary, name::String, material::Materi
 end
 
 """
-remove_material!: Removes a material from the `MaterialsLibrary` instance.
+Removes a material from the `MaterialsLibrary` instance.
 
 # Arguments
 - `library`: A `MaterialsLibrary` instance from which the material will be removed.
@@ -187,7 +185,7 @@ function remove_material!(library::MaterialsLibrary, name::String)
 end
 
 """
-save_materials_library: Saves the materials from the `MaterialsLibrary` instance to a CSV file.
+Saves the materials from the `MaterialsLibrary` instance to a CSV file.
 
 # Arguments
 - `library`: A `MaterialsLibrary` instance whose materials will be saved.
@@ -197,8 +195,7 @@ save_materials_library: Saves the materials from the `MaterialsLibrary` instance
 - None. Writes the materials data to the specified file.
 
 # Dependencies
-- `DataFrame`: Constructs tabular data for the materials.
-- `CSV.write`: Writes the data to a CSV file.
+- None.
 
 # Examples
 ```julia
@@ -229,7 +226,7 @@ function save_materials_library(
 end
 
 """
-display_materials_library: Displays the materials from the `MaterialsLibrary` instance as a DataFrame.
+Displays the materials from the `MaterialsLibrary` instance as a DataFrame.
 
 # Arguments
 - `library`: A `MaterialsLibrary` instance whose materials will be displayed.
@@ -238,7 +235,7 @@ display_materials_library: Displays the materials from the `MaterialsLibrary` in
 - A `DataFrame` representing the materials and their properties.
 
 # Dependencies
-- `DataFrame`: Constructs tabular data for display.
+- None.
 
 # Examples
 ```julia
@@ -265,7 +262,7 @@ function display_materials_library(library::MaterialsLibrary)::DataFrame
 end
 
 """
-get_material: Retrieve material data from a library.
+Retrieve material data from a library.
 
 # Arguments
 - `library`: A `MaterialsLibrary` object containing properties of the material.
