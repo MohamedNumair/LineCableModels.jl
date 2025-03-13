@@ -51,9 +51,9 @@ This work is supported by the Etch Competence Hub of EnergyVille, financed by th
 
 <p align="center">
   <img src="assets/img/etch_logo.png" width="150">
-  <img src="https://dummyimage.com/50x1/000000/000000&text=+" width="50">
+  <img src="https://dummyimage.com/75x1/000000/000000&text=+" width="75">
   <img src="assets/img/energyville_logo.png" width="150">
-  <img src="https://dummyimage.com/50x1/000000/000000&text=+" width="50">
+  <img src="https://dummyimage.com/75x1/000000/000000&text=+" width="75">
   <img src="assets/img/kul_logo.png" width="150">
 </p>
 
