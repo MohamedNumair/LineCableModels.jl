@@ -27,12 +27,31 @@
 
 An overview of the methods implemented in `LineCableModels.jl` is given in the document titled [Cable modeling for assessment of uncertainties](https://www.overleaf.com/read/xhmvbjgdqjxn#5e6f69).
 
+## Usage
+
+Clone the package and add to the Julia environment:
+
+```julia
+] add https://github.com/Electa-Git/LineCableModels.jl.git
+```
+
+```julia
+using LineCableModels
+```
+
+While the package documentation is a work in progress, a self-contained example is provided in the [Main.jl](Main.jl) file. This script demonstrates how to create a cable object, and compute its electrical parameters. The example also shows how to export the cable design to a PSCAD-compatible format.
+
+## License
+
+The source code is provided under the [BSD 3-Clause License](LICENSE).
+
 ## Acknowledgements
 
 This work is supported by the Etch Competence Hub of EnergyVille, financed by the Flemish Government. The primary developer is Amauri Martins ([@amaurigmartins](https://github.com/amaurigmartins)).
 
-![Etch](assets/img/etch_logo.png)
+<p align="center">
+  <img src="assets/img/etch_logo.png" width="150" style="margin: 0 50px;">
+  <img src="assets/img/energyville_logo.png" width="150" style="margin: 0 50px;">
+  <img src="assets/img/kul_logo.png" width="150" style="margin: 0 50px;">
+</p>
 
-![EnergyVille](assets/img/energyville_logo.png)
-
-![KUL](assets/img/kul_logo.png)

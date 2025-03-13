@@ -56,9 +56,9 @@
 		.st3 {fill:#7f7f7f;stroke:#aaaaaa;stroke-linecap:round;stroke-linejoin:round;stroke-width:1.5}
 		.st4 {fill:none;stroke:#aaaaaa;stroke-linecap:round;stroke-linejoin:round;stroke-width:1.5}
 		.st5 {stroke:#aaaaaa;stroke-linecap:round;stroke-linejoin:round;stroke-width:1}
-		.st6 {stroke:#4a90e2;stroke-linecap:round;stroke-linejoin:round;stroke-width:1}
-		.st7 {marker-end:url(#mrkr9-41);marker-start:url(#mrkr9-39);stroke:#4a90e2;stroke-linecap:round;stroke-linejoin:round;stroke-width:1}
-		.st8 {fill:#4a90e2;fill-opacity:1;stroke:#4a90e2;stroke-opacity:1;stroke-width:0.28409090909091}
+		.st6 {stroke:#e67e22;stroke-linecap:round;stroke-linejoin:round;stroke-width:1}
+		.st7 {marker-end:url(#mrkr9-41);marker-start:url(#mrkr9-39);stroke:#e67e22;stroke-linecap:round;stroke-linejoin:round;stroke-width:1}
+		.st8 {fill:#e67e22;fill-opacity:1;stroke:#e67e22;stroke-opacity:1;stroke-width:0.28409090909091}
 		.st9 {fill:none;stroke:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:0.75}
 		.st10 {fill:#e0e0e0;font-family:Computer Modern;font-size:1.00001em}
 		.st11 {baseline-shift:-33.349%;font-size:0.666979em}
@@ -66,8 +66,8 @@
 		.st13 {fill:#e0e0e0;font-family:Times New Roman;font-size:1.00001em}
 		.st14 {font-family:Computer Modern;font-size:1em}
 		.st15 {baseline-shift:-33.349%;font-family:Computer Modern;font-size:0.666979em}
-		.st16 {marker-end:url(#mrkr4-151);stroke:#4a90e2;stroke-linecap:round;stroke-linejoin:round;stroke-width:0.75}
-		.st17 {fill:#4a90e2;fill-opacity:1;stroke:#4a90e2;stroke-opacity:1;stroke-width:0.22935779816514}
+		.st16 {marker-end:url(#mrkr4-151);stroke:#e67e22;stroke-linecap:round;stroke-linejoin:round;stroke-width:0.75}
+		.st17 {fill:#e67e22;fill-opacity:1;stroke:#e67e22;stroke-opacity:1;stroke-width:0.22935779816514}
 		.st18 {fill:#121212;stroke:#aaaaaa;stroke-linecap:round;stroke-linejoin:round;stroke-width:0.75}
 		.st19 {fill:none;fill-rule:evenodd;font-size:12px;overflow:visible;stroke-linecap:square;stroke-miterlimit:3}
 	]]>
