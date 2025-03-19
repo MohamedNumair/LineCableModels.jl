@@ -8,7 +8,6 @@
 `LineCableModels.jl` is a Julia package for computing the electrical parameters of arbitrary arrangements of underground and overhead power cables, with built-in uncertainty quantification. It is designed as a general-purpose and scalable toolbox to calculate transmission line parameters and to construct models for steady-state analysis and electromagnetic transient (EMT) simulations. 
   
 
-
 ## Main features
 
 - Uses `Measurements.jl` to model uncertainties in cable geometry, materials, and earth properties.
