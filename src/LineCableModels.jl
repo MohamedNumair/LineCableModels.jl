@@ -1,94 +1,63 @@
 module LineCableModels
 
-# Load required packages
-using Measurements
-using CSV
-using DataFrames
-using Colors
-using ColorSchemes
-using Plots
-using Plots.PlotMeasures
-using Statistics
-using LinearAlgebra
-using SpecialFunctions
-using DataStructures
-using Serialization
-using EzXML
-using Dates
+# Load common dependencies and definitions
+include("CommonDeps.jl")
 
-# Module-level constants and utilities
-const f₀ = 50 # Base power system frequency
-const μ₀ = 4π * 1e-7
-const ε₀ = 8.8541878128e-12
-const ρ₀ = 1.724e-08 # Annealed copper reference resistivity
-const T₀ = 20 # Base temperature
-const TOL = 1e-6
-
+# Submodule `Utils`
 include("Utils.jl")
-export bias_to_uncertain,
-	percent_to_uncertain,
-	_to_nominal,
-	_to_upper,
-	_to_lower,
-	_percent_error
+@force using .Utils
+@reexport using .Utils
 
-# Materials library
+# Submodule `Materials`
 include("Materials.jl")
-export Material,
-	MaterialsLibrary,
-	add_material!,
-	remove_material!,
-	save_materials_library,
-	display_materials_library,
-	get_material
+@force using .Materials
+@reexport using .Materials
 
-# Soil properties
+# Submodule `EarthProps`
 include("EarthProps.jl")
-export ConstantProperties,
-	EarthLayer,
-	EarthModel,
-	EnforceLayer,
-	add_earth_layer!,
-	earth_data
+@force using .EarthProps
+@reexport using .EarthProps
 
-# Lines and cables data model
-include("DataModel.jl")
-export @thick,
-	Thickness,
-	@diam,
-	WireArray,
-	Strip,
-	Tubular,
-	ConductorParts,
-	Conductor,
-	Semicon,
-	Insulator,
-	CableDesign,
-	NominalData,
-	CableComponent,
-	CableParts,
-	add_cable_component!,
-	add_conductor_part!,
-	cable_parts_data,
-	cable_data,
-	core_parameters,
-	preview_cable_design,
-	CablesLibrary,
-	save_cables_library,
-	store_cable_design!,
-	remove_cable_design!,
-	get_cable_design,
-	display_cables_library,
-	LineCableSystem,
-	CableDef,
-	add_cable_definition!,
-	preview_system_cross_section,
-	trifoil_formation,
-	flat_formation,
-	cross_section_data
+
+# # Lines and cables data model
+# include("DataModel.jl")
+# export @thick,
+# 	Thickness,
+# 	@diam,
+# 	WireArray,
+# 	Strip,
+# 	Tubular,
+# 	ConductorParts,
+# 	Conductor,
+# 	Semicon,
+# 	Insulator,
+# 	CableDesign,
+# 	NominalData,
+# 	CableComponent,
+# 	CableParts,
+# 	add_cable_component!,
+# 	add_conductor_part!,
+# 	cable_parts_data,
+# 	cable_data,
+# 	core_parameters,
+# 	preview_cable_design,
+# 	CablesLibrary,
+# 	save_cables_library,
+# 	store_cable_design!,
+# 	remove_cable_design!,
+# 	get_cable_design,
+# 	display_cables_library,
+# 	LineCableSystem,
+# 	CableDef,
+# 	add_cable_definition!,
+# 	preview_system_cross_section,
+# 	trifoil_formation,
+# 	flat_formation,
+# 	cross_section_data
 
 # Import and export data
-include("ImportExport.jl")
-export export_pscad_model
+# include("ImportExport.jl")
+# using .ImportExport
+# @_autoexport
 
 end

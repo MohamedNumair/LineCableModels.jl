@@ -1,0 +1,15 @@
+#documenter-settings-button {
+    display: none !important;
+}
+
+html.theme--catppuccin-mocha a:hover,
+html.theme--catppuccin-mocha a.docstring-binding code:hover,
+html.theme--catppuccin-mocha a.docstring-binding:hover code,
+html.theme--catppuccin-mocha body div#documenter a:hover,
+html.theme--catppuccin-mocha body div#documenter a code:hover {
+    color: #4493f8 !important;
+}
+
+html.theme--catppuccin-mocha body div#documenter div.docs-main article#documenter-page.content ul li strong {
+    color: #ffffff !important;
+}

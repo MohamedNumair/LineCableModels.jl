@@ -82,4 +82,4 @@ display(cross_section_data(cable_system))
 preview_system_cross_section(cable_system, zoom_factor = 0.25)
 
 # Export to PSCAD input file
-export_pscad_model(cable_system, folder_path = proj_dir);
+export_pscad_lcp(cable_system, folder_path = proj_dir);

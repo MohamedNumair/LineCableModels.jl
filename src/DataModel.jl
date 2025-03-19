@@ -93,8 +93,8 @@ struct WireArray
 	- `twist_direction`: Twisting direction of the strands (1 = unilay, -1 = contralay).
 	- `material_props`: A `Material` object representing the physical properties of the wire material.
 	- `temperature`: Temperature at which the properties are evaluated \\[°C\\].
-	- `cross_section`: Cross-sectional area of all wires in the array [m²].
-	- `resistance`: Electrical resistance per wire in the array [Ω/m].
+	- `cross_section`: Cross-sectional area of all wires in the array \\[m²\\].
+	- `resistance`: Electrical resistance per wire in the array \\[Ω/m\\].
 	- `gmr`: Geometric mean radius of the wire array \\[m\\].
 
 	# Dependencies
@@ -210,8 +210,8 @@ struct Strip
 	- `twist_direction`: Twisting direction of the strip (1 = unilay, -1 = contralay).
 	- `material_props`: A `Material` object representing the physical properties of the strip material.
 	- `temperature`: Temperature at which the properties are evaluated \\[°C\\].
-	- `cross_section`: Cross-sectional area of the strip [m²].
-	- `resistance`: Electrical resistance of the strip [Ω/m].
+	- `cross_section`: Cross-sectional area of the strip \\[m²\\].
+	- `resistance`: Electrical resistance of the strip \\[Ω/m\\].
 	- `gmr`: Geometric mean radius of the strip \\[m\\].
 
 	# Dependencies
@@ -282,32 +282,45 @@ struct Strip
 end
 
 """
-Represents a tubular or solid (radius_in=0) conductor with defined geometric and material properties.
+$(TYPEDEF)
+
+Represents a tubular or solid (`radius_in=0`) conductor with geometric and material properties defined as:
+
+$(TYPEDFIELDS)
 """
 mutable struct Tubular
+	"Internal radius of the tubular conductor \\[m\\]."
 	radius_in::Number
+	"External radius of the tubular conductor \\[m\\]."
 	radius_ext::Number
+	"A [`Material`](@ref) object representing the physical properties of the conductor material."
 	material_props::Material
+	"Temperature at which the properties are evaluated \\[°C\\]."
 	temperature::Number
+	"Cross-sectional area of the tubular conductor \\[m²\\]."
 	cross_section::Number
+	"Electrical resistance (DC) of the tubular conductor \\[Ω/m\\]"
 	resistance::Number
+	"Geometric mean radius of the tubular conductor \\[m\\]"
 	gmr::Number
 
-	"""
-	Constructor: Initializes a `Tubular` object with specified geometric and material parameters.
+	@doc """
+	$(TYPEDSIGNATURES)
+
+	Initializes a [`Tubular`](@ref) object with specified geometric and material parameters.
 
 	# Arguments
 	- `radius_in`: Internal radius of the tubular conductor \\[m\\].
 	- `radius_ext`: External radius of the tubular conductor \\[m\\].
-	- `material_props`: A `Material` object representing the physical properties of the conductor material.
+	- `material_props`: A [`Material`](@ref) object representing the physical properties of the conductor material.
 	- `temperature`: Temperature at which the properties are evaluated \\[°C\\] (default: 20).
 
 	# Returns
-	An instance of `Tubular` initialized with calculated geometric and electrical properties.
+	An instance of [`Tubular`](@ref) initialized with calculated geometric and electrical properties.
 
-	# Dependencies
-	- `calc_tubular_resistance`: Computes the DC resistance of the tubular conductor.
-	- `calc_tubular_gmr`: Calculates the geometric mean radius (GMR) of the tubular conductor.
+	# See also
+	- [`calc_tubular_resistance`](@ref): Computes the DC resistance of the tubular conductor.
+	- [`calc_tubular_gmr`](@ref): Calculates the geometric mean radius (GMR) of the tubular conductor.
 
 	# Examples
 	```julia
@@ -316,7 +329,6 @@ mutable struct Tubular
 	println(tubular.cross_section) # Outputs: Cross-sectional area in m²
 	println(tubular.resistance)    # Outputs: Resistance in Ω
 	```
-
 
 	"""
 	function Tubular(
@@ -990,9 +1002,9 @@ function _get_material_color(
 	rho_base = 1.72e-8
 
 	# Extract nominal values for uncertain measurements
-	rho = _to_nominal(material_props.rho)
-	epsr_r = _to_nominal(material_props.eps_r)
-	mu_r = _to_nominal(material_props.mu_r)
+	rho = to_nominal(material_props.rho)
+	epsr_r = to_nominal(material_props.eps_r)
+	mu_r = to_nominal(material_props.mu_r)
 
 	# Handle air/void
 	if isinf(rho)
@@ -1079,8 +1091,8 @@ mutable struct Semicon
 	# Returns
 	An instance of `Semicon` initialized with the following calculated properties:
 	- `radius_ext`: External radius of the semiconducting layer \\[m\\].
-	- `cross_section`: Cross-sectional area of the layer [m²].
-	- `resistance`: Electrical resistance of the layer [Ω/m].
+	- `cross_section`: Cross-sectional area of the layer \\[m²\\].
+	- `resistance`: Electrical resistance of the layer \\[Ω/m\\].
 	- `gmr`: Geometric mean radius of the semiconductor \\[m\\].
 	- `shunt_capacitance`: Shunt capacitance per unit length of the layer \\[F/m\\].
 	- `shunt_conductance`: Shunt conductance per unit length of the layer \\[S/m\\].
@@ -1175,8 +1187,8 @@ mutable struct Insulator
 	# Returns
 	An instance of `Insulator` initialized with the following calculated properties:
 	- `radius_ext`: External radius of the insulating layer \\[m\\].
-	- `cross_section`: Cross-sectional area of the layer [m²].
-	- `resistance`: Electrical resistance of the layer [Ω/m].
+	- `cross_section`: Cross-sectional area of the layer \\[m²\\].
+	- `resistance`: Electrical resistance of the layer \\[Ω/m\\].
 	- `gmr`: Geometric mean radius of the insulator \\[m\\].
 	- `shunt_capacitance`: Shunt capacitance per unit length of the layer \\[F/m\\].
 	- `shunt_conductance`: Shunt conductance per unit length of the layer \\[S/m\\].
@@ -1739,8 +1751,8 @@ A `DataFrame` with the following columns:
 - `calc_tubular_resistance`: Computes the resistance of the tubular conductor.
 - `calc_inductance_trifoil`: Computes the inductance of the conductor.
 - `calc_shunt_capacitance`: Computes the shunt capacitance of the insulator.
-- `_to_lower`: Computes the lower bound for a given value based on error margins.
-- `_to_upper`: Computes the upper bound for a given value based on error margins.
+- `to_lower`: Computes the lower bound for a given value based on error margins.
+- `to_upper`: Computes the upper bound for a given value based on error margins.
 
 # Examples
 ```julia
@@ -1809,8 +1821,8 @@ function core_parameters(
 		parameter = ["R [Ω/km]", "L [mH/km]", "C [μF/km]"],
 		computed = [R, L, C],
 		nominal = nominals,
-		lower = [_to_lower(R), _to_lower(L), _to_lower(C)],
-		upper = [_to_upper(R), _to_upper(L), _to_upper(C)],
+		lower = [to_lower(R), to_lower(L), to_lower(C)],
+		upper = [to_upper(R), to_upper(L), to_upper(C)],
 	)
 
 	# Add compliance column
@@ -2051,10 +2063,10 @@ function preview_cable_design(
 	# Helper function to plot a layer
 	function plot_layer!(layer, label; x0 = 0.0, y0 = 0.0)
 		if layer isa WireArray
-			radius_wire = _to_nominal(layer.radius_wire)
+			radius_wire = to_nominal(layer.radius_wire)
 			num_wires = layer.num_wires
 
-			lay_radius = num_wires == 1 ? 0 : _to_nominal(layer.radius_in) + radius_wire
+			lay_radius = num_wires == 1 ? 0 : to_nominal(layer.radius_in) + radius_wire
 			material_props = layer.material_props
 			color = _get_material_color(material_props)
 
@@ -2080,8 +2092,8 @@ function preview_cable_design(
 			end
 		elseif layer isa Strip || layer isa Tubular || layer isa Semicon ||
 			   layer isa Insulator
-			radius_in = _to_nominal(layer.radius_in)
-			radius_ext = _to_nominal(layer.radius_ext)
+			radius_in = to_nominal(layer.radius_in)
+			radius_ext = to_nominal(layer.radius_ext)
 			material_props = layer.material_props
 			color = _get_material_color(material_props)
 
@@ -2634,7 +2646,7 @@ function preview_system_cross_section(system::LineCableSystem; zoom_factor = 0.2
 	)
 
 	# Determine explicit wide horizontal range for earth layer plotting
-	x_positions = [_to_nominal(cable.horz) for cable in system.cables]
+	x_positions = [to_nominal(cable.horz) for cable in system.cables]
 	max_span = maximum(abs, x_positions) + 5  # extend 5 m beyond farthest cable position
 	x_limits = [-max_span, max_span]
 
@@ -2670,8 +2682,8 @@ function preview_system_cross_section(system::LineCableSystem; zoom_factor = 0.2
 	end
 
 	for cabledef in system.cables
-		x_offset = _to_nominal(cabledef.horz)
-		y_offset = _to_nominal(cabledef.vert)
+		x_offset = to_nominal(cabledef.horz)
+		y_offset = to_nominal(cabledef.vert)
 		preview_cable_design(
 			cabledef.cable;
 			x_offset,

@@ -1,55 +1,91 @@
 """
-Represents the fundamental physical properties of a material.
+	LineCableModels.Materials
 
-# Fields
-- `rho`: Electrical resistivity of the material \\[Ω·m\\].
-- `eps_r`: Relative permittivity of the material (dimensionless).
-- `mu_r`: Relative permeability of the material (dimensionless).
-- `T0`: Reference temperature at which properties are evaluated \\[°C\\].
-- `alpha`: Temperature coefficient of resistivity \\[1/°C\\].
+The [`Materials`](@ref) module provides functionality for managing and utilizing material properties within the [`LineCableModels.jl`](index.md) package. This module includes definitions for material properties, a library for storing and retrieving materials, and functions for manipulating material data.
+
+# Overview
+
+- Defines the [`Material`](@ref) struct representing fundamental physical properties of materials.
+- Provides the [`MaterialsLibrary`](@ref) mutable struct for storing a collection of materials.
+- Includes functions for adding, removing, and retrieving materials from the library.
+- Supports loading material data from CSV files and saving material data to CSV files.
+- Contains utility functions for displaying material data as a `DataFrame`.
+
+# Dependencies
+
+$(IMPORTS)
+
+# Exports
+
+$(EXPORTS)
+"""
+module Materials
+
+# Load common dependencies
+include("CommonDeps.jl")
+using ..Utils
+
+# Module-specific dependencies
+using Measurements
+using CSV
+using DataFrames
+
+"""
+$(TYPEDEF)
+
+Defines electromagnetic and thermal properties of a material used in conductor modeling:
+
+$(TYPEDFIELDS)
 """
 struct Material
-	rho::Number      # Resistivity \\[Ω·m\\]
-	eps_r::Number    # Relative permittivity
-	mu_r::Number     # Relative permeability
-	T0::Number       # Reference temperature \\[°C\\]
-	alpha::Number    # Temperature coefficient \\[1/°C\\]
+	"Electrical resistivity of the material \\[Ω·m\\]."
+	rho::Number
+	"Relative permittivity \\[dimensionless\\]."
+	eps_r::Number
+	"Relative permeability \\[dimensionless\\]."
+	mu_r::Number
+	"Reference temperature for property evaluations \\[°C\\]."
+	T0::Number
+	"Temperature coefficient of resistivity \\[1/°C\\]."
+	alpha::Number
 end
 
 """
-Stores a collection of materials and their corresponding properties.
+$(TYPEDEF)
 
-# Constructor
+Stores a collection of predefined materials for conductor modeling, indexed by material name.
 
-- Initializes a `MaterialsLibrary` object with materials loaded from a CSV file or a default database.
-
-# Arguments
-- `file_name`: Name of the CSV file containing material data (default: "materials_library.csv").
-
-# Returns
-- An instance of `MaterialsLibrary` containing material data either loaded from the specified file or initialized with default materials.
-
-# Fields
-- `materials`: A dictionary where keys are material names (String) and values are `Material` objects.
-
-# Dependencies
-- `_load_from_csv!`: Loads material data from a CSV file into the library.
-- `_add_default_materials!`: Adds default material data to the library.
-
-# Examples
-```julia
-library = MaterialsLibrary("custom_materials_library.csv")
-println(length(library.materials)) # Outputs the number of materials loaded
-
-library = MaterialsLibrary()
-println(length(library.materials)) # Outputs the number of default materials initialized
-```
-
+$(TYPEDFIELDS)
 """
 mutable struct MaterialsLibrary
+	"Dictionary mapping material names to [`Material`](@ref) objects."
 	materials::Dict{String, Material}  # Key: Material name, Value: Material object
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Constructs a [`MaterialsLibrary`](@ref) instance, loading materials from a CSV file if available.
+
+# Arguments
+
+- `file_name`: Name of the CSV file containing material definitions (default: `"materials_library.csv"`).
+
+# Returns
+
+- An instance of [`MaterialsLibrary`](@ref), either loaded from the file or initialized with default materials.
+
+# Examples
+
+```julia
+library = MaterialsLibrary()
+```
+
+# See also
+
+- [`_load_from_csv!`](@ref)
+- [`_add_default_materials!`](@ref)
+"""
 function MaterialsLibrary(; file_name::String = "materials_library.csv")::MaterialsLibrary
 	library = MaterialsLibrary(Dict{String, Material}())
 	if isfile(file_name)
@@ -63,26 +99,28 @@ function MaterialsLibrary(; file_name::String = "materials_library.csv")::Materi
 end
 
 """
-Adds a predefined set of materials to the `MaterialsLibrary` instance.
+$(TYPEDSIGNATURES)
+
+Populates a [`MaterialsLibrary`](@ref) with commonly used materials, assigning predefined electrical and thermal properties.
 
 # Arguments
-- `library`: A `MaterialsLibrary` instance to which default materials will be added.
+
+- `library`: Instance of [`MaterialsLibrary`](@ref) to be populated.
 
 # Returns
-- None. Modifies the `MaterialsLibrary` instance in place by adding default materials.
 
-# Dependencies
-- `add_material!`: Adds a single material to the library.
-- `Material`: Constructs material objects with specified properties.
+- The modified instance of [`MaterialsLibrary`](@ref) containing the predefined materials.
 
 # Examples
+
 ```julia
 library = MaterialsLibrary()
-_add_default_materials!(library)
-println(keys(library.materials)) # Outputs names of default materials added
+$(FUNCTIONNAME)(library)
 ```
 
+# See also
 
+- [`add_material!`](@ref)
 """
 function _add_default_materials!(library::MaterialsLibrary)
 	add_material!(library, "air", Material(Inf, 1.0, 1.0, 20.0, 0.0))
@@ -97,27 +135,34 @@ function _add_default_materials!(library::MaterialsLibrary)
 end
 
 """
-Loads material data from a CSV file into the `MaterialsLibrary` instance.
+$(TYPEDSIGNATURES)
+
+Loads materials from a CSV file into a [`MaterialsLibrary`](@ref).
 
 # Arguments
-- `library`: A `MaterialsLibrary` instance where the material data will be loaded.
-- `file_name`: Name of the CSV file containing material data.
+
+- `library`: Instance of [`MaterialsLibrary`](@ref) to be populated.
+- `file_name`: Path to the CSV file containing material properties.
 
 # Returns
-- None. Modifies the `MaterialsLibrary` instance in place by adding materials from the CSV file.
 
-# Dependencies
-- `Material`: Constructs material objects with specified properties.
-- `add_material!`: Adds a single material to the library.
+- The modified instance of [`MaterialsLibrary`](@ref) with materials loaded from the file.
+
+# Errors
+
+Throws an error if the CSV file format is invalid or missing required fields.
 
 # Examples
+
 ```julia
 library = MaterialsLibrary()
-_load_from_csv!(library, "materials_library.csv")
-println(keys(library.materials)) # Outputs names of materials loaded from the file
+$(FUNCTIONNAME)(library, "materials_library.csv")
 ```
 
+# See also
 
+- [`add_material!`](@ref)
+- [`MaterialsLibrary`](@ref)
 """
 function _load_from_csv!(library::MaterialsLibrary, file_name::String)
 	df = DataFrame(CSV.File(file_name))
@@ -128,24 +173,31 @@ function _load_from_csv!(library::MaterialsLibrary, file_name::String)
 end
 
 """
-Adds a material to the `MaterialsLibrary` instance.
+$(TYPEDSIGNATURES)
+
+Adds a new material to a [`MaterialsLibrary`](@ref).
 
 # Arguments
-- `library`: A `MaterialsLibrary` instance to which the material will be added.
-- `name`: The name of the material to add (String).
-- `material`: A `Material` object representing the material to be added.
+
+- `library`: Instance of [`MaterialsLibrary`](@ref) where the material will be added.
+- `name`: Name of the material.
+- `material`: Instance of [`Material`](@ref) containing its properties.
 
 # Returns
-- None. Modifies the `MaterialsLibrary` instance in place by adding the specified material.
+
+- The modified instance of [`MaterialsLibrary`](@ref) with the new material added.
+
+# Errors
+
+Throws an error if a material with the same name already exists in the library.
 
 # Examples
+
 ```julia
+library = MaterialsLibrary()
 material = Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393)
-add_material!(library, "copper", material)
-println(keys(library.materials)) # Outputs: ["copper"]
+$(FUNCTIONNAME)(library, "copper", material)
 ```
-
-
 """
 function add_material!(library::MaterialsLibrary, name::String, material::Material)
 	if haskey(library.materials, name)
@@ -155,22 +207,33 @@ function add_material!(library::MaterialsLibrary, name::String, material::Materi
 end
 
 """
-Removes a material from the `MaterialsLibrary` instance.
+$(TYPEDSIGNATURES)
+
+Removes a material from a [`MaterialsLibrary`](@ref).
 
 # Arguments
-- `library`: A `MaterialsLibrary` instance from which the material will be removed.
-- `name`: The name of the material to remove (String).
+
+- `library`: Instance of [`MaterialsLibrary`](@ref) from which the material will be removed.
+- `name`: Name of the material to be removed.
 
 # Returns
-- None. Modifies the `MaterialsLibrary` instance in place by removing the specified material.
+
+- The modified instance of [`MaterialsLibrary`](@ref) without the specified material.
+
+# Errors
+
+Throws an error if the material does not exist in the library.
 
 # Examples
+
 ```julia
-remove_material!(library, "copper")
-println(keys(library.materials)) # Outputs: []
+library = MaterialsLibrary()
+$(FUNCTIONNAME)(library, "copper")
 ```
 
+# See also
 
+- [`add_material!`](@ref)
 """
 function remove_material!(library::MaterialsLibrary, name::String)
 	if !haskey(library.materials, name)
@@ -180,30 +243,34 @@ function remove_material!(library::MaterialsLibrary, name::String)
 end
 
 """
-Saves the materials from the `MaterialsLibrary` instance to a CSV file.
+$(TYPEDSIGNATURES)
+
+Saves a [`MaterialsLibrary`](@ref) to a CSV file.
 
 # Arguments
-- `library`: A `MaterialsLibrary` instance whose materials will be saved.
-- `file_name`: Name of the CSV file where the materials will be saved (default: "materials_library.csv").
+
+- `library`: Instance of [`MaterialsLibrary`](@ref) to be saved.
+- `file_name`: Path to the output CSV file (default: `"materials_library.csv"`).
 
 # Returns
-- None. Writes the materials data to the specified file.
 
-# Dependencies
-- None.
+- The path of the saved CSV file.
 
 # Examples
+
 ```julia
-save_materials_library(library, "materials_backup.csv")
-println("Materials saved to materials_backup.csv")
+library = MaterialsLibrary()
+$(FUNCTIONNAME)(library, file_name = "materials_library.csv")
 ```
 
+# See also
 
+- [`_load_from_csv!`](@ref)
 """
 function save_materials_library(
-	library::MaterialsLibrary,
+	library::MaterialsLibrary;
 	file_name::String = "materials_library.csv",
-)
+)::String
 	rows = [
 		(
 			name = name,
@@ -217,27 +284,33 @@ function save_materials_library(
 	]
 	df = DataFrame(rows)
 	CSV.write(file_name, df)
+
+	return abspath(file_name)
 end
 
 """
-Displays the materials from the `MaterialsLibrary` instance as a DataFrame.
+$(TYPEDSIGNATURES)
+
+Displays the contents of a [`MaterialsLibrary`](@ref) as a `DataFrame`.
 
 # Arguments
-- `library`: A `MaterialsLibrary` instance whose materials will be displayed.
+
+- `library`: Instance of [`MaterialsLibrary`](@ref) to be displayed.
 
 # Returns
-- A `DataFrame` representing the materials and their properties.
 
-# Dependencies
-- None.
+- A `DataFrame` containing the material properties.
 
 # Examples
+
 ```julia
-df = display_materials_library(library)
-println(df) # Displays materials and their properties
+library = MaterialsLibrary()
+df = $(FUNCTIONNAME)(library)
 ```
 
+# See also
 
+- [`save_materials_library`](@ref)
 """
 function display_materials_library(library::MaterialsLibrary)::DataFrame
 	rows = [
@@ -255,25 +328,30 @@ function display_materials_library(library::MaterialsLibrary)::DataFrame
 end
 
 """
-Retrieve material data from a library.
+$(TYPEDSIGNATURES)
+
+Retrieves a material from a [`MaterialsLibrary`](@ref) by name.
 
 # Arguments
-- `library`: A `MaterialsLibrary` object containing properties of the material.
-- `name`: The name of the material to retrieve (String).
+
+- `library`: Instance of [`MaterialsLibrary`](@ref) containing the materials.
+- `name`: Name of the material to retrieve.
 
 # Returns
-- A `Material` object containing the corresponding properties if the material name exists in `library`, otherwise `nothing`.
+
+- The requested [`Material`](@ref) if found, otherwise `nothing`.
 
 # Examples
-```julia
-material = get_material(library, "copper")
-println(material) # Outputs: Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393)
 
-missing_material = get_material(library, "gold")
-println(missing_material) # Outputs: nothing
+```julia
+library = MaterialsLibrary()
+material = $(FUNCTIONNAME)(library, "copper")
 ```
 
+# See also
 
+- [`add_material!`](@ref)
+- [`remove_material!`](@ref)
 """
 function get_material(library::MaterialsLibrary, name::String)::Union{Nothing, Material}
 	material = get(library.materials, name, nothing)
@@ -283,4 +361,8 @@ function get_material(library::MaterialsLibrary, name::String)::Union{Nothing, M
 	else
 		return material
 	end
+end
+
+Utils.@_autoexport
+
 end

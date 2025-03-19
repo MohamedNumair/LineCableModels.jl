@@ -1,3 +1,5 @@
+module ImportExport
+
 # PSCIdGen: Generates unique IDs for PSCAD exports.
 mutable struct PSCIdGen
 	current::Int
@@ -24,7 +26,7 @@ export_to_pscad(cable_system, base_freq=50)
 ```
 
 """
-function export_pscad_model(
+function export_pscad_lcp(
 	cable_system::LineCableSystem;
 	base_freq = f₀,
 	folder_path = pwd(),
@@ -34,7 +36,7 @@ function export_pscad_model(
 
 	format_nominal =
 		(X; sigdigits = 4, minval = -1e30, maxval = 1e30) -> begin
-			value = round(_to_nominal(X), sigdigits = sigdigits)
+			value = round(to_nominal(X), sigdigits = sigdigits)
 
 			value = max(value, minval)
 			value = min(value, maxval)
@@ -674,5 +676,9 @@ function export_pscad_model(
 	catch e
 		println("Failed to create file: ", e)
 	end
+
+end
+
+@_autoexport
 
 end

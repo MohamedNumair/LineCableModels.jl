@@ -2,22 +2,16 @@
 
 [`LineCableModels.jl`](https://github.com/Electa-Git/LineCableModels.jl) is a specialized Julia module designed to compute the electrical parameters of coaxial arbitrarily-layered underground/overhead cables with uncertainty quantification. It focuses on calculating line and cable impedances and admittances in the frequency-domain, accounting for skin effect, insulation properties, and earth-return impedances with frequency-dependent soil models.
 
-## Documentation overview
+## Manual outline
 
-- [Toolbox reference](reference.md): Detailed documentation of the functions and types in the package.
-- [Examples](examples.md): Detailed practical examples.
-- [Bibliography](bib.md): Full list of references implemented and/or cited in the documentation.
-
-## Installation
-
-Clone the package and add to the Julia environment:
-
-```julia
-] add https://github.com/Electa-Git/LineCableModels.jl
-```
-
-```julia
-using LineCableModels
+```@contents
+Pages = [
+    "reference.md",
+    "tutorials.md",
+    "internals.md",
+    "bib.md",
+]
+Depth = 1
 ```
 
 ## Features
@@ -34,6 +28,18 @@ using LineCableModels
 - **(in progress)** Computes phase-domain Z/Y matrices for poliphase systems, and sequence-domain components for three-phase systems, with uncertainty propagation.
 - **(in progress)** Includes a novel formulation for cables composed of N concentrical layers, allowing for accurate representations of semiconductor materials.
 - General-purpose, reusable and customizable to different use cases via well-structured functions, object-oriented data model and user-defined parameters.
+
+## Installation
+
+Clone the package and add to the Julia environment:
+
+```julia
+] add https://github.com/Electa-Git/LineCableModels.jl
+```
+
+```julia
+using LineCableModels
+```
 
 ## License
 

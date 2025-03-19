@@ -1,75 +1,116 @@
 """
-Abstract type for frequency-dependent (FD) earth properties formulations.
+	LineCableModels.EarthProps
+
+The [`EarthProps`](@ref) module provides functionality for modeling and computing earth properties within the [`LineCableModels.jl`](index.md) package. This module includes definitions for homogeneous and layered earth models, and formulations for frequency-dependent and equivalent homogeneous earth properties, to be used in impedance/admittance calculations.
+
+# Overview
+
+- Defines the [`EarthModel`](@ref) object for representing horizontally or vertically multi-layered earth models with frequency-dependent properties (ρ, ε, μ).
+- Provides the [`EarthLayer`](@ref) type for representing individual soil layers with electromagnetic properties.
+- Implements a multi-dispatch framework to allow different formulations of frequency-dependent earth models with [`AbstractFDEMFormulation`](@ref) and equivalent homogeneous earth models via [`AbstractEHEMFormulation`](@ref).
+- Contains utility functions for building complex multi-layered earth models and generating data summaries.
+
+# Dependencies
+
+$(IMPORTS)
+
+# Exports
+
+$(EXPORTS)
 """
-abstract type FDPropsFormulation end
+module EarthProps
+
+# Load common dependencies
+include("CommonDeps.jl")
+using ..Utils
+
+# Module-specific dependencies
+using Measurements
+using DataFrames
 
 """
-Represents an earth model with frequency-invariant electromagnetic properties.
+$(TYPEDEF)
 
-# Arguments
-- None.
+Abstract type representing different frequency-dependent earth models (FDEM). Used in the multi-dispatch implementation of [`_calc_earth_properties`](@ref).
 
-# Returns
-A `ConstantProperties` object with the following attribute:
-- `description`: A tag/label to identify the formu;ation in parametric analyses.
+# Currently available formulations
 
-# Examples
-```julia
-cp_model = ConstantProperties()
-println(cp_model.description) # Output: "CP model"
-```
-
+- [`CPEarth`](@ref): Constant properties (CP) model.
+"""
+abstract type AbstractFDEMFormulation end
 
 """
-struct ConstantProperties <: FDPropsFormulation
+$(TYPEDEF)
+
+Represents an earth model with constant properties (CP), i.e. frequency-invariant electromagnetic properties, and attributes:
+
+$(TYPEDFIELDS)
+"""
+struct CPEarth <: AbstractFDEMFormulation
+	"Identifier displayed in parametric analyses."
 	description::String
-	ConstantProperties() = new("CP model")
+
+	@doc """
+	$(TYPEDSIGNATURES)
+
+	Constructs a [`CPEarth`](@ref) instance.
+
+	# Returns
+
+	- A [`CPEarth`](@ref) object with a predefined description label.
+
+	# Examples
+
+	```julia
+	cp_model = $(FUNCTIONNAME)()
+	println(cp_model.description) # Output: "CP model"
+	```
+	"""
+	CPEarth() = new("CP model")
 end
 
 """
-Computes frequency-dependent earth properties using the formulation specified via object `FDPropsFormulation`.
+$(TYPEDSIGNATURES)
+
+Computes frequency-dependent earth properties using the [`CPEarth`](@ref) formulation, which assumes frequency-invariant values for resistivity, permittivity, and permeability.
 
 # Arguments
-- `frequencies`: A vector of frequency values \\[Hz\\].
-- `base_rho_g`: The base electrical resistivity of the soil \\[Ω·m\\].
-- `base_epsr_g`: The base relative permittivity of the soil (unitless).
-- `base_mur_g`: The base relative permeability of the soil (unitless).
-- `formulation`: An instance of a subtype of `FDPropsFormulation` defining the computation method.
 
-# Multi-dispatch formulation
-The calculation method depends on the `formulation` argument, which can be:
-- `ConstantProperties()`: Assumes static values for resistivity, permittivity, and permeability.
-- Additional formulations can be implemented via multi-dispatch.
+- `frequencies`: Vector of frequency values \\[Hz\\].
+- `base_rho_g`: Base (DC) electrical resistivity of the soil \\[Ω·m\\].
+- `base_epsr_g`: Base (DC) relative permittivity of the soil \\[dimensionless\\].
+- `base_mur_g`: Base (DC) relative permeability of the soil \\[dimensionless\\].
+- `formulation`: Instance of a subtype of [`AbstractFDEMFormulation`](@ref) defining the computation method.
 
 # Returns
-A tuple containing:
-- `rho`: A vector of resistivity values \\[Ω·m\\] at the given frequencies.
-- `epsilon`: A vector of permittivity values \\[F/m\\] at the given frequencies.
-- `mu`: A vector of permeability values \\[H/m\\] at the given frequencies.
+
+- `rho`: Vector of resistivity values \\[Ω·m\\] at the given frequencies.
+- `epsilon`: Vector of permittivity values \\[F/m\\] at the given frequencies.
+- `mu`: Vector of permeability values \\[H/m\\] at the given frequencies.
 
 # Examples
+
 ```julia
 frequencies = [1e3, 1e4, 1e5]
 
 # Using the CP model
-rho, epsilon, mu = _calculate_earth_properties(frequencies, 100, 10, 1, ConstantProperties())
+rho, epsilon, mu = $(FUNCTIONNAME)(frequencies, 100, 10, 1, CPEarth())
 println(rho)     # Output: [100, 100, 100]
 println(epsilon) # Output: [8.854e-11, 8.854e-11, 8.854e-11]
 println(mu)      # Output: [1.2566e-6, 1.2566e-6, 1.2566e-6]
-
-# Using a different model
-rho, epsilon, mu = _calculate_earth_properties(frequencies, 200, 5, 1, CIGRE())
-println(rho)     # Output: [computed values based on CIGRE model]
 ```
 
+# See also
 
+- [`EarthLayer`](@ref)
+- [`AbstractFDEMFormulation`](@ref)
 """
-function _calculate_earth_properties(
+function _calc_earth_properties(
 	frequencies::Vector{<:Number},
 	base_rho_g::Number,
 	base_epsr_g::Number,
 	base_mur_g::Number,
-	::ConstantProperties,
+	::CPEarth,
 )
 	rho = fill(base_rho_g, length(frequencies))
 	epsilon = fill(ε₀ * base_epsr_g, length(frequencies))
@@ -78,47 +119,62 @@ function _calculate_earth_properties(
 end
 
 """
-Abstract type for equivalent homogeneous earth model (EHEM) formulations.
+$(TYPEDEF)
+
+Abstract type representing different equivalent homogeneous earth models (EHEM). Used in the multi-dispatch implementation of [`_calc_ehem_properties!`](@ref).
+
+# Currently available formulations
+
+- [`EnforceLayer`](@ref): Effective parameters defined according to a specific earth layer.
 """
-abstract type EHEMFormulation end
-
-"""
-EnforceLayer: Represents an homogeneous earth model defined with the properties of a specific earth layer.
-
-# Arguments
-- `layer`: An integer specifying the layer to be enforced as the equivalent homogeneous layer.
-  - `-1` selects the bottommost layer.
-  - `2` selects the topmost earth layer (excluding air).
-  - Any integer `≥ 2` selects a specific layer.
-
-# Returns
-An instance of `EnforceLayer` with the following attributes:
-- `layer`: The enforced layer index.
-- `description`: A string describing the chosen layer.
-
-
-
-# Examples
-```julia
-# Enforce the bottommost layer
-bottom_layer = EnforceLayer(-1)
-println(bottom_layer.description) # Output: "Bottom layer"
-
-# Enforce the topmost earth layer
-first_layer = EnforceLayer(2)
-println(first_layer.description) # Output: "Top layer"
-
-# Enforce a specific layer
-specific_layer = EnforceLayer(3)
-println(specific_layer.description) # Output: "Layer 3"
-```
-
+abstract type AbstractEHEMFormulation end
 
 """
-struct EnforceLayer <: EHEMFormulation
+$(TYPEDEF)
+
+Represents a homogeneous earth model defined using the properties of a specific earth layer, with atttributes:
+
+$(TYPEDFIELDS)
+"""
+struct EnforceLayer <: AbstractEHEMFormulation
+	"Index of the enforced earth layer."
 	layer::Int
+	"Description of the specified layer."
 	description::String
-	function EnforceLayer(layer::Int = -1)
+
+	@doc """
+	$(TYPEDSIGNATURES)
+
+	Constructs an [`EnforceLayer`](@ref) instance. In practice, this means that the properties of the specified layer are extended to the entire semi-infinite earth.
+
+	# Arguments
+
+	- `layer`: Integer specifying the layer to be enforced as the equivalent homogeneous layer.
+	- `-1` selects the bottommost layer.
+	- `2` selects the topmost earth layer (excluding air).
+	- Any integer `≥ 2` selects a specific layer.
+
+	# Returns
+
+	- An [`EnforceLayer`](@ref) instance with the specified layer index and description.
+
+	# Examples
+
+	```julia
+	# Enforce the bottommost layer
+	bottom_layer = $(FUNCTIONNAME)(-1)
+	println(bottom_layer.description) # Output: "Bottom layer"
+
+	# Enforce the topmost earth layer
+	first_layer = $(FUNCTIONNAME)(2)
+	println(first_layer.description) # Output: "Top layer"
+
+	# Enforce a specific layer
+	specific_layer = $(FUNCTIONNAME)(3)
+	println(specific_layer.description) # Output: "Layer 3"
+	```
+	"""
+	function EnforceLayer(layer::Int)
 		@assert (layer == -1 || layer >= 2) "Invalid earth layer choice."
 
 		if layer == -1
@@ -132,52 +188,61 @@ struct EnforceLayer <: EHEMFormulation
 	end
 end
 
+
 """
-Represents a single earth layer with base and frequency-dependent properties.
+$(TYPEDEF)
+
+Represents one single earth layer in an [`EarthModel`](@ref) object, with base and frequency-dependent properties, and attributes:
+
+$(TYPEDFIELDS)
 """
 mutable struct EarthLayer
+	"Base (DC) electrical resistivity \\[Ω·m\\]."
 	base_rho_g::Number
+	"Base (DC) relative permittivity \\[dimensionless\\]."
 	base_epsr_g::Number
+	"Base (DC)  relative permeability \\[dimensionless\\]."
 	base_mur_g::Number
+	"Thickness of the layer \\[m\\]."
 	t::Number
+	"Computed resistivity values \\[Ω·m\\] at given frequencies."
 	rho_g::Vector{Number}
+	"Computed permittivity values \\[F/m\\] at given frequencies."
 	eps_g::Vector{Number}
+	"Computed permeability values \\[H/m\\] at given frequencies."
 	mu_g::Vector{Number}
 
-	"""
-	Constructor: Initializes an `EarthLayer` object with specified base properties and computes its frequency-dependent values.
+	@doc """
+	$(TYPEDSIGNATURES)
+
+	Constructs an [`EarthLayer`](@ref) instance with specified base properties and computes its frequency-dependent values.
 
 	# Arguments
-	- `frequencies`: A vector of frequency values \\[Hz\\].
-	- `base_rho_g`: The base electrical resistivity of the layer \\[Ω·m\\].
-	- `base_epsr_g`: The base relative permittivity of the layer (unitless).
-	- `base_mur_g`: The base relative permeability of the layer (unitless).
-	- `t`: The thickness of the layer \\[m\\].
-	- `FDformulation`: An instance of a subtype of `FDPropsFormulation` defining the computation method for frequency-dependent properties.
+
+	- `frequencies`: Vector of frequency values \\[Hz\\].
+	- `base_rho_g`: Base (DC) electrical resistivity of the layer \\[Ω·m\\].
+	- `base_epsr_g`: Base (DC) relative permittivity of the layer \\[dimensionless\\].
+	- `base_mur_g`: Base (DC) relative permeability of the layer \\[dimensionless\\].
+	- `t`: Thickness of the layer \\[m\\].
+	- `FDformulation`: Instance of a subtype of [`AbstractFDEMFormulation`](@ref) defining the computation method for frequency-dependent properties.
 
 	# Returns
-	An instance of `EarthLayer` with the following attributes:
-	- `base_rho_g`: The base electrical resistivity \\[Ω·m\\].
-	- `base_epsr_g`: The base relative permittivity (unitless).
-	- `base_mur_g`: The base relative permeability (unitless).
-	- `t`: The thickness of the layer \\[m\\].
-	- `rho_g`: A vector of computed resistivity values \\[Ω·m\\] at given frequencies.
-	- `eps_g`: A vector of computed permittivity values \\[F/m\\] at given frequencies.
-	- `mu_g`: A vector of computed permeability values \\[H/m\\] at given frequencies.
 
-	# Dependencies
-	- `_calculate_earth_properties`: Computes frequency-dependent soil properties based on the selected formulation.
+	- An [`EarthLayer`](@ref) instance with computed frequency-dependent properties.
 
 	# Examples
+
 	```julia
 	frequencies = [1e3, 1e4, 1e5]
-	layer = EarthLayer(frequencies, 100, 10, 1, 5, ConstantProperties())
+	layer = $(FUNCTIONNAME)(frequencies, 100, 10, 1, 5, CPEarth())
 	println(layer.rho_g) # Output: [100, 100, 100]
 	println(layer.eps_g) # Output: [8.854e-11, 8.854e-11, 8.854e-11]
 	println(layer.mu_g)  # Output: [1.2566e-6, 1.2566e-6, 1.2566e-6]
 	```
 
+	# See also
 
+	- [`_calc_earth_properties`](@ref)
 	"""
 	function EarthLayer(
 		frequencies,
@@ -185,9 +250,9 @@ mutable struct EarthLayer
 		base_epsr_g,
 		base_mur_g,
 		t,
-		FDformulation::FDPropsFormulation,
+		FDformulation::AbstractFDEMFormulation,
 	)
-		rho_g, eps_g, mu_g = _calculate_earth_properties(
+		rho_g, eps_g, mu_g = _calc_earth_properties(
 			frequencies,
 			base_rho_g,
 			base_epsr_g,
@@ -207,56 +272,65 @@ mutable struct EarthLayer
 end
 
 """
-Represents a multi-layered earth model with frequency-dependent properties.
+$(TYPEDEF)
+
+Represents a multi-layered earth model with frequency-dependent properties, and attributes:
+
+$(TYPEDFIELDS)
 """
 mutable struct EarthModel
+	"Total number of layers in the model, including the air layer."
 	num_layers::Int
-	FDformulation::FDPropsFormulation
-	EHEMformulation::Union{EHEMFormulation, Nothing}
+	"Selected frequency-dependent formulation for earth properties."
+	FDformulation::AbstractFDEMFormulation
+	"Selected equivalent homogeneous earth formulation (or `nothing`)."
+	EHEMformulation::Union{AbstractEHEMFormulation, Nothing}
+	"Boolean flag indicating whether the model is treated as vertically layered."
 	vertical_layers::Bool
+	"Vector of [`EarthLayer`](@ref) objects, starting with an air layer and the specified first earth layer."
 	layers::Vector{EarthLayer}
 
-	# Effective homogeneous parameters (start as `missing`)
+	"Effective resistivity values \\[Ω·m\\] at the given frequencies (`missing` initially, computed later if needed)."
 	rho_eff::Union{Vector{Number}, Missing}
+	"Effective permittivity values \\[F/m\\] at the given frequencies (`missing` initially, computed later if needed)."
 	eps_eff::Union{Vector{Number}, Missing}
+	"Effective permeability values \\[H/m\\] at the given frequencies (`missing` initially, computed later if needed)."
 	mu_eff::Union{Vector{Number}, Missing}
 
-	"""
-	Constructor: Initializes an `EarthModel` object with a specified first earth layer. Horizontal layering is assumed by default. A semi-infinite air layer is always added prior to the first earth layer.
+	@doc """
+	$(TYPEDSIGNATURES)
+
+	Constructs an [`EarthModel`](@ref) instance with a specified first earth layer. A semi-infinite air layer is always added before the first earth layer.
 
 	# Arguments
-	- `frequencies`: A vector of frequency values \\[Hz\\].
-	- `rho_g`: The base electrical resistivity of the first earth layer \\[Ω·m\\].
-	- `epsr_g`: The base relative permittivity of the first earth layer (unitless).
-	- `mur_g`: The base relative permeability of the first earth layer (unitless).
-	- `t`: The thickness of the first earth layer \\[m\\]. For homogeneous earth models (or the bottommost layer), set `t = Inf`.
-	- `FDformulation`: An instance of a subtype of `FDPropsFormulation` defining the computation method for frequency-dependent properties (default: `ConstantProperties()`).
-	- `EHEMformulation`: An optional instance of a subtype of `EHEMFormulation` defining the equivalent homogeneous medium formulation (default: `nothing`).
-	- `vertical_layers`: A boolean flag indicating whether the model should be treated as vertically-layered (default: `false`). In this case, the first layer is assumed to be horizontal and semi-infinite, and the subsequent layers are vertical. The thickness of the leftmost and rightmost layers should be set as `t = Inf`. The interface between the first and second vertical layers is assumed to be at `y = 0`.
+
+	- `frequencies`: Vector of frequency values \\[Hz\\].
+	- `rho_g`: Base (DC) electrical resistivity of the first earth layer \\[Ω·m\\].
+	- `epsr_g`: Base (DC) relative permittivity of the first earth layer \\[dimensionless\\].
+	- `mur_g`: Base (DC) relative permeability of the first earth layer \\[dimensionless\\].
+	- `t`: Thickness of the first earth layer \\[m\\]. For homogeneous earth models (or the bottommost layer), set `t = Inf`.
+	- `FDformulation`: Instance of a subtype of [`AbstractFDEMFormulation`](@ref) defining the computation method for frequency-dependent properties (default: [`CPEarth`](@ref)).
+	- `EHEMformulation`: Optional instance of a subtype of [`AbstractEHEMFormulation`](@ref) defining the equivalent homogeneous medium formulation (default: `nothing`).
+	- `vertical_layers`: Boolean flag indicating whether the model should be treated as vertically-layered (default: `false`).
+	- `air_layer`: optional [`EarthLayer`](@ref) object representing the semi-infinite air layer (default: `EarthLayer(frequencies, Inf, 1.0, 1.0, Inf, FDformulation)`).
 
 	# Returns
-	An instance of `EarthModel` with the following attributes:
-	- `num_layers`: The total number of layers in the model, including the air layer.
-	- `FDformulation`: The selected frequency-dependent formulation for earth properties.
-	- `EHEMformulation`: The selected equivalent homogeneous earth formulation (or `nothing`).
-	- `vertical_layers`: Boolean flag for vertically-layered earth.
-	- `layers`: A vector of `EarthLayer` objects, starting with an air layer and the specified first earth layer.
-	- `rho_eff`: The effective resistivity values \\[Ω·m\\] at the given frequencies (`missing` initially, computed later if needed).
-	- `eps_eff`: The effective permittivity values \\[F/m\\] at the given frequencies (`missing` initially, computed later if needed).
-	- `mu_eff`: The effective permeability values \\[H/m\\] at the given frequencies (`missing` initially, computed later if needed).
 
-	# Dependencies
-	- `EarthLayer`: Represents individual layers within the earth model.
+	- An [`EarthModel`](@ref) instance with the specified attributes and computed frequency-dependent properties.
 
 	# Examples
+
 	```julia
 	frequencies = [1e3, 1e4, 1e5]
-	earth_model = EarthModel(frequencies, 100, 10, 1, t=Inf)
+	earth_model = $(FUNCTIONNAME)(frequencies, 100, 10, 1, t=Inf)
 	println(length(earth_model.layers)) # Output: 2 (air + top layer)
 	println(earth_model.rho_eff) # Output: missing
 	```
 
+	# See also
 
+	- [`EarthLayer`](@ref)
+	- [`add_earth_layer!`](@ref)
 	"""
 	function EarthModel(
 		frequencies::Vector{<:Number},
@@ -264,11 +338,12 @@ mutable struct EarthModel
 		epsr_g::Number,
 		mur_g::Number;
 		t::Number = Inf,
-		FDformulation::FDPropsFormulation = ConstantProperties(),
-		EHEMformulation::Union{EHEMFormulation, Nothing} = nothing,
+		FDformulation::AbstractFDEMFormulation = CPEarth(),
+		EHEMformulation::Union{AbstractEHEMFormulation, Nothing} = nothing,
 		vertical_layers::Bool = false,
+		air_layer = EarthLayer(frequencies, Inf, 1.0, 1.0, Inf, FDformulation),
 	)
-		air_layer = EarthLayer(frequencies, Inf, 1.0, 1.0, Inf, FDformulation)
+
 		top_layer = EarthLayer(frequencies, rho_g, epsr_g, mur_g, t, FDformulation)
 		model = new(
 			2,
@@ -287,63 +362,69 @@ mutable struct EarthModel
 end
 
 """
-Adds a new earth layer to an existing `EarthModel`.
+$(TYPEDSIGNATURES)
+
+Adds a new earth layer to an existing [`EarthModel`](@ref).
 
 # Arguments
-- `model`: An instance of `EarthModel` to which the new layer will be added.
-- `frequencies`: A vector of frequency values \\[Hz\\].
-- `base_rho_g`: The base electrical resistivity of the new earth layer \\[Ω·m\\].
-- `base_epsr_g`: The base relative permittivity of the new earth layer (unitless).
-- `base_mur_g`: The base relative permeability of the new earth layer (unitless).
-- `t`: The thickness of the new earth layer \\[m\\] (default: `Inf`).
+
+- `model`: Instance of [`EarthModel`](@ref) to which the new layer will be added.
+- `frequencies`: Vector of frequency values \\[Hz\\].
+- `base_rho_g`: Base electrical resistivity of the new earth layer \\[Ω·m\\].
+- `base_epsr_g`: Base relative permittivity of the new earth layer \\[dimensionless\\].
+- `base_mur_g`: Base relative permeability of the new earth layer \\[dimensionless\\].
+- `t`: Thickness of the new earth layer \\[m\\] (default: `Inf`).
 
 # Returns
-- Modifies `model` in place by appending a new `EarthLayer` and updating `num_layers`.
-- If the model contains at least two earth layers and an `EHEMformulation` is defined, effective homogeneous parameters are computed.
+
+- Modifies `model` in place by appending a new [`EarthLayer`](@ref) and updating `num_layers`.
+- If the model contains at least two earth layers and an [`AbstractEHEMFormulation`](@ref) is defined, effective homogeneous parameters are computed.
 
 # Notes
+
 For **horizontal layering** (`vertical_layers = false`):
-- Layer 1 (air) is always infinite (`t = Inf`).
-- Layer 2 (first earth layer) can be infinite if modeling a homogeneous half-space.
-- If adding a third layer (`num_layers = 3`), it can be infinite **only if the previous layer is finite**.
-- No two successive earth layers (`num_layers > 2`) can have infinite thickness.
+	- Layer 1 (air) is always infinite (`t = Inf`).
+	- Layer 2 (first earth layer) can be infinite if modeling a homogeneous half-space.
+	- If adding a third layer (`num_layers = 3`), it can be infinite **only if the previous layer is finite**.
+	- No two successive earth layers (`num_layers > 2`) can have infinite thickness.
 
 For **vertical layering** (`vertical_layers = true`):
-- Layer 1 (air) is always **horizontal** and infinite at `z > 0`.
-- Layer 2 (first vertical layer) is always **infinite** in `z < 0` **and** `y < 0`. The first vertical layer is assumed to always end at `y = 0`.
-- Layer 3 (second vertical layer) **can be infinite** (establishing a vertical interface at `y = 0`).
-- Subsequent layers **can be infinite only if the previous is finite**.
-- No two successive vertical layers (`num_layers > 3`) can both be infinite.
-
-# Dependencies
-- `EarthLayer`: Represents individual layers within the `EarthModel`.
-- `_compute_ehem_properties!`: Computes the equivalent homogeneous parameters if applicable.
+	- Layer 1 (air) is always **horizontal** and infinite at `z > 0`.
+	- Layer 2 (first vertical layer) is always **infinite** in `z < 0` **and** `y < 0`. The first vertical layer is assumed to always end at `y = 0`.
+	- Layer 3 (second vertical layer) **can be infinite** (establishing a vertical interface at `y = 0`).
+	- Subsequent layers **can be infinite only if the previous is finite**.
+	- No two successive vertical layers (`num_layers > 3`) can both be infinite.
 
 # Examples
+
 ```julia
 frequencies = [1e3, 1e4, 1e5]
 
-# To define a horizontal model, initialize the top earth layer with finite thickness
+# Define a horizontal model with finite thickness for the first earth layer
 horz_earth_model = EarthModel(frequencies, 100, 10, 1, t=5)
 
 # Add a second horizontal earth layer
-add_earth_layer!(horz_earth_model, frequencies, 200, 15, 1, t=10)
+$(FUNCTIONNAME)(horz_earth_model, frequencies, 200, 15, 1, t=10)
 println(horz_earth_model.num_layers) # Output: 3
 
 # The bottom layer should be set to infinite thickness
-add_earth_layer!(horz_earth_model, frequencies, 300, 15, 1, t=Inf)
+$(FUNCTIONNAME)(horz_earth_model, frequencies, 300, 15, 1, t=Inf)
 println(horz_earth_model.num_layers) # Output: 4
+```
+
+```julia
+frequencies = [1e3, 1e4, 1e5]
 
 # Initialize a vertical-layered model with first interface at y = 0.
 vert_earth_model = EarthModel(frequencies, 100, 10, 1, t=Inf, vertical_layers=true)
 
 # Add a second vertical layer at y = 0 (this can also be infinite)
-add_earth_layer!(vert_earth_model, frequencies, 150, 12, 1, t=Inf)
+$(FUNCTIONNAME)(vert_earth_model, frequencies, 150, 12, 1, t=Inf)
 println(vert_earth_model.num_layers) # Output: 3
 
 # Attempt to add a third infinite layer (invalid case)
 try
-	add_earth_layer!(vert_earth_model, frequencies, 120, 12, 1, t=Inf)
+	$(FUNCTIONNAME)(vert_earth_model, frequencies, 120, 12, 1, t=Inf)
 catch e
 	println(e) # Error: Cannot add consecutive vertical layers with infinite thickness.
 end
@@ -352,11 +433,14 @@ end
 vert_earth_model.layers[end].t = 3
 
 # Add the third layer with infinite thickness now
-add_earth_layer!(vert_earth_model, frequencies, 120, 12, 1, t=Inf)
+$(FUNCTIONNAME)(vert_earth_model, frequencies, 120, 12, 1, t=Inf)
 println(vert_earth_model.num_layers) # Output: 4
 ```
 
+# See also
 
+- [`EarthLayer`](@ref)
+- [`_calc_ehem_properties!`](@ref)
 """
 function add_earth_layer!(
 	model::EarthModel,
@@ -401,54 +485,55 @@ function add_earth_layer!(
 	model.num_layers += 1
 
 	# Compute effective parameters **only if we have at least 2 earth layers**
-	if model.num_layers > 2 && !isnothing(model.EHEMformulation) && !(model.vertical_layers)
-		_compute_ehem_properties!(model, frequencies, model.EHEMformulation)
+	if model.num_layers > 2 && !isnothing(model.AbstractEHEMFormulation) &&
+	   !(model.vertical_layers)
+		_calc_ehem_properties!(model, frequencies, model.AbstractEHEMFormulation)
 	end
 end
 
 """
-Computes the effective homogeneous earth model (EHEM) properties for an `EarthModel`, using the formulation specified via object `EHEMFormulation`.
+$(TYPEDSIGNATURES)
+
+Computes the effective homogeneous earth model (EHEM) properties for an [`EarthModel`](@ref), overriding the layered model with the properties of the layer defined in [`EnforceLayer`](@ref).
 
 # Arguments
-- `model`: An instance of `EarthModel` for which effective properties are computed.
-- `frequencies`: A vector of frequency values \\[Hz\\].
-- `formulation`: An `EHEMFormulation` specifying how the effective properties should be determined.
 
-# Multi-dispatch formulation
-This function is part of a **multi-dispatch framework** for computing EHEM properties. Different `EHEMFormulation` types define how the effective properties are calculated:
-	- `EnforceLayer(layer)` extends the parameters of the specified layer to the entire semi-infinite (homogeneous) earth.
-	- Additional formulations can be implemented by extending `_compute_ehem_properties!` with new methods.
+- `model`: Instance of [`EarthModel`](@ref) for which effective properties are computed.
+- `frequencies`: Vector of frequency values \\[Hz\\].
+- `formulation`: Instance of [`AbstractEHEMFormulation`](@ref) specifying how the effective properties should be determined.
 
-# Behavior
-- If `formulation` is an `EnforceLayer`, the effective properties (`rho_eff`, `eps_eff`, `mu_eff`) are **directly assigned** from the specified layer.
+# Returns
+
+- Modifies `model` in place by updating `rho_eff`, `eps_eff`, and `mu_eff` with the corresponding values.
+
+# Notes
+
+- If `formulation` is an [`EnforceLayer`](@ref), the effective properties (`rho_eff`, `eps_eff`, `mu_eff`) are **directly assigned** from the specified layer.
 - If `layer_idx = -1`, the **last** layer in `model.layers` is used.
 - If `layer_idx < 2` or `layer_idx > length(model.layers)`, an error is raised.
 
-# Returns
-- Modifies `model` in place by updating `rho_eff`, `eps_eff`, and `mu_eff` with the corresponding values.
-
-# Dependencies
-- `EarthModel`: The main struct containing all earth layers.
-- `EnforceLayer`: A specific formulation that forces effective parameters to match an existing layer.
-
 # Examples
+
 ```julia
 frequencies = [1e3, 1e4, 1e5]
 earth_model = EarthModel(frequencies, 100, 10, 1, t=5)
-earth_model.EHEMformulation = EnforceLayer(-1)  # Enforce the last layer as the effective
-add_earth_layer!(earth_model, frequencies, 200, 15, 1, t=Inf) # Inclusion of an extra layer will invoke the _compute_ehem_properties! method
+earth_model.AbstractEHEMFormulation = EnforceLayer(-1)  # Enforce the last layer as the effective
+$(FUNCTIONNAME)(earth_model, frequencies, EnforceLayer(-1))
 
-println(earth_model.rho_eff) # Should match the last layer rho_g = 200
-println(earth_model.eps_eff) # Should match the last layer eps_g = 15*ε₀
+println(earth_model.rho_eff) # Should match the last layer rho_g = 100
+println(earth_model.eps_eff) # Should match the last layer eps_g = 10*ε₀
 println(earth_model.mu_eff)  # Should match the last layer mu_g = 1*μ₀
 ```
 
+# See also
 
+- [`EarthModel`](@ref)
+- [`AbstractEHEMFormulation`](@ref)
 """
-function _compute_ehem_properties!(
+function _calc_ehem_properties!(
 	model::EarthModel,
 	frequencies::Vector{<:Number},
-	formulation::EnforceLayer,
+	formulation::AbstractEHEMFormulation = EnforceLayer(-1),
 )
 	layer_idx = formulation.layer
 
@@ -469,27 +554,28 @@ function _compute_ehem_properties!(
 end
 
 """
-Generate a `DataFrame` summarizing basic properties of earth layers from an EarthModel.
+$(TYPEDSIGNATURES)
+
+Generates a `DataFrame` summarizing basic properties of earth layers from an [`EarthModel`](@ref).
 
 # Arguments
-- `earth_model`: An `EarthModel` object containing earth layers.
+
+- `earth_model`: Instance of [`EarthModel`](@ref) containing earth layers.
 
 # Returns
+
 - A `DataFrame` with columns:
-	- `rho_g`: Base resistivity of each layer \\[Ω·m\\].
-	- `epsr_g`: Relative permittivity of each layer [dimensionless].
-	- `mur_g`: Relative permeability of each layer [dimensionless].
-	- `thickness`: Thickness of each layer \\[m\\].
-
-
+  - `rho_g`: Base (DC) resistivity of each layer \\[Ω·m\\].
+  - `epsr_g`: Base (DC) relative permittivity of each layer \\[dimensionless\\].
+  - `mur_g`: Base (DC) relative permeability of each layer \\[dimensionless\\].
+  - `thickness`: Thickness of each layer \\[m\\].
 
 # Examples
+
 ```julia
-df = earth_data(earth_model)
+df = $(FUNCTIONNAME)(earth_model)
 println(df)
 ```
-
-
 """
 function earth_data(earth_model::EarthModel)
 	layers = earth_model.layers
@@ -505,4 +591,8 @@ function earth_data(earth_model::EarthModel)
 		mur_g = base_mur_g,
 		thickness = thickness,
 	)
+end
+
+Utils.@_autoexport
+
 end
