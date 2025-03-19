@@ -31,7 +31,7 @@ makedocs(;
 	format = Documenter.HTML(;
 		edit_link = "main",
 		# assets = ["assets/custom.js", "assets/citations.css", "assets/custom.css"],
-		assets = ["assets/citations.css"],
+		assets = ["assets/citations.css", "assets/favicon.ico"],
 		prettyurls = get(ENV, "CI", "false") == "true",
 		ansicolor = true,
 		collapselevel = 1,
@@ -39,8 +39,8 @@ makedocs(;
 	),
 	pages = [
 		"Home" => "index.md",
-		"Toolbox reference" => "reference.md",
 		"Tutorials" => "tutorials.md",
+		"Toolbox reference" => "reference.md",
 		# "Development" => Any[
 		# 	"Internal"=>"internals.md",
 		# ],
