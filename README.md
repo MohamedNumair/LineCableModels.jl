@@ -1,12 +1,12 @@
 # LineCableModels.jl
 
-<img src="docs/src/assets/logo.svg" align="left" width="150">
+<img src="docs/src/assets/logo.svg" align="left" width="200">
 
 [![Build Status](https://github.com/Electa-Git/LineCableModels.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Electa-Git/LineCableModels.jl/actions/workflows/CI.yml?query=branch%3Amain)
 
 `LineCableModels.jl` is a Julia package for computing the electrical parameters of arbitrary arrangements of underground and overhead power cables, with built-in uncertainty quantification. It is designed as a general-purpose and scalable toolbox to calculate transmission line parameters and to construct models for steady-state analysis and electromagnetic transient (EMT) simulations. 
   
-  
+
 
 ## Main features
 
