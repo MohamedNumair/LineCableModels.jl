@@ -48,6 +48,8 @@ The source code is provided under the [BSD 3-Clause License](LICENSE).
 
 This work is supported by the Etch Competence Hub of EnergyVille, financed by the Flemish Government. The primary developer is Amauri Martins ([@amaurigmartins](https://github.com/amaurigmartins)).
 
-| | | |
-|:---:|:---:|:---:|
-| [![Etch](assets/img/etch_logo.png)](https://energyville.be/project/etch-energy-transmission-competence-hub/) | [![EnergyVille](assets/img/energyville_logo.png)](https://energyville.be/) | [![KUL](assets/img/kul_logo.png)](https://www.kuleuven.be/kuleuven/) |
+![Etch](assets/img/etch_logo.png)
+
+![EnergyVille](assets/img/energyville_logo.png)
+
+![KUL](assets/img/kul_logo.png)
