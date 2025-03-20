@@ -3,9 +3,8 @@ Main.jl: LineCableModels main process.
 """
 
 # Define project ID
-project_id = "single_core_1000mm2_30kv"
-proj_dir = joinpath(@__DIR__, "projects", project_id)
-mkpath(proj_dir);
+job_id = "single_core_1000mm2_30kv"
+output_dir = joinpath(@__DIR__, "examples", job_id)
 
 # Load dependencies 
 push!(LOAD_PATH, joinpath(@__DIR__, "src"))
@@ -31,13 +30,13 @@ default(
 )
 
 # Load materials library
-materials_db = MaterialsLibrary(file_name = joinpath(proj_dir, "materials_library.csv"))
+materials_db = MaterialsLibrary(file_name = joinpath(output_dir, "materials_library.csv"))
 display_materials_library(materials_db)
 
 # Define cable design
 cable_id = "NA2XS(FL)2Y18/30"
 
-library = CablesLibrary(file_name = joinpath(proj_dir, "cables_library.jls"))
+library = CablesLibrary(file_name = joinpath(output_dir, "cables_library.jls"))
 display_cables_library(library)
 
 if haskey(library.cable_designs, cable_id)
@@ -45,9 +44,9 @@ if haskey(library.cable_designs, cable_id)
 	cable_design = get_cable_design(library, cable_id)
 else
 	# Build the cable design from file
-	include(joinpath(proj_dir, "CableDesign.jl"))
+	include(joinpath(output_dir, "CableDesign.jl"))
 	store_cable_design!(library, cable_design)
-	save_cables_library(library, file_name = joinpath(proj_dir, "cables_library.jls"))
+	save_cables_library(library, file_name = joinpath(output_dir, "cables_library.jls"))
 end
 
 # Preview cable design and main parameters
@@ -82,4 +81,4 @@ display(cross_section_data(cable_system))
 preview_system_cross_section(cable_system, zoom_factor = 0.25)
 
 # Export to PSCAD input file
-export_pscad_lcp(cable_system, folder_path = proj_dir);
+export_pscad_lcp(cable_system, folder_path = output_dir);

@@ -1,5 +1,15 @@
 module ImportExport
 
+# Load common dependencies
+include("CommonDeps.jl")
+using ..Utils
+using ..Materials
+using ..EarthProps
+using ..DataModel
+
+# Module-specific dependencies
+using EzXML
+
 # PSCIdGen: Generates unique IDs for PSCAD exports.
 mutable struct PSCIdGen
 	current::Int
@@ -679,6 +689,6 @@ function export_pscad_lcp(
 
 end
 
-@_autoexport
+Utils.@_autoexport
 
 end

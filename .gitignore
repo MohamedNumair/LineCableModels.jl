@@ -27,11 +27,12 @@ Manifest.toml
 temp/
 bibliography/
 presentations/
-package_stats.jl
-projects/*/MeasuredDims.jl
-projects/*/cables_library.jls
-projects/*/materials_library.csv
-projects/*/*.pscx
-projects/*/data/
-projects/confidential_*
+projects/
+examples/*/MeasuredDims.jl
+examples/*/cables_library.jls
+examples/*/materials_library.csv
+examples/*/*.pscx
+examples/*/data/
 *.ipynb
+# the secret shame folder
+.local/ 

@@ -1,4 +1,43 @@
 """
+	LineCableModels.DataModel
+
+The [`DataModel`](@ref) module provides data structures, constructors and utilities for modeling power cables within the [`LineCableModels.jl`](index.md) package. This module includes definitions for various cable components, their electromagnetic properties, and visualization tools for cable designs.
+
+# Overview
+
+- Implements the `Conductor` struct for modeling composite conductors with multiple layers.
+- Defines the fundamental cable elements: `WireArray`, `Strip`, `Tubular`, `Semicon`, and `Insulator`.
+- Provides structures for detailed cable designs with the `CableDesign` and supporting types.
+- Includes utilities for cable system modeling with the `LineCableSystem` type, and multiple formation patterns like trifoil and flat arrangements.
+- Contains functions for calculating the base electric properties of a `CableDesign`, such as resistance, inductance, capacitance, and GMR.
+- Offers visualization tools for previewing cable cross-sections and system layouts.
+- Provides a library system for storing and retrieving cable designs.
+
+# Dependencies
+
+$(IMPORTS)
+
+# Exports
+
+$(EXPORTS)
+"""
+module DataModel
+
+# Load common dependencies
+include("CommonDeps.jl")
+using ..Utils
+using ..Materials
+using ..EarthProps
+
+# Module-specific dependencies
+using Measurements
+using DataFrames
+using Colors
+using Plots
+using DataStructures
+using Serialization
+
+"""
 Represents the thickness of a cable component. This custom type ensures flexibility in data entry and consistency with engineering practices, where component layers (insulation, metallic tapes etc.) are typically described by thickness rather than laying radius. It standardizes components requiring `radius_ext` for calculations.
 """
 struct Thickness
@@ -2840,4 +2879,8 @@ function cross_section_data(system::LineCableSystem)
 		vert = vert_coords,
 		phase_mapping = mappings,
 	)
+end
+
+Utils.@_autoexport
+
 end

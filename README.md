@@ -47,10 +47,10 @@ The source code is provided under the [BSD 3-Clause License](LICENSE).
 ## Acknowledgements
 
 This work is supported by the Etch Competence Hub of EnergyVille, financed by the Flemish Government. The primary developer is Amauri Martins ([@amaurigmartins](https://github.com/amaurigmartins)).
-
-<p align="center">
-  <img src="assets/img/etch_logo.png" width="150">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="assets/img/energyville_logo.png" width="150">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  
+<p align="left">
+  <img src="assets/img/etch_logo.png" width="150"><br>
+  <img src="assets/img/energyville_logo.png" width="150"><br>
   <img src="assets/img/kul_logo.png" width="150">
 </p>
 

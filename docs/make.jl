@@ -1,16 +1,48 @@
 using Documenter
 using DocumenterCitations
 using Pkg
-using Revise
-using LineCableModels
 
-ENV["DOCUMENTER_HIDE_PREFIX"] = "LineCableModels."
+function get_project_toml()
+	# Get the current active environment
+	docs_env = Pkg.project().path
 
-PROJECT_TOML = Pkg.TOML.parsefile(joinpath(@__DIR__, "..", "Project.toml"))
+	# Path to the main project (one level up from docs)
+	main_project_path = joinpath(dirname(docs_env), "..")
+
+	# Parse the main project's TOML
+	project_toml = Pkg.TOML.parsefile(joinpath(main_project_path, "Project.toml"))
+	project_name = project_toml["name"]
+
+	# Activate main project temporarily to check dependencies
+	Pkg.activate(main_project_path)
+	Pkg.activate(docs_env)
+
+	# Check if main project is added to docs
+	try
+		# Try to import the main package
+		@eval import $(Symbol(project_name))
+	catch e
+		# If it fails, develop the main package into docs environment
+		@info "Adding main project to docs environment..."
+		Pkg.develop(path = main_project_path)
+	end
+
+	# Now try to load it
+	@eval using $(Symbol(project_name))
+
+	return project_toml
+end
+
+# Ensure dependencies and get project data
+PROJECT_TOML = get_project_toml()
 PROJECT_VERSION = PROJECT_TOML["version"]
 NAME = PROJECT_TOML["name"]
 AUTHORS = join(PROJECT_TOML["authors"], ", ") * " and contributors."
-GITHUB = "https://github.com/Electa-Git/LineCableModels.jl"
+GITHUB = PROJECT_TOML["git_url"]
+
+using Revise
+@eval using $(Symbol(NAME))
+main_module = @eval $(Symbol(NAME))
 
 bib = CitationBibliography(
 	joinpath(@__DIR__, "src", "refs.bib"),
@@ -18,20 +50,20 @@ bib = CitationBibliography(
 )
 
 DocMeta.setdocmeta!(
-	LineCableModels,
+	main_module,
 	:DocTestSetup,
-	:(using LineCableModels);
+	:(using $(Symbol(NAME)));
 	recursive = true,
 )
 
 makedocs(;
-	modules = [LineCableModels],
+	# modules = [LineCableModels],
+	modules = [main_module],
 	authors = "Amauri Martins",
-	sitename = "LineCableModels.jl",
+	sitename = "$NAME.jl",
 	format = Documenter.HTML(;
 		edit_link = "main",
-		# assets = ["assets/custom.js", "assets/citations.css", "assets/custom.css"],
-		assets = ["assets/citations.css", "assets/favicon.ico"],
+		assets = ["assets/citations.css", "assets/favicon.ico"], #"assets/custom.js", "assets/custom.css"],
 		prettyurls = get(ENV, "CI", "false") == "true",
 		ansicolor = true,
 		collapselevel = 1,
@@ -55,12 +87,12 @@ makedocs(;
 html_path = joinpath(@__DIR__, "build", "index.html")
 browser_cmd = `google-chrome-stable --new-window file://$(html_path)`
 
-# browser_cmd = `firefox --new-window file://$(html_path)`
-# try
-# 	run(`killall firefox`)
-# catch e
-# 	println("No existing Firefox process found. Continuing...")
-# end
+browser_cmd = `firefox --new-window file://$(html_path)`
+try
+	run(`killall firefox`)
+catch e
+	println("No existing Firefox process found. Continuing...")
+end
 
 run(browser_cmd, wait = false)
 
