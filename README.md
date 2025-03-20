@@ -47,10 +47,26 @@ The source code is provided under the [BSD 3-Clause License](LICENSE).
 ## Acknowledgements
 
 This work is supported by the Etch Competence Hub of EnergyVille, financed by the Flemish Government. The primary developer is Amauri Martins ([@amaurigmartins](https://github.com/amaurigmartins)).
-  
-<p align="left">
-  <img src="assets/img/etch_logo.png" width="150"><br>
-  <img src="assets/img/energyville_logo.png" width="150"><br>
-  <img src="assets/img/kul_logo.png" width="150">
-</p>
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" width="33%">
+        <a href="https://energyville.be/project/etch-energy-transmission-competence-hub/">
+          <img src="assets/img/etch_logo.png" height="60" alt="Etch Logo">
+        </a>
+      </td>
+      <td align="center" width="33%">
+        <a href="https://energyville.be/">
+          <img src="assets/img/energyville_logo.png" height="60" alt="EnergyVille Logo">
+        </a>
+      </td>
+      <td align="center" width="33%">
+        <a href="https://www.kuleuven.be/kuleuven/">
+          <img src="assets/img/kul_logo.png" height="60" alt="KUL Logo">
+        </a>
+      </td>
+    </tr>
+  </table>
+</div>
 
