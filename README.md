@@ -48,8 +48,8 @@ The source code is provided under the [BSD 3-Clause License](LICENSE).
 
 This work is supported by the Etch Competence Hub of EnergyVille, financed by the Flemish Government. The primary developer is Amauri Martins ([@amaurigmartins](https://github.com/amaurigmartins)).
 
-<p align = "left">
-  <p><img src="assets/img/etch_logo.png" width="150"><br><br></p>
-  <p><img src="assets/img/energyville_logo.png" width="150"><br><br></p>
+<br><br><<p align = "left">
+  <p><img src="assets/img/etch_logo.png" width="150"><br></p>
+  <p><img src="assets/img/energyville_logo.png" width="150"><br></p>
   <p><img src="assets/img/kul_logo.png" width="150"></p>
 </p>
