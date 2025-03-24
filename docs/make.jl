@@ -56,43 +56,61 @@ DocMeta.setdocmeta!(
 	recursive = true,
 )
 
+mathengine = MathJax3(
+	Dict(
+		:loader => Dict("load" => ["[tex]/physics"]),
+		:tex => Dict(
+			"inlineMath" => [["\$", "\$"], ["\\(", "\\)"]],
+			"tags" => "ams",
+			"packages" => ["base", "ams", "autoload", "physics"],
+		),
+	),
+)
+
 makedocs(;
-	# modules = [LineCableModels],
 	modules = [main_module],
 	authors = "Amauri Martins",
 	sitename = "$NAME.jl",
 	format = Documenter.HTML(;
+		mathengine = mathengine,
 		edit_link = "main",
-		assets = ["assets/citations.css", "assets/favicon.ico"], #"assets/custom.js", "assets/custom.css"],
+		assets = [
+			"assets/citations.css",
+			"assets/favicon.ico",
+			"assets/custom.css",
+			"assets/custom.js",
+		],
 		prettyurls = get(ENV, "CI", "false") == "true",
 		ansicolor = true,
 		collapselevel = 1,
 		footer = "[$NAME.jl]($GITHUB) v$PROJECT_VERSION supported by the Etch Competence Hub of EnergyVille, financed by the Flemish Government.",
+		size_threshold = nothing,
 	),
 	pages = [
 		"Home" => "index.md",
 		"Tutorials" => "tutorials.md",
 		"Toolbox reference" => "reference.md",
-		# "Development" => Any[
-		# 	"Internal"=>"internals.md",
-		# ],
 		"Bibliography" => "bib.md",
+		"Development" => Any[
+			"Naming conventions"=>"conventions.md",
+		],
 	],
 	clean = true,
 	plugins = [bib],
 	checkdocs = :exports,
 	pagesonly = true,
+	warnonly = true,
 )
 
 html_path = joinpath(@__DIR__, "build", "index.html")
 browser_cmd = `google-chrome-stable --new-window file://$(html_path)`
 
-browser_cmd = `firefox --new-window file://$(html_path)`
-try
-	run(`killall firefox`)
-catch e
-	println("No existing Firefox process found. Continuing...")
-end
+# browser_cmd = `firefox --new-window file://$(html_path)`
+# try
+# 	run(`killall firefox`)
+# catch e
+# 	println("No existing Firefox process found. Continuing...")
+# end
 
 run(browser_cmd, wait = false)
 

@@ -95,6 +95,33 @@ end
 """
 $(TYPEDSIGNATURES)
 
+Converts a measurement to a value with zero uncertainty, retaining the numeric type `Measurement`.
+
+# Arguments
+
+- `value`: Input value that may be a `Measurement` type or another type \\[dimensionless\\].
+
+# Returns
+
+- If input is a `Measurement`, returns the same value with zero uncertainty; otherwise returns the original value unchanged.
+
+# Examples
+
+```julia
+x = 5.0 ± 0.1
+result = $(FUNCTIONNAME)(x)  # Output: 5.0 ± 0.0
+
+y = 10.0
+result = $(FUNCTIONNAME)(y)  # Output: 10.0
+```
+"""
+function strip_uncertainty(value)
+	return value isa Measurement ? (Measurements.value(value) ± 0.0) : value
+end
+
+"""
+$(TYPEDSIGNATURES)
+
 Converts a value to a measurement with uncertainty based on percentage.
 
 # Arguments

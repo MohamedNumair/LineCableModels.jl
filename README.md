@@ -10,17 +10,13 @@
 
 ## Main features
 
-- Uses `Measurements.jl` to model uncertainties in cable geometry, materials, and earth properties.
-- Calculates internal DC and AC parameters (R, L, C, G) for solid, tubular, and stranded conductors, including correction factors for temperature, twisting, and stranding effects.
-- Detailed representation of cable components, including semiconductors, screens, armoring, insulators, tapes, and water-blocking materials.
-- Internal calculation of line impedances/admittances, or direct export to PSCAD Line Constants Program.
-- **(in progress)** Computes internal impedances of solid, tubular or coaxial multi-layered single-core (SC) cables, using rigorous ([10.1109/TPAS.1980.319718](https://ieeexplore.ieee.org/document/4113884)) or equivalent approximate formulas available in [industry-standard EMT software](https://www.pscad.com/webhelp/EMTDC/Transmission_Lines/Deriving_System_Y_and_Z_Matrices.htm).
-- **(in progress)** Computes earth-return impedances and admittances of underground conductors in homogeneous soil, based on a rigorous solution of Helmholtz equation on the electric Hertzian vector, valid up to 10 MHz ([10.1109/TPWRD.2009.2034797](https://ieeexplore.ieee.org/abstract/document/5437464)). The expressions simplify to Pollaczek's solution if earth permittivity is set to zero.
-- **(in progress)** Supports frequency-dependent soil properties.
-- **(in progress)** Supports systems comprised by any number of phases with any number of conductors per phase, with or without Kron reduction.
-- **(in progress)** Computes phase-domain Z/Y matrices for poliphase systems, and sequence-domain components for three-phase systems, with uncertainty propagation.
-- **(in progress)** Includes a novel formulation for cables composed of N concentrical layers, allowing for accurate representations of semiconductor materials.
-- General-purpose, reusable and customizable to different use cases via well-structured functions, object-oriented data model and user-defined parameters.
+- Models power cable geometries with uncertainty quantification using `Measurements.jl`.
+- Calculates DC and AC electrical parameters (R, L, C, G) for various conductor types.
+- Provides detailed representation of all cable components: including semiconductors, screens, armoring, insulators, tapes, and water-blocking materials.
+- Supports temperature, twisting, and stranding corrections for accurate simulations.
+- Offers both internal impedance/admittance calculation and PSCAD export capabilities.
+- Implements rigorous electromagnetic formulations for cable and earth-return impedances.
+- Features extensible, object-oriented design with customizable parameters.
 
 ## Formulation
 

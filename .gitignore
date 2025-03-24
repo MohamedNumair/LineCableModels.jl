@@ -35,4 +35,4 @@ examples/*/*.pscx
 examples/*/data/
 *.ipynb
 # the secret shame folder
-.local/ 
+local/ 

@@ -3,7 +3,7 @@
 // });
 
 (function () {
-    const theme = "catppuccin-mocha";
+    const theme = "documenter-dark";
 
     // Apply the theme before the page renders
     if (localStorage.getItem("documenter-theme") !== theme) {

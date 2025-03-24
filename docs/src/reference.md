@@ -10,7 +10,7 @@ Depth = 2
 
 ## Data entry model
 ```@autodocs
-Modules = [LineCableModels.DataModel]
+Modules = [LineCableModels.DataModel, LineCableModels.DataModel.BaseParams]
 Order = [:module, :constant, :type, :function, :macro]
 Public = true
 Private = false
@@ -30,7 +30,7 @@ Private = false
 
 ## Import & export
 ```@autodocs
-Modules = [LineCableModels.ImportExport]
+Modules = [LineCableModels]
 Order = [:module, :constant, :type, :function, :macro]
 Public = true
 Private = false
@@ -78,7 +78,7 @@ Private = true
 
 ### Import & export
 ```@autodocs
-Modules = [LineCableModels.ImportExport]
+Modules = [LineCableModels]
 Order = [:module, :constant, :type, :function, :macro]
 Public = false
 Private = true

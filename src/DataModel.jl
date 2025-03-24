@@ -1,15 +1,13 @@
 """
 	LineCableModels.DataModel
 
-The [`DataModel`](@ref) module provides data structures, constructors and utilities for modeling power cables within the [`LineCableModels.jl`](index.md) package. This module includes definitions for various cable components, their electromagnetic properties, and visualization tools for cable designs.
+The [`DataModel`](@ref) module provides data structures, constructors and utilities for modeling power cables within the [`LineCableModels.jl`](index.md) package. This module includes definitions for various cable components, and visualization tools for cable designs.
 
 # Overview
 
-- Implements the `Conductor` struct for modeling composite conductors with multiple layers.
-- Defines the fundamental cable elements: `WireArray`, `Strip`, `Tubular`, `Semicon`, and `Insulator`.
-- Provides structures for detailed cable designs with the `CableDesign` and supporting types.
-- Includes utilities for cable system modeling with the `LineCableSystem` type, and multiple formation patterns like trifoil and flat arrangements.
-- Contains functions for calculating the base electric properties of a `CableDesign`, such as resistance, inductance, capacitance, and GMR.
+- Provides structures for detailed **cable** modeling with the [`CableDesign`](@ref) and supporting types: [`Conductor`](@ref), [`WireArray`](@ref), [`Strip`](@ref), [`Tubular`](@ref), [`Semicon`](@ref), and [`Insulator`](@ref).
+- Includes structures for cable **system** modeling with the [`LineCableSystem`](@ref) type, and multiple formation patterns like trifoil and flat arrangements.
+- Contains functions for calculating the base electric properties of all elements within a [`CableDesign`](@ref), namely: resistance, inductance (via GMR), shunt capacitance, and shunt conductance (via loss factor).
 - Offers visualization tools for previewing cable cross-sections and system layouts.
 - Provides a library system for storing and retrieving cable designs.
 
@@ -38,285 +36,149 @@ using DataStructures
 using Serialization
 
 """
-Represents the thickness of a cable component. This custom type ensures flexibility in data entry and consistency with engineering practices, where component layers (insulation, metallic tapes etc.) are typically described by thickness rather than laying radius. It standardizes components requiring `radius_ext` for calculations.
+$(TYPEDEF)
+
+Represents the thickness of a cable component.
+
+$(TYPEDFIELDS)
 """
-struct Thickness
-	value::Number
+struct Thickness{T <: Number} <: Number
+	"Numerical value of the thickness \\[m\\]."
+	value::T
+end
+
+
+"""
+$(TYPEDEF)
+
+Represents the diameter of a cable component.
+
+$(TYPEDFIELDS)
+"""
+struct Diameter{T <: Number} <: Number
+	"Numerical value of the diameter \\[m\\]."
+	value::T
 end
 
 """
-A macro for constructing `Thickness` objects.
+$(TYPEDEF)
 
-# Arguments
-- `value`: The numerical value representing the thickness to be encapsulated in a `Thickness` object.
-
-# Returns
-- A `Thickness` object with the specified `value`.
-
-# Examples
-```julia
-using .LineCableModels
-
-thick_obj = @thick(5.0)
-println(thick_obj) # Output: Thickness(5.0)
-```
-
+Abstract type representing a generic cable part.
+"""
+abstract type AbstractCablePart end
 
 """
-macro thick(value)
-	esc(:(Thickness($value)))
-end
+$(TYPEDEF)
+
+Abstract type representing a conductive part of a cable.
+
+Subtypes implement specific configurations:
+- [`WireArray`](@ref)
+- [`Tubular`](@ref)
+- [`Strip`](@ref)
+- [`Conductor`](@ref)
+"""
+abstract type AbstractConductorPart <: AbstractCablePart end
 
 """
-A macro that calculates the radius from a given diameter. As trivial and overkill as it may seem, this macro is intended to improve clarity in cases where typical engineering data is commonly referred to in terms of diameters, e.g. wires used in stranded cores and screens.
+$(TYPEDEF)
 
-# Arguments
-- `value`: The numerical value representing the diameter to be halved.
+Abstract type representing an insulating part of a cable.
 
-# Returns
-- A numerical value equal to half of the provided diameter (radius).
-
-# Examples
-```julia
-using .LineCableModels
-
-radius = @diam(10.0)
-println(radius) # Output: 5.0
-```
-
+Subtypes implement specific configurations:
+- [`Insulator`](@ref)
+- [`Semicon`](@ref)
+"""
+abstract type AbstractInsulatorPart <: AbstractCablePart end
 
 """
-macro diam(value)
-	esc(:(($value) / 2))
-end
+$(TYPEDEF)
 
+Represents an array of wires equally spaced around a circumference of arbitrary radius, with attributes:
+
+$(TYPEDFIELDS)
 """
-Represents an array of wires equally spaced around a circumference of arbitrary radius.
-"""
-struct WireArray
+struct WireArray <: AbstractConductorPart
+	"Internal radius of the wire array \\[m\\]."
 	radius_in::Number
+	"External radius of the wire array \\[m\\]."
 	radius_ext::Number
+	"Radius of each individual wire \\[m\\]."
 	radius_wire::Number
+	"Number of wires in the array \\[dimensionless\\]."
 	num_wires::Int
+	"Ratio defining the lay length of the wires (twisting factor) \\[dimensionless\\]."
 	lay_ratio::Number
+	"Mean diameter of the wire array \\[m\\]."
 	mean_diameter::Number
+	"Pitch length of the wire array \\[m\\]."
 	pitch_length::Number
-	twist_direction::Int
+	"Twisting direction of the strands (1 = unilay, -1 = contralay) \\[dimensionless\\]."
+	lay_direction::Int
+	"Material object representing the physical properties of the wire material."
 	material_props::Material
+	"Temperature at which the properties are evaluated \\[°C\\]."
 	temperature::Number
+	"Cross-sectional area of all wires in the array \\[m²\\]."
 	cross_section::Number
+	"Electrical resistance per wire in the array \\[Ω/m\\]."
 	resistance::Number
+	"Geometric mean radius of the wire array \\[m\\]."
 	gmr::Number
 
-	"""
-	Constructor: Initializes a `WireArray` object based on specified geometric and material parameters.
-
-	# Arguments
-	- `radius_in`: Internal radius of the wire array \\[m\\].
-	- `radius_wire`: Radius of each individual wire \\[m\\].
-	- `num_wires`: Number of wires in the array.
-	- `lay_ratio`: Ratio defining the lay length of the wires (twisting factor).
-	- `material_props`: A `Material` object representing the material properties (e.g., resistivity, temperature coefficient).
-	- `temperature`: Temperature at which the properties are evaluated \\[°C\\] (default: 20).
-	- `twist_direction`: Twisting direction of the strands (1 = unilay, -1 = contralay). Optional, defaults to 1.
-
-	# Returns
-	An instance of `WireArray` initialized with calculated geometric and electrical properties:
-	- `radius_in`: Internal radius of the wire array \\[m\\].
-	- `radius_ext`: External radius of the wire array \\[m\\].
-	- `radius_wire`: Radius of each individual wire \\[m\\].
-	- `num_wires`: Number of wires in the array.
-	- `lay_ratio`: Ratio defining the lay length of the wires (twisting factor).
-	- `mean_diameter`: Mean diameter of the wire array \\[m\\].
-	- `pitch_length`: Pitch length of the wire array \\[m\\].
-	- `twist_direction`: Twisting direction of the strands (1 = unilay, -1 = contralay).
-	- `material_props`: A `Material` object representing the physical properties of the wire material.
-	- `temperature`: Temperature at which the properties are evaluated \\[°C\\].
-	- `cross_section`: Cross-sectional area of all wires in the array \\[m²\\].
-	- `resistance`: Electrical resistance per wire in the array \\[Ω/m\\].
-	- `gmr`: Geometric mean radius of the wire array \\[m\\].
-
-	# Dependencies
-	This constructor uses the following custom functions:
-	- `calc_tubular_resistance`: Computes the DC resistance of the wires.
-	- `calc_wirearray_gmr`: Calculates the geometric mean radius (GMR) of the wire array.
-
-	# Examples
-	```julia
-	material_props = Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393)
-	wire_array = WireArray(0.01, @diam(0.002), 7, 10, material_props, temperature=25)
-	println(wire_array.mean_diameter) # Outputs: Mean diameter in m
-	println(wire_array.resistance)    # Outputs: Resistance in Ω
-	```
-
-
-	"""
-	function WireArray(
-		radius_in::Union{Number, <:Any},
-		radius_wire::Number,
-		num_wires::Int,
-		lay_ratio::Number,
-		material_props::Material;
-		temperature::Number = T₀,
-		twist_direction::Int = 1,
-	)
-
-		# Extract `radius_in` from `radius_ext` if a custom type is provided
-		radius_in = radius_in isa Number ? radius_in : getfield(radius_in, :radius_ext)
-		# Reset uncertainty to avoid propagation from different components
-		radius_in =
-			radius_in isa Measurement ? (Measurements.value(radius_in) ± 0.0) : radius_in
-		diameter = radius_wire * 2
-		rho = material_props.rho
-		T0 = material_props.T0
-		alpha = material_props.alpha
-		mean_diameter = 2 * (radius_in + diameter / 2)
-		radius_ext = num_wires == 1 ? diameter / 2 : radius_in + diameter
-		pitch_length = lay_ratio * mean_diameter
-		overlength = pitch_length != 0 ? sqrt(1 + (π * mean_diameter / pitch_length)^2) : 1
-
-		cross_section = num_wires * (π * (diameter / 2)^2)
-
-		R_wire =
-			calc_tubular_resistance(0, diameter / 2, rho, alpha, T0, temperature) *
-			overlength
-		R_all_wires = R_wire / num_wires
-
-		gmr = calc_wirearray_gmr(
-			radius_in + (diameter / 2),
-			num_wires,
-			diameter / 2,
-			material_props.mu_r,
-		)
-
+	function _WireArray(radius_in, radius_ext, radius_wire, num_wires, lay_ratio,
+		mean_diameter,
+		pitch_length, lay_direction, material_props, temperature, cross_section,
+		resistance, gmr)
 		# Initialize object
-		return new(
-			radius_in,
-			radius_ext,
-			radius_wire,
-			num_wires,
-			lay_ratio,
-			mean_diameter,
-			pitch_length,
-			twist_direction,
-			material_props,
-			temperature,
-			cross_section,
-			R_all_wires,
-			gmr,
-		)
+		return new(radius_in, radius_ext, radius_wire, num_wires, lay_ratio, mean_diameter,
+			pitch_length, lay_direction, material_props, temperature, cross_section,
+			resistance, gmr)
 	end
+
 end
 
 """
+$(TYPEDEF)
+
 Represents a flat conductive strip with defined geometric and material properties.
+
+$(TYPEDFIELDS)
 """
-struct Strip
+struct Strip <: AbstractConductorPart
+	"Internal radius of the strip \\[m\\]."
 	radius_in::Number
+	"External radius of the strip \\[m\\]."
 	radius_ext::Number
+	"Thickness of the strip \\[m\\]."
 	thickness::Number
+	"Width of the strip \\[m\\]."
 	width::Number
+	"Ratio defining the lay length of the strip (twisting factor) \\[dimensionless\\]."
 	lay_ratio::Number
+	"Mean diameter of the strip's helical path \\[m\\]."
 	mean_diameter::Number
+	"Pitch length of the strip's helical path \\[m\\]."
 	pitch_length::Number
-	twist_direction::Int
+	"Twisting direction of the strip (1 = unilay, -1 = contralay) \\[dimensionless\\]."
+	lay_direction::Int
+	"Material properties of the strip."
 	material_props::Material
+	"Temperature at which the properties are evaluated \\[°C\\]."
 	temperature::Number
+	"Cross-sectional area of the strip \\[m²\\]."
 	cross_section::Number
+	"Electrical resistance of the strip \\[Ω/m\\]."
 	resistance::Number
+	"Geometric mean radius of the strip \\[m\\]."
 	gmr::Number
 
-	"""
-	Constructor: Initializes a `Strip` object with specified geometric and material parameters.
-
-	# Arguments
-	- `radius_in`: Internal radius of the strip \\[m\\].
-	- `radius_ext`: External radius of the strip \\[m\\].
-	- `width`: Width of the strip \\[m\\].
-	- `lay_ratio`: Ratio defining the lay length of the strip (twisting factor).
-	- `material_props`: A `Material` object representing the physical properties of the strip material.
-	- `temperature`: Temperature at which the properties are evaluated \\[°C\\] (default: 20).
-	- `twist_direction`: Twisting direction of the strip (1 = unilay, -1 = contralay). Optional, defaults to 1.
-
-	# Returns
-	An instance of `Strip` initialized with calculated geometric and electrical properties:
-	- `radius_in`: Internal radius of the strip \\[m\\].
-	- `radius_ext`: External radius of the strip \\[m\\].
-	- `width`: Width of the strip \\[m\\].
-	- `lay_ratio`: Ratio defining the lay length of the strip (twisting factor).
-	- `mean_diameter`: Mean diameter of the strip \\[m\\].
-	- `pitch_length`: Pitch length of the strip \\[m\\].
-	- `twist_direction`: Twisting direction of the strip (1 = unilay, -1 = contralay).
-	- `material_props`: A `Material` object representing the physical properties of the strip material.
-	- `temperature`: Temperature at which the properties are evaluated \\[°C\\].
-	- `cross_section`: Cross-sectional area of the strip \\[m²\\].
-	- `resistance`: Electrical resistance of the strip \\[Ω/m\\].
-	- `gmr`: Geometric mean radius of the strip \\[m\\].
-
-	# Dependencies
-	- `calc_strip_resistance`: Computes the DC resistance of the strip.
-	- `calc_tubular_gmr`: Calculates the geometric mean radius (GMR) of the strip.
-
-	# Examples
-	```julia
-	material_props = Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393)
-	strip = Strip(0.01, @thick(0.002), 0.05, 10, material_props, temperature=25)
-	println(strip.cross_section) # Outputs: Cross-sectional area in m²
-	println(strip.resistance)    # Outputs: Resistance in Ω
-	```
-
-
-	"""
-	function Strip(
-		radius_in::Union{Number, <:Any},
-		radius_ext::Union{Number, Thickness},
-		width::Number,
-		lay_ratio::Number,
-		material_props::Material;
-		temperature::Number = T₀,
-		twist_direction::Int = 1,
-	)
-		# Extract `radius_in` from `radius_ext` if a custom type is provided
-		radius_in = radius_in isa Number ? radius_in : getfield(radius_in, :radius_ext)
-		# Reset uncertainty to avoid propagation from different components
-		radius_in =
-			radius_in isa Measurement ? (Measurements.value(radius_in) ± 0.0) : radius_in
-
-		# Handle external radius: absolute value or relative to radius_in
-		radius_ext = radius_ext isa Thickness ? radius_in + radius_ext.value : radius_ext
-		thickness = radius_ext - radius_in
-
-		rho = material_props.rho
-		T0 = material_props.T0
-		alpha = material_props.alpha
-		mean_diameter = 2 * (radius_in + thickness / 2)
-		pitch_length = lay_ratio * mean_diameter
-		overlength = pitch_length != 0 ? sqrt(1 + (π * mean_diameter / pitch_length)^2) : 1
-
-		cross_section = thickness * width
-
-		R_strip =
-			calc_strip_resistance(thickness, width, rho, alpha, T0, temperature) *
-			overlength
-
-		gmr = calc_tubular_gmr(radius_ext, radius_in, material_props.mu_r)
-
-		# Initialize object
-		return new(
-			radius_in,
-			radius_ext,
-			thickness,
-			width,
-			lay_ratio,
-			mean_diameter,
-			pitch_length,
-			twist_direction,
-			material_props,
-			temperature,
-			cross_section,
-			R_strip,
-			gmr,
-		)
+	function _Strip(radius_in, radius_ext, thickness, width, lay_ratio, mean_diameter,
+		pitch_length, lay_direction, material_props, temperature, cross_section,
+		resistance, gmr)
+		return new(radius_in, radius_ext, thickness, width, lay_ratio, mean_diameter,
+			pitch_length, lay_direction, material_props, temperature, cross_section,
+			resistance, gmr)
 	end
 end
 
@@ -327,7 +189,7 @@ Represents a tubular or solid (`radius_in=0`) conductor with geometric and mater
 
 $(TYPEDFIELDS)
 """
-mutable struct Tubular
+struct Tubular <: AbstractConductorPart
 	"Internal radius of the tubular conductor \\[m\\]."
 	radius_in::Number
 	"External radius of the tubular conductor \\[m\\]."
@@ -338,116 +200,72 @@ mutable struct Tubular
 	temperature::Number
 	"Cross-sectional area of the tubular conductor \\[m²\\]."
 	cross_section::Number
-	"Electrical resistance (DC) of the tubular conductor \\[Ω/m\\]"
+	"Electrical resistance (DC) of the tubular conductor \\[Ω/m\\]."
 	resistance::Number
-	"Geometric mean radius of the tubular conductor \\[m\\]"
+	"Geometric mean radius of the tubular conductor \\[m\\]."
 	gmr::Number
 
-	@doc """
-	$(TYPEDSIGNATURES)
-
-	Initializes a [`Tubular`](@ref) object with specified geometric and material parameters.
-
-	# Arguments
-	- `radius_in`: Internal radius of the tubular conductor \\[m\\].
-	- `radius_ext`: External radius of the tubular conductor \\[m\\].
-	- `material_props`: A [`Material`](@ref) object representing the physical properties of the conductor material.
-	- `temperature`: Temperature at which the properties are evaluated \\[°C\\] (default: 20).
-
-	# Returns
-	An instance of [`Tubular`](@ref) initialized with calculated geometric and electrical properties.
-
-	# See also
-	- [`calc_tubular_resistance`](@ref): Computes the DC resistance of the tubular conductor.
-	- [`calc_tubular_gmr`](@ref): Calculates the geometric mean radius (GMR) of the tubular conductor.
-
-	# Examples
-	```julia
-	material_props = Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393)
-	tubular = Tubular(0.01, 0.02, material_props, temperature=25)
-	println(tubular.cross_section) # Outputs: Cross-sectional area in m²
-	println(tubular.resistance)    # Outputs: Resistance in Ω
-	```
-
-	"""
-	function Tubular(
-		radius_in::Union{Number, <:Any},
-		radius_ext::Union{Number, Thickness},
-		material_props::Material;
-		temperature::Number = T₀,
-	)
-
-		# Extract `radius_in` from `radius_ext` if a custom type is provided
-		radius_in = radius_in isa Number ? radius_in : getfield(radius_in, :radius_ext)
-		# Reset uncertainty to avoid propagation from different components
-		radius_in =
-			radius_in isa Measurement ? (Measurements.value(radius_in) ± 0.0) : radius_in
-
-		# Handle external radius: absolute value or relative to radius_in
-		radius_ext = radius_ext isa Thickness ? radius_in + radius_ext.value : radius_ext
-
-		rho = material_props.rho
-		T0 = material_props.T0
-		alpha = material_props.alpha
-
-		cross_section = π * (radius_ext^2 - radius_in^2)
-
-		R0 = calc_tubular_resistance(radius_in, radius_ext, rho, alpha, T0, temperature)
-
-		gmr = calc_tubular_gmr(radius_ext, radius_in, material_props.mu_r)
-
-		# Initialize object
-		return new(
-			radius_in,
-			radius_ext,
-			material_props,
-			temperature,
-			cross_section,
-			R0,
-			gmr,
-		)
+	function _Tubular(radius_in, radius_ext, material_props, temperature,
+		cross_section, resistance, gmr)
+		return new(radius_in, radius_ext, material_props, temperature,
+			cross_section, resistance, gmr)
 	end
 end
 
 """
-Defines an abstract conductor type which may be a `WireArray`, `Tubular` or `Strip`, used for composite conductor modeling.
-"""
-const ConductorParts = Union{WireArray, Tubular, Strip}
+$(TYPEDEF)
 
+Represents a composite coaxial conductor assembled from multiple conductive layers.
+
+This structure serves as a container for different [`AbstractConductorPart`](@ref) elements 
+(such as wire arrays, strips, and tubular conductors) arranged in concentric layers. 
+The `Conductor` aggregates these individual parts and provides equivalent electrical 
+properties that represent the composite behavior of the entire assembly, stored in the attributes:
+
+$(TYPEDFIELDS)
 """
-Conductor: Represents a composite coaxial conductor consisting of multiple layers of different `ConductorParts`.
-"""
-mutable struct Conductor
+mutable struct Conductor <: AbstractConductorPart
+	"Inner radius of the conductor \\[m\\]."
 	radius_in::Number
+	"Outer radius of the conductor \\[m\\]."
 	radius_ext::Number
+	"Cross-sectional area of the entire conductor \\[m²\\]."
 	cross_section::Number
+	"Number of individual wires in the conductor \\[dimensionless\\]."
 	num_wires::Number
+	"DC resistance of the conductor \\[Ω\\]."
 	resistance::Number
+	"Temperature coefficient of resistance \\[1/°C\\]."
 	alpha::Number
+	"Geometric mean radius of the conductor \\[m\\]."
 	gmr::Number
-	layers::Vector{ConductorParts}
+	"Vector of conductor layer components."
+	layers::Vector{AbstractConductorPart}
 
-	"""
-	Constructor: Initializes a `Conductor` object using a central conductor part (e.g., Strip, WireArray, or Tubular).
+	@doc """
+	$(TYPEDSIGNATURES)
+
+	Constructs a [`Conductor`](@ref) instance initializing with the central conductor part.
 
 	# Arguments
-	- `central_conductor`: A `ConductorParts` object (Strip, WireArray, or Tubular) representing the central part of the conductor.
+
+	- `central_conductor`: An [`AbstractConductorPart`](@ref) object located at the center of the conductor.
 
 	# Returns
-	An instance of `Conductor` initialized with geometric and electrical properties derived from the central conductor.
+
+	- A [`Conductor`](@ref) object initialized with geometric and electrical properties derived from the central conductor.
 
 	# Examples
+
 	```julia
 	material_props = Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393)
 	central_strip = Strip(0.01, 0.002, 0.05, 10, material_props)
-	conductor = Conductor(central_strip)
-	println(conductor.layers) # Outputs: [central_strip]
-	println(conductor.resistance) # Outputs: Resistance in Ω
+	conductor = $(FUNCTIONNAME)(central_strip)
+	println(conductor.layers)      # Output: [central_strip]
+	println(conductor.resistance)  # Output: Resistance in \\[Ω\\]
 	```
-
-
 	"""
-	function Conductor(central_conductor::ConductorParts)
+	function Conductor(central_conductor::AbstractConductorPart)
 
 		num_wires = central_conductor isa WireArray ? central_conductor.num_wires : 0
 
@@ -466,42 +284,631 @@ mutable struct Conductor
 end
 
 """
-Adds a new part to an existing `Conductor` object and updates its properties.
+$(TYPEDEF)
+
+Represents a semiconducting layer with defined geometric, material, and electrical properties.
+
+$(TYPEDFIELDS)
+"""
+mutable struct Semicon <: AbstractInsulatorPart
+	"Internal radius of the semiconducting layer \\[m\\]."
+	radius_in::Number
+	"External radius of the semiconducting layer \\[m\\]."
+	radius_ext::Number
+	"Material properties of the semiconductor."
+	material_props::Material
+	"Operating temperature of the semiconductor \\[°C\\]."
+	temperature::Number
+	"Cross-sectional area of the semiconducting layer \\[m²\\]."
+	cross_section::Number
+	"Electrical resistance of the semiconducting layer \\[Ω/m\\]."
+	resistance::Number
+	"Geometric mean radius of the semiconducting layer \\[m\\]."
+	gmr::Number
+	"Shunt capacitance per unit length of the semiconducting layer \\[F/m\\]."
+	shunt_capacitance::Number
+	"Shunt conductance per unit length of the semiconducting layer \\[S/m\\]."
+	shunt_conductance::Number
+
+	function _Semicon(radius_in, radius_ext, material_props, temperature,
+		cross_section, resistance, gmr, shunt_capacitance, shunt_conductance)
+		return new(radius_in, radius_ext, material_props, temperature,
+			cross_section, resistance, gmr, shunt_capacitance, shunt_conductance)
+	end
+end
+
+"""
+$(TYPEDEF)
+
+Represents an insulating layer with defined geometric, material, and electrical properties.
+
+$(TYPEDFIELDS)
+"""
+mutable struct Insulator <: AbstractInsulatorPart
+	"Internal radius of the insulating layer \\[m\\]."
+	radius_in::Number
+	"External radius of the insulating layer \\[m\\]."
+	radius_ext::Number
+	"Material properties of the insulator."
+	material_props::Material
+	"Operating temperature of the insulator \\[°C\\]."
+	temperature::Number
+	"Cross-sectional area of the insulating layer \\[m²\\]."
+	cross_section::Number
+	"Electrical resistance of the insulating layer \\[Ω/m\\]."
+	resistance::Number
+	"Geometric mean radius of the insulator \\[m\\]."
+	gmr::Number
+	"Shunt capacitance per unit length of the insulating layer \\[F/m\\]."
+	shunt_capacitance::Number
+	"Shunt conductance per unit length of the insulating layer \\[S/m\\]."
+	shunt_conductance::Number
+
+	function _Insulator(radius_in, radius_ext, material_props, temperature,
+		cross_section, resistance, gmr, shunt_capacitance, shunt_conductance)
+		return new(radius_in, radius_ext, material_props, temperature,
+			cross_section, resistance, gmr, shunt_capacitance, shunt_conductance)
+	end
+end
+
+########################## CONSTRUCTORS
+
+# Submodule `BaseParams`
+include("BaseParams.jl")
+@force using .BaseParams
+
+"""
+$(TYPEDSIGNATURES)
+
+Resolves radius parameters for cable components, converting from various input formats to standardized inner radius, outer radius, and thickness values.
+
+This function serves as a high-level interface to the radius resolution system. It processes inputs through a two-stage pipeline:
+1. First normalizes input parameters to consistent forms using [`_parse_inputs_radius`](@ref).
+2. Then delegates to specialized implementations via [`_do_resolve_radius`](@ref) based on the component type.
 
 # Arguments
-- `sc`: A `Conductor` object to which the new part will be added.
-- `part_type`: The type of the conductor part to be added (`WireArray`, `Strip`, or `Tubular`).
-- `args...`: Positional arguments specific to the constructor of the `part_type`.
-- `kwargs...`: Named arguments for the constructor of the `part_type`. Includes optional properties such as `radius_in` and `temperature`.
+
+- `param_in`: Inner boundary parameter (defaults to radius) \\[m\\].
+  Can be a number, a [`Diameter`](@ref) , a [`Thickness`](@ref), or an [`AbstractCablePart`](@ref).
+- `param_ext`: Outer boundary parameter (defaults to radius) \\[m\\].
+  Can be a number, a [`Diameter`](@ref) , a [`Thickness`](@ref), or an [`AbstractCablePart`](@ref).
+- `object_type`: Type associated to the constructor of the new [`AbstractCablePart`](@ref).
 
 # Returns
-- None. Modifies the `Conductor` instance in place by adding the specified part and updating its properties:
-- Updates `gmr`, `resistance`, `alpha`, `radius_ext`, `cross_section`, and `num_wires` to account for the new part.
 
-# Dependencies
-- `calc_equivalent_gmr`: Calculates the equivalent geometric mean radius (GMR) after adding the new part.
-- `calc_parallel_equivalent`: Computes the parallel equivalent resistance of the conductor.
+- `radius_in`: Normalized inner radius \\[m\\].
+- `radius_ext`: Normalized outer radius \\[m\\].
+- `thickness`: Computed thickness or specialized dimension depending on the method \\[m\\].
+  For [`WireArray`](@ref) components, this value represents the wire radius instead of thickness.
+
+# See also
+
+- [`Diameter`](@ref)
+- [`Thickness`](@ref)
+- [`AbstractCablePart`](@ref)
+"""
+function _resolve_radius(param_in, param_ext, object_type = Any)
+	# Convert inputs to normalized form (numbers)
+	normalized_in = _parse_inputs_radius(param_in, object_type)
+	normalized_ext = _parse_inputs_radius(param_ext, object_type)
+
+	# Call the specialized implementation with normalized values
+	return _do_resolve_radius(normalized_in, normalized_ext, object_type)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Parses input values into radius representation based on object type and input type.
+
+# Arguments
+
+- `x`: Input value that can be a raw number, a [`Diameter`](@ref), a [`Thickness`](@ref), or other convertible type \\[m\\].
+- `object_type`: Type parameter used for dispatch \\[dimensionless\\].
+
+!!! warning "Note"
+	- When an [`AbstractCablePart`](@ref) is provided as input, the method retrieves its `radius_ext` value, allowing the new component to be placed directly over the existing part in a layered cable design.
+	- In case of uncertain measurements, the constructor prevents uncertainty propagation between different component types. When the new component being constructed is a different type than the existing one, the uncertainty is removed from the radius value before being passed to the new component. This ensures that measurement uncertainties do not inappropriately cascade across different cable parts.
+
+# Returns
+
+- Parsed radius value in appropriate units \\[m\\].
 
 # Examples
+
+```julia
+radius = $(FUNCTIONNAME)(10.0, ...)   # Direct radius value
+radius = $(FUNCTIONNAME)(Diameter(20.0), ...)  # From diameter object
+radius = $(FUNCTIONNAME)(Thickness(5.0), ...)  # From thickness object
+```
+
+# Methods
+
+$(METHODLIST)
+
+# See also
+
+- [`Diameter`](@ref)
+- [`Thickness`](@ref)
+- [`strip_uncertainty`](@ref)
+"""
+function _parse_inputs_radius end
+
+_parse_inputs_radius(x::Number, object_type::Type{T}) where {T} = x
+_parse_inputs_radius(d::Diameter, object_type::Type{T}) where {T} = d.value / 2
+_parse_inputs_radius(p::Thickness, object_type::Type{T}) where {T} = p
+_parse_inputs_radius(x, object_type::Type{T}) where {T} =
+	_parse_input_radius(x)
+
+function _parse_inputs_radius(p::AbstractCablePart, object_type::Type{T}) where {T}
+
+	# Get the current outermost radius
+	radius_in = getfield(p, :radius_ext)
+
+	# Check if we need to preserve uncertainty
+	existing_obj = typeof(p)
+
+	# Keep or strip uncertainty based on type match
+	return (existing_obj == object_type) ? radius_in : strip_uncertainty(radius_in)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Resolves radii values based on input types and object type, handling both direct radius specifications and thickness-based specifications.
+
+# Arguments
+
+- `radius_in`: Inner radius value \\[m\\].
+- `radius_ext`: Outer radius value or thickness specification \\[m\\].
+- `object_type`: Type parameter used for dispatch \\[dimensionless\\].
+
+# Returns
+
+- `inner_radius`: Resolved inner radius \\[m\\].
+- `outer_radius`: Resolved outer radius \\[m\\].
+- `thickness`: Radial thickness between inner and outer surfaces \\[m\\].
+
+# Examples
+
+```julia
+# Direct radius specification
+inner, outer, thickness = $(FUNCTIONNAME)(0.01, 0.02, ...)
+# Output: inner = 0.01, outer = 0.02, thickness = 0.01
+
+# Thickness-based specification
+inner, outer, thickness = $(FUNCTIONNAME)(0.01, Thickness(0.005), ...)
+# Output: inner = 0.01, outer = 0.015, thickness = 0.005
+```
+
+# See also
+
+- [`Thickness`](@ref)
+"""
+function _do_resolve_radius end
+
+function _do_resolve_radius(radius_in::Number, radius_ext::Number, ::Type{T}) where {T}
+	return radius_in, radius_ext, radius_ext - radius_in  # Return inner, outer, thickness
+end
+
+function _do_resolve_radius(radius_in::Number, thickness::Thickness, ::Type{T}) where {T}
+	radius_ext = radius_in + thickness.value
+	return radius_in, radius_ext, thickness.value
+end
+
+function _do_resolve_radius(radius_in::Number, radius_wire::Number, ::Type{WireArray})
+	thickness = 2 * radius_wire
+	return radius_in, radius_in + thickness, thickness
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Constructs a [`WireArray`](@ref) instance based on specified geometric and material parameters.
+
+# Arguments
+
+- `radius_in`: Internal radius of the wire array \\[m\\].
+- `radius_wire`: Radius of each individual wire \\[m\\].
+- `num_wires`: Number of wires in the array \\[dimensionless\\].
+- `lay_ratio`: Ratio defining the lay length of the wires (twisting factor) \\[dimensionless\\].
+- `material_props`: A [`Material`](@ref) object representing the material properties.
+- `temperature`: Temperature at which the properties are evaluated \\[°C\\].
+- `lay_direction`: Twisting direction of the strands (1 = unilay, -1 = contralay) \\[dimensionless\\].
+
+# Returns
+
+- A [`WireArray`](@ref) object with calculated geometric and electrical properties.
+
+# Examples
+
+```julia
+material_props = Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393)
+wire_array = $(FUNCTIONNAME)(0.01, Diameter(0.002), 7, 10, material_props, temperature=25)
+println(wire_array.mean_diameter)  # Outputs mean diameter in m
+println(wire_array.resistance)     # Outputs resistance in Ω/m
+```
+
+# See also
+
+- [`Material`](@ref)
+- [`Conductor`](@ref)
+- [`calc_tubular_resistance`](@ref)
+- [`calc_wirearray_gmr`](@ref)
+- [`calc_helical_params`](@ref)
+"""
+function WireArray(
+	radius_in::Union{Number, <:AbstractCablePart},
+	radius_wire::Union{Number, Diameter},
+	num_wires::Int,
+	lay_ratio::Number,
+	material_props::Material;
+	temperature::Number = T₀,
+	lay_direction::Int = 1,
+)
+
+	radius_in, radius_ext, diameter =
+		_resolve_radius(radius_in, radius_wire, WireArray)
+	radius_wire = diameter / 2
+	rho = material_props.rho
+	T0 = material_props.T0
+	alpha = material_props.alpha
+	radius_ext = num_wires == 1 ? diameter / 2 : radius_in + diameter
+
+	mean_diameter, pitch_length, overlength = calc_helical_params(
+		radius_in,
+		radius_ext,
+		lay_ratio,
+	)
+
+	cross_section = num_wires * (π * (diameter / 2)^2)
+
+	R_wire =
+		calc_tubular_resistance(0, diameter / 2, rho, alpha, T0, temperature) *
+		overlength
+	R_all_wires = R_wire / num_wires
+
+	gmr = calc_wirearray_gmr(
+		radius_in + (diameter / 2),
+		num_wires,
+		diameter / 2,
+		material_props.mu_r,
+	)
+
+	# Initialize object
+	return _WireArray(
+		radius_in,
+		radius_ext,
+		diameter / 2,
+		num_wires,
+		lay_ratio,
+		mean_diameter,
+		pitch_length,
+		lay_direction,
+		material_props,
+		temperature,
+		cross_section,
+		R_all_wires,
+		gmr,
+	)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Constructs a [`Strip`](@ref) object with specified geometric and material parameters.
+
+# Arguments
+
+- `radius_in`: Internal radius of the strip \\[m\\].
+- `radius_ext`: External radius or thickness of the strip \\[m\\].
+- `width`: Width of the strip \\[m\\].
+- `lay_ratio`: Ratio defining the lay length of the strip \\[dimensionless\\].
+- `material_props`: Material properties of the strip.
+- `temperature`: Temperature at which the properties are evaluated \\[°C\\]. Defaults to T₀.
+- `lay_direction`: Twisting direction of the strip (1 = unilay, -1 = contralay) \\[dimensionless\\]. Defaults to 1.
+
+# Returns
+
+- A [`Strip`](@ref) object with calculated geometric and electrical properties.
+
+# Examples
+
+```julia
+material_props = Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393)
+strip = $(FUNCTIONNAME)(0.01, Thickness(0.002), 0.05, 10, material_props, temperature=25)
+println(strip.cross_section) # Output: 0.0001 [m²]
+println(strip.resistance)    # Output: Resistance value [Ω/m]
+```
+
+# See also
+
+- [`Material`](@ref)
+- [`Conductor`](@ref)
+- [`calc_strip_resistance`](@ref)
+- [`calc_tubular_gmr`](@ref)
+- [`calc_helical_params`](@ref)
+"""
+function Strip(
+	radius_in::Union{Number, <:AbstractCablePart},
+	radius_ext::Union{Number, Thickness},
+	width::Number,
+	lay_ratio::Number,
+	material_props::Material;
+	temperature::Number = T₀,
+	lay_direction::Int = 1,
+)
+
+	radius_in, radius_ext, thickness =
+		_resolve_radius(radius_in, radius_ext, Strip)
+	rho = material_props.rho
+	T0 = material_props.T0
+	alpha = material_props.alpha
+
+	mean_diameter, pitch_length, overlength = calc_helical_params(
+		radius_in,
+		radius_ext,
+		lay_ratio,
+	)
+
+	cross_section = thickness * width
+
+	R_strip =
+		calc_strip_resistance(thickness, width, rho, alpha, T0, temperature) *
+		overlength
+
+	gmr = calc_tubular_gmr(radius_ext, radius_in, material_props.mu_r)
+
+	# Initialize object
+	return _Strip(
+		radius_in,
+		radius_ext,
+		thickness,
+		width,
+		lay_ratio,
+		mean_diameter,
+		pitch_length,
+		lay_direction,
+		material_props,
+		temperature,
+		cross_section,
+		R_strip,
+		gmr,
+	)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Initializes a [`Tubular`](@ref) object with specified geometric and material parameters.
+
+# Arguments
+
+- `radius_in`: Internal radius of the tubular conductor \\[m\\].
+- `radius_ext`: External radius of the tubular conductor \\[m\\].
+- `material_props`: A [`Material`](@ref) object representing the physical properties of the conductor material.
+- `temperature`: Temperature at which the properties are evaluated \\[°C\\]. Defaults to T₀.
+
+# Returns
+
+- An instance of [`Tubular`](@ref) initialized with calculated geometric and electrical properties.
+
+# Examples
+
+```julia
+material_props = Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393)
+tubular = $(FUNCTIONNAME)(0.01, 0.02, material_props, temperature=25)
+println(tubular.cross_section) # Output: 0.000942 [m²]
+println(tubular.resistance)    # Output: Resistance value [Ω/m]
+```
+
+# See also
+
+- [`Material`](@ref)
+- [`calc_tubular_resistance`](@ref)
+- [`calc_tubular_gmr`](@ref)
+"""
+function Tubular(
+	radius_in::Union{Number, <:AbstractCablePart},
+	radius_ext::Union{Number, Thickness},
+	material_props::Material;
+	temperature::Number = T₀,
+)
+
+	radius_in, radius_ext, thickness =
+		_resolve_radius(radius_in, radius_ext, Tubular)
+
+	rho = material_props.rho
+	T0 = material_props.T0
+	alpha = material_props.alpha
+
+	cross_section = π * (radius_ext^2 - radius_in^2)
+
+	R0 = calc_tubular_resistance(radius_in, radius_ext, rho, alpha, T0, temperature)
+
+	gmr = calc_tubular_gmr(radius_ext, radius_in, material_props.mu_r)
+
+	# Initialize object
+	return _Tubular(
+		radius_in,
+		radius_ext,
+		material_props,
+		temperature,
+		cross_section,
+		R0,
+		gmr,
+	)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Constructs a [`Semicon`](@ref) instance with calculated electrical and geometric properties.
+
+# Arguments
+
+- `radius_in`: Internal radius of the semiconducting layer \\[m\\].
+- `radius_ext`: External radius or thickness of the layer \\[m\\].
+- `material_props`: Material properties of the semiconducting material.
+- `temperature`: Operating temperature of the layer \\[°C\\] (default: T₀).
+
+# Returns
+
+- A [`Semicon`](@ref) object with initialized properties.
+
+# Examples
+
+```julia
+material_props = Material(1e6, 2.3, 1.0, 20.0, 0.00393)
+semicon_layer = $(FUNCTIONNAME)(0.01, Thickness(0.002), material_props, temperature=25)
+println(semicon_layer.cross_section)      # Expected output: ~6.28e-5 [m²]
+println(semicon_layer.resistance)         # Expected output: Resistance in [Ω/m]
+println(semicon_layer.gmr)                # Expected output: GMR in [m]
+println(semicon_layer.shunt_capacitance)  # Expected output: Capacitance in [F/m]
+println(semicon_layer.shunt_conductance)  # Expected output: Conductance in [S/m]
+```
+"""
+function Semicon(
+	radius_in::Union{Number, <:AbstractCablePart},
+	radius_ext::Union{Number, Thickness},
+	material_props::Material;
+	temperature::Number = T₀,
+)
+
+	rho = material_props.rho
+	T0 = material_props.T0
+	alpha = material_props.alpha
+	epsr_r = material_props.eps_r
+
+	radius_in, radius_ext, thickness =
+		_resolve_radius(radius_in, radius_ext, Semicon)
+
+	cross_section = π * (radius_ext^2 - radius_in^2)
+
+	resistance =
+		calc_tubular_resistance(radius_in, radius_ext, rho, alpha, T0, temperature)
+	gmr = calc_tubular_gmr(radius_ext, radius_in, material_props.mu_r)
+	shunt_capacitance = calc_shunt_capacitance(radius_in, radius_ext, epsr_r)
+	shunt_conductance = calc_shunt_conductance(radius_in, radius_ext, rho)
+
+	# Initialize object
+	return _Semicon(
+		radius_in,
+		radius_ext,
+		material_props,
+		temperature,
+		cross_section,
+		resistance,
+		gmr,
+		shunt_capacitance,
+		shunt_conductance,
+	)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Constructs an [`Insulator`](@ref) object with specified geometric and material parameters.
+
+# Arguments
+
+- `radius_in`: Internal radius of the insulating layer \\[m\\].
+- `radius_ext`: External radius or thickness of the layer \\[m\\].
+- `material_props`: Material properties of the insulating material.
+- `temperature`: Operating temperature of the insulator \\[°C\\].
+
+# Returns
+
+- An [`Insulator`](@ref) object with calculated electrical properties.
+
+# Examples
+
+```julia
+material_props = Material(1e10, 3.0, 1.0, 20.0, 0.0)
+insulator_layer = $(FUNCTIONNAME)(0.01, 0.015, material_props, temperature=25)
+```
+"""
+function Insulator(
+	radius_in::Union{Number, <:AbstractCablePart},
+	radius_ext::Union{Number, Thickness},
+	material_props::Material;
+	temperature::Number = T₀,
+)
+
+	radius_in, radius_ext, thickness =
+		_resolve_radius(radius_in, radius_ext, Insulator)
+	rho = material_props.rho
+	T0 = material_props.T0
+	alpha = material_props.alpha
+	epsr_r = material_props.eps_r
+
+	cross_section = π * (radius_ext^2 - radius_in^2)
+
+	resistance =
+		calc_tubular_resistance(radius_in, radius_ext, rho, alpha, T0, temperature)
+	gmr = calc_tubular_gmr(radius_ext, radius_in, material_props.mu_r)
+	shunt_capacitance = calc_shunt_capacitance(radius_in, radius_ext, epsr_r)
+	shunt_conductance = calc_shunt_conductance(radius_in, radius_ext, rho)
+
+	# Initialize object
+	return _Insulator(
+		radius_in,
+		radius_ext,
+		material_props,
+		temperature,
+		cross_section,
+		resistance,
+		gmr,
+		shunt_capacitance,
+		shunt_conductance,
+	)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Adds a new part to an existing `Conductor` object and updates its equivalent electrical properties.
+
+# Arguments
+
+- `sc`: Conductor object to which the new part will be added ([`Conductor`](@ref)).
+- `part_type`: Type of conductor part to add ([`AbstractConductorPart`](@ref)).
+- `args...`: Positional arguments specific to the constructor of the `part_type` ([`AbstractConductorPart`](@ref)) \\[various\\].
+- `kwargs...`: Named arguments for the constructor including optional values specific to the constructor of the `part_type` ([`AbstractConductorPart`](@ref)) \\[various\\].
+
+# Returns
+
+- The function modifies the `Conductor` instance in place and does not return a value.
+
+# Notes
+
+- Updates `gmr`, `resistance`, `alpha`, `radius_ext`, `cross_section`, and `num_wires` to account for the new part.
+- The `temperature` of the new part defaults to the temperature of the first layer if not specified.
+- The `radius_in` of the new part defaults to the external radius of the existing conductor if not specified.
+
+# Examples
+
 ```julia
 material_props = Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393)
 conductor = Conductor(Strip(0.01, 0.002, 0.05, 10, material_props))
-add_conductor_part!(
-	conductor, WireArray, 0.02, 0.002, 7, 15, material_props;
-	temperature = 25
-)
-println(conductor.cross_section) # Outputs: Updated cross-sectional area
-println(conductor.layers)       # Outputs: Updated layers including the new part
+$(FUNCTIONNAME)(conductor, WireArray, 0.02, 0.002, 7, 15, material_props; temperature = 25)
 ```
 
+# See also
 
+- [`Conductor`](@ref)
+- [`WireArray`](@ref)
+- [`Strip`](@ref)
+- [`Tubular`](@ref)
+- [`calc_equivalent_gmr`](@ref)
+- [`calc_parallel_equivalent`](@ref)
 """
-function add_conductor_part!(
+function add_to_conductor!(
 	sc::Conductor,
 	part_type::Type{T},  # The type of conductor part (WireArray, Strip, Tubular)
 	args...;  # Arguments specific to the part type
 	kwargs...,
-) where T <: ConductorParts
+) where T <: AbstractConductorPart
 	# Infer default properties
 	radius_in = get(kwargs, :radius_in, sc.radius_ext)
 	kwargs = merge((temperature = sc.layers[1].temperature,), kwargs)
@@ -511,9 +918,13 @@ function add_conductor_part!(
 
 	# Update the Conductor with the new part
 	sc.gmr = calc_equivalent_gmr(sc, new_part)
-	sc.alpha =
-		(sc.alpha * new_part.resistance + new_part.material_props.alpha * sc.resistance) /
-		(sc.resistance + new_part.resistance) # composite temperature coefficient 
+	sc.alpha = calc_parallel_alpha(
+		sc.alpha,
+		sc.resistance,
+		new_part.material_props.alpha,
+		new_part.resistance,
+	)
+
 	sc.resistance = calc_parallel_equivalent(sc.resistance, new_part.resistance)
 	sc.radius_ext += (new_part.radius_ext - new_part.radius_in)
 	sc.cross_section += new_part.cross_section
@@ -522,480 +933,45 @@ function add_conductor_part!(
 end
 
 """
-Computes the global coordinates of wires in a `WireArray`.
+$(TYPEDSIGNATURES)
 
-# Arguments
-- `wa`: A `WireArray` object containing the geometric and material properties of the wire array.
-
-# Returns
-- A vector of tuples, where each tuple represents the `(x, y)` coordinates \\[m\\] of the center of a wire.
-
-# Examples
-```julia
-wa = WireArray(0.01, 0.002, 7, 10, Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393))
-wire_coords = get_wirearray_coords(wa)
-println(wire_coords) # Outputs: [(x1, y1), (x2, y2), ...] for all wires
-```
-
-
-"""
-function get_wirearray_coords(wa::WireArray)
-	wire_coords = []  # Global coordinates of all wires
-	radius_wire = wa.radius_wire
-	num_wires = wa.num_wires
-	lay_radius = num_wires == 1 ? 0 : wa.radius_in + radius_wire
-
-	# Calculate the angle between each wire
-	angle_step = 2 * π / num_wires
-	for i in 0:num_wires-1
-		angle = i * angle_step
-		x = lay_radius * cos(angle)
-		y = lay_radius * sin(angle)
-		push!(wire_coords, (x, y))  # Add wire center
-	end
-	return wire_coords
-end
-
-"""
-Computes the parallel equivalent resistance of two impedances (or series equivalent of two admittances).
-
-# Arguments
-- `total_R`: The total impedance of the existing system \\[Ω\\].
-- `layer_R`: The impedance of the new layer being added \\[Ω\\].
-
-# Returns
-- The parallel equivalent impedance as a `Number` \\[Ω\\].
-
-# Examples
-```julia
-total_R = 5.0
-layer_R = 10.0
-parallel_R = calc_parallel_equivalent(total_R, layer_R)
-println(parallel_R) # Outputs: 3.3333333333333335
-```
-
-
-"""
-function calc_parallel_equivalent(total_R::Number, layer_R::Number)
-	return 1 / (1 / total_R + 1 / layer_R)
-end
-
-"""
-Computes the DC resistance of a tubular conductor based on its geometric and material properties, with temperature correction.
-
-# Arguments
-- `radius_in`: Internal radius of the tubular conductor \\[m\\].
-- `radius_ext`: External radius of the tubular conductor \\[m\\].
-- `rho`: Electrical resistivity of the conductor material \\[Ω·m\\].
-- `alpha`: Temperature coefficient of resistivity \\[1/°C\\].
-- `T0`: Reference temperature for the material properties \\[°C\\].
-- `T`: Operating temperature of the system \\[°C\\].
-
-# Returns
-- The DC resistance of the tubular conductor as a `Number` \\[Ω\\].
-
-# Examples
-```julia
-radius_in = 0.01
-radius_ext = 0.02
-rho = 1.7241e-8
-alpha = 0.00393
-T0 = 20
-T = 25
-resistance = calc_tubular_resistance(radius_in, radius_ext, rho, alpha, T0, T)
-println(resistance) # Outputs: Resistance in Ω
-```
-
-
-"""
-function calc_tubular_resistance(
-	radius_in::Number,
-	radius_ext::Number,
-	rho::Number,
-	alpha::Number,
-	T0::Number,
-	T::Number,
-)
-	temp_correction_factor = (1 + alpha * (T - T0))
-	cross_section = π * (radius_ext^2 - radius_in^2)
-	return temp_correction_factor * rho / cross_section
-end
-
-"""
-Computes the DC resistance of a strip conductor based on its geometric and material properties.
-
-# Arguments
-- `thickness`: Thickness of the strip \\[m\\].
-- `width`: Width of the strip \\[m\\].
-- `rho`: Electrical resistivity of the conductor material \\[Ω·m\\].
-- `alpha`: Temperature coefficient of resistivity \\[1/°C\\].
-- `T0`: Reference temperature for the material properties \\[°C\\].
-- `T`: Operating temperature of the system \\[°C\\].
-
-# Returns
-- The DC resistance of the strip conductor as a `Number` \\[Ω\\].
-
-# Examples
-```julia
-thickness = 0.002
-width = 0.05
-rho = 1.7241e-8
-alpha = 0.00393
-T0 = 20
-T = 25
-resistance = calc_strip_resistance(thickness, width, rho, alpha, T0, T)
-println(resistance) # Outputs: Resistance in Ω
-```
-
-
-"""
-function calc_strip_resistance(
-	thickness::Number,
-	width::Number,
-	rho::Number,
-	alpha::Number,
-	T0::Number,
-	T::Number,
-)
-	temp_correction_factor = (1 + alpha * (T - T0))
-	cross_section = thickness * width
-	return temp_correction_factor * rho / cross_section
-end
-
-"""
-Compute the inductance of a tubular conductor.
-
-# Arguments
-- `radius_in`: Internal radius of the tubular conductor \\[m\\].
-- `radius_ext`: External radius of the tubular conductor \\[m\\].
-- `mu_r`: Relative permeability of the conductor material (dimensionless).
-
-# Returns
-- Inductance of the tubular conductor per unit length \\[H/m\\].
-
-# Examples
-```julia
-L = calc_tubular_inductance(0.01, 0.02, 1.0)
-println(L) # Output: Inductance in H/m
-```
-
-
-
-
-"""
-function calc_tubular_inductance(radius_in::Number, radius_ext::Number, mu_r::Number)
-	return mu_r * μ₀ / (2 * π) * log(radius_ext / radius_in)
-end
-
-"""
-Computes the inductance of a trifoil-configured cable system.
-
-# Arguments
-- `r_in_co`: Internal radius of the phase conductor \\[m\\].
-- `r_ext_co`: External radius of the phase conductor \\[m\\].
-- `rho_co`: Electrical resistivity of the phase conductor material \\[Ω·m\\].
-- `mu_r_co`: Relative permeability of the phase conductor material.
-- `r_in_scr`: Internal radius of the metallic screen \\[m\\].
-- `r_ext_scr`: External radius of the metallic screen \\[m\\].
-- `mu_r_scr`: Relative permeability of the screen conductor material.
-- `rho_scr`: Electrical resistivity of the metallic screen material \\[Ω·m\\].
-- `S`: Spacing between conductors in trifoil configuration \\[m\\] (default: 0.07 m).
-- `rho_e`: Soil resistivity \\[Ω·m\\] (default: 100 Ω·m).
-- `f`: Frequency \\[Hz\\] (default: `f₀`).
-
-# Returns
-- Inductance per unit length of the cable system \\[H/m\\].
-
-# Dependencies
-- `calc_tubular_gmr`: Computes the geometric mean radius (GMR) of a tubular conductor.
-
-# Examples
-```julia
-L = calc_inductance_trifoil(0.01, 0.015, 1.72e-8, 1.0, 0.02, 0.025, 2.83e-8, 1.0, S=0.1, rho_e=50, f=50)
-println(L) # Output: Inductance value in H/m
-```
-
-# References
-- CIGRE TB-531, Section 4.2.4.3 (Solid Bonding Calculation Formula).
-"""
-function calc_inductance_trifoil(
-	r_in_co::Number,
-	r_ext_co::Number,
-	rho_co::Number,
-	mu_r_co::Number,
-	r_in_scr::Number,
-	r_ext_scr::Number,
-	rho_scr::Number,
-	mu_r_scr::Number;
-	S::Number = 7e-2,
-	rho_e::Number = 100,
-	f::Number = f₀,
-)
-
-	ω = 2 * π * f
-	C = μ₀ / (2π)
-
-	# Compute simplified earth return depth
-	DE = 659 * sqrt(rho_e / f)
-
-	# Compute R'_E
-	RpE = (ω * μ₀) / 8
-
-	# Compute Xa
-	GMRa = calc_tubular_gmr(r_ext_co, r_in_co, mu_r_co)
-	Xa = (ω * C) * log(DE / GMRa)
-
-	# Self impedance of a phase conductor with earth return
-	Ra = rho_co / (π * (r_ext_co^2 - r_in_co^2))
-	Za = RpE + Ra + im * Xa
-
-	# Compute rs
-	GMRscr = calc_tubular_gmr(r_ext_scr, r_in_scr, mu_r_scr)
-	# Compute Xs
-	Xs = (ω * C) * log(DE / GMRscr)
-
-	# Self impedance of metal screen with earth return
-	Rs = rho_scr / (π * (r_ext_scr^2 - r_in_scr^2))
-	Zs = RpE + Rs + im * Xs
-
-	# Mutual impedance between phase conductor and screen
-	Zm = RpE + im * Xs
-
-	# Compute GMD
-	GMD = S # trifoil, for flat use: 2^(1/3) * S
-
-	# Compute Xap
-	Xap = (ω * C) * log(DE / GMD)
-
-	# Equivalent mutual impedances between cables
-	Zx = RpE + im * Xap
-
-	# Formula from CIGRE TB-531, 4.2.4.3, solid bonding
-	Z1_sb = (Za - Zx) - ((Zm - Zx)^2 / (Zs - Zx))
-
-	# Likewise, but for single point bonding
-	# Z1_sp = (Za - Zx)
-	return imag(Z1_sb) / ω
-end
-
-"""
-Computes the geometric mean radius (GMR) of a circular wire array.
-
-# Arguments
-- `lay_rad`: Layout radius of the wire array \\[m\\].
-- `N`: Number of wires in the array.
-- `rad_wire`: Radius of an individual wire \\[m\\].
-- `mu_r`: Relative permeability of the wire material (dimensionless).
-
-# Returns
-- The GMR of the wire array as a `Number` \\[m\\].
-
-# Examples
-```julia
-lay_rad = 0.05
-N = 7
-rad_wire = 0.002
-mu_r = 1.0
-gmr = calc_wirearray_gmr(lay_rad, N, rad_wire, mu_r)
-println(gmr) # Outputs: GMR value \\[m\\]
-```
-
-
-"""
-function calc_wirearray_gmr(lay_rad::Number, N::Number, rad_wire::Number, mu_r::Number)
-	gmr_wire = rad_wire * exp(-mu_r / 4)
-	log_gmr_array = log(gmr_wire * N * lay_rad^(N - 1)) / N
-	return exp(log_gmr_array)
-end
-
-"""
-Computes the geometric mean radius (GMR) of a tubular conductor.
-
-# Arguments
-- `radius_ext`: External radius of the tubular conductor \\[m\\].
-- `radius_in`: Internal radius of the tubular conductor \\[m\\].
-- `mu_r`: Relative permeability of the conductor material (dimensionless).
-
-# Returns
-- The GMR of the tubular conductor as a `Number` \\[m\\].
-
-# Notes
-- If `radius_ext` is approximately equal to `radius_in`, the tube collapses into a thin shell, and the GMR is equal to `radius_ext`.
-- If the tube becomes infinitely thick (e.g., `radius_in` approaches 0), the GMR is considered infinite.
-- For general cases, the GMR is computed using the logarithmic integral of the tubular geometry.
-
-# Examples
-```julia
-radius_ext = 0.02
-radius_in = 0.01
-mu_r = 1.0
-gmr = calc_tubular_gmr(radius_ext, radius_in, mu_r)
-println(gmr) # Outputs: GMR value \\[m\\]
-```
-
-
-"""
-function calc_tubular_gmr(radius_ext::Number, radius_in::Number, mu_r::Number)
-	if radius_ext < radius_in
-		throw(ArgumentError("Invalid parameters: radius_ext must be >= radius_in."))
-	end
-
-	# Constants
-	if abs(radius_ext - radius_in) < TOL
-		# Tube collapses into a thin shell with infinitesimal thickness and the GMR is simply the radius
-		gmr = radius_ext
-	elseif abs(radius_in / radius_ext) < eps() && abs(radius_in) > TOL
-		# Tube becomes infinitely thick up to floating point precision
-		gmr = Inf
-	else
-		term1 =
-			radius_in == 0 ? 0 :
-			(radius_in^4 / (radius_ext^2 - radius_in^2)^2) * log(radius_ext / radius_in)
-		term2 = (3 * radius_in^2 - radius_ext^2) / (4 * (radius_ext^2 - radius_in^2))
-		Lin = (μ₀ * mu_r / (2 * π)) * (term1 - term2)
-
-		# Compute the GMR
-		gmr = exp(log(radius_ext) - (2 * π / μ₀) * Lin)
-	end
-
-	return gmr
-end
-
-"""
-Computes the relative permeability (mu_r) based on the geometric mean radius (GMR) and conductor dimensions.
-
-# Arguments
-- `gmr`: Geometric mean radius of the conductor \\[m\\].
-- `radius_ext`: External radius of the conductor \\[m\\].
-- `radius_in`: Internal radius of the conductor \\[m\\].
-
-# Returns
-- The relative permeability (`mu_r`) as a `Number` (dimensionless).
-
-# Examples
-```julia
-gmr = 0.015
-radius_ext = 0.02
-radius_in = 0.01
-mu_r = gmr_to_mu(gmr, radius_ext, radius_in)
-println(mu_r) # Outputs: Relative permeability value
-```
-
-# Notes
-- If `radius_ext` is less than `radius_in`, an `ArgumentError` is thrown.
-- Assumes a tubular geometry for the conductor, reducing to the solid case if `radius_in` is zero.
-
-
-"""
-function gmr_to_mu(gmr::Number, radius_ext::Number, radius_in::Number)
-	if radius_ext < radius_in
-		throw(ArgumentError("Invalid parameters: radius_ext must be >= radius_in."))
-	end
-
-	term1 =
-		radius_in == 0 ? 0 :
-		(radius_in^4 / (radius_ext^2 - radius_in^2)^2) * log(radius_ext / radius_in)
-	term2 = (3 * radius_in^2 - radius_ext^2) / (4 * (radius_ext^2 - radius_in^2))
-	# Compute the log difference
-	log_diff = log(gmr) - log(radius_ext)
-
-	# Compute mu_r
-	mu_r = -log_diff / (term1 - term2)
-
-	return mu_r
-end
-
-"""
-Computes the shunt capacitance per unit length of a coaxial structure.
-
-# Arguments
-- `radius_in`: Internal radius of the coaxial structure \\[m\\].
-- `radius_ext`: External radius of the coaxial structure \\[m\\].
-- `epsr`: Relative permittivity of the dielectric material (dimensionless).
-
-# Returns
-- The shunt capacitance per unit length as a `Number` \\[F/m\\].
-
-# Examples
-```julia
-radius_in = 0.01
-radius_ext = 0.02
-epsr = 2.3
-capacitance = calc_shunt_capacitance(radius_in, radius_ext, epsr)
-println(capacitance) # Outputs: Capacitance in F/m
-```
-
-# Notes
-- Uses the vacuum permittivity constant `ε₀`.
-- Assumes a uniform dielectric material between the inner and outer radii.
-
-
-"""
-function calc_shunt_capacitance(radius_in::Number, radius_ext::Number, epsr::Number)
-	return 2 * π * ε₀ * epsr / log(radius_ext / radius_in)
-end
-
-"""
-Computes the shunt conductance per unit length of a coaxial structure.
-
-# Arguments
-- `radius_in`: Internal radius of the coaxial structure \\[m\\].
-- `radius_ext`: External radius of the coaxial structure \\[m\\].
-- `rho`: Resistivity of the dielectric material \\[Ω·m\\].
-
-# Returns
-- The shunt conductance per unit length as a `Number` \\[S/m\\].
-
-# Examples
-```julia
-radius_in = 0.01
-radius_ext = 0.02
-rho = 1e9
-conductance = calc_shunt_conductance(radius_in, radius_ext, rho)
-println(conductance) # Outputs: Conductance in S/m
-```
-
-# Notes
-- Assumes a uniform dielectric material between the inner and outer radii.
-- Inverse of resistivity (`1 / rho`) is used to calculate conductance.
-
-
-"""
-function calc_shunt_conductance(radius_in::Number, radius_ext::Number, rho::Number)
-	return 2 * π * (1 / rho) / log(radius_ext / radius_in)
-end
-
-"""
 Generates a color representation for a material based on its physical properties.
 
 # Arguments
-- `material_props`: A dictionary containing the material's properties:
+
+- `material_props`: Dictionary containing material properties:
   - `rho`: Electrical resistivity \\[Ω·m\\].
-  - `eps_r`: Relative permittivity (dimensionless).
-  - `mu_r`: Relative permeability (dimensionless).
-- `rho_weight`: Weight assigned to the resistivity in the color blending (default: 0.8).
-- `epsr_weight`: Weight assigned to the permittivity in the color blending (default: 0.1).
-- `mur_weight`: Weight assigned to the permeability in the color blending (default: 0.1).
+  - `eps_r`: Relative permittivity \\[dimensionless\\].
+  - `mu_r`: Relative permeability \\[dimensionless\\].
+- `rho_weight`: Weight assigned to resistivity in color blending (default: 1.0) \\[dimensionless\\].
+- `epsr_weight`: Weight assigned to permittivity in color blending (default: 0.1) \\[dimensionless\\].
+- `mur_weight`: Weight assigned to permeability in color blending (default: 0.1) \\[dimensionless\\].
 
 # Returns
+
 - An `RGBA` object representing the combined color based on the material's properties.
 
 # Notes
-- Colors are normalized and weighted to emphasize specific properties (e.g., high resistivity materials like insulators).
-- Includes normalization for resistivity, permittivity, and permeability ranges.
+
+Colors are normalized and weighted using property-specific gradients:
+- Conductors (ρ ≤ 5ρ₀): White → Dark gray
+- Poor conductors (5ρ₀ < ρ ≤ 10⁴): Bronze → Greenish-brown
+- Insulators (ρ > 10⁴): Greenish-brown → Black
+- Permittivity: Gray → Orange
+- Permeability: Silver → Purple
+- The overlay function combines colors with their respective alpha/weight values.
 
 # Examples
+
 ```julia
 material_props = Dict(
 	:rho => 1.7241e-8,
 	:eps_r => 2.3,
 	:mu_r => 1.0
 )
-color = _get_material_color(material_props)
-println(color) # Outputs: RGBA color based on material properties
+color = $(FUNCTIONNAME)(material_props)
+println(color) # Expected output: RGBA(0.9, 0.9, 0.9, 1.0)
 ```
-
-
 """
 function _get_material_color(
 	material_props;
@@ -1105,376 +1081,71 @@ function _get_material_color(
 end
 
 """
-Represents a semiconducting layer with defined geometric, material, and electrical properties.
-"""
-mutable struct Semicon
-	radius_in::Number
-	radius_ext::Number
-	material_props::Material
-	temperature::Number
-	cross_section::Number
-	resistance::Number
-	gmr::Number
-	shunt_capacitance::Number
-	shunt_conductance::Number
+$(TYPEDEF)
 
-	"""
-	Constructor: Initializes a `Semicon` object based on specified geometric and material parameters.
+Represents a cable component, i.e. a group of [`AbstractCablePart`](@ref) objects, with the equivalent geometric and material properties.
 
-	# Arguments
-	- `radius_in`: Internal radius of the semiconducting layer \\[m\\].
-	- `radius_ext`: External radius of the layer \\[m\\].
-	- `material_props`: A `Material` object representing the physical properties of the semiconducting material.
-	- `temperature`: Operating temperature of the layer \\[°C\\] (default: 20).
-
-	# Returns
-	An instance of `Semicon` initialized with the following calculated properties:
-	- `radius_ext`: External radius of the semiconducting layer \\[m\\].
-	- `cross_section`: Cross-sectional area of the layer \\[m²\\].
-	- `resistance`: Electrical resistance of the layer \\[Ω/m\\].
-	- `gmr`: Geometric mean radius of the semiconductor \\[m\\].
-	- `shunt_capacitance`: Shunt capacitance per unit length of the layer \\[F/m\\].
-	- `shunt_conductance`: Shunt conductance per unit length of the layer \\[S/m\\].
-
-	# Dependencies
-	- `calc_tubular_resistance`: Computes the DC resistance of the semiconducting layer.
-	- `calc_tubular_gmr`: Calculates the geometric mean radius (GMR) of the tubular element.
-	- `calc_shunt_capacitance`: Computes the shunt capacitance per unit length.
-	- `calc_shunt_conductance`: Computes the shunt conductance per unit length.
-
-	# Examples
-	```julia
-	material_props = Material(1e6, 2.3, 1.0, 20.0, 0.00393)
-	semicon_layer = Semicon(0.01, @thick(0.002), material_props, temperature=25)
-	println(semicon_layer.cross_section)    # Outputs: Cross-sectional area in m²
-	println(semicon_layer.resistance)       # Outputs: Resistance in Ω
-	println(semicon_layer.gmr)       		# Outputs: GMR in m
-	println(semicon_layer.shunt_capacitance) # Outputs: Capacitance in F/m
-	println(semicon_layer.shunt_conductance) # Outputs: Conductance in S/m
-	```
-
-
-	"""
-	function Semicon(
-		radius_in::Union{Number, <:Any},
-		radius_ext::Union{Number, Thickness},
-		material_props::Material;
-		temperature::Number = T₀,
-	)
-
-		rho = material_props.rho
-		T0 = material_props.T0
-		alpha = material_props.alpha
-		epsr_r = material_props.eps_r
-
-		# Extract `radius_in` from `radius_ext` if a custom type is provided
-		radius_in = radius_in isa Number ? radius_in : getfield(radius_in, :radius_ext)
-		# Reset uncertainty to avoid propagation from different components
-		radius_in =
-			radius_in isa Measurement ? (Measurements.value(radius_in) ± 0.0) : radius_in
-
-		# Handle external radius: absolute value or relative to radius_in
-		radius_ext = radius_ext isa Thickness ? radius_in + radius_ext.value : radius_ext
-		# thickness = radius_ext - radius_in
-
-		cross_section = π * (radius_ext^2 - radius_in^2)
-
-		resistance =
-			calc_tubular_resistance(radius_in, radius_ext, rho, alpha, T0, temperature)
-		gmr = calc_tubular_gmr(radius_ext, radius_in, material_props.mu_r)
-		shunt_capacitance = calc_shunt_capacitance(radius_in, radius_ext, epsr_r)
-		shunt_conductance = calc_shunt_conductance(radius_in, radius_ext, rho)
-
-		# Initialize object
-		return new(
-			radius_in,
-			radius_ext,
-			material_props,
-			temperature,
-			cross_section,
-			resistance,
-			gmr,
-			shunt_capacitance,
-			shunt_conductance,
-		)
-	end
-end
-
-"""
-Represents an insulating layer with defined geometric, material, and electrical properties.
-"""
-mutable struct Insulator
-	radius_in::Number
-	radius_ext::Number
-	material_props::Material
-	temperature::Number
-	cross_section::Number
-	resistance::Number
-	gmr::Number
-	shunt_capacitance::Number
-	shunt_conductance::Number
-
-	"""
-	Constructor: Initializes an `Insulator` object based on specified geometric and material parameters.
-
-	# Arguments
-	- `radius_in`: Internal radius of the insulating layer \\[m\\].
-	- `radius_ext`: External radius of the layer \\[m\\].
-	- `material_props`: A `Material` object representing the physical properties of the insulating material.
-	- `temperature`: Operating temperature of the layer \\[°C\\] (default: 20).
-
-	# Returns
-	An instance of `Insulator` initialized with the following calculated properties:
-	- `radius_ext`: External radius of the insulating layer \\[m\\].
-	- `cross_section`: Cross-sectional area of the layer \\[m²\\].
-	- `resistance`: Electrical resistance of the layer \\[Ω/m\\].
-	- `gmr`: Geometric mean radius of the insulator \\[m\\].
-	- `shunt_capacitance`: Shunt capacitance per unit length of the layer \\[F/m\\].
-	- `shunt_conductance`: Shunt conductance per unit length of the layer \\[S/m\\].
-
-	# Dependencies
-	- `calc_tubular_resistance`: Computes the DC resistance of the insulating layer.
-	- `calc_tubular_gmr`: Calculates the geometric mean radius (GMR) of the tubular element.
-	- `calc_shunt_capacitance`: Computes the shunt capacitance per unit length.
-	- `calc_shunt_conductance`: Computes the shunt conductance per unit length.
-
-	# Examples
-	```julia
-	material_props = Material(1e10, 3.0, 1.0, 20.0, 0.0)
-	insulator_layer = Insulator(0.01, @thick(0.005), material_props, temperature=25)
-	println(insulator_layer.cross_section)    # Outputs: Cross-sectional area in m²
-	println(insulator_layer.resistance)       # Outputs: Resistance in Ω
-	println(insulator_layer.shunt_capacitance) # Outputs: Capacitance in F/m
-	println(insulator_layer.shunt_conductance) # Outputs: Conductance in S/m
-	```
-
-
-	"""
-	function Insulator(
-		radius_in::Union{Number, <:Any},
-		radius_ext::Union{Number, Thickness},
-		material_props::Material;
-		temperature::Number = T₀,
-	)
-
-		# Extract `radius_in` from `radius_ext` if a custom type is provided
-		radius_in = radius_in isa Number ? radius_in : getfield(radius_in, :radius_ext)
-		# Reset uncertainty to avoid propagation from different components
-		radius_in =
-			radius_in isa Measurement ? (Measurements.value(radius_in) ± 0.0) : radius_in
-
-		# Handle external radius: absolute value or relative to radius_in
-		radius_ext = radius_ext isa Thickness ? radius_in + radius_ext.value : radius_ext
-		# thickness = radius_ext - radius_in
-
-		rho = material_props.rho
-		T0 = material_props.T0
-		alpha = material_props.alpha
-		epsr_r = material_props.eps_r
-
-		cross_section = π * (radius_ext^2 - radius_in^2)
-
-		resistance =
-			calc_tubular_resistance(radius_in, radius_ext, rho, alpha, T0, temperature)
-		gmr = calc_tubular_gmr(radius_ext, radius_in, material_props.mu_r)
-		shunt_capacitance = calc_shunt_capacitance(radius_in, radius_ext, epsr_r)
-		shunt_conductance = calc_shunt_conductance(radius_in, radius_ext, rho)
-
-		# Initialize object
-		return new(
-			radius_in,
-			radius_ext,
-			material_props,
-			temperature,
-			cross_section,
-			resistance,
-			gmr,
-			shunt_capacitance,
-			shunt_conductance,
-		)
-	end
-end
-
-"""
-Defines a generic type for any cable part.
-"""
-const CableParts = Union{Conductor, Strip, WireArray, Tubular, Semicon, Insulator}
-
-"""
-Computes the equivalent geometric mean radius (GMR) of a `Conductor` after adding a new layer.
-
-# Arguments
-- `sc`: A `CableParts` object representing the existing cable part.
-- `layer`: A `CableParts` object representing the new layer being added.
-
-# Returns
-- The updated equivalent GMR of the `CablePart` as a `Number` \\[m\\].
-
-# Dependencies
-- `calc_gmd`: Computes the geometric mean distance (GMD) between the last layer of the cable and the new layer.
-
-# Examples
-```julia
-material_props = Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393)
-conductor = Conductor(Strip(0.01, 0.002, 0.05, 10, material_props))
-new_layer = WireArray(0.02, 0.002, 7, 15, material_props)
-equivalent_gmr = calc_equivalent_gmr(conductor, new_layer)
-println(equivalent_gmr) # Outputs: Updated GMR value \\[m\\]
-```
-
-
-"""
-function calc_equivalent_gmr(sc::CableParts, layer::CableParts)
-	beta = sc.cross_section / (sc.cross_section + layer.cross_section)
-	current_conductor = sc isa Conductor ? sc.layers[end] : sc
-	gmd = calc_gmd(current_conductor, layer)
-	return sc.gmr^(beta^2) * layer.gmr^((1 - beta)^2) * gmd^(2 * beta * (1 - beta))
-end
-
-"""
-Computes the geometric mean distance (GMD) between two cable parts.
-
-# Arguments
-- `co1`: A `CableParts` object representing the first cable part (e.g., `WireArray`, `Strip`, `Tubular`, `Semicon` or `Insulator`).
-- `co2`: A `CableParts` object representing the second cable part (e.g., `WireArray`, `Strip`, `Tubular`, `Semicon` or `Insulator`).
-
-# Returns
-- The GMD as a `Number` \\[m\\], which represents the logarithmic average of pairwise distances between the cable parts.
-
-# Dependencies
-- `get_wirearray_coords`: Computes the coordinates of wires in a `WireArray`.
-
-# Examples
-```julia
-material_props = Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393)
-wire_array1 = WireArray(0.01, 0.002, 7, 10, material_props)
-wire_array2 = WireArray(0.02, 0.002, 7, 15, material_props)
-gmd = calc_gmd(wire_array1, wire_array2)
-println(gmd) # Outputs: GMD value \\[m\\]
-
-strip = Strip(0.01, 0.002, 0.05, 10, material_props)
-tubular = Tubular(0.01, 0.02, material_props)
-gmd = calc_gmd(strip, tubular)
-println(gmd) # Outputs: GMD value \\[m\\]
-```
-
-# Notes
-- For concentric structures (e.g., a `Strip` within a `Tubular`), the GMD defaults to the outermost radius.
-
-
-"""
-function calc_gmd(co1::CableParts, co2::CableParts)
-
-	if co1 isa WireArray
-		coords1 = get_wirearray_coords(co1)
-		n1 = co1.num_wires
-		r1 = co1.radius_wire
-		s1 = pi * r1^2
-	else
-		coords1 = [(0, 0)]
-		n1 = 1
-		r1 = co1.radius_ext
-		s1 = co1.cross_section
-	end
-
-	if co2 isa WireArray
-		coords2 = get_wirearray_coords(co2)
-		n2 = co2.num_wires
-		r2 = co2.radius_wire
-		s2 = pi * r2^2
-	else
-		coords2 = [(0, 0)]
-		n2 = 1
-		r2 = co2.radius_ext
-		s2 = co2.cross_section
-	end
-
-	log_sum = 0.0
-	area_weights = 0.0
-
-	for i in 1:n1
-		for j in 1:n2
-			# Pair-wise distances
-			x1, y1 = coords1[i]
-			x2, y2 = coords2[j]
-			d_ij = sqrt((x1 - x2)^2 + (y1 - y2)^2)
-			if d_ij > eps()
-				# The GMD is computed as the Euclidean distance from center-to-center
-				log_dij = log(d_ij)
-			else
-				# This means two concentric structures (solid/strip or tubular, tubular/strip or tubular, strip/strip or tubular)
-				# In all cases the GMD is the outermost radius
-				max(r1, r2)
-				log_dij = log(max(r1, r2))
-			end
-			log_sum += (s1 * s2) * log_dij
-			area_weights += (s1 * s2)
-		end
-	end
-	return exp(log_sum / area_weights)
-end
-
-"""
-Represents a cable component with its geometric and material properties.
+$(TYPEDFIELDS)
 """
 mutable struct CableComponent
+	"Inner radius of the conductor \\[m\\]."
 	radius_in_con::Number
+	"Outer radius of the conductor \\[m\\]."
 	radius_ext_con::Number
+	"Equivalent resistivity of the conductor material \\[Ω·m\\]."
 	rho_con::Number
+	"Equivalent temperature coefficient of resistance of the conductor \\[1/°C\\]."
 	alpha_con::Number
+	"Equivalent magnetic permeability of the conductor material \\[H/m\\]."
 	mu_con::Number
+	"Outer radius of the insulator \\[m\\]."
 	radius_ext_ins::Number
+	"Equivalent permittivity of the insulator material \\[F/m\\]."
 	eps_ins::Number
+	"Equivalent magnetic permeability of the insulator material \\[H/m\\]."
 	mu_ins::Number
+	"Equivalent loss factor of the insulator \\[dimensionless\\]."
 	loss_factor_ins::Number
-	component_data::Vector{<:CableParts}
+	"Vector of cable parts ([`AbstractCablePart`](@ref))."
+	component_data::Vector{<:AbstractCablePart}
 
-	"""
-	Constructor: Initializes a `CableComponent` object based on its components and frequency.
+	@doc """
+	$(TYPEDSIGNATURES)
+
+	Initializes a cable component based on its parts and operating frequency.
 
 	# Arguments
-	- `component_data`: A vector of `CableParts` representing the subcomponents of the cable.
-	- `f`: The frequency of operation \\[Hz\\] (default: `f₀`).
+
+	- `component_data`: Vector of cable subcomponents \\[dimensionless\\].
+	- `f`: Frequency of operation \\[Hz\\] (default: `f₀`).
 
 	# Returns
-	An instance of `CableComponent` initialized with the following attributes:
-	- `radius_in_con`: Inner radius of the conductor \\[m\\].
-	- `radius_ext_con`: Outer radius of the conductor \\[m\\].
-	- `rho_con`: Resistivity of the conductor material \\[Ω·m\\].
-	- `alpha_con`: Temperature coefficient of resistance of the conductor \\[1/°C\\].
-	- `mu_con`: Magnetic permeability of the conductor material \\[H/m\\].
-	- `radius_ext_ins`: Outer radius of the insulator \\[m\\].
-	- `eps_ins`: Permittivity of the insulator material \\[F/m\\].
-	- `mu_ins`: Magnetic permeability of the insulator material \\[H/m\\].
-	- `loss_factor_ins`: Loss factor of the insulator (dimensionless).
-	- `component_data`: A vector of `CableParts` representing the subcomponents of the cable.
 
-	# Dependencies
-	This constructor uses the following non-native functions:
-	- `calc_parallel_equivalent`: Calculates the parallel equivalent of electrical parameters.
-	- `calc_gmd`: Computes the geometric mean distance between components.
-	- `gmr_to_mu`: Converts geometric mean radius to magnetic permeability.
+	- A `CableComponent` instance with calculated equivalent properties.
 
 	# Examples
+
 	```julia
-	components = [Conductor(...), Insulator(...)] # Define individual cable parts
-	cable = CableComponent(components, f=50)
-	println(cable.rho_con) # Output: Resistivity of the conductor \\[Ω·m\\]
-	println(cable.eps_ins) # Output: Permittivity of the insulator \\[F/m\\]
+	components = [Conductor(...), Insulator(...)]
+	cable = $(FUNCTIONNAME)(components, 50)  # Create cable component at 50 Hz
 	```
 
+	# See also
 
+	- [`calc_parallel_equivalent`](@ref)
+	- [`calc_gmd`](@ref)
+	- [`gmr_to_mu`](@ref)
+	- [`calc_solenoid_correction`](@ref)
 	"""
 	function CableComponent(
-		# name::String,
-		component_data::Vector{<:CableParts},
+		component_data::Vector{<:AbstractCablePart},
 		f::Number = f₀,
 	)
 		# Validate the geometry
 		radius_exts = [part.radius_ext for part in component_data]
 		if !issorted(radius_exts)
 			error(
-				"Components in CableParts must be supplied in ascending order of radius_ext.",
+				"Components must be supplied in ascending order of radius_ext.",
 			)
 		end
 
@@ -1585,12 +1256,7 @@ mutable struct CableComponent
 			eps_ins = (C_eq * log(radius_ext_ins / radius_ext_con)) / (2 * pi) / ε₀
 			loss_factor_ins = G_eq / (ω * C_eq)
 			correction_mu_ins =
-				isnan(num_turns) ? 1 :
-				(
-					1 +
-					2 * num_turns^2 * pi^2 * (radius_ext_ins^2 - radius_ext_con^2) /
-					log(radius_ext_ins / radius_ext_con)
-				)
+				calc_solenoid_correction(num_turns, radius_ext_con, radius_ext_ins)
 			mu_ins = mu_ins * correction_mu_ins
 		else
 			radius_ext_ins = NaN
@@ -1616,1271 +1282,1272 @@ mutable struct CableComponent
 	end
 end
 
-"""
-Represents nominal electrical and geometric parameters for a cable.
-"""
-mutable struct NominalData
-	conductor_cross_section::Union{Nothing, Number}
-	screen_cross_section::Union{Nothing, Number}
-	armor_cross_section::Union{Nothing, Number}
-	resistance::Union{Nothing, Number}
-	capacitance::Union{Nothing, Number}
-	inductance::Union{Nothing, Number}
-
-	"""
-	Constructor: Initializes a `NominalData` object with optional default values.
-
-	# Arguments
-	- `conductor_cross_section`: Cross-sectional area of the conductor [mm²] (default: `nothing`).
-	- `screen_cross_section`: Cross-sectional area of the screen [mm²] (default: `nothing`).
-	- `armor_cross_section`: Cross-sectional area of the armor [mm²] (default: `nothing`).
-	- `resistance`: Electrical resistance of the cable [Ω/km] (default: `nothing`).
-	- `capacitance`: Electrical capacitance of the cable [μF/km] (default: `nothing`).
-	- `inductance`: Electrical inductance of the cable, trifoil formation [mH/km] (default: `nothing`).
-
-	# Returns
-	An instance of `NominalData` with the specified nominal properties.
-
-	# Dependencies
-	- None.
-
-	# Examples
-	```julia
-	nominal_data = NominalData(
-		conductor_cross_section=1.5,
-		resistance=0.02,
-		capacitance=1e-9,
-	)
-	println(nominal_data.conductor_cross_section) # Output: 1.5
-	println(nominal_data.resistance) # Output: 0.02
-	println(nominal_data.capacitance) # Output: 1e-9
-	```
-
-
-	"""
-	function NominalData(;
-		conductor_cross_section::Union{Nothing, Number} = nothing,
-		screen_cross_section::Union{Nothing, Number} = nothing,
-		armor_cross_section::Union{Nothing, Number} = nothing,
-		resistance::Union{Nothing, Number} = nothing,
-		capacitance::Union{Nothing, Number} = nothing,
-		inductance::Union{Nothing, Number} = nothing,
-	)
-		return new(
-			conductor_cross_section,
-			screen_cross_section,
-			armor_cross_section,
-			resistance,
-			capacitance,
-			inductance,
-		)
-	end
-end
-
-"""
-Represents the design of a cable, including its unique identifier, nominal data, and components.
-"""
-mutable struct CableDesign
-	cable_id::String
-	nominal_data::NominalData                        # Informative reference data
-	components::OrderedDict{String, CableComponent}  # Key: component name, Value: CableComponent object
-
-	"""
-	Constructor: Initializes a `CableDesign` object with a unique identifier, nominal data, and components.
-
-	# Arguments
-	- `cable_id`: A string representing the unique identifier for the cable design.
-	- `component_name`: The name of the first cable component (String).
-	- `component_parts`: A vector of parts representing the subcomponents of the first cable component.
-	- `f`: The frequency of operation \\[Hz\\] (default: `f₀`).
-	- `nominal_data`: A `NominalData` object containing reference data (default: `NominalData()`).
-
-	# Returns
-	An instance of `CableDesign` with the following attributes:
-	- `cable_id`: Unique identifier for the cable design.
-	- `nominal_data`: Reference data for the cable design.
-	- `components`: An `OrderedDict` mapping component names to `CableComponent` objects.
-
-	# Dependencies
-	This constructor uses the following non-native functions:
-	- `CableComponent`: Initializes a cable component based on its parts and frequency.
-
-	# Examples
-	```julia
-	parts = [Conductor(...), Insulator(...)] # Define parts for the component
-	design = CableDesign("Cable001", "ComponentA", parts, f=50)
-	println(design.cable_id) # Output: "Cable001"
-	println(design.components["ComponentA"]) # Output: CableComponent object
-	```
-
-
-	"""
-	function CableDesign(
-		cable_id::String,
-		component_name::String,
-		component_parts::Vector{<:Any},
-		f::Number = f₀;
-		nominal_data::NominalData = NominalData(),
-	)
-		components = OrderedDict{String, CableComponent}()
-		# Create and add the first component
-		components[component_name] =
-			CableComponent(Vector{CableParts}(component_parts), f)
-		return new(cable_id, nominal_data, components)
-	end
-end
-
-"""
-Adds or replaces a cable component in an existing `CableDesign`.
-
-# Arguments
-- `design`: A `CableDesign` object where the component will be added.
-- `component_name`: The name of the cable component to be added (String).
-- `component_parts`: A vector of parts representing the subcomponents of the cable component.
-- `f`: The frequency of operation \\[Hz\\] (default: `f₀`).
-
-# Returns
-Modifies the `CableDesign` object in-place by adding or replacing the specified cable component.
-
-# Dependencies
-- [`CableComponent`](@ref): Constructs a cable component based on its parts and frequency.
-
-# Examples
-```julia
-parts = [Conductor(...), Insulator(...)] # Define parts for the component
-add_cable_component!(design, "ComponentB", parts, f=60)
-println(design.components["ComponentB"]) # Output: CableComponent object
-```
-
-# Notes
-- If a component with the specified name already exists, it will be overwritten, and a warning will be logged.
-
-
-"""
-function add_cable_component!(
-	design::CableDesign,
-	component_name::String,
-	component_parts::Vector{<:Any},
-	f::Number = f₀,
-)
-	if haskey(design.components, component_name)
-		@warn "Component with name '$component_name' already exists in the CableDesign and will be overwritten."
-	end
-	# Construct the CableComponent internally
-	design.components[component_name] =
-		CableComponent(Vector{CableParts}(component_parts), f)
-end
-
-"""
-Computes the core parameters (R, L, and C) for a given `CableDesign` and evaluates compliance with nominal values.
-
-# Arguments
-- `design`: A `CableDesign` object containing the cable components and nominal data.
-
-# Returns
-A `DataFrame` with the following columns:
-- `parameter`: Names of the parameters (`R [Ω/km]`, `L [mH/km]`, `C [μF/km]`).
-- `computed`: Computed values of the parameters based on the core component.
-- `nominal`: Nominal values of the parameters from the `CableDesign`.
-- `lower`: Lower bounds for the computed values (accounting for error margins).
-- `upper`: Upper bounds for the computed values (accounting for error margins).
-- `complies?`: A Boolean column indicating whether the nominal value is within the computed bounds.
-
-# Dependencies
-- `calc_tubular_resistance`: Computes the resistance of the tubular conductor.
-- `calc_inductance_trifoil`: Computes the inductance of the conductor.
-- `calc_shunt_capacitance`: Computes the shunt capacitance of the insulator.
-- `to_lower`: Computes the lower bound for a given value based on error margins.
-- `to_upper`: Computes the upper bound for a given value based on error margins.
-
-# Examples
-```julia
-core_component = CableComponent([...]) # Define the core component
-nominal_data = NominalData(resistance=0.02, inductance=0.5, capacitance=200)
-design = CableDesign("Cable001", "core", [core_component]; nominal_data=nominal_data)
-
-data = core_parameters(design)
-println(data)
-# Output: DataFrame with computed values and compliance checks.
-```
-
-
-"""
-function core_parameters(
-	design::CableDesign;
-	S::Number = 7e-2, # trifoil spacing
-	rho_e::Number = 100, # resistivity of the earth
-)
-	# Extract the core component
-	# cable_core = design.components["core"]
-	cable_core = collect(values(design.components))[1]
-	cable_shield = collect(values(design.components))[2]
-
-	# Compute R, L, and C using given formulas
-	R =
-		calc_tubular_resistance(
-			cable_core.radius_in_con,
-			cable_core.radius_ext_con,
-			cable_core.rho_con,
-			0,
-			20,
-			20,
-		) * 1e3
-
-	L =
-		calc_inductance_trifoil(
-			cable_core.radius_in_con,
-			cable_core.radius_ext_con,
-			cable_core.rho_con,
-			cable_core.mu_con,
-			cable_shield.radius_in_con,
-			cable_shield.radius_ext_con,
-			cable_shield.rho_con,
-			cable_shield.mu_con,
-			S = S,
-			rho_e = rho_e,
-		) * 1e6
-
-	C =
-		calc_shunt_capacitance(
-			cable_core.radius_ext_con,
-			cable_core.radius_ext_ins,
-			cable_core.eps_ins,
-		) * 1e6 * 1e3
-
-	# Prepare nominal values from CableDesign
-	nominals = [
-		design.nominal_data.resistance,
-		design.nominal_data.inductance,
-		design.nominal_data.capacitance,
-	]
-
-	# Compute the comparison DataFrame
-	data = DataFrame(
-		parameter = ["R [Ω/km]", "L [mH/km]", "C [μF/km]"],
-		computed = [R, L, C],
-		nominal = nominals,
-		lower = [to_lower(R), to_lower(L), to_lower(C)],
-		upper = [to_upper(R), to_upper(L), to_upper(C)],
-	)
-
-	# Add compliance column
-	data[!, "complies?"] = [
-		(data.nominal[i] >= data.lower[i] && data.nominal[i] <= data.upper[i])
-		for i in 1:nrow(data)
-	]
-
-	return data
-end
-
-"""
-Extracts and displays the properties of components in a `CableDesign` object as a `DataFrame`.
-
-# Arguments
-- `design`: A `CableDesign` object containing the components and their respective properties.
-
-# Returns
-- A `DataFrame` object with the following structure:
-  - `property`: The name of each property (e.g., `radius_in_con`, `rho_con`, etc.).
-  - Additional columns: Each component of the cable, with property values or `missing` if the property is not available for the component.
-
-
-
-# Examples
-```julia
-design = CableDesign(
-	"cable1",
-	components = Dict(
-		"conductor" => Component(radius_in_con=0.01, radius_ext_con=0.02, rho_con=1.68e-8),
-		"insulator" => Component(radius_ext_ins=0.03, eps_ins=2.5, loss_factor_ins=0.01),
-	)
-)
-
-# Extract and display the component properties
-data = cable_data(design)
-println(data) # Outputs a DataFrame with properties and values for each component
-```
-
-
-"""
-function cable_data(design::CableDesign)
-	# Extract properties dynamically
-	properties = [
-		:radius_in_con,
-		:radius_ext_con,
-		:rho_con,
-		:alpha_con,
-		:mu_con,
-		:radius_ext_ins,
-		:eps_ins,
-		:mu_ins,
-		:loss_factor_ins,
-	]
-
-	# Initialize the DataFrame with property names
-	data = DataFrame(property = properties)
-
-	for (key, part) in design.components
-		# Use the key of the dictionary as the column name
-		col = key
-
-		# Collect values for each property, or `missing` if not available
-		new_col = [
-			:radius_in_con in fieldnames(typeof(part)) ?
-			getfield(part, :radius_in_con) : missing,
-			:radius_ext_con in fieldnames(typeof(part)) ?
-			getfield(part, :radius_ext_con) : missing,
-			:rho_con in fieldnames(typeof(part)) ? getfield(part, :rho_con) : missing,
-			:alpha_con in fieldnames(typeof(part)) ? getfield(part, :alpha_con) : missing,
-			:mu_con in fieldnames(typeof(part)) ? getfield(part, :mu_con) : missing,
-			:radius_ext_ins in fieldnames(typeof(part)) ?
-			getfield(part, :radius_ext_ins) : missing,
-			:eps_ins in fieldnames(typeof(part)) ? getfield(part, :eps_ins) : missing,
-			:mu_ins in fieldnames(typeof(part)) ? getfield(part, :mu_ins) : missing,
-			:loss_factor_ins in fieldnames(typeof(part)) ?
-			getfield(part, :loss_factor_ins) : missing,
-		]
-
-		# Add the new column to the DataFrame
-		data[!, col] = new_col
-	end
-
-	return data
-end
-
-"""
-Generates a detailed `DataFrame` summarizing the properties of all cable parts in a `CableDesign`.
-
-# Arguments
-- `design`: A `CableDesign` object containing components and their respective parts.
-
-# Returns
-A `DataFrame` with the following structure:
-- `property`: Names of the properties being analyzed (e.g., `type`, `radius_in`, `radius_ext`, `cross_section`, etc.).
-- Columns corresponding to each layer of each component in the design (e.g., `component_name, layer N`).
-  Each column contains the respective values for the specified property, or `missing` if the property is not defined for the part.
-
-
-
-# Notes
-- The function iterates over all components and their parts to extract and organize their properties.
-- If a property is not available for a part, the value will be set to `missing`.
-- Column names are generated dynamically in the format `component_name, layer N` for clear identification.
-
-# Examples
-```julia
-# Define a CableDesign with components and parts
-design = CableDesign("Cable001", "core", [Conductor(...), Insulator(...)])
-data = cable_parts_data(design)
-println(data)
-# Output: DataFrame summarizing properties of all parts in the design.
-```
-
-
-"""
-function cable_parts_data(design::CableDesign)
-	# Updated properties list
-	properties = [
-		"type",
-		"radius_in",
-		"radius_ext",
-		"diam_in",
-		"diam_ext",
-		"thickness",
-		"cross_section",
-		"num_wires",
-		"resistance",
-		"alpha",
-		"gmr",
-		"gmr/radius",
-		"shunt_capacitance",
-		"shunt_conductance",
-	]
-
-	# Initialize the DataFrame with property names
-	data = DataFrame(property = properties)
-
-	# Iterate over components in the OrderedDict
-	for (component_name, component) in design.components
-		# Iterate over each part in component_data with an index
-		for (i, part) in enumerate(component.component_data)
-			# Generate column name with layer number
-			col = lowercase(component_name) * ", layer " * string(i)
-
-			# Collect values for each property, or `missing` if not available
-			new_col = [
-				lowercase(string(typeof(part))),  # type
-				:radius_in in fieldnames(typeof(part)) ? getfield(part, :radius_in) :
-				missing,
-				:radius_ext in fieldnames(typeof(part)) ? getfield(part, :radius_ext) :
-				missing,
-				:radius_in in fieldnames(typeof(part)) ?
-				2 * getfield(part, :radius_in) : missing,
-				:radius_ext in fieldnames(typeof(part)) ?
-				2 * getfield(part, :radius_ext) : missing,
-				:radius_ext in fieldnames(typeof(part)) &&
-				:radius_in in fieldnames(typeof(part)) ?
-				(getfield(part, :radius_ext) - getfield(part, :radius_in)) : missing,
-				:cross_section in fieldnames(typeof(part)) ?
-				getfield(part, :cross_section) : missing,
-				:num_wires in fieldnames(typeof(part)) ? getfield(part, :num_wires) :
-				missing,
-				:resistance in fieldnames(typeof(part)) ? getfield(part, :resistance) :
-				missing,
-				:alpha in fieldnames(typeof(part)) ? getfield(part, :alpha) :
-				missing,
-				:gmr in fieldnames(typeof(part)) ? getfield(part, :gmr) : missing,
-				:gmr in fieldnames(typeof(part)) &&
-				:radius_ext in fieldnames(typeof(part)) ?
-				(getfield(part, :gmr) / getfield(part, :radius_ext)) : missing,
-				:shunt_capacitance in fieldnames(typeof(part)) ?
-				getfield(part, :shunt_capacitance) : missing,
-				:shunt_conductance in fieldnames(typeof(part)) ?
-				getfield(part, :shunt_conductance) : missing,
-			]
-
-			# Add the new column to the DataFrame
-			data[!, col] = new_col
-		end
-	end
-
-	return data
-end
-
-"""
-Visualizes the cross-section of a cable design.
-
-# Arguments
-- `design`: A `CableDesign` object representing the cable structure.
-- `x_offset`: Horizontal offset for the plot \\[m\\] (default: 0.0).
-- `y_offset`: Vertical offset for the plot \\[m\\] (default: 0.0).
-- `plt`: An optional `Plots.Plot` object to use for plotting (default: `nothing`).
-- `display_plot`: Boolean flag to display the plot after rendering (default: `true`).
-- `display_legend`: Boolean flag to display the legend in the plot (default: `true`).
-
-# Returns
-- A `Plots.Plot` object representing the visualized cable design.
-
-# Dependencies
-- `_to_nominal`: Converts a given measurement to its nominal value.
-- `_get_material_color`: Determines the color for the material based on its properties.
-- `Plots.partialcircle`: Generates partial circle coordinates for plotting.
-- `Plots.Shape`: Defines a closed shape for visualization.
-- `plotlyjs`: Initializes Plotly as the backend for plotting.
-- `plot!`: Updates an existing plot with additional elements.
-
-# Examples
-```julia
-using Plots
-
-# Define a CableDesign with components and parts
-design = CableDesign("SomeCable", "core", [Conductor(...), Insulator(...)])
-preview_cable_design(design)
-# Output: Displays the cable cross-section in an interactive plot.
-```
-
-
-"""
-function preview_cable_design(
-	design::CableDesign;
-	x_offset = 0.0,
-	y_offset = 0.0,
-	plt = nothing,
-	display_plot = true,
-	display_legend = true,
-)
-	if isnothing(plt)
-		plotlyjs()  # Initialize only if plt is not provided
-		plt = plot(size = (800, 600),
-			aspect_ratio = :equal,
-			legend = (0.875, 1.0),
-			title = "Cable design preview",
-			xlabel = "y \\[m\\]",
-			ylabel = "z \\[m\\]")
-	end
-
-	# Helper function to plot a layer
-	function plot_layer!(layer, label; x0 = 0.0, y0 = 0.0)
-		if layer isa WireArray
-			radius_wire = to_nominal(layer.radius_wire)
-			num_wires = layer.num_wires
-
-			lay_radius = num_wires == 1 ? 0 : to_nominal(layer.radius_in) + radius_wire
-			material_props = layer.material_props
-			color = _get_material_color(material_props)
-
-			# Calculate the angle between each wire
-			angle_step = 2 * π / num_wires
-
-			# Plot each wire in the layer
-			for i in 0:num_wires-1
-				angle = i * angle_step
-				x = x0 + lay_radius * cos(angle)
-				y = y0 + lay_radius * sin(angle)
-				plot!(
-					plt,
-					Shape(
-						x .+ radius_wire * cos.(0:0.01:2π),
-						y .+ radius_wire * sin.(0:0.01:2π),
-					),
-					linecolor = :black,
-					color = color,
-					label = display_legend ? label : "",
-				)
-				label = ""  # Only add the label once
-			end
-		elseif layer isa Strip || layer isa Tubular || layer isa Semicon ||
-			   layer isa Insulator
-			radius_in = to_nominal(layer.radius_in)
-			radius_ext = to_nominal(layer.radius_ext)
-			material_props = layer.material_props
-			color = _get_material_color(material_props)
-
-			arcshape(θ1, θ2, rin, rext, x0 = 0.0, y0 = 0.0, N = 100) = begin
-				# Outer circle coordinates
-				outer_coords = Plots.partialcircle(θ1, θ2, N, rext)
-				x_outer = first.(outer_coords) .+ x0
-				y_outer = last.(outer_coords) .+ y0
-
-				# Inner circle coordinates (reversed to close the shape properly)
-				inner_coords = Plots.partialcircle(θ1, θ2, N, rin)
-				x_inner = reverse(first.(inner_coords)) .+ x0
-				y_inner = reverse(last.(inner_coords)) .+ y0
-
-				Shape(vcat(x_outer, x_inner), vcat(y_outer, y_inner))
-			end
-
-			shape = arcshape(0, 2π + 0.01, radius_in, radius_ext, x0, y0)
-			plot!(
-				plt,
-				shape,
-				linecolor = color,
-				color = color,
-				label = display_legend ? label : "",
-			)
-		end
-	end
-
-	# Iterate over all CableComponents in the design
-	for (name, component) in design.components
-		# Iterate over all CableParts in the component
-		for part in component.component_data
-			# Check if the part has layers
-			if part isa Conductor
-				# Loop over each layer and add legend only for the first layer
-				first_layer = true
-				for layer in part.layers
-					plot_layer!(
-						layer,
-						first_layer ? lowercase(string(typeof(part))) : "",
-						x0 = x_offset,
-						y0 = y_offset,
-					)
-					first_layer = false
-				end
-			else
-				# Plot the top-level part with legend entry
-				plot_layer!(
-					part,
-					lowercase(string(typeof(part))),
-					x0 = x_offset,
-					y0 = y_offset,
-				)
-			end
-		end
-	end
-
-	if display_plot
-		display(plt)
-	end
-end
-
-"""
-Represents a library of cable designs stored as a dictionary.
-"""
-mutable struct CablesLibrary
-	cable_designs::Dict{String, CableDesign}  # Key: cable ID, Value: CableDesign object
-
-	"""
-	Constructor: Initializes a `CablesLibrary` object, optionally loading cable designs from a file.
-
-	# Arguments
-	- `file_name`: The name of the file to load cable designs from (default: "cables_library.jls").
-
-	# Returns
-	An instance of `CablesLibrary` containing:
-	- `cable_designs`: A dictionary with keys as cable IDs (String) and values as `CableDesign` objects.
-
-	# Dependencies
-	- `_load_cables_from_jls!`: A function to load cable designs from a `.jls` file into the library.
-
-	# Examples
-	```julia
-	# Create a new library without loading any file
-	library = CablesLibrary()
-
-	# Create a library and load designs from a file
-	library_with_data = CablesLibrary("existing_library.jls")
-	```
-
-
-	"""
-	function CablesLibrary(; file_name::String = "cables_library.jls")::CablesLibrary
-		library = new(Dict{String, CableDesign}())
-		if isfile(file_name)
-			println("Loading cables database from $file_name...")
-			_load_cables_from_jls!(library, file_name = file_name)
-		else
-			println("No $file_name found. Initializing empty cables database...")
-		end
-		return library
-	end
-end
-
-"""
-Loads cable designs from a serialized file into a `CablesLibrary` object.
-
-# Arguments
-- `library`: An instance of `CablesLibrary` to populate with the loaded cable designs.
-- `file_name`: The name of the file to deserialize and load the cable designs from.
-
-# Returns
-- None. Modifies the `cable_designs` field of the `CablesLibrary` object in-place.
-
-
-
-# Examples
-```julia
-library = CablesLibrary()
-_load_cables_from_jls!(library, "cables_library.jls")
-println(library.cable_designs) # Prints the loaded cable designs if successful
-```
-
-
-"""
-function _load_cables_from_jls!(library::CablesLibrary; file_name::String)
-	try
-		loaded_data = deserialize(file_name)
-		if isa(loaded_data, Dict{String, CableDesign})
-			library.cable_designs = loaded_data
-			println("Cables database successfully loaded!")
-		else
-			println("Invalid file format in $file_name. Initializing empty database.")
-		end
-	catch e
-		println("Error loading file $file_name: $e. Initializing empty database.")
-	end
-end
-
-"""
-Saves the cable designs from a `CablesLibrary` object to a `.jls` file.
-
-# Arguments
-- `library`: An instance of `CablesLibrary` whose cable designs are to be saved.
-- `file_name`: The name of the file to save the cable designs to (default: "cables_library.jls").
-
-# Returns
-- None. Writes the serialized cable designs to the specified file.
-
-
-
-# Examples
-```julia
-library = CablesLibrary()
-# Add cable designs to the library
-save_cables_library(library, "new_cables_library.jls")
-```
-
-
-"""
-function save_cables_library(
-	library::CablesLibrary;
-	file_name::String = "cables_library.jls",
-)
-	try
-		serialize(file_name, library.cable_designs)
-		println("Cables library saved to $file_name.")
-	catch e
-		println("Error saving library to $file_name: $e")
-	end
-end
-
-"""
-Stores a cable design in a `CablesLibrary` object.
-
-# Arguments
-- `library`: An instance of `CablesLibrary` to which the cable design will be added.
-- `design`: A `CableDesign` object representing the cable design to be added. This object must have a `cable_id` field to uniquely identify it.
-
-# Returns
-- None. Modifies the `cable_designs` field of the `CablesLibrary` object in-place by adding the new cable design.
-
-
-
-# Examples
-```julia
-library = CablesLibrary()
-design = CableDesign("cable1", ...) # Initialize CableDesign with required fields
-store_cable_design!(library, design)
-println(library.cable_designs) # Prints the updated dictionary containing the new cable design
-```
-
-
-"""
-function store_cable_design!(library::CablesLibrary, design::CableDesign)
-	library.cable_designs[design.cable_id] = design
-	println("Cable design with ID `$(design.cable_id)` added to the library.")
-end
-
-"""
-Removes a cable design from a `CablesLibrary` object by its ID.
-
-# Arguments
-- `library`: An instance of `CablesLibrary` from which the cable design will be removed.
-- `cable_id`: The ID of the cable design to remove (String).
-
-# Returns
-- None. Modifies the `cable_designs` field of the `CablesLibrary` object in-place by removing the specified cable design if it exists.
-
-
-
-# Examples
-```julia
-library = CablesLibrary()
-design = CableDesign("cable1", ...) # Initialize and add a CableDesign
-store_cable_design!(library, design)
-
-# Remove the cable design
-remove_cable_design!(library, "cable1")
-println(library.cable_designs) # Prints the dictionary without the removed cable design
-```
-
-
-"""
-function remove_cable_design!(library::CablesLibrary, cable_id::String)
-	if haskey(library.cable_designs, cable_id)
-		delete!(library.cable_designs, cable_id)
-		println("Cable design with ID `$cable_id` removed from the library.")
-	else
-		println("Cable design with ID `$cable_id` not found in the library.")
-	end
-end
-
-"""
-Retrieves a cable design from a `CablesLibrary` object by its ID.
-
-# Arguments
-- `library`: An instance of `CablesLibrary` from which the cable design will be retrieved.
-- `cable_id`: The ID of the cable design to retrieve (String).
-
-# Returns
-- A `CableDesign` object corresponding to the given `cable_id` if found, otherwise `nothing`.
-
-
-
-# Examples
-```julia
-library = CablesLibrary()
-design = CableDesign("cable1", ...) # Initialize and add a CableDesign
-store_cable_design!(library, design)
-
-# Retrieve the cable design
-retrieved_design = get_cable_design(library, "cable1")
-println(retrieved_design) # Prints the retrieved CableDesign object
-
-# Attempt to retrieve a non-existent design
-missing_design = get_cable_design(library, "nonexistent_id")
-println(missing_design) # Prints nothing
-```
-
-
-"""
-function get_cable_design(
-	library::CablesLibrary,
-	cable_id::String,
-)::Union{Nothing, CableDesign}
-	if haskey(library.cable_designs, cable_id)
-		println("Cable design with ID `$cable_id` loaded from the library.")
-		return library.cable_designs[cable_id]
-	else
-		println("Cable design with ID `$cable_id` not found.")
-		return nothing
-	end
-end
-
-"""
-Displays the cable designs in a `CablesLibrary` object as a `DataFrame`.
-
-# Arguments
-- `library`: An instance of `CablesLibrary` whose cable designs are to be displayed.
-
-# Returns
-- A `DataFrame` object with the following columns:
-  - `cable_id`: The unique identifier for each cable design.
-  - `nominal_data`: A string representation of the nominal data for each cable design.
-  - `components`: A comma-separated string listing the components of each cable design.
-
-
-
-# Examples
-```julia
-library = CablesLibrary()
-design1 = CableDesign("cable1", nominal_data=..., components=Dict("A"=>..., "B"=>...))
-design2 = CableDesign("cable2", nominal_data=..., components=Dict("C"=>...))
-store_cable_design!(library, design1)
-store_cable_design!(library, design2)
-
-# Display the library as a DataFrame
-df = display_cables_library(library)
-println(df) # Outputs the DataFrame with cable details
-```
-
-
-"""
-function display_cables_library(library::CablesLibrary)
-	ids = keys(library.cable_designs)
-	nominal_data = [string(design.nominal_data) for design in values(library.cable_designs)]
-	components =
-		[join(keys(design.components), ", ") for design in values(library.cable_designs)]
-	df = DataFrame(
-		cable_id = collect(ids),
-		nominal_data = nominal_data,
-		components = components,
-	)
-	return (df)
-end
-
-"""
-Defines the position and phase mapping of a cable within a system.
-"""
-mutable struct CableDef
-	cable::CableDesign             # The CableDesign object assigned
-	horz::Number                   # Horizontal coordinate \\[m\\]
-	vert::Number                   # Vertical coordinate \\[m\\]
-	conn::Vector{Int}               # Phase mapping (aligned with cable.components)
-
-	"""	
-	Constructor: Initializes a `CableDef` object with specified cable design, coordinates, and phase mapping.
-
-	# Arguments
-	- `cable`: A `CableDesign` object defining the cable structure.
-	- `horz`: Horizontal coordinate of the cable placement \\[m\\].
-	- `vert`: Vertical coordinate of the cable placement \\[m\\].
-	- `conn`: A dictionary mapping component names to phase indices, or `nothing` for default mapping.
-
-	# Returns
-	An instance of `CableDef` with the following attributes:
-	- `cable`: Assigned `CableDesign` object.
-	- `horz`: Horizontal coordinate \\[m\\].
-	- `vert`: Vertical coordinate \\[m\\].
-	- `conn`: Vector representing the phase mapping of each cable component.
-
-	# Notes
-	- Components mapped to phase 0 will be eliminated (grounded). Components set to the same phase will be bundled into an equivalent phase.
-
-	# Dependencies
-	- None.
-
-	# Examples
-	```julia
-	material = get_material(materials_db, "aluminum")
-	cable_design = CableDesign("SomeCable", "core", [core])
-	xa, ya = percent_to_uncertain(0, 0), percent_to_uncertain(-1, 0)
-	cabledef1 = CableDef(cable_design, xa, ya, Dict("core" => 1))
-	println(cabledef1.conn)  # Output: [1]
-
-	default_cabledef = CableDef(cable_design, xa, ya)
-	println(default_cabledef.conn)  # Output: [1, 0, 0] if components exist
-	```
-
-
-	"""
-	function CableDef(
-		cable::CableDesign,
-		horz::Number,
-		vert::Number,
-		conn::Union{Dict{String, Int}, Nothing} = nothing,
-	)
-		components = collect(keys(cable.components))  # Maintain ordered component names
-		if isnothing(conn)
-			conn_vector = [i == 1 ? 1 : 0 for i in 1:length(components)]  # Default: First component gets phase 1
-		else
-			conn_vector = [get(conn, name, 0) for name in components]  # Ensure correct mapping order
-		end
-		return new(cable, horz, vert, conn_vector)
-	end
-
-end
-
-"""
-Represents a cable system configuration, defining its structure, environmental properties, and phase assignments.
-"""
-mutable struct LineCableSystem
-	case_id::String         # Unique identifier for the system
-	T::Number               # Operating temperature \\[°C\\]
-	earth_props::EarthModel # Earth properties
-	line_length::Number     # Length of the cable system \\[m\\]
-	num_cables::Int         # Number of cables in the system
-	num_phases::Int         # Number of actual phases in the system
-	cables::Vector{CableDef} # Cross-section cable definition
-
-	"""
-	Constructor: Initializes a `LineCableSystem` with an initial cable definition and system parameters.
-
-	# Arguments
-	- `case_id`: Identifier for the cable system.
-	- `T`: Operating temperature \\[°C\\].
-	- `earth_props`: Instance of `EarthModel` defining ground parameters.
-	- `line_length`: Length of the cable system \\[m\\].
-	- `cable`: Initial `CableDef` object defining a cable's position and phase mapping.
-
-	# Returns
-	An instance of `LineCableSystem` with the following attributes:
-	- `case_id`: System identifier.
-	- `T`: Operating temperature \\[°C\\].
-	- `earth_props`: Ground properties affecting electromagnetic behavior.
-	- `line_length`: Cable system length \\[m\\].
-	- `num_cables`: Initial number of cables (set to 1).
-	- `num_phases`: Count of unique nonzero phase assignments.
-	- `cables`: List containing the first `CableDef` instance.
-
-	# Dependencies
-	- None.
-
-	# Examples
-	```julia
-	material = get_material(materials_db, "aluminum")
-	cable_design = CableDesign("SomeCable", "core", [core])
-	earth_params = EarthModel(10.0 .^ range(0, stop=6, length=10), 100, 10, 1)
-	xa, ya = 0, 0
-	cabledef1 = CableDef(cable_design, xa, ya, Dict("core" => 1))
-
-	cable_system = LineCableSystem("test_case_1", 20.0, earth_params, 1000.0, cabledef1)
-	println(cable_system.num_cables)  # Output: 1
-	println(cable_system.num_phases)  # Output: Number of unique phase assignments
-	```
-
-
-	"""
-	function LineCableSystem(
-		case_id::String,
-		T::Number,
-		earth_props::EarthModel,
-		line_length::Number,
-		cable::CableDef,
-	)
-		# Initialize with the first cable definition
-		num_cables = 1
-
-		# Count unique nonzero phases from the first cable
-		assigned_phases = unique(cable.conn)
-		num_phases = count(x -> x > 0, assigned_phases)
-
-		return new(case_id, T, earth_props, line_length, num_cables, num_phases, [cable])
-	end
-end
-
-"""
-Adds a new cable definition to an existing `LineCableSystem`, updating its phase mapping and cable count.
-
-# Arguments
-- `system`: Instance of `LineCableSystem` to which the cable will be added.
-- `cable`: Instance of `CableDesign` defining the cable structure.
-- `horz`: Horizontal coordinate \\[m\\].
-- `vert`: Vertical coordinate \\[m\\].
-- `conn`: Dictionary mapping component names to phase indices, or `nothing` for automatic assignment.
-
-# Returns
-- Modifies `system` in place by adding a new `CableDef` and updating `num_cables` and `num_phases`.
-
-
-
-# Examples
-```julia
-material = get_material(materials_db, "aluminum")
-cable_design = CableDesign("SomeCable", "core", [core])
-earth_params = EarthModel(10.0 .^ range(0, stop=6, length=10), 100, 10, 1)
-
-xa, ya = percent_to_uncertain(0, 0), percent_to_uncertain(-1, 0)
-xb, yb = percent_to_uncertain(1, 0), percent_to_uncertain(-2, 0)
-
-cabledef1 = CableDef(cable_design, xa, ya, Dict("core" => 1))
-cable_system = LineCableSystem("test_case_1", 20.0, earth_params, 1000.0, cabledef1)
-
-add_cable_definition!(cable_system, cable_design, xb, yb, Dict("core" => 2))
-println(cable_system.num_cables)  # Output: 2
-println(cable_system.num_phases)  # Output: Number of unique phase assignments
-```
-
-
-"""
-function add_cable_definition!(
-	system::LineCableSystem,
-	cable::CableDesign,
-	horz::Number,
-	vert::Number,
-	conn::Union{Dict{String, Int}, Nothing} = nothing,
-)
-	max_phase =
-		isempty(system.cables) ? 0 : maximum(maximum.(getfield.(system.cables, :conn)))
-
-	component_names = keys(cable.components)  # Maintain the correct order
-
-	new_conn = if isnothing(conn)
-		Dict(name => (i == 1 ? max_phase + 1 : 0) for (i, name) in enumerate(component_names))
-	else
-		Dict(name => get(conn, name, 0) for name in component_names)  # Ensures correct mapping order
-	end
-
-	push!(system.cables, CableDef(cable, horz, vert, new_conn))
-
-	# Update num_cables
-	system.num_cables += 1
-
-	# Update num_phases by counting unique nonzero phases
-	assigned_phases = unique(vcat(values.(getfield.(system.cables, :conn))...))
-	system.num_phases = count(x -> x > 0, assigned_phases)
-end
-
-"""
-Visualizes the cross-section of a cable system, including earth layers and cables.
-
-# Arguments
-- `system`: A `LineCableSystem` object containing the cable arrangement and earth properties.
-- `zoom_factor`: A scaling factor for adjusting the x-axis limits (default: 0.25).
-
-# Returns
-- Displays a plot of the cable system's cross-section with cables, earth layers (if applicable), and the air/earth interface.
-
-# Dependencies
-- `plotlyjs()`: Initializes the plotting backend.
-- `_to_nominal`: Converts cable position coordinates to nominal values.
-- `preview_cable_design`: Visualizes individual cable designs within the system.
-
-# Examples
-```julia
-system = LineCableSystem([...])
-preview_system_cross_section(system, zoom_factor=0.5)
-```
-
-
-"""
-function preview_system_cross_section(system::LineCableSystem; zoom_factor = 0.25)
-	plotlyjs()
-	plt = plot(size = (800, 600),
-		aspect_ratio = :equal,
-		legend = (0.8, 0.9),
-		title = "Cable system cross-section",
-		xlabel = "y \\[m\\]",
-		ylabel = "z \\[m\\]")
-
-	# Plot the air/earth interface at y=0
-	hline!(
-		plt,
-		[0],
-		linestyle = :solid,
-		linecolor = :black,
-		linewidth = 1.25,
-		label = "Air/earth interface",
-	)
-
-	# Determine explicit wide horizontal range for earth layer plotting
-	x_positions = [to_nominal(cable.horz) for cable in system.cables]
-	max_span = maximum(abs, x_positions) + 5  # extend 5 m beyond farthest cable position
-	x_limits = [-max_span, max_span]
-
-	# Plot earth layers if vertical_layers == false
-	if !system.earth_props.vertical_layers
-		layer_colors = [:burlywood, :sienna, :peru, :tan, :goldenrod, :chocolate]
-		cumulative_depth = 0.0
-		for (i, layer) in enumerate(system.earth_props.layers[2:end])
-			# Skip bottommost infinite layer
-			if isinf(layer.t)
-				break
-			end
-
-			# Compute the depth of the current interface
-			cumulative_depth -= layer.t
-			hline!(
-				plt,
-				[cumulative_depth],
-				linestyle = :solid,
-				linecolor = layer_colors[mod1(i, length(layer_colors))],
-				linewidth = 1.25,
-				label = "Earth layer $i",
-			)
-
-			# Fill the area for current earth layer
-			y_coords = [cumulative_depth + layer.t, cumulative_depth]
-			plot!(plt, [x_limits[1], x_limits[2], x_limits[2], x_limits[1]],
-				[y_coords[1], y_coords[1], y_coords[2], y_coords[2]],
-				seriestype = :shape, color = layer_colors[mod1(i, length(layer_colors))],
-				alpha = 0.25, linecolor = :transparent,
-				label = "")
-		end
-	end
-
-	for cabledef in system.cables
-		x_offset = to_nominal(cabledef.horz)
-		y_offset = to_nominal(cabledef.vert)
-		preview_cable_design(
-			cabledef.cable;
-			x_offset,
-			y_offset,
-			plt,
-			display_plot = false,
-			display_legend = false,
-		)
-	end
-
-	plot!(plt, xlim = (x_limits[1], x_limits[2]) .* zoom_factor)
-
-	display(plt)
-end
-
-"""
-Computes the coordinates of three cables arranged in a trifoil pattern.
-
-# Arguments
-- `xc`: X-coordinate of the center point.
-- `yc`: Y-coordinate of the center point.
-- `r_ext`: External radius of the circular layout \\[m\\].
-
-# Returns
-- `xa`, `ya`: Coordinates of the top cable.
-- `xb`, `yb`: Coordinates of the bottom-left cable.
-- `xc`, `yc`: Coordinates of the bottom-right cable.
-
-
-
-# Examples
-```julia
-xa, ya, xb, yb, xc, yc = trifoil_formation(0.0, 0.0, 0.035)
-println((xa, ya, xb, yb, xc, yc))  # Output: (0.0, 0.0303, -0.035, -0.0175, 0.035, -0.0175)
-```
-
-
-"""
-function trifoil_formation(xc, yc, r_ext)
-	# Horizontal distance between centers of adjacent circles (equal to twice the radius of each circle)
-	d = 2 * r_ext
-	# Vertical distance from top circle center to the line between bottom two circles
-	h = sqrt(3) * r_ext
-
-	# Calculate the top circle coordinates (centered directly above the midpoint of the bottom two circles)
-	xa = xc
-	ya = yc + h / 2
-
-	# Calculate the coordinates of the bottom two circles
-	xb = xc - d / 2
-	yb = yc - h / 2
-	xc = xc + d / 2
-	yc = yc - h / 2
-
-	return xa, ya, xb, yb, xc, yc
-end
-
-"""
-Computes the coordinates of three conductors arranged in a flat (horizontal or vertical) formation.
-
-# Arguments
-- `xc`: X-coordinate of the reference point.
-- `yc`: Y-coordinate of the reference point.
-- `s`: Spacing between adjacent conductors \\[m\\].
-- `vertical`: Boolean flag indicating whether the formation is vertical (default: `false`).
-
-# Returns
-- `xa`, `ya`: Coordinates of the first conductor.
-- `xb`, `yb`: Coordinates of the second conductor.
-- `xc`, `yc`: Coordinates of the third conductor.
-
-
-
-# Examples
-```julia
-# Horizontal formation
-xa, ya, xb, yb, xc, yc = flat_formation(0.0, 0.0, 0.1)
-println((xa, ya, xb, yb, xc, yc))  # Output: (0.0, 0.0, 0.1, 0.0, 0.2, 0.0)
-
-# Vertical formation
-xa, ya, xb, yb, xc, yc = flat_formation(0.0, 0.0, 0.1, vertical=true)
-println((xa, ya, xb, yb, xc, yc))  # Output: (0.0, 0.0, 0.0, -0.1, 0.0, -0.2)
-```
-
-
-"""
-function flat_formation(xc, yc, s; vertical = false)
-	if vertical
-		# Layout is vertical; adjust only y-coordinates
-		xa, ya = xc, yc
-		xb, yb = xc, yc - s
-		xc, yc = xc, yc - 2s
-	else
-		# Layout is horizontal; adjust only x-coordinates
-		xa, ya = xc, yc
-		xb, yb = xc + s, yc
-		xc, yc = xc + 2s, yc
-	end
-
-	return xa, ya, xb, yb, xc, yc
-end
-
-"""
-Generate a summary DataFrame for cable positions and phase mappings within a LineCableSystem.
-
-# Arguments
-- `system`: A `LineCableSystem` object containing the cable definitions and their configurations.
-
-# Returns
-A `DataFrame` containing:
-- `cable_id`: Identifier of each cable design.
-- `horz`: Horizontal coordinate of each cable \\[m\\].
-- `vert`: Vertical coordinate of each cable \\[m\\].
-- `phase_mapping`: Human-readable string representation mapping each cable component to its assigned phase.
-
-
-
-# Examples
-```julia
-cross_section_df = cross_section_data(cable_system)
-println(cross_section_df)
-# Output:
-# │ cable_id   │ horz │ vert  │ phase_mapping           │
-# │------------│------│-------│-------------------------│
-# │ "Cable1"   │ 0.0  │ -0.5  │ core: 1, sheath: 0      │
-# │ "Cable2"   │ 0.35 │ -1.25 │ core: 2, sheath: 0      │
-```
-
-
-"""
-function cross_section_data(system::LineCableSystem)
-	cable_ids = String[]
-	horz_coords = Number[]
-	vert_coords = Number[]
-	mappings = String[]
-
-	for cabledef in system.cables
-		# Correct access here:
-		push!(cable_ids, cabledef.cable.cable_id)
-		push!(horz_coords, cabledef.horz)
-		push!(vert_coords, cabledef.vert)
-
-		component_names = collect(keys(cabledef.cable.components))
-		mapping_str = join(
-			["$(name): $(phase)" for (name, phase) in zip(component_names, cabledef.conn)],
-			", ",
-		)
-		push!(mappings, mapping_str)
-	end
-
-	return DataFrame(
-		cable_id = cable_ids,
-		horz = horz_coords,
-		vert = vert_coords,
-		phase_mapping = mappings,
-	)
-end
-
+# """
+# Represents nominal electrical and geometric parameters for a cable.
+# """
+# struct NominalData
+# 	conductor_cross_section::Union{Nothing, Number}
+# 	screen_cross_section::Union{Nothing, Number}
+# 	armor_cross_section::Union{Nothing, Number}
+# 	resistance::Union{Nothing, Number}
+# 	capacitance::Union{Nothing, Number}
+# 	inductance::Union{Nothing, Number}
+
+# 	"""
+# 	Constructor: Initializes a `NominalData` object with optional default values.
+
+# 	# Arguments
+# 	- `conductor_cross_section`: Cross-sectional area of the conductor [mm²] (default: `nothing`).
+# 	- `screen_cross_section`: Cross-sectional area of the screen [mm²] (default: `nothing`).
+# 	- `armor_cross_section`: Cross-sectional area of the armor [mm²] (default: `nothing`).
+# 	- `resistance`: Electrical resistance of the cable [Ω/km] (default: `nothing`).
+# 	- `capacitance`: Electrical capacitance of the cable [μF/km] (default: `nothing`).
+# 	- `inductance`: Electrical inductance of the cable, trifoil formation [mH/km] (default: `nothing`).
+
+# 	# Returns
+# 	An instance of `NominalData` with the specified nominal properties.
+
+# 	# Dependencies
+# 	- None.
+
+# 	# Examples
+# 	```julia
+# 	nominal_data = NominalData(
+# 		conductor_cross_section=1.5,
+# 		resistance=0.02,
+# 		capacitance=1e-9,
+# 	)
+# 	println(nominal_data.conductor_cross_section) # Output: 1.5
+# 	println(nominal_data.resistance) # Output: 0.02
+# 	println(nominal_data.capacitance) # Output: 1e-9
+# 	```
+
+
+# 	"""
+# 	function NominalData(;
+# 		conductor_cross_section::Union{Nothing, Number} = nothing,
+# 		screen_cross_section::Union{Nothing, Number} = nothing,
+# 		armor_cross_section::Union{Nothing, Number} = nothing,
+# 		resistance::Union{Nothing, Number} = nothing,
+# 		capacitance::Union{Nothing, Number} = nothing,
+# 		inductance::Union{Nothing, Number} = nothing,
+# 	)
+# 		return new(
+# 			conductor_cross_section,
+# 			screen_cross_section,
+# 			armor_cross_section,
+# 			resistance,
+# 			capacitance,
+# 			inductance,
+# 		)
+# 	end
+# end
+
+# """
+# Represents the design of a cable, including its unique identifier, nominal data, and components.
+# """
+# mutable struct CableDesign
+# 	cable_id::String
+# 	nominal_data::NominalData                        # Informative reference data
+# 	components::OrderedDict{String, CableComponent}  # Key: component name, Value: CableComponent object
+
+# 	"""
+# 	Constructor: Initializes a `CableDesign` object with a unique identifier, nominal data, and components.
+
+# 	# Arguments
+# 	- `cable_id`: A string representing the unique identifier for the cable design.
+# 	- `component_name`: The name of the first cable component (String).
+# 	- `component_parts`: A vector of parts representing the subcomponents of the first cable component.
+# 	- `f`: The frequency of operation \\[Hz\\] (default: `f₀`).
+# 	- `nominal_data`: A `NominalData` object containing reference data (default: `NominalData()`).
+
+# 	# Returns
+# 	An instance of `CableDesign` with the following attributes:
+# 	- `cable_id`: Unique identifier for the cable design.
+# 	- `nominal_data`: Reference data for the cable design.
+# 	- `components`: An `OrderedDict` mapping component names to `CableComponent` objects.
+
+# 	# Dependencies
+# 	This constructor uses the following non-native functions:
+# 	- `CableComponent`: Initializes a cable component based on its parts and frequency.
+
+# 	# Examples
+# 	```julia
+# 	parts = [Conductor(...), Insulator(...)] # Define parts for the component
+# 	design = CableDesign("Cable001", "ComponentA", parts, f=50)
+# 	println(design.cable_id) # Output: "Cable001"
+# 	println(design.components["ComponentA"]) # Output: CableComponent object
+# 	```
+
+
+# 	"""
+# 	function CableDesign(
+# 		cable_id::String,
+# 		component_name::String,
+# 		component_parts::Vector{<:Any},
+# 		f::Number = f₀;
+# 		nominal_data::NominalData = NominalData(),
+# 	)
+# 		components = OrderedDict{String, CableComponent}()
+# 		# Create and add the first component
+# 		components[component_name] =
+# 			CableComponent(Vector{AbstractCablePart}(component_parts), f)
+# 		return new(cable_id, nominal_data, components)
+# 	end
+# end
+
+# """
+# Adds or replaces a cable component in an existing `CableDesign`.
+
+# # Arguments
+# - `design`: A `CableDesign` object where the component will be added.
+# - `component_name`: The name of the cable component to be added (String).
+# - `component_parts`: A vector of parts representing the subcomponents of the cable component.
+# - `f`: The frequency of operation \\[Hz\\] (default: `f₀`).
+
+# # Returns
+# Modifies the `CableDesign` object in-place by adding or replacing the specified cable component.
+
+# # Dependencies
+# - [`CableComponent`](@ref): Constructs a cable component based on its parts and frequency.
+
+# # Examples
+# ```julia
+# parts = [Conductor(...), Insulator(...)] # Define parts for the component
+# add_cable_component!(design, "ComponentB", parts, f=60)
+# println(design.components["ComponentB"]) # Output: CableComponent object
+# ```
+
+# # Notes
+# - If a component with the specified name already exists, it will be overwritten, and a warning will be logged.
+
+
+# """
+# function add_cable_component!(
+# 	design::CableDesign,
+# 	component_name::String,
+# 	component_parts::Vector{<:Any},
+# 	f::Number = f₀,
+# )
+# 	if haskey(design.components, component_name)
+# 		@warn "Component with name '$component_name' already exists in the CableDesign and will be overwritten."
+# 	end
+# 	# Construct the CableComponent internally
+# 	design.components[component_name] =
+# 		CableComponent(Vector{AbstractCablePart}(component_parts), f)
+# end
+
+# """
+# Computes the core parameters (R, L, and C) for a given `CableDesign` and evaluates compliance with nominal values.
+
+# # Arguments
+# - `design`: A `CableDesign` object containing the cable components and nominal data.
+
+# # Returns
+# A `DataFrame` with the following columns:
+# - `parameter`: Names of the parameters (`R [Ω/km]`, `L [mH/km]`, `C [μF/km]`).
+# - `computed`: Computed values of the parameters based on the core component.
+# - `nominal`: Nominal values of the parameters from the `CableDesign`.
+# - `lower`: Lower bounds for the computed values (accounting for error margins).
+# - `upper`: Upper bounds for the computed values (accounting for error margins).
+# - `complies?`: A Boolean column indicating whether the nominal value is within the computed bounds.
+
+# # Dependencies
+# - `calc_tubular_resistance`: Computes the resistance of the tubular conductor.
+# - `calc_inductance_trifoil`: Computes the inductance of the conductor.
+# - `calc_shunt_capacitance`: Computes the shunt capacitance of the insulator.
+# - `to_lower`: Computes the lower bound for a given value based on error margins.
+# - `to_upper`: Computes the upper bound for a given value based on error margins.
+
+# # Examples
+# ```julia
+# core_component = CableComponent([...]) # Define the core component
+# nominal_data = NominalData(resistance=0.02, inductance=0.5, capacitance=200)
+# design = CableDesign("Cable001", "core", [core_component]; nominal_data=nominal_data)
+
+# data = core_parameters(design)
+# println(data)
+# # Output: DataFrame with computed values and compliance checks.
+# ```
+
+
+# """
+# function core_parameters(
+# 	design::CableDesign;
+# 	S::Number = 7e-2, # trifoil spacing
+# 	rho_e::Number = 100, # resistivity of the earth
+# )
+# 	# Extract the core component
+# 	# cable_core = design.components["core"]
+# 	cable_core = collect(values(design.components))[1]
+# 	cable_shield = collect(values(design.components))[2]
+
+# 	# Compute R, L, and C using given formulas
+# 	R =
+# 		calc_tubular_resistance(
+# 			cable_core.radius_in_con,
+# 			cable_core.radius_ext_con,
+# 			cable_core.rho_con,
+# 			0,
+# 			20,
+# 			20,
+# 		) * 1e3
+
+# 	L =
+# 		calc_inductance_trifoil(
+# 			cable_core.radius_in_con,
+# 			cable_core.radius_ext_con,
+# 			cable_core.rho_con,
+# 			cable_core.mu_con,
+# 			cable_shield.radius_in_con,
+# 			cable_shield.radius_ext_con,
+# 			cable_shield.rho_con,
+# 			cable_shield.mu_con,
+# 			S = S,
+# 			rho_e = rho_e,
+# 		) * 1e6
+
+# 	C =
+# 		calc_shunt_capacitance(
+# 			cable_core.radius_ext_con,
+# 			cable_core.radius_ext_ins,
+# 			cable_core.eps_ins,
+# 		) * 1e6 * 1e3
+
+# 	# Prepare nominal values from CableDesign
+# 	nominals = [
+# 		design.nominal_data.resistance,
+# 		design.nominal_data.inductance,
+# 		design.nominal_data.capacitance,
+# 	]
+
+# 	# Compute the comparison DataFrame
+# 	data = DataFrame(
+# 		parameter = ["R [Ω/km]", "L [mH/km]", "C [μF/km]"],
+# 		computed = [R, L, C],
+# 		nominal = nominals,
+# 		lower = [to_lower(R), to_lower(L), to_lower(C)],
+# 		upper = [to_upper(R), to_upper(L), to_upper(C)],
+# 	)
+
+# 	# Add compliance column
+# 	data[!, "complies?"] = [
+# 		(data.nominal[i] >= data.lower[i] && data.nominal[i] <= data.upper[i])
+# 		for i in 1:nrow(data)
+# 	]
+
+# 	return data
+# end
+
+# """
+# Extracts and displays the properties of components in a `CableDesign` object as a `DataFrame`.
+
+# # Arguments
+# - `design`: A `CableDesign` object containing the components and their respective properties.
+
+# # Returns
+# - A `DataFrame` object with the following structure:
+#   - `property`: The name of each property (e.g., `radius_in_con`, `rho_con`, etc.).
+#   - Additional columns: Each component of the cable, with property values or `missing` if the property is not available for the component.
+
+
+
+# # Examples
+# ```julia
+# design = CableDesign(
+# 	"cable1",
+# 	components = Dict(
+# 		"conductor" => Component(radius_in_con=0.01, radius_ext_con=0.02, rho_con=1.68e-8),
+# 		"insulator" => Component(radius_ext_ins=0.03, eps_ins=2.5, loss_factor_ins=0.01),
+# 	)
+# )
+
+# # Extract and display the component properties
+# data = cable_data(design)
+# println(data) # Outputs a DataFrame with properties and values for each component
+# ```
+
+
+# """
+# function cable_data(design::CableDesign)
+# 	# Extract properties dynamically
+# 	properties = [
+# 		:radius_in_con,
+# 		:radius_ext_con,
+# 		:rho_con,
+# 		:alpha_con,
+# 		:mu_con,
+# 		:radius_ext_ins,
+# 		:eps_ins,
+# 		:mu_ins,
+# 		:loss_factor_ins,
+# 	]
+
+# 	# Initialize the DataFrame with property names
+# 	data = DataFrame(property = properties)
+
+# 	for (key, part) in design.components
+# 		# Use the key of the dictionary as the column name
+# 		col = key
+
+# 		# Collect values for each property, or `missing` if not available
+# 		new_col = [
+# 			:radius_in_con in fieldnames(typeof(part)) ?
+# 			getfield(part, :radius_in_con) : missing,
+# 			:radius_ext_con in fieldnames(typeof(part)) ?
+# 			getfield(part, :radius_ext_con) : missing,
+# 			:rho_con in fieldnames(typeof(part)) ? getfield(part, :rho_con) : missing,
+# 			:alpha_con in fieldnames(typeof(part)) ? getfield(part, :alpha_con) : missing,
+# 			:mu_con in fieldnames(typeof(part)) ? getfield(part, :mu_con) : missing,
+# 			:radius_ext_ins in fieldnames(typeof(part)) ?
+# 			getfield(part, :radius_ext_ins) : missing,
+# 			:eps_ins in fieldnames(typeof(part)) ? getfield(part, :eps_ins) : missing,
+# 			:mu_ins in fieldnames(typeof(part)) ? getfield(part, :mu_ins) : missing,
+# 			:loss_factor_ins in fieldnames(typeof(part)) ?
+# 			getfield(part, :loss_factor_ins) : missing,
+# 		]
+
+# 		# Add the new column to the DataFrame
+# 		data[!, col] = new_col
+# 	end
+
+# 	return data
+# end
+
+# """
+# Generates a detailed `DataFrame` summarizing the properties of all cable parts in a `CableDesign`.
+
+# # Arguments
+# - `design`: A `CableDesign` object containing components and their respective parts.
+
+# # Returns
+# A `DataFrame` with the following structure:
+# - `property`: Names of the properties being analyzed (e.g., `type`, `radius_in`, `radius_ext`, `cross_section`, etc.).
+# - Columns corresponding to each layer of each component in the design (e.g., `component_name, layer N`).
+#   Each column contains the respective values for the specified property, or `missing` if the property is not defined for the part.
+
+
+
+# # Notes
+# - The function iterates over all components and their parts to extract and organize their properties.
+# - If a property is not available for a part, the value will be set to `missing`.
+# - Column names are generated dynamically in the format `component_name, layer N` for clear identification.
+
+# # Examples
+# ```julia
+# # Define a CableDesign with components and parts
+# design = CableDesign("Cable001", "core", [Conductor(...), Insulator(...)])
+# data = cable_parts_data(design)
+# println(data)
+# # Output: DataFrame summarizing properties of all parts in the design.
+# ```
+
+
+# """
+# function cable_parts_data(design::CableDesign)
+# 	# Updated properties list
+# 	properties = [
+# 		"type",
+# 		"radius_in",
+# 		"radius_ext",
+# 		"diam_in",
+# 		"diam_ext",
+# 		"thickness",
+# 		"cross_section",
+# 		"num_wires",
+# 		"resistance",
+# 		"alpha",
+# 		"gmr",
+# 		"gmr/radius",
+# 		"shunt_capacitance",
+# 		"shunt_conductance",
+# 	]
+
+# 	# Initialize the DataFrame with property names
+# 	data = DataFrame(property = properties)
+
+# 	# Iterate over components in the OrderedDict
+# 	for (component_name, component) in design.components
+# 		# Iterate over each part in component_data with an index
+# 		for (i, part) in enumerate(component.component_data)
+# 			# Generate column name with layer number
+# 			col = lowercase(component_name) * ", layer " * string(i)
+
+# 			# Collect values for each property, or `missing` if not available
+# 			new_col = [
+# 				lowercase(string(typeof(part))),  # type
+# 				:radius_in in fieldnames(typeof(part)) ? getfield(part, :radius_in) :
+# 				missing,
+# 				:radius_ext in fieldnames(typeof(part)) ? getfield(part, :radius_ext) :
+# 				missing,
+# 				:radius_in in fieldnames(typeof(part)) ?
+# 				2 * getfield(part, :radius_in) : missing,
+# 				:radius_ext in fieldnames(typeof(part)) ?
+# 				2 * getfield(part, :radius_ext) : missing,
+# 				:radius_ext in fieldnames(typeof(part)) &&
+# 				:radius_in in fieldnames(typeof(part)) ?
+# 				(getfield(part, :radius_ext) - getfield(part, :radius_in)) : missing,
+# 				:cross_section in fieldnames(typeof(part)) ?
+# 				getfield(part, :cross_section) : missing,
+# 				:num_wires in fieldnames(typeof(part)) ? getfield(part, :num_wires) :
+# 				missing,
+# 				:resistance in fieldnames(typeof(part)) ? getfield(part, :resistance) :
+# 				missing,
+# 				:alpha in fieldnames(typeof(part)) ? getfield(part, :alpha) :
+# 				missing,
+# 				:gmr in fieldnames(typeof(part)) ? getfield(part, :gmr) : missing,
+# 				:gmr in fieldnames(typeof(part)) &&
+# 				:radius_ext in fieldnames(typeof(part)) ?
+# 				(getfield(part, :gmr) / getfield(part, :radius_ext)) : missing,
+# 				:shunt_capacitance in fieldnames(typeof(part)) ?
+# 				getfield(part, :shunt_capacitance) : missing,
+# 				:shunt_conductance in fieldnames(typeof(part)) ?
+# 				getfield(part, :shunt_conductance) : missing,
+# 			]
+
+# 			# Add the new column to the DataFrame
+# 			data[!, col] = new_col
+# 		end
+# 	end
+
+# 	return data
+# end
+
+# """
+# Visualizes the cross-section of a cable design.
+
+# # Arguments
+# - `design`: A `CableDesign` object representing the cable structure.
+# - `x_offset`: Horizontal offset for the plot \\[m\\] (default: 0.0).
+# - `y_offset`: Vertical offset for the plot \\[m\\] (default: 0.0).
+# - `plt`: An optional `Plots.Plot` object to use for plotting (default: `nothing`).
+# - `display_plot`: Boolean flag to display the plot after rendering (default: `true`).
+# - `display_legend`: Boolean flag to display the legend in the plot (default: `true`).
+
+# # Returns
+# - A `Plots.Plot` object representing the visualized cable design.
+
+# # Dependencies
+# - `_to_nominal`: Converts a given measurement to its nominal value.
+# - `_get_material_color`: Determines the color for the material based on its properties.
+# - `Plots.partialcircle`: Generates partial circle coordinates for plotting.
+# - `Plots.Shape`: Defines a closed shape for visualization.
+# - `plotlyjs`: Initializes Plotly as the backend for plotting.
+# - `plot!`: Updates an existing plot with additional elements.
+
+# # Examples
+# ```julia
+# using Plots
+
+# # Define a CableDesign with components and parts
+# design = CableDesign("SomeCable", "core", [Conductor(...), Insulator(...)])
+# preview_cable_design(design)
+# # Output: Displays the cable cross-section in an interactive plot.
+# ```
+
+
+# """
+# function preview_cable_design(
+# 	design::CableDesign;
+# 	x_offset = 0.0,
+# 	y_offset = 0.0,
+# 	plt = nothing,
+# 	display_plot = true,
+# 	display_legend = true,
+# )
+# 	if isnothing(plt)
+# 		plotlyjs()  # Initialize only if plt is not provided
+# 		plt = plot(size = (800, 600),
+# 			aspect_ratio = :equal,
+# 			legend = (0.875, 1.0),
+# 			title = "Cable design preview",
+# 			xlabel = "y \\[m\\]",
+# 			ylabel = "z \\[m\\]")
+# 	end
+
+# 	# Helper function to plot a layer
+# 	function plot_layer!(layer, label; x0 = 0.0, y0 = 0.0)
+# 		if layer isa WireArray
+# 			radius_wire = to_nominal(layer.radius_wire)
+# 			num_wires = layer.num_wires
+
+# 			lay_radius = num_wires == 1 ? 0 : to_nominal(layer.radius_in) + radius_wire
+# 			material_props = layer.material_props
+# 			color = _get_material_color(material_props)
+
+# 			# Calculate the angle between each wire
+# 			angle_step = 2 * π / num_wires
+
+# 			# Plot each wire in the layer
+# 			for i in 0:num_wires-1
+# 				angle = i * angle_step
+# 				x = x0 + lay_radius * cos(angle)
+# 				y = y0 + lay_radius * sin(angle)
+# 				plot!(
+# 					plt,
+# 					Shape(
+# 						x .+ radius_wire * cos.(0:0.01:2π),
+# 						y .+ radius_wire * sin.(0:0.01:2π),
+# 					),
+# 					linecolor = :black,
+# 					color = color,
+# 					label = display_legend ? label : "",
+# 				)
+# 				label = ""  # Only add the label once
+# 			end
+# 		elseif layer isa Strip || layer isa Tubular || layer isa Semicon ||
+# 			   layer isa Insulator
+# 			radius_in = to_nominal(layer.radius_in)
+# 			radius_ext = to_nominal(layer.radius_ext)
+# 			material_props = layer.material_props
+# 			color = _get_material_color(material_props)
+
+# 			arcshape(θ1, θ2, rin, rext, x0 = 0.0, y0 = 0.0, N = 100) = begin
+# 				# Outer circle coordinates
+# 				outer_coords = Plots.partialcircle(θ1, θ2, N, rext)
+# 				x_outer = first.(outer_coords) .+ x0
+# 				y_outer = last.(outer_coords) .+ y0
+
+# 				# Inner circle coordinates (reversed to close the shape properly)
+# 				inner_coords = Plots.partialcircle(θ1, θ2, N, rin)
+# 				x_inner = reverse(first.(inner_coords)) .+ x0
+# 				y_inner = reverse(last.(inner_coords)) .+ y0
+
+# 				Shape(vcat(x_outer, x_inner), vcat(y_outer, y_inner))
+# 			end
+
+# 			shape = arcshape(0, 2π + 0.01, radius_in, radius_ext, x0, y0)
+# 			plot!(
+# 				plt,
+# 				shape,
+# 				linecolor = color,
+# 				color = color,
+# 				label = display_legend ? label : "",
+# 			)
+# 		end
+# 	end
+
+# 	# Iterate over all CableComponents in the design
+# 	for (name, component) in design.components
+# 		# Iterate over all AbstractCablePart in the component
+# 		for part in component.component_data
+# 			# Check if the part has layers
+# 			if part isa Conductor
+# 				# Loop over each layer and add legend only for the first layer
+# 				first_layer = true
+# 				for layer in part.layers
+# 					plot_layer!(
+# 						layer,
+# 						first_layer ? lowercase(string(typeof(part))) : "",
+# 						x0 = x_offset,
+# 						y0 = y_offset,
+# 					)
+# 					first_layer = false
+# 				end
+# 			else
+# 				# Plot the top-level part with legend entry
+# 				plot_layer!(
+# 					part,
+# 					lowercase(string(typeof(part))),
+# 					x0 = x_offset,
+# 					y0 = y_offset,
+# 				)
+# 			end
+# 		end
+# 	end
+
+# 	if display_plot
+# 		display(plt)
+# 	end
+# end
+
+# """
+# Represents a library of cable designs stored as a dictionary.
+# """
+# mutable struct CablesLibrary
+# 	cable_designs::Dict{String, CableDesign}  # Key: cable ID, Value: CableDesign object
+
+# 	"""
+# 	Constructor: Initializes a `CablesLibrary` object, optionally loading cable designs from a file.
+
+# 	# Arguments
+# 	- `file_name`: The name of the file to load cable designs from (default: "cables_library.jls").
+
+# 	# Returns
+# 	An instance of `CablesLibrary` containing:
+# 	- `cable_designs`: A dictionary with keys as cable IDs (String) and values as `CableDesign` objects.
+
+# 	# Dependencies
+# 	- `_load_cables_from_jls!`: A function to load cable designs from a `.jls` file into the library.
+
+# 	# Examples
+# 	```julia
+# 	# Create a new library without loading any file
+# 	library = CablesLibrary()
+
+# 	# Create a library and load designs from a file
+# 	library_with_data = CablesLibrary("existing_library.jls")
+# 	```
+
+
+# 	"""
+# 	function CablesLibrary(; file_name::String = "cables_library.jls")::CablesLibrary
+# 		library = new(Dict{String, CableDesign}())
+# 		if isfile(file_name)
+# 			println("Loading cables database from $file_name...")
+# 			_load_cables_from_jls!(library, file_name = file_name)
+# 		else
+# 			println("No $file_name found. Initializing empty cables database...")
+# 		end
+# 		return library
+# 	end
+# end
+
+# """
+# Loads cable designs from a serialized file into a `CablesLibrary` object.
+
+# # Arguments
+# - `library`: An instance of `CablesLibrary` to populate with the loaded cable designs.
+# - `file_name`: The name of the file to deserialize and load the cable designs from.
+
+# # Returns
+# - None. Modifies the `cable_designs` field of the `CablesLibrary` object in-place.
+
+
+
+# # Examples
+# ```julia
+# library = CablesLibrary()
+# _load_cables_from_jls!(library, "cables_library.jls")
+# println(library.cable_designs) # Prints the loaded cable designs if successful
+# ```
+
+
+# """
+# function _load_cables_from_jls!(library::CablesLibrary; file_name::String)
+# 	try
+# 		loaded_data = deserialize(file_name)
+# 		if isa(loaded_data, Dict{String, CableDesign})
+# 			library.cable_designs = loaded_data
+# 			println("Cables database successfully loaded!")
+# 		else
+# 			println("Invalid file format in $file_name. Initializing empty database.")
+# 		end
+# 	catch e
+# 		println("Error loading file $file_name: $e. Initializing empty database.")
+# 	end
+# end
+
+# """
+# Saves the cable designs from a `CablesLibrary` object to a `.jls` file.
+
+# # Arguments
+# - `library`: An instance of `CablesLibrary` whose cable designs are to be saved.
+# - `file_name`: The name of the file to save the cable designs to (default: "cables_library.jls").
+
+# # Returns
+# - None. Writes the serialized cable designs to the specified file.
+
+
+
+# # Examples
+# ```julia
+# library = CablesLibrary()
+# # Add cable designs to the library
+# save_cables_library(library, "new_cables_library.jls")
+# ```
+
+
+# """
+# function save_cables_library(
+# 	library::CablesLibrary;
+# 	file_name::String = "cables_library.jls",
+# )
+# 	try
+# 		serialize(file_name, library.cable_designs)
+# 		println("Cables library saved to $file_name.")
+# 	catch e
+# 		println("Error saving library to $file_name: $e")
+# 	end
+# end
+
+# """
+# Stores a cable design in a `CablesLibrary` object.
+
+# # Arguments
+# - `library`: An instance of `CablesLibrary` to which the cable design will be added.
+# - `design`: A `CableDesign` object representing the cable design to be added. This object must have a `cable_id` field to uniquely identify it.
+
+# # Returns
+# - None. Modifies the `cable_designs` field of the `CablesLibrary` object in-place by adding the new cable design.
+
+
+
+# # Examples
+# ```julia
+# library = CablesLibrary()
+# design = CableDesign("cable1", ...) # Initialize CableDesign with required fields
+# store_cable_design!(library, design)
+# println(library.cable_designs) # Prints the updated dictionary containing the new cable design
+# ```
+
+
+# """
+# function store_cable_design!(library::CablesLibrary, design::CableDesign)
+# 	library.cable_designs[design.cable_id] = design
+# 	println("Cable design with ID `$(design.cable_id)` added to the library.")
+# end
+
+# """
+# Removes a cable design from a `CablesLibrary` object by its ID.
+
+# # Arguments
+# - `library`: An instance of `CablesLibrary` from which the cable design will be removed.
+# - `cable_id`: The ID of the cable design to remove (String).
+
+# # Returns
+# - None. Modifies the `cable_designs` field of the `CablesLibrary` object in-place by removing the specified cable design if it exists.
+
+
+
+# # Examples
+# ```julia
+# library = CablesLibrary()
+# design = CableDesign("cable1", ...) # Initialize and add a CableDesign
+# store_cable_design!(library, design)
+
+# # Remove the cable design
+# remove_cable_design!(library, "cable1")
+# println(library.cable_designs) # Prints the dictionary without the removed cable design
+# ```
+
+
+# """
+# function remove_cable_design!(library::CablesLibrary, cable_id::String)
+# 	if haskey(library.cable_designs, cable_id)
+# 		delete!(library.cable_designs, cable_id)
+# 		println("Cable design with ID `$cable_id` removed from the library.")
+# 	else
+# 		println("Cable design with ID `$cable_id` not found in the library.")
+# 	end
+# end
+
+# """
+# Retrieves a cable design from a `CablesLibrary` object by its ID.
+
+# # Arguments
+# - `library`: An instance of `CablesLibrary` from which the cable design will be retrieved.
+# - `cable_id`: The ID of the cable design to retrieve (String).
+
+# # Returns
+# - A `CableDesign` object corresponding to the given `cable_id` if found, otherwise `nothing`.
+
+
+
+# # Examples
+# ```julia
+# library = CablesLibrary()
+# design = CableDesign("cable1", ...) # Initialize and add a CableDesign
+# store_cable_design!(library, design)
+
+# # Retrieve the cable design
+# retrieved_design = get_cable_design(library, "cable1")
+# println(retrieved_design) # Prints the retrieved CableDesign object
+
+# # Attempt to retrieve a non-existent design
+# missing_design = get_cable_design(library, "nonexistent_id")
+# println(missing_design) # Prints nothing
+# ```
+
+
+# """
+# function get_cable_design(
+# 	library::CablesLibrary,
+# 	cable_id::String,
+# )::Union{Nothing, CableDesign}
+# 	if haskey(library.cable_designs, cable_id)
+# 		println("Cable design with ID `$cable_id` loaded from the library.")
+# 		return library.cable_designs[cable_id]
+# 	else
+# 		println("Cable design with ID `$cable_id` not found.")
+# 		return nothing
+# 	end
+# end
+
+# """
+# Displays the cable designs in a `CablesLibrary` object as a `DataFrame`.
+
+# # Arguments
+# - `library`: An instance of `CablesLibrary` whose cable designs are to be displayed.
+
+# # Returns
+# - A `DataFrame` object with the following columns:
+#   - `cable_id`: The unique identifier for each cable design.
+#   - `nominal_data`: A string representation of the nominal data for each cable design.
+#   - `components`: A comma-separated string listing the components of each cable design.
+
+
+
+# # Examples
+# ```julia
+# library = CablesLibrary()
+# design1 = CableDesign("cable1", nominal_data=..., components=Dict("A"=>..., "B"=>...))
+# design2 = CableDesign("cable2", nominal_data=..., components=Dict("C"=>...))
+# store_cable_design!(library, design1)
+# store_cable_design!(library, design2)
+
+# # Display the library as a DataFrame
+# df = display_cables_library(library)
+# println(df) # Outputs the DataFrame with cable details
+# ```
+
+
+# """
+# function display_cables_library(library::CablesLibrary)
+# 	ids = keys(library.cable_designs)
+# 	nominal_data = [string(design.nominal_data) for design in values(library.cable_designs)]
+# 	components =
+# 		[join(keys(design.components), ", ") for design in values(library.cable_designs)]
+# 	df = DataFrame(
+# 		cable_id = collect(ids),
+# 		nominal_data = nominal_data,
+# 		components = components,
+# 	)
+# 	return (df)
+# end
+
+# """
+# Defines the position and phase mapping of a cable within a system.
+# """
+# struct CableDef
+# 	cable::CableDesign             # The CableDesign object assigned
+# 	horz::Number                   # Horizontal coordinate \\[m\\]
+# 	vert::Number                   # Vertical coordinate \\[m\\]
+# 	conn::Vector{Int}               # Phase mapping (aligned with cable.components)
+
+# 	"""	
+# 	Constructor: Initializes a `CableDef` object with specified cable design, coordinates, and phase mapping.
+
+# 	# Arguments
+# 	- `cable`: A `CableDesign` object defining the cable structure.
+# 	- `horz`: Horizontal coordinate of the cable placement \\[m\\].
+# 	- `vert`: Vertical coordinate of the cable placement \\[m\\].
+# 	- `conn`: A dictionary mapping component names to phase indices, or `nothing` for default mapping.
+
+# 	# Returns
+# 	An instance of `CableDef` with the following attributes:
+# 	- `cable`: Assigned `CableDesign` object.
+# 	- `horz`: Horizontal coordinate \\[m\\].
+# 	- `vert`: Vertical coordinate \\[m\\].
+# 	- `conn`: Vector representing the phase mapping of each cable component.
+
+# 	# Notes
+# 	- Components mapped to phase 0 will be eliminated (grounded). Components set to the same phase will be bundled into an equivalent phase.
+
+# 	# Dependencies
+# 	- None.
+
+# 	# Examples
+# 	```julia
+# 	material = get_material(materials_db, "aluminum")
+# 	cable_design = CableDesign("SomeCable", "core", [core])
+# 	xa, ya = percent_to_uncertain(0, 0), percent_to_uncertain(-1, 0)
+# 	cabledef1 = CableDef(cable_design, xa, ya, Dict("core" => 1))
+# 	println(cabledef1.conn)  # Output: [1]
+
+# 	default_cabledef = CableDef(cable_design, xa, ya)
+# 	println(default_cabledef.conn)  # Output: [1, 0, 0] if components exist
+# 	```
+
+
+# 	"""
+# 	function CableDef(
+# 		cable::CableDesign,
+# 		horz::Number,
+# 		vert::Number,
+# 		conn::Union{Dict{String, Int}, Nothing} = nothing,
+# 	)
+# 		components = collect(keys(cable.components))  # Maintain ordered component names
+# 		if isnothing(conn)
+# 			conn_vector = [i == 1 ? 1 : 0 for i in 1:length(components)]  # Default: First component gets phase 1
+# 		else
+# 			conn_vector = [get(conn, name, 0) for name in components]  # Ensure correct mapping order
+# 		end
+# 		return new(cable, horz, vert, conn_vector)
+# 	end
+
+# end
+
+# """
+# Represents a cable system configuration, defining its structure, environmental properties, and phase assignments.
+# """
+# mutable struct LineCableSystem
+# 	case_id::String         # Unique identifier for the system
+# 	T::Number               # Operating temperature \\[°C\\]
+# 	earth_props::EarthModel # Earth properties
+# 	line_length::Number     # Length of the cable system \\[m\\]
+# 	num_cables::Int         # Number of cables in the system
+# 	num_phases::Int         # Number of actual phases in the system
+# 	cables::Vector{CableDef} # Cross-section cable definition
+
+# 	"""
+# 	Constructor: Initializes a `LineCableSystem` with an initial cable definition and system parameters.
+
+# 	# Arguments
+# 	- `case_id`: Identifier for the cable system.
+# 	- `T`: Operating temperature \\[°C\\].
+# 	- `earth_props`: Instance of `EarthModel` defining ground parameters.
+# 	- `line_length`: Length of the cable system \\[m\\].
+# 	- `cable`: Initial `CableDef` object defining a cable's position and phase mapping.
+
+# 	# Returns
+# 	An instance of `LineCableSystem` with the following attributes:
+# 	- `case_id`: System identifier.
+# 	- `T`: Operating temperature \\[°C\\].
+# 	- `earth_props`: Ground properties affecting electromagnetic behavior.
+# 	- `line_length`: Cable system length \\[m\\].
+# 	- `num_cables`: Initial number of cables (set to 1).
+# 	- `num_phases`: Count of unique nonzero phase assignments.
+# 	- `cables`: List containing the first `CableDef` instance.
+
+# 	# Dependencies
+# 	- None.
+
+# 	# Examples
+# 	```julia
+# 	material = get_material(materials_db, "aluminum")
+# 	cable_design = CableDesign("SomeCable", "core", [core])
+# 	earth_params = EarthModel(10.0 .^ range(0, stop=6, length=10), 100, 10, 1)
+# 	xa, ya = 0, 0
+# 	cabledef1 = CableDef(cable_design, xa, ya, Dict("core" => 1))
+
+# 	cable_system = LineCableSystem("test_case_1", 20.0, earth_params, 1000.0, cabledef1)
+# 	println(cable_system.num_cables)  # Output: 1
+# 	println(cable_system.num_phases)  # Output: Number of unique phase assignments
+# 	```
+
+
+# 	"""
+# 	function LineCableSystem(
+# 		case_id::String,
+# 		T::Number,
+# 		earth_props::EarthModel,
+# 		line_length::Number,
+# 		cable::CableDef,
+# 	)
+# 		# Initialize with the first cable definition
+# 		num_cables = 1
+
+# 		# Count unique nonzero phases from the first cable
+# 		assigned_phases = unique(cable.conn)
+# 		num_phases = count(x -> x > 0, assigned_phases)
+
+# 		return new(case_id, T, earth_props, line_length, num_cables, num_phases, [cable])
+# 	end
+# end
+
+# """
+# Adds a new cable definition to an existing `LineCableSystem`, updating its phase mapping and cable count.
+
+# # Arguments
+# - `system`: Instance of `LineCableSystem` to which the cable will be added.
+# - `cable`: Instance of `CableDesign` defining the cable structure.
+# - `horz`: Horizontal coordinate \\[m\\].
+# - `vert`: Vertical coordinate \\[m\\].
+# - `conn`: Dictionary mapping component names to phase indices, or `nothing` for automatic assignment.
+
+# # Returns
+# - Modifies `system` in place by adding a new `CableDef` and updating `num_cables` and `num_phases`.
+
+
+
+# # Examples
+# ```julia
+# material = get_material(materials_db, "aluminum")
+# cable_design = CableDesign("SomeCable", "core", [core])
+# earth_params = EarthModel(10.0 .^ range(0, stop=6, length=10), 100, 10, 1)
+
+# xa, ya = percent_to_uncertain(0, 0), percent_to_uncertain(-1, 0)
+# xb, yb = percent_to_uncertain(1, 0), percent_to_uncertain(-2, 0)
+
+# cabledef1 = CableDef(cable_design, xa, ya, Dict("core" => 1))
+# cable_system = LineCableSystem("test_case_1", 20.0, earth_params, 1000.0, cabledef1)
+
+# add_cable_definition!(cable_system, cable_design, xb, yb, Dict("core" => 2))
+# println(cable_system.num_cables)  # Output: 2
+# println(cable_system.num_phases)  # Output: Number of unique phase assignments
+# ```
+
+
+# """
+# function add_cable_definition!(
+# 	system::LineCableSystem,
+# 	cable::CableDesign,
+# 	horz::Number,
+# 	vert::Number,
+# 	conn::Union{Dict{String, Int}, Nothing} = nothing,
+# )
+# 	max_phase =
+# 		isempty(system.cables) ? 0 : maximum(maximum.(getfield.(system.cables, :conn)))
+
+# 	component_names = keys(cable.components)  # Maintain the correct order
+
+# 	new_conn = if isnothing(conn)
+# 		Dict(name => (i == 1 ? max_phase + 1 : 0) for (i, name) in enumerate(component_names))
+# 	else
+# 		Dict(name => get(conn, name, 0) for name in component_names)  # Ensures correct mapping order
+# 	end
+
+# 	push!(system.cables, CableDef(cable, horz, vert, new_conn))
+
+# 	# Update num_cables
+# 	system.num_cables += 1
+
+# 	# Update num_phases by counting unique nonzero phases
+# 	assigned_phases = unique(vcat(values.(getfield.(system.cables, :conn))...))
+# 	system.num_phases = count(x -> x > 0, assigned_phases)
+# end
+
+# """
+# Visualizes the cross-section of a cable system, including earth layers and cables.
+
+# # Arguments
+# - `system`: A `LineCableSystem` object containing the cable arrangement and earth properties.
+# - `zoom_factor`: A scaling factor for adjusting the x-axis limits (default: 0.25).
+
+# # Returns
+# - Displays a plot of the cable system's cross-section with cables, earth layers (if applicable), and the air/earth interface.
+
+# # Dependencies
+# - `plotlyjs()`: Initializes the plotting backend.
+# - `_to_nominal`: Converts cable position coordinates to nominal values.
+# - `preview_cable_design`: Visualizes individual cable designs within the system.
+
+# # Examples
+# ```julia
+# system = LineCableSystem([...])
+# preview_system_cross_section(system, zoom_factor=0.5)
+# ```
+
+
+# """
+# function preview_system_cross_section(system::LineCableSystem; zoom_factor = 0.25)
+# 	plotlyjs()
+# 	plt = plot(size = (800, 600),
+# 		aspect_ratio = :equal,
+# 		legend = (0.8, 0.9),
+# 		title = "Cable system cross-section",
+# 		xlabel = "y \\[m\\]",
+# 		ylabel = "z \\[m\\]")
+
+# 	# Plot the air/earth interface at y=0
+# 	hline!(
+# 		plt,
+# 		[0],
+# 		linestyle = :solid,
+# 		linecolor = :black,
+# 		linewidth = 1.25,
+# 		label = "Air/earth interface",
+# 	)
+
+# 	# Determine explicit wide horizontal range for earth layer plotting
+# 	x_positions = [to_nominal(cable.horz) for cable in system.cables]
+# 	max_span = maximum(abs, x_positions) + 5  # extend 5 m beyond farthest cable position
+# 	x_limits = [-max_span, max_span]
+
+# 	# Plot earth layers if vertical_layers == false
+# 	if !system.earth_props.vertical_layers
+# 		layer_colors = [:burlywood, :sienna, :peru, :tan, :goldenrod, :chocolate]
+# 		cumulative_depth = 0.0
+# 		for (i, layer) in enumerate(system.earth_props.layers[2:end])
+# 			# Skip bottommost infinite layer
+# 			if isinf(layer.t)
+# 				break
+# 			end
+
+# 			# Compute the depth of the current interface
+# 			cumulative_depth -= layer.t
+# 			hline!(
+# 				plt,
+# 				[cumulative_depth],
+# 				linestyle = :solid,
+# 				linecolor = layer_colors[mod1(i, length(layer_colors))],
+# 				linewidth = 1.25,
+# 				label = "Earth layer $i",
+# 			)
+
+# 			# Fill the area for current earth layer
+# 			y_coords = [cumulative_depth + layer.t, cumulative_depth]
+# 			plot!(plt, [x_limits[1], x_limits[2], x_limits[2], x_limits[1]],
+# 				[y_coords[1], y_coords[1], y_coords[2], y_coords[2]],
+# 				seriestype = :shape, color = layer_colors[mod1(i, length(layer_colors))],
+# 				alpha = 0.25, linecolor = :transparent,
+# 				label = "")
+# 		end
+# 	end
+
+# 	for cabledef in system.cables
+# 		x_offset = to_nominal(cabledef.horz)
+# 		y_offset = to_nominal(cabledef.vert)
+# 		preview_cable_design(
+# 			cabledef.cable;
+# 			x_offset,
+# 			y_offset,
+# 			plt,
+# 			display_plot = false,
+# 			display_legend = false,
+# 		)
+# 	end
+
+# 	plot!(plt, xlim = (x_limits[1], x_limits[2]) .* zoom_factor)
+
+# 	display(plt)
+# end
+
+# """
+# Computes the coordinates of three cables arranged in a trifoil pattern.
+
+# # Arguments
+# - `xc`: X-coordinate of the center point.
+# - `yc`: Y-coordinate of the center point.
+# - `r_ext`: External radius of the circular layout \\[m\\].
+
+# # Returns
+# - `xa`, `ya`: Coordinates of the top cable.
+# - `xb`, `yb`: Coordinates of the bottom-left cable.
+# - `xc`, `yc`: Coordinates of the bottom-right cable.
+
+
+
+# # Examples
+# ```julia
+# xa, ya, xb, yb, xc, yc = trifoil_formation(0.0, 0.0, 0.035)
+# println((xa, ya, xb, yb, xc, yc))  # Output: (0.0, 0.0303, -0.035, -0.0175, 0.035, -0.0175)
+# ```
+
+
+# """
+# function trifoil_formation(xc, yc, r_ext)
+# 	# Horizontal distance between centers of adjacent circles (equal to twice the radius of each circle)
+# 	d = 2 * r_ext
+# 	# Vertical distance from top circle center to the line between bottom two circles
+# 	h = sqrt(3) * r_ext
+
+# 	# Calculate the top circle coordinates (centered directly above the midpoint of the bottom two circles)
+# 	xa = xc
+# 	ya = yc + h / 2
+
+# 	# Calculate the coordinates of the bottom two circles
+# 	xb = xc - d / 2
+# 	yb = yc - h / 2
+# 	xc = xc + d / 2
+# 	yc = yc - h / 2
+
+# 	return xa, ya, xb, yb, xc, yc
+# end
+
+# """
+# Computes the coordinates of three conductors arranged in a flat (horizontal or vertical) formation.
+
+# # Arguments
+# - `xc`: X-coordinate of the reference point.
+# - `yc`: Y-coordinate of the reference point.
+# - `s`: Spacing between adjacent conductors \\[m\\].
+# - `vertical`: Boolean flag indicating whether the formation is vertical (default: `false`).
+
+# # Returns
+# - `xa`, `ya`: Coordinates of the first conductor.
+# - `xb`, `yb`: Coordinates of the second conductor.
+# - `xc`, `yc`: Coordinates of the third conductor.
+
+
+
+# # Examples
+# ```julia
+# # Horizontal formation
+# xa, ya, xb, yb, xc, yc = flat_formation(0.0, 0.0, 0.1)
+# println((xa, ya, xb, yb, xc, yc))  # Output: (0.0, 0.0, 0.1, 0.0, 0.2, 0.0)
+
+# # Vertical formation
+# xa, ya, xb, yb, xc, yc = flat_formation(0.0, 0.0, 0.1, vertical=true)
+# println((xa, ya, xb, yb, xc, yc))  # Output: (0.0, 0.0, 0.0, -0.1, 0.0, -0.2)
+# ```
+
+
+# """
+# function flat_formation(xc, yc, s; vertical = false)
+# 	if vertical
+# 		# Layout is vertical; adjust only y-coordinates
+# 		xa, ya = xc, yc
+# 		xb, yb = xc, yc - s
+# 		xc, yc = xc, yc - 2s
+# 	else
+# 		# Layout is horizontal; adjust only x-coordinates
+# 		xa, ya = xc, yc
+# 		xb, yb = xc + s, yc
+# 		xc, yc = xc + 2s, yc
+# 	end
+
+# 	return xa, ya, xb, yb, xc, yc
+# end
+
+# """
+# Generate a summary DataFrame for cable positions and phase mappings within a LineCableSystem.
+
+# # Arguments
+# - `system`: A `LineCableSystem` object containing the cable definitions and their configurations.
+
+# # Returns
+# A `DataFrame` containing:
+# - `cable_id`: Identifier of each cable design.
+# - `horz`: Horizontal coordinate of each cable \\[m\\].
+# - `vert`: Vertical coordinate of each cable \\[m\\].
+# - `phase_mapping`: Human-readable string representation mapping each cable component to its assigned phase.
+
+
+
+# # Examples
+# ```julia
+# cross_section_df = cross_section_data(cable_system)
+# println(cross_section_df)
+# # Output:
+# # │ cable_id   │ horz │ vert  │ phase_mapping           │
+# # │------------│------│-------│-------------------------│
+# # │ "Cable1"   │ 0.0  │ -0.5  │ core: 1, sheath: 0      │
+# # │ "Cable2"   │ 0.35 │ -1.25 │ core: 2, sheath: 0      │
+# ```
+
+
+# """
+# function cross_section_data(system::LineCableSystem)
+# 	cable_ids = String[]
+# 	horz_coords = Number[]
+# 	vert_coords = Number[]
+# 	mappings = String[]
+
+# 	for cabledef in system.cables
+# 		# Correct access here:
+# 		push!(cable_ids, cabledef.cable.cable_id)
+# 		push!(horz_coords, cabledef.horz)
+# 		push!(vert_coords, cabledef.vert)
+
+# 		component_names = collect(keys(cabledef.cable.components))
+# 		mapping_str = join(
+# 			["$(name): $(phase)" for (name, phase) in zip(component_names, cabledef.conn)],
+# 			", ",
+# 		)
+# 		push!(mappings, mapping_str)
+# 	end
+
+# 	return DataFrame(
+# 		cable_id = cable_ids,
+# 		horz = horz_coords,
+# 		vert = vert_coords,
+# 		phase_mapping = mappings,
+# 	)
+# end
+
+@reexport using .BaseParams
 Utils.@_autoexport
 
 end
