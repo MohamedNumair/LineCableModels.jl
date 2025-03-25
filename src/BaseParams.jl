@@ -10,7 +10,7 @@ The [`BaseParams`](@ref) submodule provides fundamental functions for determinin
 - Provides functions for temperature correction of material properties.
 - Calculates geometric mean radii for different conductor configurations.
 - Includes functions for determining the effective length for helical wire arrangements.
-- Computes equivalent electrical parameters and correction factors for different geometries and configurations.
+- Calculates equivalent electrical parameters and correction factors for different geometries and configurations.
 
 # Dependencies
 
@@ -65,7 +65,7 @@ alpha_eq = $(FUNCTIONNAME)(alpha_conductor, R_conductor, alpha_new_part, R_new_p
 println(alpha_eq)  # Output: 0.00396 (approximately)
 ```
 """
-function calc_parallel_alpha(alpha1::Number, R1::Number, alpha2::Number, R2::Number)
+function calc_equivalent_alpha(alpha1::Number, R1::Number, alpha2::Number, R2::Number)
 	return (alpha1 * R2 + alpha2 * R1) / (R1 + R2)
 end
 
@@ -170,7 +170,7 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Computes the DC resistance of a strip conductor based on its geometric and material properties.
+Calculates the DC resistance of a strip conductor based on its geometric and material properties.
 
 # Arguments
 
@@ -332,7 +332,7 @@ Calculates the internal inductance of a tubular conductor per unit length, disre
 
 # Notes
 
-This function implements the DC approximation for the inductance of an infinitely long tubular conductor [916943](@cite) [cigre345](@cite):
+This function implements the DC approximation for the inductance of an infinitely long tubular conductor [916943](@cite) [cigre345](@cite) [1458878](@cite):
 
 ```math
 L = \\frac{\\mu_r \\mu_0}{2 \\pi} \\log \\left( \\frac{r_{ext}}{r_{in}} \\right)
@@ -425,7 +425,7 @@ Calculates the positive-sequence inductance of a trifoil-configured cable system
 - `r_ext_scr`: External radius of the metallic screen \\[m\\].
 - `rho_scr`: Electrical resistivity of the metallic screen material \\[Ω·m\\].
 - `mu_r_scr`: Relative permeability of the screen conductor material \\[dimensionless\\].
-- `S`: Spacing between conductors in trifoil configuration \\[m\\]. Default: 0.07 m.
+- `S`: Spacing between conductors in trifoil configuration \\[m\\].
 - `rho_e`: Soil resistivity \\[Ω·m\\]. Default: 100 Ω·m.
 - `f`: Frequency \\[Hz\\]. Default: `f₀`.
 
@@ -464,8 +464,8 @@ function calc_inductance_trifoil(
 	r_in_scr::Number,
 	r_ext_scr::Number,
 	rho_scr::Number,
-	mu_r_scr::Number;
-	S::Number = 7e-2,
+	mu_r_scr::Number,
+	S::Number;
 	rho_e::Number = 100,
 	f::Number = f₀,
 )
@@ -642,7 +642,17 @@ Calculates the relative permeability (`mu_r``) based on the geometric mean radiu
 
 # Notes
 
-Assumes a tubular geometry for the conductor, reducing to the solid case if `radius_in` is zero. This functions is essentially the inverse operation of [`calc_tubular_gmr`](@ref), and is used to perform transformations to determine correction factors for equivalent inductances.
+Assumes a tubular geometry for the conductor, reducing to the solid case if `radius_in` is zero. This functions is essentially the inverse operation of [`calc_tubular_gmr`](@ref), with:
+
+```math
+\\log GMR = \\log r_2 - \\mu_r \\left[ \\frac{r_1^4}{\\left(r_2^2 - r_1^2\\right)^2} \\ln\\left(\\frac{r_2}{r_1}\\right) - \\frac{3r_1^2 - r_2^2}{4\\left(r_2^2 - r_1^2\\right)} \\right]
+```
+
+```math
+\\mu_r = -\\frac{\\left(\\log GMR - \\log r_2\\right)}{\\frac{r_1^4}{\\left(r_2^2 - r_1^2\\right)^2} \\ln\\left(\\frac{r_2}{r_1}\\right) - \\frac{3r_1^2 - r_2^2}{4\\left(r_2^2 - r_1^2\\right)}}
+```
+
+where ``r_1`` is the inner radius and ``r_2`` is the outer radius.
 
 # Examples
 
@@ -692,7 +702,7 @@ Calculates the shunt capacitance per unit length of a coaxial structure.
 
 # Notes
 
-This function implements the standard formula for the capacitance of a coaxial structure [cigre531](@cite) [916943](@cite):
+This function implements the standard formula for the capacitance of a coaxial structure [cigre531](@cite) [916943](@cite) [1458878](@cite):
 
 ```math
 C = \\frac{2 \\pi \\varepsilon_0 \\varepsilon_r}{\\log \\left(\\frac{r_{ext}}{r_{in}}\\right)}
@@ -760,8 +770,8 @@ Calculates the equivalent geometric mean radius (GMR) of a conductor after addin
 
 # Arguments
 
-- `sc`: The existing cable part ([`AbstractCablePart`](@ref)).
-- `layer`: The new layer being added ([`AbstractCablePart`](@ref)).
+- `existing`: The existing cable part ([`AbstractCablePart`](@ref)).
+- `new_layer`: The new layer being added ([`AbstractCablePart`](@ref)).
 
 # Returns
 
@@ -775,10 +785,10 @@ This function implements the formula of the multizone stranded conductor defined
 GMR_{eq} = {GMR_{i-1}}^{\\beta^2} \\cdot {GMR_{i}}^{(1-\\beta)^2} \\cdot {GMD}^{2\\beta(1-\\beta)}
 ```
 ```math
-\\beta = \\frac{A_{i-1}}{A_{i-1} + A_{i}}
+\\beta = \\frac{S_{i-1}}{S_{i-1} + S_{i}}
 ```
 where:
-- ``A_{i-1}`` is the cumulative cross-sectional area of the existing cable part, ``A_{i}`` is the total cross-sectional area after inclusion of the conducting layer ``{i}``.
+- ``S_{i-1}`` is the cumulative cross-sectional area of the existing cable part, ``S_{i}`` is the total cross-sectional area after inclusion of the conducting layer ``{i}``.
 - ``GMR_{i-1}`` is the cumulative GMR of the existing cable part, ``GMR_{i}`` is the GMR of the conducting layer ``{i}``.
 - ``GMD`` is the geometric mean distance between the existing cable part and the new layer, calculated using [`calc_gmd`](@ref).
 
@@ -795,11 +805,12 @@ equivalent_gmr = $(FUNCTIONNAME)(conductor, new_layer)  # Expected output: Updat
 
 - [`calc_gmd`](@ref)
 """
-function calc_equivalent_gmr(sc::AbstractCablePart, layer::AbstractCablePart)
-	beta = sc.cross_section / (sc.cross_section + layer.cross_section)
-	current_conductor = sc isa Conductor ? sc.layers[end] : sc
-	gmd = calc_gmd(current_conductor, layer)
-	return sc.gmr^(beta^2) * layer.gmr^((1 - beta)^2) * gmd^(2 * beta * (1 - beta))
+function calc_equivalent_gmr(existing::AbstractCablePart, new_layer::AbstractCablePart)
+	beta = existing.cross_section / (existing.cross_section + new_layer.cross_section)
+	current_conductor = existing isa Conductor ? existing.layers[end] : existing
+	gmd = calc_gmd(current_conductor, new_layer)
+	return existing.gmr^(beta^2) * new_layer.gmr^((1 - beta)^2) *
+		   gmd^(2 * beta * (1 - beta))
 end
 
 """
@@ -829,7 +840,7 @@ where:
 - ``s_1`` and ``s_2`` are the cross-sectional areas of the respective elements.
 - ``n_1`` and ``n_2`` are the number of sub-elements in each cable part.
 
-For concentric structures, the GMD defaults to the maximum of the external radii.
+For concentric structures, the GMD converges to the external radii of the outermost element.
 
 !!! info "Numerical stability"
 	This implementation uses a weighted sum of logarithms rather than the traditional product formula ``\\Pi(d_{ij})^{(1/n)}`` found in textbooks. The logarithmic approach prevents numerical underflow/overflow when dealing with many conductors or extreme distance ratios, making it significantly more stable for practical calculations.
@@ -919,16 +930,16 @@ Calculates the solenoid correction factor for magnetic permeability in insulated
 
 # Notes
 
-When the insulation encloses [`WireArray`](@ref) objects, this function implements the correction formula to account for the solenoid effect due to conductor stranding [5743045](@cite):
+When insulation layers surround [`WireArray`](@ref) objects, this function applies a correction for the solenoid effect created by helical conductor stranding [5743045](@cite):
 
 ```math
-\\mu_{r, sol} = 1 + \\frac{2 \\pi^2 N^2 (r_{ins}^2 - r_{con}^2)}{\\log(r_{ins}/r_{con})}
+\\mu_{r, sol} = 1 + \\frac{2 \\pi^2 N^2 (r_{ins, ext}^2 - r_{con, ext}^2)}{\\log(r_{ins, ext}/r_{con, ext})}
 ```
 
 where:
 - ``N`` is the number of turns per unit length.
-- ``r_{con}`` is the conductor's external radius.
-- ``r_{ins}`` is the insulator's external radius.
+- ``r_{con, ext}`` is the conductor external radius.
+- ``r_{ins, ext}`` is the insulator external radius.
 
 # Examples
 
