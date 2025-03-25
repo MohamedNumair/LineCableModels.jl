@@ -99,7 +99,7 @@ makedocs(;
 	plugins = [bib],
 	checkdocs = :exports,
 	pagesonly = true,
-	warnonly = true,
+	warnonly = false,
 )
 
 html_path = joinpath(@__DIR__, "build", "index.html")

@@ -30,7 +30,7 @@ Private = false
 
 ## Import & export
 ```@autodocs
-Modules = [LineCableModels]
+Modules = [LineCableModels.ImportExport]
 Order = [:module, :constant, :type, :function, :macro]
 Public = true
 Private = false
@@ -71,14 +71,6 @@ Private = true
 ### Earth properties
 ```@autodocs
 Modules = [LineCableModels.EarthProps]
-Order = [:module, :constant, :type, :function, :macro]
-Public = false
-Private = true
-```
-
-### Import & export
-```@autodocs
-Modules = [LineCableModels]
 Order = [:module, :constant, :type, :function, :macro]
 Public = false
 Private = true

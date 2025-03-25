@@ -10,39 +10,46 @@ using ..DataModel
 # Module-specific dependencies
 using EzXML
 
-# PSCIdGen: Generates unique IDs for PSCAD exports.
-mutable struct PSCIdGen
-	current::Int
-	PSCIdGen(start = 100000000) = new(start)
-end
+# # PSCIdGen: Generates unique IDs for PSCAD exports.
+# mutable struct PSCIdGen
+# 	current::Int
+# 	PSCIdGen(start = 100000000) = new(start)
+# end
 
 """
-Exports a `LineCableSystem` to a PSCAD-compatible file format.
+$(TYPEDSIGNATURES)
+
+Exports a [`LineCableSystem`](@ref) to a PSCAD-compatible file format.
 
 # Arguments
-- `cable_system`: A `LineCableSystem` object representing the cable system to be exported.
-- `base_freq`: The base frequency [Hz] used for the PSCAD export. Defaults to `f₀`.
-- `folder_path`: The folder path where the PSCAD file will be saved. Defaults to the current working directory.
+
+- `cable_system`: A [`LineCableSystem`](@ref) object representing the cable system to be exported.
+- `base_freq`: The base frequency \\[Hz\\] used for the PSCAD export.
+- `folder_path`: The folder path where the PSCAD file will be saved.
 
 # Returns
-- None. The function writes the exported data to a PSCAD `.pscx` file.
 
-
+- Nothing. The function writes the exported data to a PSCAD `.pscx` file.
 
 # Examples
+
 ```julia
-cable_system = LineCableSystem(...)
-export_to_pscad(cable_system, base_freq=50)
+cable_system = LineCableSystem("example", 20.0, earth_model, 1000.0, cable_def)
+$(FUNCTIONNAME)(cable_system, base_freq=50)
 ```
 
+# See also
+
+- [`LineCableSystem`](@ref)
 """
 function export_pscad_lcp(
 	cable_system::LineCableSystem;
 	base_freq = f₀,
 	folder_path = pwd(),
 )
-	# ID generator
-	next_id!(gen::PSCIdGen) = (id = gen.current; gen.current += 1; return string(id))
+	# # ID generator
+	# next_id!(gen::PSCIdGen) = (id = gen.current; gen.current += 1; return string(id))
+	id_iterator = (string(id) for id in Iterators.countfrom(100000000))
 
 	format_nominal =
 		(X; sigdigits = 4, minval = -1e30, maxval = 1e30) -> begin
@@ -134,7 +141,7 @@ function export_pscad_lcp(
 
 	# StationDefn
 	station = addelement!(definitions, "Definition")
-	station_id = next_id!(id_gen)
+	station_id = next(id_iterator)
 	id_map["DS"] = station_id
 	station_attrs = Dict(
 		"classid" => "StationDefn", "name" => "DS", "id" => station_id,
@@ -169,7 +176,7 @@ function export_pscad_lcp(
 
 	addelement!(schematic, "grouping")
 	wire = addelement!(schematic, "Wire")
-	wire_id = next_id!(id_gen)
+	wire_id = next(id_iterator)
 	wire_attrs = Dict(
 		"classid" => "Branch", "id" => wire_id, "name" => "Main",
 		"x" => "180", "y" => "180", "w" => "66", "h" => "82",
@@ -187,7 +194,7 @@ function export_pscad_lcp(
 	end
 
 	user = addelement!(wire, "User")
-	user_id = next_id!(id_gen)
+	user_id = next(id_iterator)
 	id_map["Main"] = user_id
 	user_attrs = Dict(
 		"classid" => "UserCmp", "id" => user_id,
@@ -206,7 +213,7 @@ function export_pscad_lcp(
 
 	# UserCmpDefn
 	user_cmp = addelement!(definitions, "Definition")
-	user_cmp_id = next_id!(id_gen)
+	user_cmp_id = next(id_iterator)
 	user_cmp_attrs = Dict(
 		"classid" => "UserCmpDefn", "name" => "Main", "id" => user_cmp_id,
 		"group" => "", "url" => "", "version" => "", "build" => "",
@@ -232,7 +239,7 @@ function export_pscad_lcp(
 	graphics["size"] = "2"
 
 	rect = addelement!(graphics, "Gfx")
-	rect_id = next_id!(id_gen)
+	rect_id = next(id_iterator)
 	rect_attrs = Dict(
 		"classid" => "Graphics.Rectangle", "id" => rect_id,
 		"x" => "-36", "y" => "-36", "w" => "72", "h" => "72",
@@ -253,7 +260,7 @@ function export_pscad_lcp(
 	end
 
 	text = addelement!(graphics, "Gfx")
-	text_id = next_id!(id_gen)
+	text_id = next(id_iterator)
 	text_attrs = Dict(
 		"classid" => "Graphics.Text", "id" => text_id,
 		"x" => "0", "y" => "0",
@@ -292,7 +299,7 @@ function export_pscad_lcp(
 
 	addelement!(user_schematic, "grouping")
 	cable = addelement!(user_schematic, "Wire")
-	cable_id = next_id!(id_gen)
+	cable_id = next(id_iterator)
 	cable_attrs = Dict(
 		"classid" => "Cable", "id" => cable_id,
 		"name" => "$project_id:CableSystem", "x" => "72", "y" => "36",
@@ -311,7 +318,7 @@ function export_pscad_lcp(
 	end
 
 	cable_user = addelement!(cable, "User")
-	cable_user_id = next_id!(id_gen)
+	cable_user_id = next(id_iterator)
 	id_map["CableSystem"] = cable_user_id
 	cable_user_attrs = Dict(
 		"classid" => "UserCmp", "id" => cable_user_id,
@@ -346,7 +353,7 @@ function export_pscad_lcp(
 
 	# RowDefn
 	row = addelement!(definitions, "Definition")
-	row_id = next_id!(id_gen)
+	row_id = next(id_iterator)
 	row_attrs = Dict(
 		"id" => row_id, "classid" => "RowDefn", "name" => "CableSystem",
 		"group" => "", "url" => "", "version" => "RowDefn",
@@ -380,7 +387,7 @@ function export_pscad_lcp(
 
 	# Add all User components in RowDefn
 	fre_phase = addelement!(row_schematic, "User")
-	fre_phase_id = next_id!(id_gen)
+	fre_phase_id = next(id_iterator)
 	fre_phase_attrs = Dict(
 		"id" => fre_phase_id, "name" => "master:Line_FrePhase_Options",
 		"classid" => "UserCmp", "x" => "576", "y" => "180",
@@ -418,7 +425,7 @@ function export_pscad_lcp(
 	for i in 1:num_cables
 		cabledef = cable_system.cables[i]
 		coax1 = addelement!(row_schematic, "User")
-		coax1_id = next_id!(id_gen)
+		coax1_id = next(id_iterator)
 		coax1_attrs = Dict(
 			"classid" => "UserCmp", "name" => "master:Cable_Coax",
 			"id" => coax1_id, "x" => "$(234+(i-1)*dx)", "y" => "612",
@@ -615,7 +622,7 @@ function export_pscad_lcp(
 
 	# Line_Ground
 	ground = addelement!(row_schematic, "User")
-	ground_id = next_id!(id_gen)
+	ground_id = next(id_iterator)
 	ground_attrs = Dict(
 		"classid" => "UserCmp", "name" => "master:Line_Ground",
 		"id" => ground_id, "x" => "504", "y" => "288",

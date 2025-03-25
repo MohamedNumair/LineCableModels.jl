@@ -624,7 +624,7 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Calculates the relative permeability (`mu_r``) based on the geometric mean radius (GMR) and conductor dimensions.
+Calculates the relative permeability (`mu_r`) based on the geometric mean radius (GMR) and conductor dimensions.
 
 # Arguments
 
@@ -634,7 +634,7 @@ Calculates the relative permeability (`mu_r``) based on the geometric mean radiu
 
 # Returns
 
-- Relative permeability (mu_r) of the conductor material \\[dimensionless\\].
+- Relative permeability (`mu_r`) of the conductor material \\[dimensionless\\].
 
 # Errors
 
@@ -667,7 +667,7 @@ println(mu_r) # Expected output: ~1.5 [dimensionless]
 # See also
 - [`calc_tubular_gmr`](@ref)
 """
-function gmr_to_mu(gmr::Number, radius_ext::Number, radius_in::Number)
+function calc_equivalent_mu(gmr::Number, radius_ext::Number, radius_in::Number)
 	if radius_ext < radius_in
 		throw(ArgumentError("Invalid parameters: radius_ext must be >= radius_in."))
 	end

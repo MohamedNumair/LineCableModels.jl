@@ -267,7 +267,7 @@ $(FUNCTIONNAME)(library, file_name = "materials_library.csv")
 
 - [`_load_from_csv!`](@ref)
 """
-function save_materials_library(
+function save_materials(
 	library::MaterialsLibrary;
 	file_name::String = "materials_library.csv",
 )::String
@@ -291,7 +291,7 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Displays the contents of a [`MaterialsLibrary`](@ref) as a `DataFrame`.
+Lists the contents of a [`MaterialsLibrary`](@ref) as a `DataFrame`.
 
 # Arguments
 
@@ -310,9 +310,9 @@ df = $(FUNCTIONNAME)(library)
 
 # See also
 
-- [`save_materials_library`](@ref)
+- [`save_materials`](@ref)
 """
-function display_materials_library(library::MaterialsLibrary)::DataFrame
+function list_materials(library::MaterialsLibrary)::DataFrame
 	rows = [
 		(
 			name = name,

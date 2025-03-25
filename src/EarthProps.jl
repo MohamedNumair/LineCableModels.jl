@@ -42,32 +42,62 @@ abstract type AbstractFDEMFormulation end
 """
 $(TYPEDEF)
 
-Represents an earth model with constant properties (CP), i.e. frequency-invariant electromagnetic properties, and attributes:
-
-$(TYPEDFIELDS)
+Represents an earth model with constant properties (CP), i.e. frequency-invariant electromagnetic properties.
 """
-struct CPEarth <: AbstractFDEMFormulation
-	"Identifier displayed in parametric analyses."
-	description::String
+struct CPEarth <: AbstractFDEMFormulation end
 
-	@doc """
-	$(TYPEDSIGNATURES)
+# "Identifier displayed in parametric analyses."
+# 	description::String
 
-	Constructs a [`CPEarth`](@ref) instance.
+# 	@doc """
+# 	$(TYPEDSIGNATURES)
 
-	# Returns
+# 	Constructs a [`CPEarth`](@ref) instance.
 
-	- A [`CPEarth`](@ref) object with a predefined description label.
+# 	# Returns
 
-	# Examples
+# 	- A [`CPEarth`](@ref) object with a predefined description label.
 
-	```julia
-	cp_model = $(FUNCTIONNAME)()
-	println(cp_model.description) # Output: "CP model"
-	```
-	"""
-	CPEarth() = new("CP model")
-end
+# 	# Examples
+
+# 	```julia
+# 	cp_model = $(FUNCTIONNAME)()
+# 	println(cp_model.description) # Output: "CP model"
+# 	```
+# 	"""
+# 	CPEarth() = new("CP model")
+# end
+
+"""
+$(TYPEDSIGNATURES)
+
+Returns a standardized identifier string for earth model formulations.
+
+# Arguments
+
+- A concrete implementation of [`AbstractFDEMFormulation`](@ref) or [`AbstractEHEMFormulation`](@ref) representing the earth model formulation.
+
+# Returns
+
+- A string identifier used consistently across plots, tables, and parametric analyses.
+
+# Examples
+```julia
+cp = CPEarth()
+tag = _get_earth_formulation_tag(cp)  # Returns "CP model"
+```
+
+# Methods
+
+$(METHODLIST)
+
+# See also
+
+- [`AbstractFDEMFormulation`](@ref)
+- [`AbstractEHEMFormulation`](@ref)
+- [`_calc_earth_properties`](@ref)
+"""
+function _get_earth_formulation_tag end
 
 """
 $(TYPEDSIGNATURES)
@@ -118,6 +148,8 @@ function _calc_earth_properties(
 	return rho, epsilon, mu
 end
 
+_get_earth_formulation_tag(::CPEarth) = "CP model"
+
 """
 $(TYPEDEF)
 
@@ -132,20 +164,18 @@ abstract type AbstractEHEMFormulation end
 """
 $(TYPEDEF)
 
-Represents a homogeneous earth model defined using the properties of a specific earth layer, with atttributes:
+Represents a homogeneous earth model defined using the properties of a specific earth layer, with atttribute:
 
 $(TYPEDFIELDS)
 """
 struct EnforceLayer <: AbstractEHEMFormulation
 	"Index of the enforced earth layer."
 	layer::Int
-	"Description of the specified layer."
-	description::String
 
 	@doc """
 	$(TYPEDSIGNATURES)
 
-	Constructs an [`EnforceLayer`](@ref) instance. In practice, this means that the properties of the specified layer are extended to the entire semi-infinite earth.
+	Constructs an [`EnforceLayer`](@ref) instance, meaning that the properties of the specified layer are extended to the entire semi-infinite earth.
 
 	# Arguments
 
@@ -156,38 +186,39 @@ struct EnforceLayer <: AbstractEHEMFormulation
 
 	# Returns
 
-	- An [`EnforceLayer`](@ref) instance with the specified layer index and description.
+	- An [`EnforceLayer`](@ref) instance with the specified layer index.
 
 	# Examples
 
 	```julia
 	# Enforce the bottommost layer
 	bottom_layer = $(FUNCTIONNAME)(-1)
-	println(bottom_layer.description) # Output: "Bottom layer"
+	println(_get_earth_formulation_tag(bottom_layer)) # Output: "Bottom layer"
 
 	# Enforce the topmost earth layer
 	first_layer = $(FUNCTIONNAME)(2)
-	println(first_layer.description) # Output: "Top layer"
+	println(_get_earth_formulation_tag(first_layer)) # Output: "Top layer"
 
 	# Enforce a specific layer
 	specific_layer = $(FUNCTIONNAME)(3)
-	println(specific_layer.description) # Output: "Layer 3"
+	println(_get_earth_formulation_tag(specific_layer)) # Output: "Layer 3"
 	```
 	"""
 	function EnforceLayer(layer::Int)
 		@assert (layer == -1 || layer >= 2) "Invalid earth layer choice."
-
-		if layer == -1
-			desc = "Bottom layer"
-		elseif layer == 2
-			desc = "Top layer"
-		else
-			desc = "Layer $layer"
-		end
-		return new(layer, desc)
+		return new(layer)
 	end
 end
 
+function _get_earth_formulation_tag(formulation::EnforceLayer)
+	if formulation.layer == -1
+		return "Bottom layer"
+	elseif formulation.layer == 2
+		return "Top layer"
+	else
+		return "Layer $(formulation.layer)"
+	end
+end
 
 """
 $(TYPEDEF)
@@ -330,7 +361,7 @@ mutable struct EarthModel
 	# See also
 
 	- [`EarthLayer`](@ref)
-	- [`add_earth_layer!`](@ref)
+	- [`add_to_earth!`](@ref)
 	"""
 	function EarthModel(
 		frequencies::Vector{<:Number},
@@ -383,17 +414,19 @@ Adds a new earth layer to an existing [`EarthModel`](@ref).
 # Notes
 
 For **horizontal layering** (`vertical_layers = false`):
-	- Layer 1 (air) is always infinite (`t = Inf`).
-	- Layer 2 (first earth layer) can be infinite if modeling a homogeneous half-space.
-	- If adding a third layer (`num_layers = 3`), it can be infinite **only if the previous layer is finite**.
-	- No two successive earth layers (`num_layers > 2`) can have infinite thickness.
+
+- Layer 1 (air) is always infinite (`t = Inf`).
+- Layer 2 (first earth layer) can be infinite if modeling a homogeneous half-space.
+- If adding a third layer (`num_layers = 3`), it can be infinite **only if the previous layer is finite**.
+- No two successive earth layers (`num_layers > 2`) can have infinite thickness.
 
 For **vertical layering** (`vertical_layers = true`):
-	- Layer 1 (air) is always **horizontal** and infinite at `z > 0`.
-	- Layer 2 (first vertical layer) is always **infinite** in `z < 0` **and** `y < 0`. The first vertical layer is assumed to always end at `y = 0`.
-	- Layer 3 (second vertical layer) **can be infinite** (establishing a vertical interface at `y = 0`).
-	- Subsequent layers **can be infinite only if the previous is finite**.
-	- No two successive vertical layers (`num_layers > 3`) can both be infinite.
+
+- Layer 1 (air) is always **horizontal** and infinite at `z > 0`.
+- Layer 2 (first vertical layer) is always **infinite** in `z < 0` **and** `y < 0`. The first vertical layer is assumed to always end at `y = 0`.
+- Layer 3 (second vertical layer) **can be infinite** (establishing a vertical interface at `y = 0`).
+- Subsequent layers **can be infinite only if the previous is finite**.
+- No two successive vertical layers (`num_layers > 3`) can both be infinite.
 
 # Examples
 
@@ -410,10 +443,6 @@ println(horz_earth_model.num_layers) # Output: 3
 # The bottom layer should be set to infinite thickness
 $(FUNCTIONNAME)(horz_earth_model, frequencies, 300, 15, 1, t=Inf)
 println(horz_earth_model.num_layers) # Output: 4
-```
-
-```julia
-frequencies = [1e3, 1e4, 1e5]
 
 # Initialize a vertical-layered model with first interface at y = 0.
 vert_earth_model = EarthModel(frequencies, 100, 10, 1, t=Inf, vertical_layers=true)
@@ -442,7 +471,7 @@ println(vert_earth_model.num_layers) # Output: 4
 - [`EarthLayer`](@ref)
 - [`_calc_ehem_properties!`](@ref)
 """
-function add_earth_layer!(
+function add_to_earth!(
 	model::EarthModel,
 	frequencies::Vector{<:Number},
 	base_rho_g::Number,

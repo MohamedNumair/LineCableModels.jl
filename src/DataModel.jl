@@ -1169,7 +1169,7 @@ mutable struct CableComponent
 	- [`calc_parallel_equivalent`](@ref)
 	- [`calc_equivalent_gmr`](@ref)
 	- [`calc_gmd`](@ref)
-	- [`gmr_to_mu`](@ref)
+	- [`calc_equivalent_mu`](@ref)
 	- [`calc_solenoid_correction`](@ref)
 	"""
 	function CableComponent(
@@ -1291,7 +1291,7 @@ mutable struct CableComponent
 		radius_ext_con += radius_in_con
 		eff_conductor_area = π * (radius_ext_con^2 - radius_in_con^2)
 		rho_con = equiv_resistance * eff_conductor_area
-		mu_con = gmr_to_mu(gmr_eff_con, radius_ext_con, radius_in_con)
+		mu_con = calc_equivalent_mu(gmr_eff_con, radius_ext_con, radius_in_con)
 		num_turns = weighted_num_turns / total_num_wires
 
 		# Insulator effective parameters
@@ -1447,7 +1447,7 @@ mutable struct CableDesign
 
 	```julia
 	parts = [Conductor(...), Insulator(...)]
-	design = $(FUNCTIONNAME)("Cable001", "ComponentA", parts, 50)
+	design = $(FUNCTIONNAME)("example", "ComponentA", parts, 50)
 	```
 
 	# See also
@@ -1524,9 +1524,9 @@ Extracts and displays data from a [`CableDesign`](@ref).
 
 - `design`: A [`CableDesign`](@ref) object to extract data from.
 - `format`: Symbol indicating the level of detail:
-  - `:core`: Basic RLC parameters with nominal value comparison (default)
-  - `:components`: Component-level equivalent properties
-  - `:detailed`: Individual cable part properties with layer-by-layer breakdown
+  - `:core`: Basic RLC parameters with nominal value comparison (default).
+  - `:components`: Component-level equivalent properties.
+  - `:detailed`: Individual cable part properties with layer-by-layer breakdown.
 - `S`: Separation distance between cables \\[m\\] (only used for `:core` format). Default: outermost cable diameter.
 - `rho_e`: Resistivity of the earth \\[Ω·m\\] (only used for `:core` format). Default: 100.
 
@@ -1538,16 +1538,16 @@ Extracts and displays data from a [`CableDesign`](@ref).
 
 ```julia
 # Get basic RLC parameters
-data = cable_data(design)  # Default is :core format
+data = design_data(design)  # Default is :core format
 
 # Get component-level data
-comp_data = cable_data(design, :components)
+comp_data = design_data(design, :components)
 
 # Get detailed part-by-part breakdown
-detailed_data = cable_data(design, :detailed)
+detailed_data = design_data(design, :detailed)
 
 # Specify earth parameters for core calculations
-core_data = cable_data(design, :core, S=0.5, rho_e=150)
+core_data = design_data(design, :core, S=0.5, rho_e=150)
 ```
 
 # See also
@@ -1557,7 +1557,7 @@ core_data = cable_data(design, :core, S=0.5, rho_e=150)
 - [`calc_inductance_trifoil`](@ref)
 - [`calc_shunt_capacitance`](@ref)
 """
-function cable_data(
+function design_data(
 	design::CableDesign,
 	format::Symbol = :core;
 	S::Number = nothing,
@@ -1752,11 +1752,11 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Visualizes the cross-section of a cable design.
+Displays the cross-section of a cable design.
 
 # Arguments
 
-- `design`: A `CableDesign` object representing the cable structure.
+- `design`: A `[CableDesign`](@ref) object representing the cable structure.
 - `x_offset`: Horizontal offset for the plot \\[m\\].
 - `y_offset`: Vertical offset for the plot \\[m\\].
 - `plt`: An optional `Plots.Plot` object to use for plotting.
@@ -1770,7 +1770,7 @@ Visualizes the cross-section of a cable design.
 # Examples
 
 ```julia
-design = CableDesign("SomeCable", "core", [Conductor(...), Insulator(...)])
+design = CableDesign("example", "core", [Conductor(...), Insulator(...)])
 cable_plot = $(FUNCTIONNAME)(design)  # Cable cross-section is displayed
 ```
 
@@ -1784,7 +1784,7 @@ cable_plot = $(FUNCTIONNAME)(design)  # Cable cross-section is displayed
 - [`Strip`](@ref)
 - [`Semicon`](@ref)
 """
-function preview_cable_design(
+function design_preview(
 	design::CableDesign;
 	x_offset = 0.0,
 	y_offset = 0.0,
@@ -1798,8 +1798,8 @@ function preview_cable_design(
 			aspect_ratio = :equal,
 			legend = (0.875, 1.0),
 			title = "Cable design preview",
-			xlabel = "y \\[m\\]",
-			ylabel = "z \\[m\\]")
+			xlabel = "y [m]",
+			ylabel = "z [m]")
 	end
 
 	# Helper function to plot a layer
@@ -1921,32 +1921,42 @@ function preview_cable_design(
 end
 
 """
+$(TYPEDEF)
+
 Represents a library of cable designs stored as a dictionary.
+
+$(TYPEDFIELDS)
 """
 mutable struct CablesLibrary
-	cable_designs::Dict{String, CableDesign}  # Key: cable ID, Value: CableDesign object
+	"Dictionary mapping cable IDs to the respective CableDesign objects."
+	cable_designs::Dict{String, CableDesign}
 
-	"""
-	Constructor: Initializes a `CablesLibrary` object, optionally loading cable designs from a file.
+	@doc """
+	$(TYPEDSIGNATURES)
+
+	Constructs a [`CablesLibrary`](@ref) instance, optionally loading cable designs from a file.
 
 	# Arguments
-	- `file_name`: The name of the file to load cable designs from (default: "cables_library.jls").
+
+	- `file_name`: The name of the file to load cable designs from.
 
 	# Returns
-	An instance of `CablesLibrary` containing:
-	- `cable_designs`: A dictionary with keys as cable IDs (String) and values as `CableDesign` objects.
 
-	# Dependencies
-	- `_load_cables_from_jls!`: A function to load cable designs from a `.jls` file into the library.
+	- A [`CablesLibrary`](@ref) object containing the loaded cable designs or an empty dictionary.
 
 	# Examples
+
 	```julia
 	# Create a new library without loading any file
-	library = CablesLibrary()
+	library = $(FUNCTIONNAME)()
 
 	# Create a library and load designs from a file
-	library_with_data = CablesLibrary("existing_library.jls")
+	library_with_data = $(FUNCTIONNAME)(file_name="existing_library.jls")
 	```
+
+	# See also
+
+	- [`CableDesign`](@ref)
 	"""
 	function CablesLibrary(; file_name::String = "cables_library.jls")::CablesLibrary
 		library = new(Dict{String, CableDesign}())
@@ -1960,649 +1970,724 @@ mutable struct CablesLibrary
 	end
 end
 
-# """
-# Loads cable designs from a serialized file into a `CablesLibrary` object.
+"""
+$(TYPEDSIGNATURES)
 
-# # Arguments
-# - `library`: An instance of `CablesLibrary` to populate with the loaded cable designs.
-# - `file_name`: The name of the file to deserialize and load the cable designs from.
+Loads cable designs from a serialized file into a [`CablesLibrary`](@ref) object.
 
-# # Returns
-# - None. Modifies the `cable_designs` field of the `CablesLibrary` object in-place.
+# Arguments
+
+- `library`: An instance of [`CablesLibrary`](@ref) to populate with the loaded cable designs.
+- `file_name`: The name of the file to deserialize and load the cable designs from.
+
+# Returns
 
+- Nothing. Modifies the `cable_designs` field of the [`CablesLibrary`](@ref) object in-place.
 
+# Examples
 
-# # Examples
-# ```julia
-# library = CablesLibrary()
-# _load_cables_from_jls!(library, "cables_library.jls")
-# println(library.cable_designs) # Prints the loaded cable designs if successful
-# ```
+```julia
+library = CablesLibrary()
+$(FUNCTIONNAME)(library, file_name="cables_library.jls")
+println(length(library.cable_designs))  # Prints the number of loaded cable designs
+```
 
+# See also
 
-# """
-# function _load_cables_from_jls!(library::CablesLibrary; file_name::String)
-# 	try
-# 		loaded_data = deserialize(file_name)
-# 		if isa(loaded_data, Dict{String, CableDesign})
-# 			library.cable_designs = loaded_data
-# 			println("Cables database successfully loaded!")
-# 		else
-# 			println("Invalid file format in $file_name. Initializing empty database.")
-# 		end
-# 	catch e
-# 		println("Error loading file $file_name: $e. Initializing empty database.")
-# 	end
-# end
+- [`CablesLibrary`](@ref)
+"""
+function _load_cables_from_jls!(library::CablesLibrary; file_name::String)
+	try
+		loaded_data = deserialize(file_name)
+		if isa(loaded_data, Dict{String, CableDesign})
+			library.cable_designs = loaded_data
+			println("Cables database successfully loaded!")
+		else
+			println("Invalid file format in $file_name. Initializing empty database.")
+		end
+	catch e
+		println("Error loading file $file_name: $e. Initializing empty database.")
+	end
+end
 
-# """
-# Saves the cable designs from a `CablesLibrary` object to a `.jls` file.
+"""
+$(TYPEDSIGNATURES)
 
-# # Arguments
-# - `library`: An instance of `CablesLibrary` whose cable designs are to be saved.
-# - `file_name`: The name of the file to save the cable designs to (default: "cables_library.jls").
+Saves the cable designs from a [`CablesLibrary`](@ref) object to a `.jls` file.
 
-# # Returns
-# - None. Writes the serialized cable designs to the specified file.
+# Arguments
 
+- `library`: An instance of [`CablesLibrary`](@ref) whose cable designs are to be saved.
+- `file_name`: The name of the file to save the cable designs to.
 
+# Returns
 
-# # Examples
-# ```julia
-# library = CablesLibrary()
-# # Add cable designs to the library
-# save_cables_library(library, "new_cables_library.jls")
-# ```
+- Nothing. Writes the serialized cable designs to the specified file.
 
+# Examples
 
-# """
-# function save_cables_library(
-# 	library::CablesLibrary;
-# 	file_name::String = "cables_library.jls",
-# )
-# 	try
-# 		serialize(file_name, library.cable_designs)
-# 		println("Cables library saved to $file_name.")
-# 	catch e
-# 		println("Error saving library to $file_name: $e")
-# 	end
-# end
+```julia
+library = CablesLibrary()
+# Add cable designs to the library
+$(FUNCTIONNAME)(library, file_name="new_cables_library.jls")
+```
 
-# """
-# Stores a cable design in a `CablesLibrary` object.
-
-# # Arguments
-# - `library`: An instance of `CablesLibrary` to which the cable design will be added.
-# - `design`: A `CableDesign` object representing the cable design to be added. This object must have a `cable_id` field to uniquely identify it.
+# See also
 
-# # Returns
-# - None. Modifies the `cable_designs` field of the `CablesLibrary` object in-place by adding the new cable design.
+- [`CablesLibrary`](@ref)
+"""
+function save_designs(
+	library::CablesLibrary;
+	file_name::String = "cables_library.jls",
+)
+	try
+		serialize(file_name, library.cable_designs)
+		println("Cables library saved to $file_name.")
+	catch e
+		println("Error saving library to $file_name: $e")
+	end
+end
 
+"""
+Stores a cable design in a [`CablesLibrary`](@ref) object.
 
+# Arguments
 
-# # Examples
-# ```julia
-# library = CablesLibrary()
-# design = CableDesign("cable1", ...) # Initialize CableDesign with required fields
-# store_cable_design!(library, design)
-# println(library.cable_designs) # Prints the updated dictionary containing the new cable design
-# ```
+- `library`: An instance of [`CablesLibrary`](@ref) to which the cable design will be added.
+- `design`: A [`CableDesign`](@ref) object representing the cable design to be added. This object must have a `cable_id` field to uniquely identify it.
 
+# Returns
 
-# """
-# function store_cable_design!(library::CablesLibrary, design::CableDesign)
-# 	library.cable_designs[design.cable_id] = design
-# 	println("Cable design with ID `$(design.cable_id)` added to the library.")
-# end
+- None. Modifies the `cable_designs` field of the [`CablesLibrary`](@ref) object in-place by adding the new cable design.
 
-# """
-# Removes a cable design from a `CablesLibrary` object by its ID.
-
-# # Arguments
-# - `library`: An instance of `CablesLibrary` from which the cable design will be removed.
-# - `cable_id`: The ID of the cable design to remove (String).
+# Examples
+```julia
+library = CablesLibrary()
+design = CableDesign("example", ...) # Initialize CableDesign with required fields
+add_design!(library, design)
+println(library.cable_designs) # Prints the updated dictionary containing the new cable design
+```
+# See also
 
-# # Returns
-# - None. Modifies the `cable_designs` field of the `CablesLibrary` object in-place by removing the specified cable design if it exists.
+- [`CablesLibrary`](@ref)
+- [`CableDesign`](@ref)
+- [`remove_design!`](@ref)
+"""
+function add_design!(library::CablesLibrary, design::CableDesign)
+	library.cable_designs[design.cable_id] = design
+	println("Cable design with ID `$(design.cable_id)` added to the library.")
+end
 
-
-
-# # Examples
-# ```julia
-# library = CablesLibrary()
-# design = CableDesign("cable1", ...) # Initialize and add a CableDesign
-# store_cable_design!(library, design)
-
-# # Remove the cable design
-# remove_cable_design!(library, "cable1")
-# println(library.cable_designs) # Prints the dictionary without the removed cable design
-# ```
-
-
-# """
-# function remove_cable_design!(library::CablesLibrary, cable_id::String)
-# 	if haskey(library.cable_designs, cable_id)
-# 		delete!(library.cable_designs, cable_id)
-# 		println("Cable design with ID `$cable_id` removed from the library.")
-# 	else
-# 		println("Cable design with ID `$cable_id` not found in the library.")
-# 	end
-# end
-
-# """
-# Retrieves a cable design from a `CablesLibrary` object by its ID.
-
-# # Arguments
-# - `library`: An instance of `CablesLibrary` from which the cable design will be retrieved.
-# - `cable_id`: The ID of the cable design to retrieve (String).
-
-# # Returns
-# - A `CableDesign` object corresponding to the given `cable_id` if found, otherwise `nothing`.
-
-
-
-# # Examples
-# ```julia
-# library = CablesLibrary()
-# design = CableDesign("cable1", ...) # Initialize and add a CableDesign
-# store_cable_design!(library, design)
-
-# # Retrieve the cable design
-# retrieved_design = get_cable_design(library, "cable1")
-# println(retrieved_design) # Prints the retrieved CableDesign object
-
-# # Attempt to retrieve a non-existent design
-# missing_design = get_cable_design(library, "nonexistent_id")
-# println(missing_design) # Prints nothing
-# ```
-
-
-# """
-# function get_cable_design(
-# 	library::CablesLibrary,
-# 	cable_id::String,
-# )::Union{Nothing, CableDesign}
-# 	if haskey(library.cable_designs, cable_id)
-# 		println("Cable design with ID `$cable_id` loaded from the library.")
-# 		return library.cable_designs[cable_id]
-# 	else
-# 		println("Cable design with ID `$cable_id` not found.")
-# 		return nothing
-# 	end
-# end
-
-# """
-# Displays the cable designs in a `CablesLibrary` object as a `DataFrame`.
-
-# # Arguments
-# - `library`: An instance of `CablesLibrary` whose cable designs are to be displayed.
-
-# # Returns
-# - A `DataFrame` object with the following columns:
-#   - `cable_id`: The unique identifier for each cable design.
-#   - `nominal_data`: A string representation of the nominal data for each cable design.
-#   - `components`: A comma-separated string listing the components of each cable design.
-
-
-
-# # Examples
-# ```julia
-# library = CablesLibrary()
-# design1 = CableDesign("cable1", nominal_data=..., components=Dict("A"=>..., "B"=>...))
-# design2 = CableDesign("cable2", nominal_data=..., components=Dict("C"=>...))
-# store_cable_design!(library, design1)
-# store_cable_design!(library, design2)
-
-# # Display the library as a DataFrame
-# df = display_cables_library(library)
-# println(df) # Outputs the DataFrame with cable details
-# ```
-
-
-# """
-# function display_cables_library(library::CablesLibrary)
-# 	ids = keys(library.cable_designs)
-# 	nominal_data = [string(design.nominal_data) for design in values(library.cable_designs)]
-# 	components =
-# 		[join(keys(design.components), ", ") for design in values(library.cable_designs)]
-# 	df = DataFrame(
-# 		cable_id = collect(ids),
-# 		nominal_data = nominal_data,
-# 		components = components,
-# 	)
-# 	return (df)
-# end
-
-# """
-# Defines the position and phase mapping of a cable within a system.
-# """
-# struct CableDef
-# 	cable::CableDesign             # The CableDesign object assigned
-# 	horz::Number                   # Horizontal coordinate \\[m\\]
-# 	vert::Number                   # Vertical coordinate \\[m\\]
-# 	conn::Vector{Int}               # Phase mapping (aligned with cable.components)
-
-# 	"""	
-# 	Constructor: Initializes a `CableDef` object with specified cable design, coordinates, and phase mapping.
-
-# 	# Arguments
-# 	- `cable`: A `CableDesign` object defining the cable structure.
-# 	- `horz`: Horizontal coordinate of the cable placement \\[m\\].
-# 	- `vert`: Vertical coordinate of the cable placement \\[m\\].
-# 	- `conn`: A dictionary mapping component names to phase indices, or `nothing` for default mapping.
-
-# 	# Returns
-# 	An instance of `CableDef` with the following attributes:
-# 	- `cable`: Assigned `CableDesign` object.
-# 	- `horz`: Horizontal coordinate \\[m\\].
-# 	- `vert`: Vertical coordinate \\[m\\].
-# 	- `conn`: Vector representing the phase mapping of each cable component.
-
-# 	# Notes
-# 	- Components mapped to phase 0 will be eliminated (grounded). Components set to the same phase will be bundled into an equivalent phase.
-
-# 	# Dependencies
-# 	- None.
-
-# 	# Examples
-# 	```julia
-# 	material = get_material(materials_db, "aluminum")
-# 	cable_design = CableDesign("SomeCable", "core", [core])
-# 	xa, ya = percent_to_uncertain(0, 0), percent_to_uncertain(-1, 0)
-# 	cabledef1 = CableDef(cable_design, xa, ya, Dict("core" => 1))
-# 	println(cabledef1.conn)  # Output: [1]
-
-# 	default_cabledef = CableDef(cable_design, xa, ya)
-# 	println(default_cabledef.conn)  # Output: [1, 0, 0] if components exist
-# 	```
-
-
-# 	"""
-# 	function CableDef(
-# 		cable::CableDesign,
-# 		horz::Number,
-# 		vert::Number,
-# 		conn::Union{Dict{String, Int}, Nothing} = nothing,
-# 	)
-# 		components = collect(keys(cable.components))  # Maintain ordered component names
-# 		if isnothing(conn)
-# 			conn_vector = [i == 1 ? 1 : 0 for i in 1:length(components)]  # Default: First component gets phase 1
-# 		else
-# 			conn_vector = [get(conn, name, 0) for name in components]  # Ensure correct mapping order
-# 		end
-# 		return new(cable, horz, vert, conn_vector)
-# 	end
-
-# end
-
-# """
-# Represents a cable system configuration, defining its structure, environmental properties, and phase assignments.
-# """
-# mutable struct LineCableSystem
-# 	case_id::String         # Unique identifier for the system
-# 	T::Number               # Operating temperature \\[°C\\]
-# 	earth_props::EarthModel # Earth properties
-# 	line_length::Number     # Length of the cable system \\[m\\]
-# 	num_cables::Int         # Number of cables in the system
-# 	num_phases::Int         # Number of actual phases in the system
-# 	cables::Vector{CableDef} # Cross-section cable definition
-
-# 	"""
-# 	Constructor: Initializes a `LineCableSystem` with an initial cable definition and system parameters.
-
-# 	# Arguments
-# 	- `case_id`: Identifier for the cable system.
-# 	- `T`: Operating temperature \\[°C\\].
-# 	- `earth_props`: Instance of `EarthModel` defining ground parameters.
-# 	- `line_length`: Length of the cable system \\[m\\].
-# 	- `cable`: Initial `CableDef` object defining a cable's position and phase mapping.
-
-# 	# Returns
-# 	An instance of `LineCableSystem` with the following attributes:
-# 	- `case_id`: System identifier.
-# 	- `T`: Operating temperature \\[°C\\].
-# 	- `earth_props`: Ground properties affecting electromagnetic behavior.
-# 	- `line_length`: Cable system length \\[m\\].
-# 	- `num_cables`: Initial number of cables (set to 1).
-# 	- `num_phases`: Count of unique nonzero phase assignments.
-# 	- `cables`: List containing the first `CableDef` instance.
-
-# 	# Dependencies
-# 	- None.
-
-# 	# Examples
-# 	```julia
-# 	material = get_material(materials_db, "aluminum")
-# 	cable_design = CableDesign("SomeCable", "core", [core])
-# 	earth_params = EarthModel(10.0 .^ range(0, stop=6, length=10), 100, 10, 1)
-# 	xa, ya = 0, 0
-# 	cabledef1 = CableDef(cable_design, xa, ya, Dict("core" => 1))
-
-# 	cable_system = LineCableSystem("test_case_1", 20.0, earth_params, 1000.0, cabledef1)
-# 	println(cable_system.num_cables)  # Output: 1
-# 	println(cable_system.num_phases)  # Output: Number of unique phase assignments
-# 	```
-
-
-# 	"""
-# 	function LineCableSystem(
-# 		case_id::String,
-# 		T::Number,
-# 		earth_props::EarthModel,
-# 		line_length::Number,
-# 		cable::CableDef,
-# 	)
-# 		# Initialize with the first cable definition
-# 		num_cables = 1
-
-# 		# Count unique nonzero phases from the first cable
-# 		assigned_phases = unique(cable.conn)
-# 		num_phases = count(x -> x > 0, assigned_phases)
-
-# 		return new(case_id, T, earth_props, line_length, num_cables, num_phases, [cable])
-# 	end
-# end
-
-# """
-# Adds a new cable definition to an existing `LineCableSystem`, updating its phase mapping and cable count.
-
-# # Arguments
-# - `system`: Instance of `LineCableSystem` to which the cable will be added.
-# - `cable`: Instance of `CableDesign` defining the cable structure.
-# - `horz`: Horizontal coordinate \\[m\\].
-# - `vert`: Vertical coordinate \\[m\\].
-# - `conn`: Dictionary mapping component names to phase indices, or `nothing` for automatic assignment.
-
-# # Returns
-# - Modifies `system` in place by adding a new `CableDef` and updating `num_cables` and `num_phases`.
-
-
-
-# # Examples
-# ```julia
-# material = get_material(materials_db, "aluminum")
-# cable_design = CableDesign("SomeCable", "core", [core])
-# earth_params = EarthModel(10.0 .^ range(0, stop=6, length=10), 100, 10, 1)
-
-# xa, ya = percent_to_uncertain(0, 0), percent_to_uncertain(-1, 0)
-# xb, yb = percent_to_uncertain(1, 0), percent_to_uncertain(-2, 0)
-
-# cabledef1 = CableDef(cable_design, xa, ya, Dict("core" => 1))
-# cable_system = LineCableSystem("test_case_1", 20.0, earth_params, 1000.0, cabledef1)
-
-# add_cable_definition!(cable_system, cable_design, xb, yb, Dict("core" => 2))
-# println(cable_system.num_cables)  # Output: 2
-# println(cable_system.num_phases)  # Output: Number of unique phase assignments
-# ```
-
-
-# """
-# function add_cable_definition!(
-# 	system::LineCableSystem,
-# 	cable::CableDesign,
-# 	horz::Number,
-# 	vert::Number,
-# 	conn::Union{Dict{String, Int}, Nothing} = nothing,
-# )
-# 	max_phase =
-# 		isempty(system.cables) ? 0 : maximum(maximum.(getfield.(system.cables, :conn)))
-
-# 	component_names = keys(cable.components)  # Maintain the correct order
-
-# 	new_conn = if isnothing(conn)
-# 		Dict(name => (i == 1 ? max_phase + 1 : 0) for (i, name) in enumerate(component_names))
-# 	else
-# 		Dict(name => get(conn, name, 0) for name in component_names)  # Ensures correct mapping order
-# 	end
-
-# 	push!(system.cables, CableDef(cable, horz, vert, new_conn))
-
-# 	# Update num_cables
-# 	system.num_cables += 1
-
-# 	# Update num_phases by counting unique nonzero phases
-# 	assigned_phases = unique(vcat(values.(getfield.(system.cables, :conn))...))
-# 	system.num_phases = count(x -> x > 0, assigned_phases)
-# end
-
-# """
-# Visualizes the cross-section of a cable system, including earth layers and cables.
-
-# # Arguments
-# - `system`: A `LineCableSystem` object containing the cable arrangement and earth properties.
-# - `zoom_factor`: A scaling factor for adjusting the x-axis limits (default: 0.25).
-
-# # Returns
-# - Displays a plot of the cable system's cross-section with cables, earth layers (if applicable), and the air/earth interface.
-
-# # Dependencies
-# - `plotlyjs()`: Initializes the plotting backend.
-# - `_to_nominal`: Converts cable position coordinates to nominal values.
-# - `preview_cable_design`: Visualizes individual cable designs within the system.
-
-# # Examples
-# ```julia
-# system = LineCableSystem([...])
-# preview_system_cross_section(system, zoom_factor=0.5)
-# ```
-
-
-# """
-# function preview_system_cross_section(system::LineCableSystem; zoom_factor = 0.25)
-# 	plotlyjs()
-# 	plt = plot(size = (800, 600),
-# 		aspect_ratio = :equal,
-# 		legend = (0.8, 0.9),
-# 		title = "Cable system cross-section",
-# 		xlabel = "y \\[m\\]",
-# 		ylabel = "z \\[m\\]")
-
-# 	# Plot the air/earth interface at y=0
-# 	hline!(
-# 		plt,
-# 		[0],
-# 		linestyle = :solid,
-# 		linecolor = :black,
-# 		linewidth = 1.25,
-# 		label = "Air/earth interface",
-# 	)
-
-# 	# Determine explicit wide horizontal range for earth layer plotting
-# 	x_positions = [to_nominal(cable.horz) for cable in system.cables]
-# 	max_span = maximum(abs, x_positions) + 5  # extend 5 m beyond farthest cable position
-# 	x_limits = [-max_span, max_span]
-
-# 	# Plot earth layers if vertical_layers == false
-# 	if !system.earth_props.vertical_layers
-# 		layer_colors = [:burlywood, :sienna, :peru, :tan, :goldenrod, :chocolate]
-# 		cumulative_depth = 0.0
-# 		for (i, layer) in enumerate(system.earth_props.layers[2:end])
-# 			# Skip bottommost infinite layer
-# 			if isinf(layer.t)
-# 				break
-# 			end
-
-# 			# Compute the depth of the current interface
-# 			cumulative_depth -= layer.t
-# 			hline!(
-# 				plt,
-# 				[cumulative_depth],
-# 				linestyle = :solid,
-# 				linecolor = layer_colors[mod1(i, length(layer_colors))],
-# 				linewidth = 1.25,
-# 				label = "Earth layer $i",
-# 			)
-
-# 			# Fill the area for current earth layer
-# 			y_coords = [cumulative_depth + layer.t, cumulative_depth]
-# 			plot!(plt, [x_limits[1], x_limits[2], x_limits[2], x_limits[1]],
-# 				[y_coords[1], y_coords[1], y_coords[2], y_coords[2]],
-# 				seriestype = :shape, color = layer_colors[mod1(i, length(layer_colors))],
-# 				alpha = 0.25, linecolor = :transparent,
-# 				label = "")
-# 		end
-# 	end
-
-# 	for cabledef in system.cables
-# 		x_offset = to_nominal(cabledef.horz)
-# 		y_offset = to_nominal(cabledef.vert)
-# 		preview_cable_design(
-# 			cabledef.cable;
-# 			x_offset,
-# 			y_offset,
-# 			plt,
-# 			display_plot = false,
-# 			display_legend = false,
-# 		)
-# 	end
-
-# 	plot!(plt, xlim = (x_limits[1], x_limits[2]) .* zoom_factor)
-
-# 	display(plt)
-# end
-
-# """
-# Computes the coordinates of three cables arranged in a trifoil pattern.
-
-# # Arguments
-# - `xc`: X-coordinate of the center point.
-# - `yc`: Y-coordinate of the center point.
-# - `r_ext`: External radius of the circular layout \\[m\\].
-
-# # Returns
-# - `xa`, `ya`: Coordinates of the top cable.
-# - `xb`, `yb`: Coordinates of the bottom-left cable.
-# - `xc`, `yc`: Coordinates of the bottom-right cable.
-
-
-
-# # Examples
-# ```julia
-# xa, ya, xb, yb, xc, yc = trifoil_formation(0.0, 0.0, 0.035)
-# println((xa, ya, xb, yb, xc, yc))  # Output: (0.0, 0.0303, -0.035, -0.0175, 0.035, -0.0175)
-# ```
-
-
-# """
-# function trifoil_formation(xc, yc, r_ext)
-# 	# Horizontal distance between centers of adjacent circles (equal to twice the radius of each circle)
-# 	d = 2 * r_ext
-# 	# Vertical distance from top circle center to the line between bottom two circles
-# 	h = sqrt(3) * r_ext
-
-# 	# Calculate the top circle coordinates (centered directly above the midpoint of the bottom two circles)
-# 	xa = xc
-# 	ya = yc + h / 2
-
-# 	# Calculate the coordinates of the bottom two circles
-# 	xb = xc - d / 2
-# 	yb = yc - h / 2
-# 	xc = xc + d / 2
-# 	yc = yc - h / 2
-
-# 	return xa, ya, xb, yb, xc, yc
-# end
-
-# """
-# Computes the coordinates of three conductors arranged in a flat (horizontal or vertical) formation.
-
-# # Arguments
-# - `xc`: X-coordinate of the reference point.
-# - `yc`: Y-coordinate of the reference point.
-# - `s`: Spacing between adjacent conductors \\[m\\].
-# - `vertical`: Boolean flag indicating whether the formation is vertical (default: `false`).
-
-# # Returns
-# - `xa`, `ya`: Coordinates of the first conductor.
-# - `xb`, `yb`: Coordinates of the second conductor.
-# - `xc`, `yc`: Coordinates of the third conductor.
-
-
-
-# # Examples
-# ```julia
-# # Horizontal formation
-# xa, ya, xb, yb, xc, yc = flat_formation(0.0, 0.0, 0.1)
-# println((xa, ya, xb, yb, xc, yc))  # Output: (0.0, 0.0, 0.1, 0.0, 0.2, 0.0)
-
-# # Vertical formation
-# xa, ya, xb, yb, xc, yc = flat_formation(0.0, 0.0, 0.1, vertical=true)
-# println((xa, ya, xb, yb, xc, yc))  # Output: (0.0, 0.0, 0.0, -0.1, 0.0, -0.2)
-# ```
-
-
-# """
-# function flat_formation(xc, yc, s; vertical = false)
-# 	if vertical
-# 		# Layout is vertical; adjust only y-coordinates
-# 		xa, ya = xc, yc
-# 		xb, yb = xc, yc - s
-# 		xc, yc = xc, yc - 2s
-# 	else
-# 		# Layout is horizontal; adjust only x-coordinates
-# 		xa, ya = xc, yc
-# 		xb, yb = xc + s, yc
-# 		xc, yc = xc + 2s, yc
-# 	end
-
-# 	return xa, ya, xb, yb, xc, yc
-# end
-
-# """
-# Generate a summary DataFrame for cable positions and phase mappings within a LineCableSystem.
-
-# # Arguments
-# - `system`: A `LineCableSystem` object containing the cable definitions and their configurations.
-
-# # Returns
-# A `DataFrame` containing:
-# - `cable_id`: Identifier of each cable design.
-# - `horz`: Horizontal coordinate of each cable \\[m\\].
-# - `vert`: Vertical coordinate of each cable \\[m\\].
-# - `phase_mapping`: Human-readable string representation mapping each cable component to its assigned phase.
-
-
-
-# # Examples
-# ```julia
-# cross_section_df = cross_section_data(cable_system)
-# println(cross_section_df)
-# # Output:
-# # │ cable_id   │ horz │ vert  │ phase_mapping           │
-# # │------------│------│-------│-------------------------│
-# # │ "Cable1"   │ 0.0  │ -0.5  │ core: 1, sheath: 0      │
-# # │ "Cable2"   │ 0.35 │ -1.25 │ core: 2, sheath: 0      │
-# ```
-
-
-# """
-# function cross_section_data(system::LineCableSystem)
-# 	cable_ids = String[]
-# 	horz_coords = Number[]
-# 	vert_coords = Number[]
-# 	mappings = String[]
-
-# 	for cabledef in system.cables
-# 		# Correct access here:
-# 		push!(cable_ids, cabledef.cable.cable_id)
-# 		push!(horz_coords, cabledef.horz)
-# 		push!(vert_coords, cabledef.vert)
-
-# 		component_names = collect(keys(cabledef.cable.components))
-# 		mapping_str = join(
-# 			["$(name): $(phase)" for (name, phase) in zip(component_names, cabledef.conn)],
-# 			", ",
-# 		)
-# 		push!(mappings, mapping_str)
-# 	end
-
-# 	return DataFrame(
-# 		cable_id = cable_ids,
-# 		horz = horz_coords,
-# 		vert = vert_coords,
-# 		phase_mapping = mappings,
-# 	)
-# end
+"""
+$(TYPEDSIGNATURES)
+
+Removes a cable design from a [`CablesLibrary`](@ref) object by its ID.
+
+# Arguments
+
+- `library`: An instance of [`CablesLibrary`](@ref) from which the cable design will be removed.
+- `cable_id`: The ID of the cable design to remove.
+
+# Returns
+
+- Nothing. Modifies the `cable_designs` field of the [`CablesLibrary`](@ref) object in-place by removing the specified cable design if it exists.
+
+# Examples
+
+```julia
+library = CablesLibrary()
+design = CableDesign("example", ...) # Initialize a CableDesign
+add_design!(library, design)
+
+# Remove the cable design
+$(FUNCTIONNAME)(library, "example")
+haskey(library.cable_designs, "example")  # Returns false
+```
+
+# See also
+
+- [`CablesLibrary`](@ref)
+- [`add_design!`](@ref)
+"""
+function remove_design!(library::CablesLibrary, cable_id::String)
+	if haskey(library.cable_designs, cable_id)
+		delete!(library.cable_designs, cable_id)
+		println("Cable design with ID `$cable_id` removed from the library.")
+	else
+		println("Cable design with ID `$cable_id` not found in the library.")
+	end
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Retrieves a cable design from a [`CablesLibrary`](@ref) object by its ID.
+
+# Arguments
+
+- `library`: An instance of [`CablesLibrary`](@ref) from which the cable design will be retrieved.
+- `cable_id`: The ID of the cable design to retrieve.
+
+# Returns
+
+- A [`CableDesign`](@ref) object corresponding to the given `cable_id` if found, otherwise `nothing`.
+
+# Examples
+
+```julia
+library = CablesLibrary()
+design = CableDesign("example", ...) # Initialize a CableDesign
+add_design!(library, design)
+
+# Retrieve the cable design
+retrieved_design = $(FUNCTIONNAME)(library, "cable1")
+println(retrieved_design.id)  # Prints "example"
+
+# Attempt to retrieve a non-existent design
+missing_design = $(FUNCTIONNAME)(library, "nonexistent_id")
+println(missing_design === nothing)  # Prints true
+```
+
+# See also
+
+- [`CablesLibrary`](@ref)
+- [`CableDesign`](@ref)
+- [`add_design!`](@ref)
+- [`remove_design!`](@ref)
+"""
+function get_design(
+	library::CablesLibrary,
+	cable_id::String,
+)::Union{Nothing, CableDesign}
+	if haskey(library.cable_designs, cable_id)
+		println("Cable design with ID `$cable_id` loaded from the library.")
+		return library.cable_designs[cable_id]
+	else
+		println("Cable design with ID `$cable_id` not found.")
+		return nothing
+	end
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Lists the cable designs in a [`CablesLibrary`](@ref) object as a `DataFrame`.
+
+# Arguments
+
+- `library`: An instance of [`CablesLibrary`](@ref) whose cable designs are to be displayed.
+
+# Returns
+
+- A `DataFrame` object with the following columns:
+  - `cable_id`: The unique identifier for each cable design.
+  - `nominal_data`: A string representation of the nominal data for each cable design.
+  - `components`: A comma-separated string listing the components of each cable design.
+
+# Examples
+
+```julia
+library = CablesLibrary()
+design1 = CableDesign("example1", nominal_data=NominalData(...), components=Dict("A"=>...))
+design2 = CableDesign("example2", nominal_data=NominalData(...), components=Dict("C"=>...))
+add_design!(library, design1)
+add_design!(library, design2)
+
+# Display the library as a DataFrame
+df = $(FUNCTIONNAME)(library)
+first(df, 5)  # Show the first 5 rows of the DataFrame
+```
+
+# See also
+
+- [`CablesLibrary`](@ref)
+- [`CableDesign`](@ref)
+- [`add_design!`](@ref)
+"""
+function list_designs(library::CablesLibrary)
+	ids = keys(library.cable_designs)
+	nominal_data = [string(design.nominal_data) for design in values(library.cable_designs)]
+	components =
+		[join(keys(design.components), ", ") for design in values(library.cable_designs)]
+	df = DataFrame(
+		cable_id = collect(ids),
+		nominal_data = nominal_data,
+		components = components,
+	)
+	return (df)
+end
+
+"""
+$(TYPEDEF)
+
+Represents a defined position and phase mapping of a cable within a system.
+
+$(TYPEDFIELDS)
+"""
+struct CableDef
+	"The [`CableDesign`](@ref) object assigned to this cable definition."
+	cable::CableDesign
+	"Horizontal coordinate \\[m\\]."
+	horz::Number
+	"Vertical coordinate \\[m\\]."
+	vert::Number
+	"Phase mapping vector (aligned with cable.components)."
+	conn::Vector{Int}
+
+	@doc """
+	$(TYPEDSIGNATURES)
+
+	Constructs a [`CableDef`](@ref) instance with specified cable design, coordinates, and phase mapping.
+
+	# Arguments
+
+	- `cable`: A [`CableDesign`](@ref) object defining the cable structure.
+	- `horz`: Horizontal coordinate \\[m\\].
+	- `vert`: Vertical coordinate \\[m\\].
+	- `conn`: A dictionary mapping component names to phase indices, or `nothing` for default mapping.
+
+	# Returns
+
+	- A [`CableDef`](@ref) object with the assigned cable design, coordinates, and phase mapping.
+
+	# Notes
+
+	Components mapped to phase 0 will be eliminated (grounded). Components set to the same phase will be bundled into an equivalent phase.
+
+	# Examples
+
+	```julia
+	cable_design = CableDesign("example", nominal_data, components_dict)
+	xa, ya = 0.0, -1.0  # Coordinates in meters
+
+	# With explicit phase mapping
+	cabledef1 = $(FUNCTIONNAME)(cable_design, xa, ya, Dict("core" => 1))
+
+	# With default phase mapping (first component to phase 1, others to 0)
+	default_cabledef = $(FUNCTIONNAME)(cable_design, xa, ya)
+	```
+
+	# See also
+
+	- [`CableDesign`](@ref)
+	"""
+	function CableDef(
+		cable::CableDesign,
+		horz::Number,
+		vert::Number,
+		conn::Union{Dict{String, Int}, Nothing} = nothing,
+	)
+		components = collect(keys(cable.components))  # Maintain ordered component names
+		if isnothing(conn)
+			conn_vector = [i == 1 ? 1 : 0 for i in 1:length(components)]  # Default: First component gets phase 1
+		else
+			conn_vector = [get(conn, name, 0) for name in components]  # Ensure correct mapping order
+		end
+		return new(cable, horz, vert, conn_vector)
+	end
+end
+
+"""
+$(TYPEDEF)
+
+Represents a cable system configuration, defining the structure, earth resistivity, operating temperature, and phase assignments.
+
+$(TYPEDFIELDS)
+"""
+mutable struct LineCableSystem
+	"Unique identifier for the system."
+	case_id::String
+	"Operating temperature \\[°C\\]."
+	T::Number
+	"Earth properties model."
+	earth_props::EarthModel
+	"Length of the cable system \\[m\\]."
+	line_length::Number
+	"Number of cables in the system."
+	num_cables::Int
+	"Number of actual phases in the system."
+	num_phases::Int
+	"Cross-section cable definition."
+	cables::Vector{CableDef}
+
+	@doc """
+	$(TYPEDSIGNATURES)
+
+	Constructs a [`LineCableSystem`](@ref) with an initial cable definition and system parameters.
+
+	# Arguments
+
+	- `case_id`: Identifier for the cable system.
+	- `T`: Operating temperature \\[°C\\].
+	- `earth_props`: Instance of [`EarthModel`](@ref) defining the earth properties.
+	- `line_length`: Length of the cable system \\[m\\].
+	- `cable`: Initial [`CableDef`](@ref) object defining a cable position and phase mapping.
+
+	# Returns
+
+	- A [`LineCableSystem`](@ref) object initialized with a single cable definition.
+
+	# Examples
+
+	```julia
+	earth_params = EarthModel(10.0 .^ range(0, stop=6, length=10), 100, 10, 1)
+	cable_design = CableDesign("example", nominal_data, components_dict)
+	cabledef1 = CableDef(cable_design, 0.0, 0.0, Dict("core" => 1))
+
+	cable_system = $(FUNCTIONNAME)("test_case_1", 20.0, earth_params, 1000.0, cabledef1)
+	println(cable_system.num_phases)  # Prints number of unique phase assignments
+	```
+
+	# See also
+
+	- [`CableDef`](@ref)
+	- [`EarthModel`](@ref)
+	- [`CableDesign`](@ref)
+	"""
+	function LineCableSystem(
+		case_id::String,
+		T::Number,
+		earth_props::EarthModel,
+		line_length::Number,
+		cable::CableDef,
+	)
+		# Initialize with the first cable definition
+		num_cables = 1
+
+		# Count unique nonzero phases from the first cable
+		assigned_phases = unique(cable.conn)
+		num_phases = count(x -> x > 0, assigned_phases)
+
+		return new(case_id, T, earth_props, line_length, num_cables, num_phases, [cable])
+	end
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Adds a new cable definition to an existing [`LineCableSystem`](@ref), updating its phase mapping and cable count.
+
+# Arguments
+
+- `system`: Instance of [`LineCableSystem`](@ref) to which the cable will be added.
+- `cable`: Instance of [`CableDesign`](@ref) defining the cable structure.
+- `horz`: Horizontal coordinate \\[m\\].
+- `vert`: Vertical coordinate \\[m\\].
+- `conn`: Dictionary mapping component names to phase indices, or `nothing` for automatic assignment.
+
+# Returns
+
+- Nothing. Modifies `system` in place by adding a new [`CableDef`](@ref) and updating `num_cables` and `num_phases`.
+
+# Examples
+
+```julia
+earth_params = EarthModel(...)
+cable_design = CableDesign("example", nominal_data, components_dict)
+
+# Define coordinates for two cables
+xa, ya = 0.0, -1.0
+xb, yb = 1.0, -2.0
+
+# Create initial system with one cable
+cabledef1 = CableDef(cable_design, xa, ya, Dict("core" => 1))
+cable_system = LineCableSystem("test_case_1", 20.0, earth_params, 1000.0, cabledef1)
+
+# Add second cable to system
+$(FUNCTIONNAME)(cable_system, cable_design, xb, yb, Dict("core" => 2))
+
+println(cable_system.num_cables)  # Prints: 2
+```
+
+# See also
+
+- [`LineCableSystem`](@ref)
+- [`CableDef`](@ref)
+- [`CableDesign`](@ref)
+"""
+function add_to_system!(
+	system::LineCableSystem,
+	cable::CableDesign,
+	horz::Number,
+	vert::Number,
+	conn::Union{Dict{String, Int}, Nothing} = nothing,
+)
+	max_phase =
+		isempty(system.cables) ? 0 : maximum(maximum.(getfield.(system.cables, :conn)))
+
+	component_names = keys(cable.components)  # Maintain the correct order
+
+	new_conn = if isnothing(conn)
+		Dict(name => (i == 1 ? max_phase + 1 : 0) for (i, name) in enumerate(component_names))
+	else
+		Dict(name => get(conn, name, 0) for name in component_names)  # Ensures correct mapping order
+	end
+
+	push!(system.cables, CableDef(cable, horz, vert, new_conn))
+
+	# Update num_cables
+	system.num_cables += 1
+
+	# Update num_phases by counting unique nonzero phases
+	assigned_phases = unique(vcat(values.(getfield.(system.cables, :conn))...))
+	system.num_phases = count(x -> x > 0, assigned_phases)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Displays the cross-section of a cable system, including earth layers and cables.
+
+# Arguments
+
+- `system`: A [`LineCableSystem`](@ref) object containing the cable arrangement and earth properties.
+- `zoom_factor`: A scaling factor for adjusting the x-axis limits \\[dimensionless\\].
+
+# Returns
+
+- Nothing. Displays a plot of the cable system cross-section with cables, earth layers (if applicable), and the air/earth interface.
+
+# Examples
+
+```julia
+system = LineCableSystem("test_system", 20.0, earth_model, 1000.0, cable_def)
+$(FUNCTIONNAME)(system, zoom_factor=0.5)
+```
+
+# See also
+
+- [`LineCableSystem`](@ref)
+- [`EarthModel`](@ref)
+- [`CableDef`](@ref)
+"""
+function system_preview(system::LineCableSystem; zoom_factor = 0.25)
+	plotlyjs()
+	plt = plot(size = (800, 600),
+		aspect_ratio = :equal,
+		legend = (0.8, 0.9),
+		title = "Cable system cross-section",
+		xlabel = "y [m]",
+		ylabel = "z [m]")
+
+	# Plot the air/earth interface at y=0
+	hline!(
+		plt,
+		[0],
+		linestyle = :solid,
+		linecolor = :black,
+		linewidth = 1.25,
+		label = "Air/earth interface",
+	)
+
+	# Determine explicit wide horizontal range for earth layer plotting
+	x_positions = [to_nominal(cable.horz) for cable in system.cables]
+	max_span = maximum(abs, x_positions) + 5  # extend 5 m beyond farthest cable position
+	x_limits = [-max_span, max_span]
+
+	# Plot earth layers if vertical_layers == false
+	if !system.earth_props.vertical_layers
+		layer_colors = [:burlywood, :sienna, :peru, :tan, :goldenrod, :chocolate]
+		cumulative_depth = 0.0
+		for (i, layer) in enumerate(system.earth_props.layers[2:end])
+			# Skip bottommost infinite layer
+			if isinf(layer.t)
+				break
+			end
+
+			# Compute the depth of the current interface
+			cumulative_depth -= layer.t
+			hline!(
+				plt,
+				[cumulative_depth],
+				linestyle = :solid,
+				linecolor = layer_colors[mod1(i, length(layer_colors))],
+				linewidth = 1.25,
+				label = "Earth layer $i",
+			)
+
+			# Fill the area for current earth layer
+			y_coords = [cumulative_depth + layer.t, cumulative_depth]
+			plot!(plt, [x_limits[1], x_limits[2], x_limits[2], x_limits[1]],
+				[y_coords[1], y_coords[1], y_coords[2], y_coords[2]],
+				seriestype = :shape, color = layer_colors[mod1(i, length(layer_colors))],
+				alpha = 0.25, linecolor = :transparent,
+				label = "")
+		end
+	end
+
+	for cabledef in system.cables
+		x_offset = to_nominal(cabledef.horz)
+		y_offset = to_nominal(cabledef.vert)
+		design_preview(
+			cabledef.cable;
+			x_offset,
+			y_offset,
+			plt,
+			display_plot = false,
+			display_legend = false,
+		)
+	end
+
+	plot!(plt, xlim = (x_limits[1], x_limits[2]) .* zoom_factor)
+
+	display(plt)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Calculates the coordinates of three cables arranged in a trifoil pattern.
+
+# Arguments
+
+- `xc`: X-coordinate of the center point \\[m\\].
+- `yc`: Y-coordinate of the center point \\[m\\].
+- `r_ext`: External radius of the circular layout \\[m\\].
+
+# Returns
+
+- A tuple containing:
+  - `xa`, `ya`: Coordinates of the top cable \\[m\\].
+  - `xb`, `yb`: Coordinates of the bottom-left cable \\[m\\].
+  - `xc`, `yc`: Coordinates of the bottom-right cable \\[m\\].
+
+# Examples
+
+```julia
+xa, ya, xb, yb, xc, yc = $(FUNCTIONNAME)(0.0, 0.0, 0.035)
+println((xa, ya))  # Coordinates of top cable
+println((xb, yb))  # Coordinates of bottom-left cable
+println((xc, yc))  # Coordinates of bottom-right cable
+```
+"""
+function trifoil_formation(xc, yc, r_ext)
+	# Horizontal distance between centers of adjacent circles (equal to twice the radius of each circle)
+	d = 2 * r_ext
+	# Vertical distance from top circle center to the line between bottom two circles
+	h = sqrt(3) * r_ext
+
+	# Calculate the top circle coordinates (centered directly above the midpoint of the bottom two circles)
+	xa = xc
+	ya = yc + h / 2
+
+	# Calculate the coordinates of the bottom two circles
+	xb = xc - d / 2
+	yb = yc - h / 2
+	xc = xc + d / 2
+	yc = yc - h / 2
+
+	return xa, ya, xb, yb, xc, yc
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Calculates the coordinates of three conductors arranged in a flat (horizontal or vertical) formation.
+
+# Arguments
+
+- `xc`: X-coordinate of the reference point \\[m\\].
+- `yc`: Y-coordinate of the reference point \\[m\\].
+- `s`: Spacing between adjacent conductors \\[m\\].
+- `vertical`: Boolean flag indicating whether the formation is vertical.
+
+# Returns
+
+- A tuple containing:
+  - `xa`, `ya`: Coordinates of the first conductor \\[m\\].
+  - `xb`, `yb`: Coordinates of the second conductor \\[m\\].
+  - `xc`, `yc`: Coordinates of the third conductor \\[m\\].
+
+# Examples
+
+```julia
+# Horizontal formation
+xa, ya, xb, yb, xc, yc = $(FUNCTIONNAME)(0.0, 0.0, 0.1)
+println((xa, ya))  # First conductor coordinates
+println((xb, yb))  # Second conductor coordinates
+println((xc, yc))  # Third conductor coordinates
+
+# Vertical formation
+xa, ya, xb, yb, xc, yc = $(FUNCTIONNAME)(0.0, 0.0, 0.1, vertical=true)
+```
+"""
+function flat_formation(xc, yc, s; vertical = false)
+	if vertical
+		# Layout is vertical; adjust only y-coordinates
+		xa, ya = xc, yc
+		xb, yb = xc, yc - s
+		xc, yc = xc, yc - 2s
+	else
+		# Layout is horizontal; adjust only x-coordinates
+		xa, ya = xc, yc
+		xb, yb = xc + s, yc
+		xc, yc = xc + 2s, yc
+	end
+
+	return xa, ya, xb, yb, xc, yc
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Generates a summary DataFrame for cable positions and phase mappings within a [`LineCableSystem`](@ref).
+
+# Arguments
+
+- `system`: A [`LineCableSystem`](@ref) object containing the cable definitions and their configurations.
+
+# Returns
+
+- A `DataFrame` containing:
+  - `cable_id`: Identifier of each cable design.
+  - `horz`: Horizontal coordinate of each cable \\[m\\].
+  - `vert`: Vertical coordinate of each cable \\[m\\].
+  - `phase_mapping`: Human-readable string representation mapping each cable component to its assigned phase.
+
+# Examples
+
+```julia
+df = $(FUNCTIONNAME)(cable_system)
+println(df)
+# Output:
+# │ cable_id   │ horz │ vert  │ phase_mapping           │
+# │------------│------│-------│-------------------------│
+# │ "Cable1"   │ 0.0  │ -0.5  │ core: 1, sheath: 0      │
+# │ "Cable2"   │ 0.35 │ -1.25 │ core: 2, sheath: 0      │
+```
+
+# See also
+
+- [`LineCableSystem`](@ref)
+- [`CableDef`](@ref)
+"""
+function system_data(system::LineCableSystem)
+	cable_ids = String[]
+	horz_coords = Number[]
+	vert_coords = Number[]
+	mappings = String[]
+
+	for cabledef in system.cables
+		# Correct access here:
+		push!(cable_ids, cabledef.cable.cable_id)
+		push!(horz_coords, cabledef.horz)
+		push!(vert_coords, cabledef.vert)
+
+		component_names = collect(keys(cabledef.cable.components))
+		mapping_str = join(
+			["$(name): $(phase)" for (name, phase) in zip(component_names, cabledef.conn)],
+			", ",
+		)
+		push!(mappings, mapping_str)
+	end
+
+	return DataFrame(
+		cable_id = cable_ids,
+		horz = horz_coords,
+		vert = vert_coords,
+		phase_mapping = mappings,
+	)
+end
 
 @reexport using .BaseParams
 Utils.@_autoexport
