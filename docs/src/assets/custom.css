@@ -3,17 +3,22 @@
 }
 
 .display-light-only {
-    display: block;
+    display: block !important;
 }
 
 .display-dark-only {
-    display: none;
+    display: none !important;
 }
 
 .theme--documenter-dark .display-light-only {
-    display: none;
+    display: none !important;
 }
 
 .theme--documenter-dark .display-dark-only {
-    display: block;
+    display: block !important;
+}
+
+article#documenter-page img {
+    display: block !important;
+    margin: auto !important;
 }

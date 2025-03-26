@@ -1,6 +1,6 @@
 # LineCableModels.jl
 
-[`LineCableModels.jl`](https://github.com/Electa-Git/LineCableModels.jl) is a specialized Julia module designed to compute the electrical parameters of coaxial arbitrarily-layered underground/overhead cables with uncertainty quantification. It focuses on calculating line and cable impedances and admittances in the frequency-domain, accounting for skin effect, insulation properties, and earth-return impedances with frequency-dependent soil models.
+[`LineCableModels.jl`](https://github.com/Electa-Git/LineCableModels.jl) is a specialized Julia package designed to compute the electrical parameters of coaxial arbitrarily-layered underground/overhead cables with uncertainty quantification. It focuses on calculating line and cable impedances and admittances in the frequency-domain, accounting for skin effect, insulation properties, and earth-return impedances with frequency-dependent soil models.
 
 ## Documentation outline
 

@@ -21,8 +21,10 @@ module Utils
 
 # Load common dependencies
 include("CommonDeps.jl")
+
 # Module-specific dependencies
 using Measurements
+using Statistics
 
 # General constants
 "Base power system frequency, f₀ = 50 [Hz]."
@@ -99,7 +101,7 @@ Converts a measurement to a value with zero uncertainty, retaining the numeric t
 
 # Arguments
 
-- `value`: Input value that may be a `Measurement` type or another type \\[dimensionless\\].
+- `value`: Input value that may be a `Measurement` type or another type.
 
 # Returns
 

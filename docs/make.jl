@@ -1,6 +1,8 @@
 using Documenter
 using DocumenterCitations
+using Literate
 using Pkg
+using Revise
 
 function get_project_toml()
 	# Get the current active environment
@@ -40,7 +42,6 @@ NAME = PROJECT_TOML["name"]
 AUTHORS = join(PROJECT_TOML["authors"], ", ") * " and contributors."
 GITHUB = PROJECT_TOML["git_url"]
 
-using Revise
 @eval using $(Symbol(NAME))
 main_module = @eval $(Symbol(NAME))
 
@@ -63,6 +64,11 @@ mathengine = MathJax3(
 			"inlineMath" => [["\$", "\$"], ["\\(", "\\)"]],
 			"tags" => "ams",
 			"packages" => ["base", "ams", "autoload", "physics"],
+		),
+		:chtml => Dict(
+			:scale => 1.1,
+			# :displayAlign => "left",
+			# :displayIndent => "2em",
 		),
 	),
 )
@@ -90,10 +96,10 @@ makedocs(;
 		"Home" => "index.md",
 		"Tutorials" => "tutorials.md",
 		"Toolbox reference" => "reference.md",
-		"Bibliography" => "bib.md",
 		"Development" => Any[
 			"Naming conventions"=>"conventions.md",
 		],
+		"Bibliography" => "bib.md",
 	],
 	clean = true,
 	plugins = [bib],

@@ -5,8 +5,8 @@ The [`DataModel`](@ref) module provides data structures, constructors and utilit
 
 # Overview
 
-- Provides structures for detailed **cable** modeling with the [`CableDesign`](@ref) and supporting types: [`Conductor`](@ref), [`WireArray`](@ref), [`Strip`](@ref), [`Tubular`](@ref), [`Semicon`](@ref), and [`Insulator`](@ref).
-- Includes structures for cable **system** modeling with the [`LineCableSystem`](@ref) type, and multiple formation patterns like trifoil and flat arrangements.
+- Provides objects for detailed **cable** modeling with the [`CableDesign`](@ref) and supporting types: [`Conductor`](@ref), [`WireArray`](@ref), [`Strip`](@ref), [`Tubular`](@ref), [`Semicon`](@ref), and [`Insulator`](@ref).
+- Includes objects for cable **system** modeling with the [`LineCableSystem`](@ref) type, and multiple formation patterns like trifoil and flat arrangements.
 - Contains functions for calculating the base electric properties of all elements within a [`CableDesign`](@ref), namely: resistance, inductance (via GMR), shunt capacitance, and shunt conductance (via loss factor).
 - Offers visualization tools for previewing cable cross-sections and system layouts.
 - Provides a library system for storing and retrieving cable designs.
@@ -125,17 +125,6 @@ struct WireArray <: AbstractConductorPart
 	resistance::Number
 	"Geometric mean radius of the wire array \\[m\\]."
 	gmr::Number
-
-	function _WireArray(radius_in, radius_ext, radius_wire, num_wires, lay_ratio,
-		mean_diameter,
-		pitch_length, lay_direction, material_props, temperature, cross_section,
-		resistance, gmr)
-		# Initialize object
-		return new(radius_in, radius_ext, radius_wire, num_wires, lay_ratio, mean_diameter,
-			pitch_length, lay_direction, material_props, temperature, cross_section,
-			resistance, gmr)
-	end
-
 end
 
 """
@@ -172,14 +161,6 @@ struct Strip <: AbstractConductorPart
 	resistance::Number
 	"Geometric mean radius of the strip \\[m\\]."
 	gmr::Number
-
-	function _Strip(radius_in, radius_ext, thickness, width, lay_ratio, mean_diameter,
-		pitch_length, lay_direction, material_props, temperature, cross_section,
-		resistance, gmr)
-		return new(radius_in, radius_ext, thickness, width, lay_ratio, mean_diameter,
-			pitch_length, lay_direction, material_props, temperature, cross_section,
-			resistance, gmr)
-	end
 end
 
 """
@@ -204,12 +185,6 @@ struct Tubular <: AbstractConductorPart
 	resistance::Number
 	"Geometric mean radius of the tubular conductor \\[m\\]."
 	gmr::Number
-
-	function _Tubular(radius_in, radius_ext, material_props, temperature,
-		cross_section, resistance, gmr)
-		return new(radius_in, radius_ext, material_props, temperature,
-			cross_section, resistance, gmr)
-	end
 end
 
 """
@@ -309,12 +284,6 @@ mutable struct Semicon <: AbstractInsulatorPart
 	shunt_capacitance::Number
 	"Shunt conductance per unit length of the semiconducting layer \\[S/m\\]."
 	shunt_conductance::Number
-
-	function _Semicon(radius_in, radius_ext, material_props, temperature,
-		cross_section, resistance, gmr, shunt_capacitance, shunt_conductance)
-		return new(radius_in, radius_ext, material_props, temperature,
-			cross_section, resistance, gmr, shunt_capacitance, shunt_conductance)
-	end
 end
 
 """
@@ -343,12 +312,6 @@ mutable struct Insulator <: AbstractInsulatorPart
 	shunt_capacitance::Number
 	"Shunt conductance per unit length of the insulating layer \\[S/m\\]."
 	shunt_conductance::Number
-
-	function _Insulator(radius_in, radius_ext, material_props, temperature,
-		cross_section, resistance, gmr, shunt_capacitance, shunt_conductance)
-		return new(radius_in, radius_ext, material_props, temperature,
-			cross_section, resistance, gmr, shunt_capacitance, shunt_conductance)
-	end
 end
 
 # Submodule `BaseParams`
@@ -402,11 +365,7 @@ Parses input values into radius representation based on object type and input ty
 # Arguments
 
 - `x`: Input value that can be a raw number, a [`Diameter`](@ref), a [`Thickness`](@ref), or other convertible type \\[m\\].
-- `object_type`: Type parameter used for dispatch \\[dimensionless\\].
-
-!!! warning "Note"
-	- When an [`AbstractCablePart`](@ref) is provided as input, the method retrieves its `radius_ext` value, allowing the new component to be placed directly over the existing part in a layered cable design.
-	- In case of uncertain measurements, the constructor prevents uncertainty propagation between different component types. When the new component being constructed is a different type than the existing one, the uncertainty is removed from the radius value before being passed to the new component. This ensures that measurement uncertainties do not inappropriately cascade across different cable parts.
+- `object_type`: Type parameter used for dispatch.
 
 # Returns
 
@@ -459,7 +418,7 @@ Resolves radii values based on input types and object type, handling both direct
 
 - `radius_in`: Inner radius value \\[m\\].
 - `radius_ext`: Outer radius value or thickness specification \\[m\\].
-- `object_type`: Type parameter used for dispatch \\[dimensionless\\].
+- `object_type`: Type parameter used for dispatch.
 
 # Returns
 
@@ -496,7 +455,7 @@ end
 
 function _do_resolve_radius(radius_in::Number, radius_wire::Number, ::Type{WireArray})
 	thickness = 2 * radius_wire
-	return radius_in, radius_in + thickness, thickness
+	@show return radius_in, radius_in + thickness, thickness
 end
 
 """
@@ -574,7 +533,7 @@ function WireArray(
 	)
 
 	# Initialize object
-	return _WireArray(
+	return WireArray(
 		radius_in,
 		radius_ext,
 		diameter / 2,
@@ -658,7 +617,7 @@ function Strip(
 	gmr = calc_tubular_gmr(radius_ext, radius_in, material_props.mu_r)
 
 	# Initialize object
-	return _Strip(
+	return Strip(
 		radius_in,
 		radius_ext,
 		thickness,
@@ -727,7 +686,7 @@ function Tubular(
 	gmr = calc_tubular_gmr(radius_ext, radius_in, material_props.mu_r)
 
 	# Initialize object
-	return _Tubular(
+	return Tubular(
 		radius_in,
 		radius_ext,
 		material_props,
@@ -790,7 +749,7 @@ function Semicon(
 	shunt_conductance = calc_shunt_conductance(radius_in, radius_ext, rho)
 
 	# Initialize object
-	return _Semicon(
+	return Semicon(
 		radius_in,
 		radius_ext,
 		material_props,
@@ -849,7 +808,7 @@ function Insulator(
 	shunt_conductance = calc_shunt_conductance(radius_in, radius_ext, rho)
 
 	# Initialize object
-	return _Insulator(
+	return Insulator(
 		radius_in,
 		radius_ext,
 		material_props,
@@ -884,6 +843,10 @@ Adds a new part to an existing [`Conductor`](@ref)  object and updates its equiv
 - The `temperature` of the new part defaults to the temperature of the first layer if not specified.
 - The `radius_in` of the new part defaults to the external radius of the existing conductor if not specified.
 
+!!! warning "Note"
+	- When an [`AbstractCablePart`](@ref) is provided as `radius_in`, the constructor retrieves its `radius_ext` value, allowing the new cable part to be placed directly over the existing part in a layered cable design.
+	- In case of uncertain measurements, if the added cable part is of a different type than the existing one, the uncertainty is removed from the radius value before being passed to the new component. This ensures that measurement uncertainties do not inappropriately cascade across different cable parts.
+
 # Examples
 
 ```julia
@@ -900,8 +863,9 @@ $(FUNCTIONNAME)(conductor, WireArray, 0.02, 0.002, 7, 15, material_props; temper
 - [`Tubular`](@ref)
 - [`calc_equivalent_gmr`](@ref)
 - [`calc_parallel_equivalent`](@ref)
+- [`calc_equivalent_alpha`](@ref)
 """
-function add_to_conductor!(
+function addto_conductor!(
 	sc::Conductor,
 	part_type::Type{T},  # The type of conductor part (WireArray, Strip, Tubular)
 	args...;  # Arguments specific to the part type
@@ -1117,45 +1081,30 @@ mutable struct CableComponent
 	@doc """
 	$(TYPEDSIGNATURES)
 
-	Initializes a [`CableComponent`](@ref) object based on its parts and operating frequency.
-
-	# Arguments
-
-	- `component_data`: Vector of cable subcomponents.
-	- `f`: Frequency of operation \\[Hz\\] (default: [`f₀`](@ref)).
-
-	# Returns
-
-	- A [`CableComponent`](@ref) instance with calculated equivalent properties.
-
-	# Notes
-
-	The constructor generally performs the following sequence of steps:
+	Initializes a [`CableComponent`](@ref) object based on its parts and operating frequency. The constructor performs the following sequence of steps:
 
 	1. Group conductors and insulators and calculate their corresponding thicknesses,  internal and external radii.
 	2. Series R and L: calculate equivalent resistances through parallel combination, incorporate mutual coupling effects in inductances via GMR transformations.
 	3. Shunt C and G: determine capacitances and dielectric losses through series association of components.
 	4. Apply correction factors for conductor temperature and solenoid effects on insulation.
 	5. Calculate the effective electromagnetic properties:
-	```math
-	\\rho_{con} = R_{con} \\pi \\left(r_{con, ext}^2 - r_{con, in}^2 \\right)
-	```
-	```math
-	\\mu_{con} = -\\frac{\\left(\\log GMR_{con} - \\log r_{con, ext}\\right)}{\\frac{r_{con, in}^4}{\\left(r_{con, ext}^2 - r_{con, in}^2\\right)^2} \\log\\left(\\frac{r_{con, ext}}{r_{con, in}}\\right) - \\frac{3r_{con, in}^2 - r_{con, ext}^2}{4\\left(r_{con, ext}^2 - r_{con, in}^2\\right)}}
-	```
-	```math
-	\\varepsilon_{ins} = C_{ins} \\pi \\frac{\\log \\left(r_{ins,ext}/r_{ins,in}\\right)}{2 \\pi \\varepsilon_0}
-	```
-	```math
-	\\mu_{ins} = \\mu_0 \\mu_{r, sol}
-	```
-	```math
-	\\mu_{r, sol} = 1 + \\frac{2 \\pi^2 N^2 (r_{ins, ext}^2 - r_{con, ext}^2)}{\\log(r_{ins, ext}/r_{con, ext})}
-	```
-	```math
-	\\tan \\,  \\delta = \\frac{G_{ins}}{\\omega C_{ins}}
-	```
-	where all individual terms are further described in the methods given in the 'See also' section.
+
+	| Quantity | Function |
+	|----------|----------|
+	| Resistivity (conductor) ``\\rho_{con}`` | [`calc_equivalent_rho`](@ref) |
+	| Permeability (conductor) ``\\mu_{con}`` | [`calc_equivalent_mu`](@ref) |
+	| Permittivity (insulation) ``\\varepsilon_{ins}`` | [`calc_equivalent_eps`](@ref) |
+	| Permeability (insulation) ``\\mu_{ins}`` | [`calc_solenoid_correction`](@ref) |
+	| Loss factor (insulation) ``\\tan \\,  \\delta`` | [`calc_equivalent_lossfact`](@ref) |
+
+	# Arguments
+
+	- `component_data`: Vector of objects [`AbstractCablePart`](@ref).
+	- `f`: Frequency of operation \\[Hz\\] (default: [`f₀`](@ref)).
+
+	# Returns
+
+	- A [`CableComponent`](@ref) instance with calculated equivalent properties.
 
 	# Examples
 
@@ -1166,10 +1115,10 @@ mutable struct CableComponent
 
 	# See also
 
-	- [`calc_parallel_equivalent`](@ref)
-	- [`calc_equivalent_gmr`](@ref)
-	- [`calc_gmd`](@ref)
+	- [`calc_equivalent_rho`](@ref)
 	- [`calc_equivalent_mu`](@ref)
+	- [`calc_equivalent_eps`](@ref)
+	- [`calc_equivalent_lossfact`](@ref)
 	- [`calc_solenoid_correction`](@ref)
 	"""
 	function CableComponent(
@@ -1289,8 +1238,7 @@ mutable struct CableComponent
 
 		# Conductor effective parameters
 		radius_ext_con += radius_in_con
-		eff_conductor_area = π * (radius_ext_con^2 - radius_in_con^2)
-		rho_con = equiv_resistance * eff_conductor_area
+		rho_con = calc_equivalent_rho(equiv_resistance, radius_ext_con, radius_in_con)
 		mu_con = calc_equivalent_mu(gmr_eff_con, radius_ext_con, radius_in_con)
 		num_turns = weighted_num_turns / total_num_wires
 
@@ -1299,8 +1247,8 @@ mutable struct CableComponent
 			radius_ext_ins += radius_ext_con
 			G_eq = real(equiv_admittance)
 			C_eq = imag(equiv_admittance) / ω
-			eps_ins = (C_eq * log(radius_ext_ins / radius_ext_con)) / (2 * pi) / ε₀
-			loss_factor_ins = G_eq / (ω * C_eq)
+			eps_ins = calc_equivalent_eps(C_eq, radius_ext_ins, radius_ext_con)
+			loss_factor_ins = calc_equivalent_lossfact(G_eq, C_eq, ω)
 			correction_mu_ins =
 				calc_solenoid_correction(num_turns, radius_ext_con, radius_ext_ins)
 			mu_ins = mu_ins * correction_mu_ins
@@ -1361,7 +1309,7 @@ struct NominalData
 	Initializes a [`NominalData`](@ref) object with optional default values.
 
 	# Arguments
-	- `designation_code`: Cable designation \\[dimensionless\\] (default: `nothing`).
+	- `designation_code`: Cable designation (default: `nothing`).
 	- `U0`: Phase-to-earth voltage rating \\[kV\\] (default: `nothing`).
 	- `U`: Phase-to-phase voltage rating \\[kV\\] (default: `nothing`).
 	- `conductor_cross_section`: Conductor cross-section \\[mm²\\] (default: `nothing`).
@@ -1501,7 +1449,7 @@ $(FUNCTIONNAME)(design, "ComponentB", parts, 60)
 - [`CableDesign`](@ref)
 - [`CableComponent`](@ref)
 """
-function add_to_design!(
+function addto_design!(
 	design::CableDesign,
 	component_name::String,
 	component_parts::Vector{<:Any},
@@ -1560,7 +1508,7 @@ core_data = design_data(design, :core, S=0.5, rho_e=150)
 function design_data(
 	design::CableDesign,
 	format::Symbol = :core;
-	S::Number = nothing,
+	S::Union{Nothing, Number} = nothing,
 	rho_e::Number = 100,
 )
 	if format == :core
@@ -1808,7 +1756,7 @@ function design_preview(
 			radius_wire = to_nominal(layer.radius_wire)
 			num_wires = layer.num_wires
 
-			lay_radius = num_wires == 1 ? 0 : to_nominal(layer.radius_in) + radius_wire
+			lay_radius = num_wires == 1 ? 0 : to_nominal(layer.radius_in)
 			material_props = layer.material_props
 			color = _get_material_color(material_props)
 
@@ -1957,6 +1905,10 @@ mutable struct CablesLibrary
 	# See also
 
 	- [`CableDesign`](@ref)
+	- [`store_cables_library!`](@ref)
+	- [`remove_cables_library!`](@ref)
+	- [`save_cables_library`](@ref)
+	- [`list_cables_library`](@ref)
 	"""
 	function CablesLibrary(; file_name::String = "cables_library.jls")::CablesLibrary
 		library = new(Dict{String, CableDesign}())
@@ -2036,7 +1988,7 @@ $(FUNCTIONNAME)(library, file_name="new_cables_library.jls")
 
 - [`CablesLibrary`](@ref)
 """
-function save_designs(
+function save_cables_library(
 	library::CablesLibrary;
 	file_name::String = "cables_library.jls",
 )
@@ -2064,16 +2016,16 @@ Stores a cable design in a [`CablesLibrary`](@ref) object.
 ```julia
 library = CablesLibrary()
 design = CableDesign("example", ...) # Initialize CableDesign with required fields
-add_design!(library, design)
+store_cables_library!(library, design)
 println(library.cable_designs) # Prints the updated dictionary containing the new cable design
 ```
 # See also
 
 - [`CablesLibrary`](@ref)
 - [`CableDesign`](@ref)
-- [`remove_design!`](@ref)
+- [`remove_cables_library!`](@ref)
 """
-function add_design!(library::CablesLibrary, design::CableDesign)
+function store_cables_library!(library::CablesLibrary, design::CableDesign)
 	library.cable_designs[design.cable_id] = design
 	println("Cable design with ID `$(design.cable_id)` added to the library.")
 end
@@ -2097,7 +2049,7 @@ Removes a cable design from a [`CablesLibrary`](@ref) object by its ID.
 ```julia
 library = CablesLibrary()
 design = CableDesign("example", ...) # Initialize a CableDesign
-add_design!(library, design)
+store_cables_library!(library, design)
 
 # Remove the cable design
 $(FUNCTIONNAME)(library, "example")
@@ -2107,9 +2059,9 @@ haskey(library.cable_designs, "example")  # Returns false
 # See also
 
 - [`CablesLibrary`](@ref)
-- [`add_design!`](@ref)
+- [`store_cables_library!`](@ref)
 """
-function remove_design!(library::CablesLibrary, cable_id::String)
+function remove_cables_library!(library::CablesLibrary, cable_id::String)
 	if haskey(library.cable_designs, cable_id)
 		delete!(library.cable_designs, cable_id)
 		println("Cable design with ID `$cable_id` removed from the library.")
@@ -2137,7 +2089,7 @@ Retrieves a cable design from a [`CablesLibrary`](@ref) object by its ID.
 ```julia
 library = CablesLibrary()
 design = CableDesign("example", ...) # Initialize a CableDesign
-add_design!(library, design)
+store_cables_library!(library, design)
 
 # Retrieve the cable design
 retrieved_design = $(FUNCTIONNAME)(library, "cable1")
@@ -2152,8 +2104,8 @@ println(missing_design === nothing)  # Prints true
 
 - [`CablesLibrary`](@ref)
 - [`CableDesign`](@ref)
-- [`add_design!`](@ref)
-- [`remove_design!`](@ref)
+- [`store_cables_library!`](@ref)
+- [`remove_cables_library!`](@ref)
 """
 function get_design(
 	library::CablesLibrary,
@@ -2190,8 +2142,8 @@ Lists the cable designs in a [`CablesLibrary`](@ref) object as a `DataFrame`.
 library = CablesLibrary()
 design1 = CableDesign("example1", nominal_data=NominalData(...), components=Dict("A"=>...))
 design2 = CableDesign("example2", nominal_data=NominalData(...), components=Dict("C"=>...))
-add_design!(library, design1)
-add_design!(library, design2)
+store_cables_library!(library, design1)
+store_cables_library!(library, design2)
 
 # Display the library as a DataFrame
 df = $(FUNCTIONNAME)(library)
@@ -2202,9 +2154,9 @@ first(df, 5)  # Show the first 5 rows of the DataFrame
 
 - [`CablesLibrary`](@ref)
 - [`CableDesign`](@ref)
-- [`add_design!`](@ref)
+- [`store_cables_library!`](@ref)
 """
-function list_designs(library::CablesLibrary)
+function list_cables_library(library::CablesLibrary)
 	ids = keys(library.cable_designs)
 	nominal_data = [string(design.nominal_data) for design in values(library.cable_designs)]
 	components =
@@ -2405,7 +2357,7 @@ println(cable_system.num_cables)  # Prints: 2
 - [`CableDef`](@ref)
 - [`CableDesign`](@ref)
 """
-function add_to_system!(
+function addto_system!(
 	system::LineCableSystem,
 	cable::CableDesign,
 	horz::Number,

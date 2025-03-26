@@ -361,7 +361,7 @@ mutable struct EarthModel
 	# See also
 
 	- [`EarthLayer`](@ref)
-	- [`add_to_earth!`](@ref)
+	- [`addto_earth_model!`](@ref)
 	"""
 	function EarthModel(
 		frequencies::Vector{<:Number},
@@ -471,7 +471,7 @@ println(vert_earth_model.num_layers) # Output: 4
 - [`EarthLayer`](@ref)
 - [`_calc_ehem_properties!`](@ref)
 """
-function add_to_earth!(
+function addto_earth_model!(
 	model::EarthModel,
 	frequencies::Vector{<:Number},
 	base_rho_g::Number,

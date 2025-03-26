@@ -9,7 +9,7 @@ The [`Materials`](@ref) module provides functionality for managing and utilizing
 - Provides the [`MaterialsLibrary`](@ref) mutable struct for storing a collection of materials.
 - Includes functions for adding, removing, and retrieving materials from the library.
 - Supports loading material data from CSV files and saving material data to CSV files.
-- Contains utility functions for displaying material data as a `DataFrame`.
+- Contains utility functions for displaying material data.
 
 # Dependencies
 
@@ -53,7 +53,7 @@ end
 """
 $(TYPEDEF)
 
-Stores a collection of predefined materials for conductor modeling, indexed by material name.
+Stores a collection of predefined materials for conductor modeling, indexed by material name:
 
 $(TYPEDFIELDS)
 """
@@ -83,8 +83,11 @@ library = MaterialsLibrary()
 
 # See also
 
-- [`_load_from_csv!`](@ref)
-- [`_add_default_materials!`](@ref)
+- [`Material`](@ref)
+- [`store_materials_library!`](@ref)
+- [`remove_materials_library!`](@ref)
+- [`save_materials_library`](@ref)
+- [`list_materials_library`](@ref)
 """
 function MaterialsLibrary(; file_name::String = "materials_library.csv")::MaterialsLibrary
 	library = MaterialsLibrary(Dict{String, Material}())
@@ -120,18 +123,30 @@ $(FUNCTIONNAME)(library)
 
 # See also
 
-- [`add_material!`](@ref)
+- [`store_materials_library!`](@ref)
 """
 function _add_default_materials!(library::MaterialsLibrary)
-	add_material!(library, "air", Material(Inf, 1.0, 1.0, 20.0, 0.0))
-	add_material!(library, "pec", Material(eps(), 1.0, 1.0, 20.0, 0.0))
-	add_material!(library, "copper", Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393))
-	add_material!(library, "aluminum", Material(2.8264e-8, 1.0, 1.000022, 20.0, 0.00429))
-	add_material!(library, "xlpe", Material(1.97e14, 2.5, 1.0, 20.0, 0.0))
-	add_material!(library, "pe", Material(1.97e14, 2.3, 1.0, 20.0, 0.0))
-	add_material!(library, "semicon1", Material(1000.0, 1000.0, 1.0, 20.0, 0.0))
-	add_material!(library, "semicon2", Material(500.0, 1000.0, 1.0, 20.0, 0.0))
-	add_material!(library, "polyacrylate", Material(5.3e3, 32.3, 1.0, 20.0, 0.0))
+	store_materials_library!(library, "air", Material(Inf, 1.0, 1.0, 20.0, 0.0))
+	store_materials_library!(library, "pec", Material(eps(), 1.0, 1.0, 20.0, 0.0))
+	store_materials_library!(
+		library,
+		"copper",
+		Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393),
+	)
+	store_materials_library!(
+		library,
+		"aluminum",
+		Material(2.8264e-8, 1.0, 1.000022, 20.0, 0.00429),
+	)
+	store_materials_library!(library, "xlpe", Material(1.97e14, 2.5, 1.0, 20.0, 0.0))
+	store_materials_library!(library, "pe", Material(1.97e14, 2.3, 1.0, 20.0, 0.0))
+	store_materials_library!(library, "semicon1", Material(1000.0, 1000.0, 1.0, 20.0, 0.0))
+	store_materials_library!(library, "semicon2", Material(500.0, 1000.0, 1.0, 20.0, 0.0))
+	store_materials_library!(
+		library,
+		"polyacrylate",
+		Material(5.3e3, 32.3, 1.0, 20.0, 0.0),
+	)
 end
 
 """
@@ -161,14 +176,14 @@ $(FUNCTIONNAME)(library, "materials_library.csv")
 
 # See also
 
-- [`add_material!`](@ref)
+- [`store_materials_library!`](@ref)
 - [`MaterialsLibrary`](@ref)
 """
 function _load_from_csv!(library::MaterialsLibrary, file_name::String)
 	df = DataFrame(CSV.File(file_name))
 	for row in eachrow(df)
 		material = Material(row.rho, row.eps_r, row.mu_r, row.T0, row.alpha)
-		add_material!(library, row.name, material)
+		store_materials_library!(library, row.name, material)
 	end
 end
 
@@ -199,7 +214,11 @@ material = Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393)
 $(FUNCTIONNAME)(library, "copper", material)
 ```
 """
-function add_material!(library::MaterialsLibrary, name::String, material::Material)
+function store_materials_library!(
+	library::MaterialsLibrary,
+	name::String,
+	material::Material,
+)
 	if haskey(library.materials, name)
 		error("Material $name already exists in the library.")
 	end
@@ -233,9 +252,9 @@ $(FUNCTIONNAME)(library, "copper")
 
 # See also
 
-- [`add_material!`](@ref)
+- [`store_materials_library!`](@ref)
 """
-function remove_material!(library::MaterialsLibrary, name::String)
+function remove_materials_library!(library::MaterialsLibrary, name::String)
 	if !haskey(library.materials, name)
 		error("Material $name not found in the library.")
 	end
@@ -267,7 +286,7 @@ $(FUNCTIONNAME)(library, file_name = "materials_library.csv")
 
 - [`_load_from_csv!`](@ref)
 """
-function save_materials(
+function save_materials_library(
 	library::MaterialsLibrary;
 	file_name::String = "materials_library.csv",
 )::String
@@ -310,9 +329,9 @@ df = $(FUNCTIONNAME)(library)
 
 # See also
 
-- [`save_materials`](@ref)
+- [`save_materials_library`](@ref)
 """
-function list_materials(library::MaterialsLibrary)::DataFrame
+function list_materials_library(library::MaterialsLibrary)::DataFrame
 	rows = [
 		(
 			name = name,
@@ -350,8 +369,8 @@ material = $(FUNCTIONNAME)(library, "copper")
 
 # See also
 
-- [`add_material!`](@ref)
-- [`remove_material!`](@ref)
+- [`store_materials_library!`](@ref)
+- [`remove_materials_library!`](@ref)
 """
 function get_material(library::MaterialsLibrary, name::String)::Union{Nothing, Material}
 	material = get(library.materials, name, nothing)

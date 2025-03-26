@@ -1,16 +1,26 @@
 # Toolbox reference
 
+This page provides a comprehensive API reference for the [`LineCableModels.jl`](@ref) package. It documents all public modules, types, functions, and constants, organized by functional area. Each section corresponds to a major module in the package, with detailed information about parameters, return values, and usage examples.
+
 ## Contents
 ```@contents
 Pages = ["reference.md"]
-Depth = 2
+Depth = 3
 ```
 
 ---
 
-## Data entry model
+## Data model
 ```@autodocs
-Modules = [LineCableModels.DataModel, LineCableModels.DataModel.BaseParams]
+Modules = [LineCableModels.DataModel]
+Order = [:module, :constant, :type, :function, :macro]
+Public = true
+Private = false
+```
+
+### Base parameters (R, L, C, G)
+```@autodocs
+Modules = [LineCableModels.DataModel.BaseParams]
 Order = [:module, :constant, :type, :function, :macro]
 Public = true
 Private = false
@@ -58,9 +68,9 @@ Private = false
 
 ---
 
-## Private functions & methods
+## Private API
 
-### Data entry model
+#### Data model
 ```@autodocs
 Modules = [LineCableModels.DataModel]
 Order = [:module, :constant, :type, :function, :macro]
@@ -68,7 +78,7 @@ Public = false
 Private = true
 ```
 
-### Earth properties
+#### Earth properties
 ```@autodocs
 Modules = [LineCableModels.EarthProps]
 Order = [:module, :constant, :type, :function, :macro]
@@ -76,7 +86,7 @@ Public = false
 Private = true
 ```
 
-### Materials library
+#### Materials library
 ```@autodocs
 Modules = [LineCableModels.Materials]
 Order = [:module, :constant, :type, :function, :macro]
@@ -84,7 +94,7 @@ Public = false
 Private = true
 ```
 
-### Utilities
+#### Utilities
 ```@autodocs
 Modules = [LineCableModels.Utils]
 Order = [:module, :constant, :type, :function, :macro]

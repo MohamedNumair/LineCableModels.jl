@@ -32,7 +32,12 @@ using Measurements
 """
 $(TYPEDSIGNATURES)
 
-Calculates the equivalent temperature coefficient of resistance (`alpha`) when two conductors are connected in parallel.
+Calculates the equivalent temperature coefficient of resistance (`alpha`) when two conductors are connected in parallel, by cross-weighted-resistance averaging:
+
+```math
+\\alpha_{eq} = \\frac{\\alpha_1 R_2 + \\alpha_2 R1}{R_1 + R_2}
+```
+where ``\\alpha_1``, ``\\alpha_2`` are the temperature coefficients of the conductors, and ``R_1``, ``R_2`` are the respective resistances.
 
 # Arguments
 
@@ -44,15 +49,6 @@ Calculates the equivalent temperature coefficient of resistance (`alpha`) when t
 # Returns
 
 - The equivalent temperature coefficient \\[1/°C\\] for the parallel combination.
-
-# Notes
-
-The equivalent temperature coefficient is calculated as the cross-weighted-resistance average of the temperature coefficients:
-
-```math
-\\alpha_{eq} = \\frac{\\alpha_1 R_2 + \\alpha_2 R1}{R_1 + R_2}
-```
-where ``\\alpha_1``, ``\\alpha_2`` are the temperature coefficients of the conductors, and ``R_1``, ``R_2`` are the respective resistances.
 
 # Examples
 
@@ -70,26 +66,15 @@ function calc_equivalent_alpha(alpha1::Number, R1::Number, alpha2::Number, R2::N
 end
 
 """
-Calculates the parallel equivalent of two impedances (or series equivalent of two admittances).
+$(TYPEDSIGNATURES)
 
-# Arguments
-
-- `Z1`: The total impedance of the existing system \\[Ω\\].
-- `Z2`: The impedance of the new layer being added \\[Ω\\].
-
-# Returns
-
-- The parallel equivalent impedance \\[Ω\\].
-
-# Notes
-
-This function implements the well-known formula from fundamental textbooks:
+Calculates the parallel equivalent of two impedances (or series equivalent of two admittances):
 
 ```math
 Z_{eq} = \\frac{Z_1 Z_2}{Z_1 + Z_2}
 ```
 
-The expression above, when applied recursively to [`LineCableModels.DataModel.WireArray`](@ref) objects, implements the formula for the hexagonal wiring pattern proposed by CIGRE TB-345 [app14198982](@cite) [cigre345](@cite):
+This expression, when applied recursively to [`LineCableModels.DataModel.WireArray`](@ref) objects, implements the formula for the hexagonal wiring pattern described in CIGRE TB-345 [app14198982](@cite) [cigre345](@cite):
 
 ```math
 \\frac{1}{R_{\\text{dc}}} = \\frac{\\pi d^2}{4 \\rho} \\left( 1 + \\sum_{1}^{n} \\frac{6n}{k_n} \\right)
@@ -100,6 +85,15 @@ k_n = \\left[ 1 + \\left( \\pi \\frac{D_n}{\\lambda_n} \\right)^2 \\right]^{1/2}
 ```
 
 where ``R_{\\text{dc}}`` is the DC resistance, ``d`` is the diameter of each wire, ``\rho`` is the resistivity, ``n`` is the number of layers following the hexagonal pattern, ``D_n`` is the diameter of the ``n``-th layer, and ``\\lambda_n `` is the pitch length of the ``n``-th layer, obtained using [`calc_helical_params`](@ref).
+
+# Arguments
+
+- `Z1`: The total impedance of the existing system \\[Ω\\].
+- `Z2`: The impedance of the new layer being added \\[Ω\\].
+
+# Returns
+
+- The parallel equivalent impedance \\[Ω\\].
 
 # Examples
 
@@ -121,7 +115,14 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Calculates the mean diameter, pitch length, and overlength based on cable geometry parameters.
+Calculates the mean diameter, pitch length, and overlength based on cable geometry parameters. The lay ratio is defined as the ratio of the pitch length ``L_p`` to the external diameter ``D_e``:
+
+```math
+\\lambda = \\frac{L_p}{D_e}
+```
+where ``\\lambda`` is the pitch length, ``D_e`` and ``L_p`` are the dimensions represented in the figure.
+
+![](./assets/lay_ratio.svg)
 
 # Arguments
 
@@ -137,14 +138,15 @@ Calculates the mean diameter, pitch length, and overlength based on cable geomet
 
 # Notes
 
-![](./assets/lay_ratio.svg)
+Reference values for `lay_ratio` are given under standard EN 50182 [CENELEC50182](@cite):
 
-The lay ratio is defined as the ratio of the pitch length ``L_p`` to the external diameter ``D_e``:
-
-```math
-\\lambda = \\frac{L_p}{D_e}
-```
-where ``lambda`` is the pitch length, ``D_e`` and ``L_p`` are the dimensions represented in the figure.
+| Conductor type | Steel wires | Aluminum wires | Lay ratio - Steel | Lay ratio - Aluminum |
+|---------------|----------------------|---------------------|----------------------|-------------------|
+| AAAC 4 layers | - | 61 (1/6/12/18/24) | - | 15/13.5/12.5/11 |
+| ACSR 3 layers | 7 (1/6) | 54 (12/18/24) | 19 | 15/13/11.5 |
+| ACSR 2 layers | 7 (1/6) | 26 (10/16) | 19 | 14/11.5 |
+| ACSR 1 layer | 7 (1/6) | 10 | 19 | 14 |
+| ACCC/TW | - | 36 (8/12/16) | - | 15/13.5/11.5 |	
 
 # Examples
 
@@ -170,7 +172,12 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Calculates the DC resistance of a strip conductor based on its geometric and material properties.
+Calculates the DC resistance of a strip conductor based on its geometric and material properties, using the basic resistance formula in terms of the resistivity and cross-sectional area:
+
+```math
+R = \\rho \\frac{\\ell}{W T}
+```
+where ``\\ell`` is the length of the strip, ``W`` is the width, and ``T`` is the thickness. The length is assumed to be infinite in the direction of current flow, so the resistance is calculated per unit length.
 
 # Arguments
 
@@ -184,15 +191,6 @@ Calculates the DC resistance of a strip conductor based on its geometric and mat
 # Returns
 
 - DC resistance of the strip conductor \\[Ω\\].
-
-# Notes
-
-This function implements the basic resistance formula in terms of the resistivity and cross-sectional area of a rectangular strip:
-
-```math
-R = \\rho \\frac{\\ell}{W T}
-```
-where ``\\ell`` is the length of the strip, ``W`` is the width, and ``T`` is the thickness. The length is assumed to be infinite in the direction of current flow, so the resistance is calculated per unit length.
 
 # Examples
 
@@ -226,7 +224,12 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Calculates the temperature correction factor for material properties based on the standard linear temperature model.
+Calculates the temperature correction factor for material properties based on the standard linear temperature model [cigre345](@cite):
+
+```math
+k(T) = 1 + \\alpha (T - T_0)
+```
+where ``\\alpha`` is the temperature coefficient of the material resistivity, ``T`` is the operating temperature, and ``T_0`` is the reference temperature. 
 
 # Arguments
 
@@ -238,20 +241,11 @@ Calculates the temperature correction factor for material properties based on th
 
 - Temperature correction factor to be applied to the material property \\[dimensionless\\].
 
-# Notes
-
-This function implements the standard formula for resistance temperature correction [cigre345](@cite):
-
-```math
-k_{T} = 1 + \\alpha (T - T_0)
-```
-where ``\\alpha`` is the temperature coefficient of the material resistivity, ``T`` is the operating temperature, and ``T_0`` is the reference temperature.
-
 # Examples
 
 ```julia
 # Copper resistivity correction (alpha = 0.00393 [1/°C])
-k_T = $(FUNCTIONNAME)(0.00393, 75.0, 20.0)  # Expected output: 1.2158
+k = $(FUNCTIONNAME)(0.00393, 75.0, 20.0)  # Expected output: 1.2158
 ```
 """
 function calc_temperature_correction(alpha::Number, T::Number, T0::Number = T₀)
@@ -261,7 +255,12 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Calculates the DC resistance of a tubular conductor based on its geometric and material properties.
+Calculates the DC resistance of a tubular conductor based on its geometric and material properties, using the resistivity and cross-sectional area of a hollow cylinder with radii ``r_{in}`` and ``r_{ext}``:
+
+```math
+R = \\rho \\frac{\\ell}{\\pi (r_{ext}^2 - r_{in}^2)}
+```
+where ``\\ell`` is the length of the conductor, ``r_{in}`` and ``r_{ext}`` are the inner and outer radii, respectively. The length is assumed to be infinite in the direction of current flow, so the resistance is calculated per unit length.
 
 # Arguments
 
@@ -275,15 +274,6 @@ Calculates the DC resistance of a tubular conductor based on its geometric and m
 # Returns
 
 - DC resistance of the tubular conductor \\[Ω\\].
-
-# Notes
-
-This function implements the basic resistance formula in terms of the resistivity and cross-sectional area of a hollow cylinder with radii ``r_{in}`` and ``r_{ext}``:
-
-```math
-R = \\rho \\frac{\\ell}{\\pi (r_{ext}^2 - r_{in}^2)}
-```
-where ``\\ell`` is the length of the conductor, ``r_{in}`` and ``r_{ext}`` are the inner and outer radii, respectively.
 
 # Examples
 
@@ -318,7 +308,12 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Calculates the internal inductance of a tubular conductor per unit length, disregarding skin-effects (DC approximation).
+Calculates the inductance of a tubular conductor per unit length, disregarding skin-effects (DC approximation) [916943](@cite) [cigre345](@cite) [1458878](@cite):
+
+```math
+L = \\frac{\\mu_r \\mu_0}{2 \\pi} \\log \\left( \\frac{r_{ext}}{r_{in}} \\right)
+```
+where ``\\mu_r`` is the relative permeability of the conductor material, ``\\mu_0`` is the vacuum permeability, and ``r_{in}`` and ``r_{ext}`` are the inner and outer radii of the conductor, respectively.
 
 # Arguments
 
@@ -329,15 +324,6 @@ Calculates the internal inductance of a tubular conductor per unit length, disre
 # Returns
 
 - Internal inductance of the tubular conductor per unit length \\[H/m\\].
-
-# Notes
-
-This function implements the DC approximation for the inductance of an infinitely long tubular conductor [916943](@cite) [cigre345](@cite) [1458878](@cite):
-
-```math
-L = \\frac{\\mu_r \\mu_0}{2 \\pi} \\log \\left( \\frac{r_{ext}}{r_{in}} \\right)
-```
-where ``\\mu_r`` is the relative permeability of the conductor material, ``\\mu_0`` is the vacuum permeability, and ``r_{in}`` and ``r_{ext}`` are the inner and outer radii of the conductor, respectively.
 
 # Examples
 
@@ -413,7 +399,15 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Calculates the positive-sequence inductance of a trifoil-configured cable system composed of core/screen assuming solid bonding.
+Calculates the positive-sequence inductance of a trifoil-configured cable system composed of core/screen assuming solid bonding, using the formula given under section 4.2.4.3 of CIGRE TB-531:
+
+```math
+Z_d = \\left[Z_a - Z_x\\right] - \\frac{\\left( Z_m - Z_x \\right)^2}{Z_s - Z_x}
+```
+```math
+L = \\mathfrak{Im}\\left(\\frac{Z_d}{\\omega}\\right)
+```
+where ``Z_a``, ``Z_s`` are the self impedances of the core conductor and the screen, and ``Z_m``, and ``Z_x`` are the mutual impedances between core/screen and between cables, respectively, as per sections 4.2.3.4, 4.2.3.5, 4.2.3.6 and 4.2.3.8 of the same document [cigre531](@cite).
 
 # Arguments
 
@@ -427,23 +421,11 @@ Calculates the positive-sequence inductance of a trifoil-configured cable system
 - `mu_r_scr`: Relative permeability of the screen conductor material \\[dimensionless\\].
 - `S`: Spacing between conductors in trifoil configuration \\[m\\].
 - `rho_e`: Soil resistivity \\[Ω·m\\]. Default: 100 Ω·m.
-- `f`: Frequency \\[Hz\\]. Default: `f₀`.
+- `f`: Frequency \\[Hz\\]. Default: [`f₀`](@ref).
 
 # Returns
 
 - Positive-sequence inductance per unit length of the cable system \\[H/m\\].
-
-# Notes
-
-This function implements the formula given under section 4.2.4.3 of CIGRE TB-531 [cigre531](@cite):
-
-```math
-Z_d = \\left[Z_a - Z_x\\right] - \\frac{\\left( Z_m - Z_x \\right)^2}{Z_s - Z_x}
-```
-```math
-L = \\mathfrak{Im}\\left(\\frac{Z_d}{\\omega}\\right)
-```
-where ``Z_a``, ``Z_s`` are the self impedances of the core conductor and the screen, and ``Z_m``, and ``Z_x`` are the mutual impedances between core/screen and between cables, respectively, as per sections 4.2.3.4, 4.2.3.5, 4.2.3.6 and 4.2.3.8 of the same document.
 
 # Examples
 
@@ -519,7 +501,13 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Calculates the geometric mean radius (GMR) of a circular wire array.
+Calculates the geometric mean radius (GMR) of a circular wire array, using formula (62), page 335, of the book by Edward Rosa [rosa1908](@cite):
+
+```math
+GMR = \\sqrt[a] {r n a^{n-1}}
+```
+
+where ``a`` is the layout radius, ``n`` is the number of wires, and ``r`` is the radius of each wire.
 
 # Arguments
 
@@ -531,14 +519,6 @@ Calculates the geometric mean radius (GMR) of a circular wire array.
 # Returns
 
 - Geometric mean radius (GMR) of the wire array \\[m\\].
-
-# Notes
-
-This function implements the formula (62), page 335, of the book by Edward Rosa [rosa1908](@cite):
-```math
-GMR = \\sqrt[a] {r n a^{n-1}}
-```
-where ``a`` is the layout radius, ``n`` is the number of wires, and ``r`` is the radius of each wire.
 
 # Examples
 
@@ -560,7 +540,13 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Calculates the geometric mean radius (GMR) of a tubular conductor.
+Calculates the geometric mean radius (GMR) of a tubular conductor, using [6521501](@cite):
+
+```math
+\\log GMR = \\log r_2 - \\mu_r \\left[ \\frac{r_1^4}{\\left(r_2^2 - r_1^2\\right)^2} \\log\\left(\\frac{r_2}{r_1}\\right) - \\frac{3r_1^2 - r_2^2}{4\\left(r_2^2 - r_1^2\\right)} \\right]
+```
+
+where ``\\mu_r`` is the material magnetic permeability (relative to free space), ``r_1`` and ``r_2`` are the inner and outer radii of the tubular conductor, respectively. If ``r_2`` is approximately equal to ``r_1`` , the tube collapses into a thin shell, and the GMR is equal to ``r_2``. If the tube becomes infinitely thick (e.g., ``r_2 \\gg r_1``), the GMR diverges to infinity.
 
 # Arguments
 
@@ -571,15 +557,6 @@ Calculates the geometric mean radius (GMR) of a tubular conductor.
 # Returns
 
 - Geometric mean radius (GMR) of the tubular conductor \\[m\\].
-
-# Notes
-
-This function implements the formula [6521501](@cite):
-
-```math
-\\log GMR = \\log r_2 - \\mu_r \\left[ \\frac{r_1^4}{\\left(r_2^2 - r_1^2\\right)^2} \\ln\\left(\\frac{r_2}{r_1}\\right) - \\frac{3r_1^2 - r_2^2}{4\\left(r_2^2 - r_1^2\\right)} \\right]
-```
-where ``\\mu_r`` is the material magnetic permeability (relative to free space), ``r_1`` and ``r_2`` are the inner and outer radii of the tubular conductor, respectively. If ``r_2`` is approximately equal to ``r_1`` , the tube collapses into a thin shell, and the GMR is equal to ``r_2``. If the tube becomes infinitely thick (e.g., ``r_2 \\gg r_1``), the GMR diverges to infinity.
 
 # Errors
 
@@ -624,7 +601,17 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Calculates the relative permeability (`mu_r`) based on the geometric mean radius (GMR) and conductor dimensions.
+Calculates the relative permeability (`mu_r`) based on the geometric mean radius (GMR) and conductor dimensions, by executing the inverse of [`calc_tubular_gmr`](@ref), ans solving for `mu_r`:
+
+```math
+\\log GMR = \\log r_2 - \\mu_r \\left[ \\frac{r_1^4}{\\left(r_2^2 - r_1^2\\right)^2} \\log\\left(\\frac{r_2}{r_1}\\right) - \\frac{3r_1^2 - r_2^2}{4\\left(r_2^2 - r_1^2\\right)} \\right]
+```
+
+```math
+\\mu_r = -\\frac{\\left(\\log GMR - \\log r_2\\right)}{\\frac{r_1^4}{\\left(r_2^2 - r_1^2\\right)^2} \\log\\left(\\frac{r_2}{r_1}\\right) - \\frac{3r_1^2 - r_2^2}{4\\left(r_2^2 - r_1^2\\right)}}
+```
+
+where ``r_1`` is the inner radius and ``r_2`` is the outer radius.
 
 # Arguments
 
@@ -642,17 +629,7 @@ Calculates the relative permeability (`mu_r`) based on the geometric mean radius
 
 # Notes
 
-Assumes a tubular geometry for the conductor, reducing to the solid case if `radius_in` is zero. This functions is essentially the inverse operation of [`calc_tubular_gmr`](@ref), with:
-
-```math
-\\log GMR = \\log r_2 - \\mu_r \\left[ \\frac{r_1^4}{\\left(r_2^2 - r_1^2\\right)^2} \\ln\\left(\\frac{r_2}{r_1}\\right) - \\frac{3r_1^2 - r_2^2}{4\\left(r_2^2 - r_1^2\\right)} \\right]
-```
-
-```math
-\\mu_r = -\\frac{\\left(\\log GMR - \\log r_2\\right)}{\\frac{r_1^4}{\\left(r_2^2 - r_1^2\\right)^2} \\ln\\left(\\frac{r_2}{r_1}\\right) - \\frac{3r_1^2 - r_2^2}{4\\left(r_2^2 - r_1^2\\right)}}
-```
-
-where ``r_1`` is the inner radius and ``r_2`` is the outer radius.
+Assumes a tubular geometry for the conductor, reducing to the solid case if `radius_in` is zero.
 
 # Examples
 
@@ -688,7 +665,12 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Calculates the shunt capacitance per unit length of a coaxial structure.
+Calculates the shunt capacitance per unit length of a coaxial structure, using the standard formula for the capacitance of a coaxial structure [cigre531](@cite) [916943](@cite) [1458878](@cite):
+
+```math
+C = \\frac{2 \\pi \\varepsilon_0 \\varepsilon_r}{\\log \\left(\\frac{r_{ext}}{r_{in}}\\right)}
+```
+where ``\\varepsilon_0`` is the vacuum permittivity, ``\\varepsilon_r`` is the relative permittivity of the dielectric material, and ``r_{in}`` and ``r_{ext}`` are the inner and outer radii of the coaxial structure, respectively.
 
 # Arguments
 
@@ -699,15 +681,6 @@ Calculates the shunt capacitance per unit length of a coaxial structure.
 # Returns
 
 - Shunt capacitance per unit length \\[F/m\\].
-
-# Notes
-
-This function implements the standard formula for the capacitance of a coaxial structure [cigre531](@cite) [916943](@cite) [1458878](@cite):
-
-```math
-C = \\frac{2 \\pi \\varepsilon_0 \\varepsilon_r}{\\log \\left(\\frac{r_{ext}}{r_{in}}\\right)}
-```
-where ``\\varepsilon_0`` is the vacuum permittivity, ``\\varepsilon_r`` is the relative permittivity of the dielectric material, and ``r_{in}`` and ``r_{ext}`` are the inner and outer radii of the coaxial structure, respectively.
 
 # Examples
 
@@ -727,26 +700,22 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Calculates the shunt conductance per unit length of a coaxial structure.
+Calculates the shunt conductance per unit length of a coaxial structure, using the improved model reported in [916943](@cite) [Karmokar2025](@cite) [4389974](@cite):
+
+```math
+G = \\frac{2\\pi\\sigma}{\\log(\\frac{r_{ext}}{r_{in}})}
+```
+where ``\\sigma = \\frac{1}{\\rho}`` is the conductivity of the dielectric/semiconducting material, ``r_{in}`` is the internal radius, and ``r_{ext}`` is the external radius of the coaxial structure.
 
 # Arguments
 
 - `radius_in`: Internal radius of the coaxial structure \\[m\\].
 - `radius_ext`: External radius of the coaxial structure \\[m\\].
-- `rho`: Resistivity of the dielectric material \\[Ω·m\\].
+- `rho`: Resistivity of the dielectric/semiconducting material \\[Ω·m\\].
 
 # Returns
 
 - Shunt conductance per unit length \\[S/m\\].
-
-# Notes
-
-This function implements the formula proposed by Gustavsen et al. [916943](@cite) [Karmokar2025](@cite) for calculating the shunt conductance from the material conductivity:
-
-```math
-G = \\frac{2\\pi\\sigma}{\\ln(\\frac{r_{ext}}{r_{in}})}
-```
-where ``\\sigma = \\frac{1}{\\rho}`` is the conductivity of the dielectric material, ``r_{in}`` is the internal radius, and ``r_{ext}`` is the external radius of the coaxial structure.
 
 # Examples
 
@@ -766,20 +735,7 @@ using ..DataModel: AbstractCablePart, Conductor, WireArray
 """
 $(TYPEDSIGNATURES)
 
-Calculates the equivalent geometric mean radius (GMR) of a conductor after adding a new layer.
-
-# Arguments
-
-- `existing`: The existing cable part ([`AbstractCablePart`](@ref)).
-- `new_layer`: The new layer being added ([`AbstractCablePart`](@ref)).
-
-# Returns
-
-- Updated equivalent GMR of the combined conductor \\[m\\].
-
-# Notes
-
-This function implements the formula of the multizone stranded conductor defined as [yang2008gmr](@cite):
+Calculates the equivalent geometric mean radius (GMR) of a conductor after adding a new layer, by recursive application of the multizone stranded conductor defined as [yang2008gmr](@cite):
 
 ```math
 GMR_{eq} = {GMR_{i-1}}^{\\beta^2} \\cdot {GMR_{i}}^{(1-\\beta)^2} \\cdot {GMD}^{2\\beta(1-\\beta)}
@@ -791,6 +747,15 @@ where:
 - ``S_{i-1}`` is the cumulative cross-sectional area of the existing cable part, ``S_{i}`` is the total cross-sectional area after inclusion of the conducting layer ``{i}``.
 - ``GMR_{i-1}`` is the cumulative GMR of the existing cable part, ``GMR_{i}`` is the GMR of the conducting layer ``{i}``.
 - ``GMD`` is the geometric mean distance between the existing cable part and the new layer, calculated using [`calc_gmd`](@ref).
+
+# Arguments
+
+- `existing`: The existing cable part ([`AbstractCablePart`](@ref)).
+- `new_layer`: The new layer being added ([`AbstractCablePart`](@ref)).
+
+# Returns
+
+- Updated equivalent GMR of the combined conductor \\[m\\].
 
 # Examples
 
@@ -816,7 +781,16 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Calculates the geometric mean distance (GMD) between two cable parts.
+Calculates the geometric mean distance (GMD) between two cable parts, by using the  definition described in Grover [grover1981inductance](@cite):
+
+```math
+\\log GMD = \\left(\\frac{\\sum_{i=1}^{n_1}\\sum_{j=1}^{n_2} (s_1 \\cdot s_2) \\cdot \\log(d_{ij})}{\\sum_{i=1}^{n_1}\\sum_{j=1}^{n_2} (s_1 \\cdot s_2)}\\right)
+```
+
+where:
+- ``d_{ij}`` is the Euclidean distance between elements ``i`` and ``j``.
+- ``s_1`` and ``s_2`` are the cross-sectional areas of the respective elements.
+- ``n_1`` and ``n_2`` are the number of sub-elements in each cable part.
 
 # Arguments
 
@@ -828,17 +802,6 @@ Calculates the geometric mean distance (GMD) between two cable parts.
 - Geometric mean distance between the cable parts \\[m\\].
 
 # Notes
-
-This function implements the formula [grover1981inductance](@cite):
-
-```math
-\\log GMD = \\left(\\frac{\\sum_{i=1}^{n_1}\\sum_{j=1}^{n_2} (s_1 \\cdot s_2) \\cdot \\log(d_{ij})}{\\sum_{i=1}^{n_1}\\sum_{j=1}^{n_2} (s_1 \\cdot s_2)}\\right)
-```
-
-where:
-- ``d_{ij}`` is the Euclidean distance between elements ``i`` and ``j``.
-- ``s_1`` and ``s_2`` are the cross-sectional areas of the respective elements.
-- ``n_1`` and ``n_2`` are the number of sub-elements in each cable part.
 
 For concentric structures, the GMD converges to the external radii of the outermost element.
 
@@ -916,7 +879,16 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Calculates the solenoid correction factor for magnetic permeability in insulated cables with helical conductors.
+Calculates the solenoid correction factor for magnetic permeability in insulated cables with helical conductors ([`WireArray`](@ref)), using the formula from Gudmundsdottir et al. [5743045](@cite):
+
+```math
+\\mu_{r, sol} = 1 + \\frac{2 \\pi^2 N^2 (r_{ins, ext}^2 - r_{con, ext}^2)}{\\log(r_{ins, ext}/r_{con, ext})}
+```
+
+where:
+- ``N`` is the number of turns per unit length.
+- ``r_{con, ext}`` is the conductor external radius.
+- ``r_{ins, ext}`` is the insulator external radius.
 
 # Arguments
 
@@ -927,19 +899,6 @@ Calculates the solenoid correction factor for magnetic permeability in insulated
 # Returns
 
 - Correction factor for the insulator magnetic permeability \\[dimensionless\\].
-
-# Notes
-
-When insulation layers surround [`WireArray`](@ref) objects, this function applies a correction for the solenoid effect created by helical conductor stranding [5743045](@cite):
-
-```math
-\\mu_{r, sol} = 1 + \\frac{2 \\pi^2 N^2 (r_{ins, ext}^2 - r_{con, ext}^2)}{\\log(r_{ins, ext}/r_{con, ext})}
-```
-
-where:
-- ``N`` is the number of turns per unit length.
-- ``r_{con, ext}`` is the conductor external radius.
-- ``r_{ins, ext}`` is the insulator external radius.
 
 # Examples
 
@@ -963,6 +922,103 @@ function calc_solenoid_correction(
 			   2 * num_turns^2 * pi^2 * (radius_ext_ins^2 - radius_ext_con^2) /
 			   log(radius_ext_ins / radius_ext_con)
 	end
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Calculates the equivalent resistivity of a solid tubular conductor, using the formula [916943](@cite):
+
+```math
+\\rho_{eq} = R_{eq} S_{eff} = R_{eq} \\pi (r_{ext}^2 - r_{in}^2)
+```
+
+where ``S_{eff}`` is the effective cross-sectional area of the tubular conductor.
+
+# Arguments
+
+- `R`: Resistance of the conductor \\[Ω\\].
+- `radius_ext_con`: External radius of the tubular conductor \\[m\\].
+- `radius_in_con`: Internal radius of the tubular conductor \\[m\\].
+
+# Returns
+
+- Equivalent resistivity of the tubular conductor \\[Ω·m\\].
+
+# Examples
+
+```julia
+rho_eq = $(FUNCTIONNAME)(0.01, 0.02, 0.01)  # Expected output: ~9.42e-4 [Ω·m]
+```
+"""
+function calc_equivalent_rho(R::Number, radius_ext_con::Number, radius_in_con::Number)
+	eff_conductor_area = π * (radius_ext_con^2 - radius_in_con^2)
+	return R * eff_conductor_area
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Calculates the equivalent permittivity for a coaxial cable insulation, using the formula [916943](@cite):
+
+```math
+\\rho_{eq} = \\frac{C_{eq} \\log(\\frac{r_{ext}}{r_{in}})}{2\\pi \\varepsilon_0}
+```
+
+where ``\\varepsilon_0`` is the permittivity of free space.
+
+# Arguments
+
+- `C_eq`: Equivalent capacitance of the insulation \\[F/m\\].
+- `radius_ext`: External radius of the insulation \\[m\\].
+- `radius_in`: Internal radius of the insulation \\[m\\].
+
+# Returns
+
+- Equivalent relative permittivity of the insulation \\[dimensionless\\].
+
+# Examples
+
+```julia
+rho_eq = $(FUNCTIONNAME)(1e-10, 0.01, 0.005)  # Expected output: ~2.26 [dimensionless]
+```
+
+# See also
+- [`ε₀`](@ref)
+"""
+function calc_equivalent_eps(C_eq::Number, radius_ext::Number, radius_in::Number)
+	return (C_eq * log(radius_ext / radius_in)) / (2 * pi) / ε₀
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Calculates the equivalent loss factor (tangent) of a dielectric material:
+
+```math
+\\tan \\delta = \\frac{G_{eq}}{\\omega \\cdot C_{eq}}
+```
+
+where ``\\tan \\delta`` is the loss factor (tangent).
+
+# Arguments
+
+- `G_eq`: Equivalent conductance of the material \\[S/m\\].
+- `C_eq`: Equivalent capacitance of the material \\[F/m\\].
+- `ω`: Angular frequency \\[rad/s\\].
+
+# Returns
+
+- Equivalent loss factor of the dielectric material \\[dimensionless\\].
+
+# Examples
+
+```julia
+loss_factor = $(FUNCTIONNAME)(1e-8, 1e-10, 2π*50)  # Expected output: ~0.0318 [dimensionless]
+```
+"""
+function calc_equivalent_lossfact(G_eq::Number, C_eq::Number, ω::Number)
+	return G_eq / (ω * C_eq)
 end
 
 Utils.@_autoexport
