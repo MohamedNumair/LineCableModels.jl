@@ -455,7 +455,7 @@ end
 
 function _do_resolve_radius(radius_in::Number, radius_wire::Number, ::Type{WireArray})
 	thickness = 2 * radius_wire
-	@show return radius_in, radius_in + thickness, thickness
+	return radius_in, radius_in + thickness, thickness
 end
 
 """
@@ -1782,26 +1782,6 @@ function design_preview(
 				)
 			end
 
-			# # Calculate the angle between each wire
-			# angle_step = 2 * π / num_wires
-
-			# # Plot each wire in the layer
-			# for i in 0:num_wires-1
-			# 	angle = i * angle_step
-			# 	x = x0 + lay_radius * cos(angle)
-			# 	y = y0 + lay_radius * sin(angle)
-			# 	plot!(
-			# 		plt,
-			# 		Shape(
-			# 			x .+ radius_wire * cos.(0:0.01:2π),
-			# 			y .+ radius_wire * sin.(0:0.01:2π),
-			# 		),
-			# 		linecolor = :black,
-			# 		color = color,
-			# 		label = display_legend ? label : "",
-			# 	)
-			# 	label = ""  # Only add the label once
-			# end
 		elseif layer isa Strip || layer isa Tubular || layer isa Semicon ||
 			   layer isa Insulator
 			radius_in = to_nominal(layer.radius_in)
@@ -1866,6 +1846,8 @@ function design_preview(
 	if display_plot
 		display(plt)
 	end
+
+	return plt
 end
 
 """
@@ -2483,6 +2465,7 @@ function system_preview(system::LineCableSystem; zoom_factor = 0.25)
 	plot!(plt, xlim = (x_limits[1], x_limits[2]) .* zoom_factor)
 
 	display(plt)
+	return plt
 end
 
 """

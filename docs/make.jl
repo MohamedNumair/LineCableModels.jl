@@ -45,6 +45,44 @@ GITHUB = PROJECT_TOML["git_url"]
 @eval using $(Symbol(NAME))
 main_module = @eval $(Symbol(NAME))
 
+tutorial_source = joinpath(@__DIR__, "..", "examples")
+tutorial_output = joinpath(@__DIR__, "src", "tutorials")
+mkpath(tutorial_output)
+
+for file in readdir(tutorial_source)
+	if endswith(file, ".jl")
+		Literate.markdown(
+			joinpath(tutorial_source, file),
+			tutorial_output,
+			documenter = true,
+		)
+	end
+end
+
+# Get all .md files in tutorial_output
+tutorial_files = filter(
+	file -> endswith(file, ".md") && file != "index.md",
+	readdir(tutorial_output),
+)
+
+# Build menu from existing files only
+tutorial_menu = ["Overview" => "tutorials.md"]
+for file in tutorial_files
+	relative_path = String(joinpath("tutorials", file))  # Convert to full String
+	# Get title from file content
+	content = read(joinpath(tutorial_output, file), String)
+	m = match(r"#\s+(.*)", content)
+	# Make sure title is a full String too, not SubString
+	if m !== nothing
+		title = String(m.captures[1])
+	else
+		title = String(titlecase(replace(basename(file)[1:end-3], "_" => " ")))
+	end
+	push!(tutorial_menu, title => relative_path)
+end
+
+tutorial_pages = [String(joinpath("tutorials", file)) for file in tutorial_files]
+
 bib = CitationBibliography(
 	joinpath(@__DIR__, "src", "refs.bib"),
 	style = :numeric,  # default
@@ -67,8 +105,6 @@ mathengine = MathJax3(
 		),
 		:chtml => Dict(
 			:scale => 1.1,
-			# :displayAlign => "left",
-			# :displayIndent => "2em",
 		),
 	),
 )
@@ -94,7 +130,7 @@ makedocs(;
 	),
 	pages = [
 		"Home" => "index.md",
-		"Tutorials" => "tutorials.md",
+		"Tutorials" => tutorial_menu,
 		"Toolbox reference" => "reference.md",
 		"Development" => Any[
 			"Naming conventions"=>"conventions.md",
