@@ -45,8 +45,25 @@ GITHUB = PROJECT_TOML["git_url"]
 @eval using $(Symbol(NAME))
 main_module = @eval $(Symbol(NAME))
 
+function customize_literate_footer(content, custom_footer = "")
+	if isempty(custom_footer)
+		return replace(
+			content,
+			r"---\s*\n\*This page was generated using \[Literate\.jl\]\(.*?\)\.\*\s*$" => "",
+		)
+	else
+		return replace(content,
+			r"\*This page was generated using \[Literate\.jl\]\(.*?\)\.\*\s*$" =>
+				custom_footer)
+	end
+end
+
 tutorial_source = joinpath(@__DIR__, "..", "examples")
 tutorial_output = joinpath(@__DIR__, "src", "tutorials")
+# Remove the directory if it exists and then create it fresh
+if isdir(tutorial_output)
+	rm(tutorial_output, recursive = true)
+end
 mkpath(tutorial_output)
 
 for file in readdir(tutorial_source)
@@ -55,6 +72,8 @@ for file in readdir(tutorial_source)
 			joinpath(tutorial_source, file),
 			tutorial_output,
 			documenter = true,
+			postprocess = content ->
+				customize_literate_footer(content, "« Back to [Tutorials](@ref)\n"),
 		)
 	end
 end
@@ -66,7 +85,7 @@ tutorial_files = filter(
 )
 
 # Build menu from existing files only
-tutorial_menu = ["Overview" => "tutorials.md"]
+tutorial_menu = ["Contents" => "tutorials.md"]
 for file in tutorial_files
 	relative_path = String(joinpath("tutorials", file))  # Convert to full String
 	# Get title from file content

@@ -30,8 +30,8 @@ bibliography/
 presentations/
 projects/
 examples/MeasuredDims.jl
-examples/cables_library.jls
-examples/materials_library.csv
+examples/*.jls
+examples/*.csv
 examples/*.pscx
 examples/data/
 *.ipynb

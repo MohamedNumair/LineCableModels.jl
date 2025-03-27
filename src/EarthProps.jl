@@ -622,6 +622,77 @@ function earth_data(earth_model::EarthModel)
 	)
 end
 
+import Base: show
+"""
+$(TYPEDSIGNATURES)
+
+Defines the display representation of a [`EarthModel`](@ref) object for REPL or text output.
+
+# Arguments
+
+- `io`: The output stream to write the representation to \\[IO\\].
+- `mime`: The MIME type for plain text output \\[MIME"text/plain"\\].
+- `model`: The [`EarthModel`](@ref) instance to be displayed.
+
+
+# Returns
+
+- Nothing. Modifies `io` to format the output.
+"""
+function show(io::IO, ::MIME"text/plain", model::EarthModel)
+	# Determine model type based on num_layers and vertical_layers flag
+	model_type = model.num_layers == 2 ? "homogeneous" : "multilayer"
+	orientation = model.vertical_layers ? "vertical" : "horizontal"
+	layer_word = (model.num_layers - 1) == 1 ? "layer" : "layers"
+
+	# Count frequency samples from the first layer's property arrays
+	num_freq_samples = length(model.layers[1].rho_g)
+	freq_word = (num_freq_samples) == 1 ? "sample" : "samples"
+
+	# Print header with key information
+	println(
+		io,
+		"EarthModel with $(model.num_layers-1) $(orientation) earth $(layer_word) ($(model_type)) and $(num_freq_samples) frequency $(freq_word)",
+	)
+
+	# Print layers in treeview style
+	for i in 1:model.num_layers
+		layer = model.layers[i]
+		# Determine prefix based on whether it's the last layer
+		prefix = i == model.num_layers ? "└─" : "├─"
+
+		# Format thickness value
+		thickness_str = isinf(layer.t) ? "∞" : "$(round(layer.t, sigdigits=4))"
+
+		# Format layer name
+		layer_name = i == 1 ? "Air" : "Earth $i"
+
+		# Print layer properties with proper formatting
+		println(
+			io,
+			"$prefix $layer_name: [rho_g=$(round(layer.base_rho_g, sigdigits=4)), " *
+			"epsr_g=$(round(layer.base_epsr_g, sigdigits=4)), " *
+			"mur_g=$(round(layer.base_mur_g, sigdigits=4)), " *
+			"t=$thickness_str]",
+		)
+	end
+
+	# Add formulation information as child nodes
+	if !isnothing(model.FDformulation)
+		formulation_tag = _get_earth_formulation_tag(model.FDformulation)
+		println(io, "├─ Frequency-dependent model: $(formulation_tag)")
+	end
+
+	# If there's an equivalent homogeneous earth model formulation, show it
+	if !isnothing(model.EHEMformulation)
+		formulation_tag = _get_earth_formulation_tag(model.EHEMformulation)
+		println(io, "└─ Equivalent homogeneous model: $(formulation_tag)")
+	elseif !isnothing(model.FDformulation)
+		# Adjust the last connector if this is the last item
+		println(io, "└─ No equivalent homogeneous model")
+	end
+end
+
 Utils.@_autoexport
 
 end

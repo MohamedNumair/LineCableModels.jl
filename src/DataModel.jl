@@ -1089,13 +1089,13 @@ mutable struct CableComponent
 	4. Apply correction factors for conductor temperature and solenoid effects on insulation.
 	5. Calculate the effective electromagnetic properties:
 
-	| Quantity | Function |
-	|----------|----------|
-	| Resistivity (conductor) ``\\rho_{con}`` | [`calc_equivalent_rho`](@ref) |
-	| Permeability (conductor) ``\\mu_{con}`` | [`calc_equivalent_mu`](@ref) |
-	| Permittivity (insulation) ``\\varepsilon_{ins}`` | [`calc_equivalent_eps`](@ref) |
-	| Permeability (insulation) ``\\mu_{ins}`` | [`calc_solenoid_correction`](@ref) |
-	| Loss factor (insulation) ``\\tan \\,  \\delta`` | [`calc_equivalent_lossfact`](@ref) |
+	| Quantity | Symbol | Function |
+	|----------|--------|----------|
+	| Resistivity (conductor) | ``\\rho_{con}`` | [`calc_equivalent_rho`](@ref) |
+	| Permeability (conductor) | ``\\mu_{con}`` | [`calc_equivalent_mu`](@ref) |
+	| Permittivity (insulation) | ``\\varepsilon_{ins}`` | [`calc_equivalent_eps`](@ref) |
+	| Permeability (insulation) | ``\\mu_{ins}`` | [`calc_solenoid_correction`](@ref) |
+	| Loss factor (insulation) | ``\\tan \\,  \\delta`` | [`calc_equivalent_lossfact`](@ref) |
 
 	# Arguments
 
@@ -1207,13 +1207,6 @@ mutable struct CableComponent
 					gmr_eff_con = calc_equivalent_gmr(temp_con, part)
 					# TODO(feat): Refactor CableComponent constructor to remove redundancy 
 
-					# beta =
-					# 	total_cross_section_con /
-					# 	(total_cross_section_con + part.cross_section)
-					# gmd = calc_gmd(previous_part, part)
-					# gmr_eff_con =
-					# 	gmr_eff_con^(beta^2) * part.gmr^((1 - beta)^2) *
-					# 	gmd^(2 * beta * (1 - beta))
 				end
 				total_cross_section_con += part.cross_section
 
@@ -2622,6 +2615,371 @@ function system_data(system::LineCableSystem)
 		vert = vert_coords,
 		phase_mapping = mappings,
 	)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Defines the display representation of a [`Conductor`](@ref) object for REPL or text output.
+
+# Arguments
+
+- `io`: Output stream.
+- `::MIME"text/plain"`: MIME type for plain text output.
+- `conductor`: The [`Conductor`](@ref) instance to be displayed.
+
+# Returns
+
+- Nothing. Modifies `io` by writing text representation of the object.
+"""
+function Base.show(io::IO, ::MIME"text/plain", conductor::Conductor)
+	# Compact property summary
+	# List only the specific fields we want to display
+	fields_to_show = [:radius_in, :radius_ext, :cross_section, :resistance, :gmr]
+
+	print(io, "$(length(conductor.layers))-element $(nameof(typeof(conductor))): [")
+
+	# Print only the selected fields that exist in the conductor
+	displayed_fields = 0
+	for field in fields_to_show
+		if hasproperty(conductor, field)
+			value = getproperty(conductor, field)
+			# Add comma if not the first item
+			if displayed_fields > 0
+				print(io, ", ")
+			end
+			print(io, "$field=$(round(value, sigdigits=4))")
+			displayed_fields += 1
+		end
+	end
+
+	println(io, "]")
+
+	# Tree-like layer representation
+
+	for (i, layer) in enumerate(conductor.layers)
+		# Determine prefix based on whether it's the last layer
+		prefix = i == length(conductor.layers) ? "└─" : "├─"
+		# Print layer information with only selected fields
+		print(io, prefix, "$(nameof(typeof(layer))): [")
+
+		displayed_fields = 0
+		for field in fields_to_show
+			if hasproperty(layer, field)
+				value = getproperty(layer, field)
+				# Add comma if not the first item
+				if displayed_fields > 0
+					print(io, ", ")
+				end
+				print(io, "$field=$(round(value, sigdigits=4))")
+				displayed_fields += 1
+			end
+		end
+		println(io, "]")
+	end
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Defines the display representation of multiple [`AbstractConductorPart`](@ref) objects for REPL or text output.
+
+# Arguments
+
+- `io`: Output stream.
+- `::MIME"text/plain"`: MIME type for plain text output.
+- `v`: The [`AbstractConductorPart`](@ref) vector to be displayed.
+
+# Returns
+
+- Nothing. Modifies `io` by writing text representation of the object.
+"""
+function Base.show(
+	io::IO,
+	::MIME"text/plain",
+	v::Vector{T},
+) where {T <: AbstractConductorPart}
+	fields_to_show = [:radius_in, :radius_ext, :cross_section, :resistance, :gmr]
+	println(io, "$(length(v))-element Vector{$T}:")
+
+	for (i, layer) in enumerate(v)
+		# Determine prefix based on whether it's the last layer
+		prefix = i == length(v) ? "└─" : "├─"
+		# Print layer information
+		fields = propertynames(layer)
+		print(io, prefix, "$(nameof(typeof(layer))): [")
+		displayed_fields = 0
+		for field in fields_to_show
+			if hasproperty(layer, field)
+				value = getproperty(layer, field)
+				# Add comma if not the first item
+				if displayed_fields > 0
+					print(io, ", ")
+				end
+				print(io, "$field=$(round(value, sigdigits=4))")
+				displayed_fields += 1
+			end
+		end
+		println(io, "]")
+	end
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Defines the display representation of an [`AbstractCablePart`](@ref) object for REPL or text output.
+
+# Arguments
+
+- `io`: Output stream.
+- `::MIME"text/plain"`: MIME type for plain text output.
+- `part`: The [`AbstractCablePart`](@ref) instance to be displayed.
+
+# Returns
+
+- Nothing. Modifies `io` by writing text representation of the object.
+"""
+function Base.show(io::IO, ::MIME"text/plain", part::T) where {T <: AbstractCablePart}
+	# Get the type name without module qualification
+	type_name = string(nameof(T))
+
+	# Define fields to display based on part type
+	common_fields = [:radius_in, :radius_ext, :cross_section]
+	specific_fields = if T <: AbstractConductorPart
+		[:resistance, :gmr]
+	elseif T <: AbstractInsulatorPart
+		[:shunt_capacitance, :shunt_conductance]
+	else
+		Symbol[]
+	end
+
+	# Combine all relevant fields
+	all_fields = [common_fields; specific_fields]
+
+	# Get available fields that exist in this part
+	available_fields = filter(field -> hasproperty(part, field), all_fields)
+
+	# Start output with type name
+	print(io, "$(type_name): [")
+
+	# Print each field with proper formatting
+	for (i, field) in enumerate(available_fields)
+		value = getproperty(part, field)
+		# Add comma only between items, not after the last one
+		delimiter = i < length(available_fields) ? ", " : ""
+		print(io, "$field=$(round(value, sigdigits=4))$delimiter")
+	end
+
+	println(io, "]")
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Defines the display representation of multiple [`AbstractCablePart`](@ref) objects for REPL or text output.
+
+# Arguments
+
+- `io`: Output stream.
+- `::MIME"text/plain"`: MIME type for plain text output.
+- `v`: The [`AbstractCablePart`](@ref) vector to be displayed.
+
+# Returns
+
+- Nothing. Modifies `io` by writing text representation of the object.
+"""
+function Base.show(io::IO, ::MIME"text/plain", v::Vector{T}) where {T <: AbstractCablePart}
+	println(io, "$(length(v))-element Vector{$T}:")
+
+	for (i, part) in enumerate(v)
+		# Determine prefix based on whether it's the last layer
+		prefix = i == length(v) ? "└─" : "├─"
+		type_name = string(typeof(part))
+		print(io, prefix, "$(type_name): [")
+
+		# Collect fields to display based on part type
+		common_fields = [:radius_in, :radius_ext, :cross_section]
+		specific_fields = if part isa AbstractConductorPart
+			[:resistance, :gmr]
+		elseif part isa AbstractInsulatorPart
+			[:shunt_capacitance, :shunt_conductance]
+		else
+			Symbol[]
+		end
+
+		# Combine all relevant fields
+		all_fields = [common_fields; specific_fields]
+
+		# Get available fields that exist in this part
+		available_fields = filter(field -> hasproperty(part, field), all_fields)
+
+		# Print each field with proper formatting
+		for (j, field) in enumerate(available_fields)
+			value = getproperty(part, field)
+			# Add comma only between items, not after the last one
+			delimiter = j < length(available_fields) ? ", " : ""
+			print(io, "$field=$(round(value, sigdigits=4))$delimiter")
+		end
+
+		println(io, "]")
+	end
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Defines the display representation of a [`CableDesign`](@ref) object for REPL or text output.
+
+# Arguments
+
+- `io`: Output stream.
+- `::MIME"text/plain"`: MIME type for plain text output.
+- `design`: The [`CableDesign`](@ref) object to be displayed.
+
+# Returns
+
+- Nothing. Modifies `io` by writing text representation of the object.
+"""
+function Base.show(io::IO, ::MIME"text/plain", design::CableDesign)
+	# Print header with cable ID and count of components
+	print(io, "$(length(design.components))-element CableDesign \"$(design.cable_id)\"")
+
+	# Add nominal values if available
+	nominal_values = []
+	if design.nominal_data.resistance !== nothing
+		push!(
+			nominal_values,
+			"resistance=$(round(design.nominal_data.resistance, sigdigits=4))",
+		)
+	end
+	if design.nominal_data.inductance !== nothing
+		push!(
+			nominal_values,
+			"inductance=$(round(design.nominal_data.inductance, sigdigits=4))",
+		)
+	end
+	if design.nominal_data.capacitance !== nothing
+		push!(
+			nominal_values,
+			"capacitance=$(round(design.nominal_data.capacitance, sigdigits=4))",
+		)
+	end
+
+	if !isempty(nominal_values)
+		print(io, ", with nominal values: [", join(nominal_values, ", "), "]")
+	end
+	println(io)
+
+	# For each component, display its properties in a tree structure
+	component_keys = collect(keys(design.components))
+	for (i, key) in enumerate(component_keys)
+		component = design.components[key]
+
+		# Determine prefix based on whether it's the last component
+		prefix = i == length(component_keys) ? "└─" : "├─"
+
+		# Print component name and basic properties
+		print(io, prefix, "Component \"", key, "\": [")
+
+		# Collect relevant fields to display
+		fields = [
+			:radius_in_con, :radius_ext_con, :rho_con, :alpha_con, :mu_con,
+			:radius_ext_ins, :eps_ins, :mu_ins, :loss_factor_ins,
+		]
+
+		# Filter to only fields that exist and aren't NaN
+		displayed_fields = 0
+		for field in fields
+			if hasproperty(component, field)
+				value = getproperty(component, field)
+				if !(value isa Number && isnan(value))
+					# Add comma if not the first item
+					if displayed_fields > 0
+						print(io, ", ")
+					end
+					print(io, "$field=$(round(value, sigdigits=4))")
+					displayed_fields += 1
+				end
+			end
+		end
+
+		println(io, "]")
+
+	end
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Defines the display representation of a [`CableComponent`](@ref) object for REPL or text output.
+
+# Arguments
+
+- `io`: Output stream.
+- `::MIME"text/plain"`: MIME type for plain text output.
+- `component`: The [`CableComponent`](@ref) object to be displayed.
+
+# Returns
+
+- Nothing. Modifies `io` by writing text representation of the object.
+"""
+function Base.show(io::IO, ::MIME"text/plain", component::CableComponent)
+	# Print header with component count
+	print(io, "$(length(component.component_data))-element CableComponent: [")
+
+	# Collect relevant fields to display
+	fields = [
+		:radius_in_con, :radius_ext_con, :rho_con, :alpha_con, :mu_con,
+		:radius_ext_ins, :eps_ins, :mu_ins, :loss_factor_ins,
+	]
+
+	# Filter to only fields that exist and aren't NaN
+	displayed_fields = 0
+	for field in fields
+		if hasproperty(component, field)
+			value = getproperty(component, field)
+			if !(value isa Number && isnan(value))
+				# Add comma if not the first item
+				if displayed_fields > 0
+					print(io, ", ")
+				end
+				print(io, "$field=$(round(value, sigdigits=4))")
+				displayed_fields += 1
+			end
+		end
+	end
+
+	println(io, "]")
+
+	# Display the component parts in a tree structure
+	for (i, part) in enumerate(component.component_data)
+		# Determine prefix based on whether it's the last part
+		prefix = i == length(component.component_data) ? "└─" : "├─"
+
+		# Print part information
+		print(io, prefix, "$(nameof(typeof(part))): [")
+
+		# Determine fields based on part type
+		part_fields = if part isa AbstractConductorPart
+			[:radius_in, :radius_ext, :cross_section, :resistance, :gmr]
+		elseif part isa AbstractInsulatorPart
+			[:radius_in, :radius_ext, :cross_section, :shunt_capacitance, :shunt_conductance]
+		else
+			[:radius_in, :radius_ext, :cross_section]
+		end
+
+		# Print each field with proper formatting
+		for (j, field) in enumerate(part_fields)
+			if hasproperty(part, field)
+				value = getproperty(part, field)
+				# Add comma only between items, not after the last one
+				delimiter = j < length(part_fields) ? ", " : ""
+				print(io, "$field=$(round(value, sigdigits=4))$delimiter")
+			end
+		end
+
+		println(io, "]")
+	end
 end
 
 @reexport using .BaseParams
