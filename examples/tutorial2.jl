@@ -366,11 +366,13 @@ store_cables_library!(library, cable_design)
 list_cables_library(library)
 
 # Save to file for later use:
-export_path = joinpath(dirname(Base.source_path()), "src", "tutorials")
-export_path = isdir(export_path) ? export_path : "."
-output_path = joinpath(export_path, "cables_library.jls")
-save_cables_library(library, file_name = output_path)
-
+output_path = joinpath(dirname(Base.source_path()), "src", "tutorials")
+output_path = isdir(output_path) ? output_path : "."
+output_file = joinpath(output_path, "cables_library.jls")
+save_cables_library(library, file_name = output_file)
+if isfile(output_file)
+	println("\nMaterials library saved sucessfully!")
+end
 # ## Defining a cable system
 
 #=

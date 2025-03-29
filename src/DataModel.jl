@@ -1980,10 +1980,11 @@ function save_cables_library(
 )
 	try
 		serialize(file_name, library.cable_designs)
-		println("Cables library saved to $file_name.")
+		return file_name
 	catch e
 		println("Error saving library to $file_name: $e")
 	end
+
 end
 
 """
