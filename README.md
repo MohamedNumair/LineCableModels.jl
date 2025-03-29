@@ -35,7 +35,7 @@ Clone the package and add to the Julia environment:
 using LineCableModels
 ```
 
-While the package documentation is a work in progress, a self-contained example is provided in the [`Main.jl`](Main.jl) file. This code demonstrates how to create a cable object, and compute its electrical parameters. The example also shows how to export the cable design to a PSCAD-compatible format.
+For application examples, please refer to the [documentation](https://electa-git.github.io/LineCableModels.jl/stable/tutorials/) and the [examples folder](examples).
 
 ## License
 
