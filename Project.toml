@@ -2,7 +2,7 @@ name = "LineCableModels"
 uuid = "dffb7669-8cd4-4628-99dd-7694e356ba37"
 authors = ["Amauri Martins"]
 git_url = "https://github.com/Electa-Git/LineCableModels.jl"
-version = "0.1.1-DEV"
+version = "0.1.0"
 
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
