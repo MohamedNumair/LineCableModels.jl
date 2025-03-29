@@ -4,7 +4,6 @@
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://electa-git.github.io/LineCableModels.jl/stable/)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://electa-git.github.io/LineCableModels.jl/dev/)
-[![codecov](https://codecov.io/gh/Electa-Git/LineCableModels.jl/branch/main/graph/badge.svg?token=2Q0X1G3Z5A)](https://codecov.io/gh/Electa-Git/LineCableModels.jl)
 
 [![Build Status](https://github.com/Electa-Git/LineCableModels.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Electa-Git/LineCableModels.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
