@@ -518,6 +518,7 @@ function addto_earth_model!(
 	   !(model.vertical_layers)
 		_calc_ehem_properties!(model, frequencies, model.AbstractEHEMFormulation)
 	end
+	model
 end
 
 """
@@ -665,7 +666,7 @@ function show(io::IO, ::MIME"text/plain", model::EarthModel)
 		thickness_str = isinf(layer.t) ? "∞" : "$(round(layer.t, sigdigits=4))"
 
 		# Format layer name
-		layer_name = i == 1 ? "Air" : "Earth $i"
+		layer_name = i == 1 ? "Layer $i (air)" : "Layer $i"
 
 		# Print layer properties with proper formatting
 		println(
@@ -680,16 +681,16 @@ function show(io::IO, ::MIME"text/plain", model::EarthModel)
 	# Add formulation information as child nodes
 	if !isnothing(model.FDformulation)
 		formulation_tag = _get_earth_formulation_tag(model.FDformulation)
-		println(io, "├─ Frequency-dependent model: $(formulation_tag)")
+		println(io, "   Frequency-dependent model: $(formulation_tag)")
 	end
 
 	# If there's an equivalent homogeneous earth model formulation, show it
 	if !isnothing(model.EHEMformulation)
 		formulation_tag = _get_earth_formulation_tag(model.EHEMformulation)
-		println(io, "└─ Equivalent homogeneous model: $(formulation_tag)")
+		println(io, "   Equivalent homogeneous model: $(formulation_tag)")
 	elseif !isnothing(model.FDformulation)
 		# Adjust the last connector if this is the last item
-		println(io, "└─ No equivalent homogeneous model")
+		println(io, "   No equivalent homogeneous model")
 	end
 end
 

@@ -892,6 +892,7 @@ function addto_conductor!(
 	sc.cross_section += new_part.cross_section
 	sc.num_wires += new_part isa WireArray ? new_part.num_wires : 0
 	push!(sc.layers, new_part)
+	sc
 end
 
 """
@@ -1454,6 +1455,7 @@ function addto_design!(
 	# Construct the CableComponent internally
 	design.components[component_name] =
 		CableComponent(Vector{AbstractCablePart}(component_parts), f)
+	design
 end
 
 """
@@ -1555,17 +1557,26 @@ function design_data(
 			design.nominal_data.capacitance,
 		]
 
+		# Calculate differences
+		diffs = [
+			abs(design.nominal_data.resistance - R) / design.nominal_data.resistance * 100,
+			abs(design.nominal_data.inductance - L) / design.nominal_data.inductance * 100,
+			abs(design.nominal_data.capacitance - C) / design.nominal_data.capacitance *
+			100,
+		]
+
 		# Compute the comparison DataFrame
 		data = DataFrame(
 			parameter = ["R [Ω/km]", "L [mH/km]", "C [μF/km]"],
 			computed = [R, L, C],
 			nominal = nominals,
+			percent_diff = diffs,
 			lower = [to_lower(R), to_lower(L), to_lower(C)],
 			upper = [to_upper(R), to_upper(L), to_upper(C)],
 		)
 
 		# Add compliance column
-		data[!, "complies?"] = [
+		data[!, "in_range?"] = [
 			(data.nominal[i] >= data.lower[i] && data.nominal[i] <= data.upper[i])
 			for i in 1:nrow(data)
 		]
@@ -2003,6 +2014,7 @@ println(library.cable_designs) # Prints the updated dictionary containing the ne
 function store_cables_library!(library::CablesLibrary, design::CableDesign)
 	library.cable_designs[design.cable_id] = design
 	println("Cable design with ID `$(design.cable_id)` added to the library.")
+	library
 end
 
 """
@@ -2358,6 +2370,7 @@ function addto_system!(
 	# Update num_phases by counting unique nonzero phases
 	assigned_phases = unique(vcat(values.(getfield.(system.cables, :conn))...))
 	system.num_phases = count(x -> x > 0, assigned_phases)
+	system
 end
 
 """
@@ -2982,6 +2995,53 @@ function Base.show(io::IO, ::MIME"text/plain", component::CableComponent)
 	end
 end
 
+function Base.show(io::IO, ::MIME"text/plain", system::LineCableSystem)
+	# Print top level info
+	println(
+		io,
+		"LineCableSystem \"$(system.case_id)\": [T=$(system.T), length=$(system.line_length), cables=$(system.num_cables), phases=$(system.num_phases)]",
+	)
+
+	# Print earth model summary
+	# Get model type summary
+	model_type = system.earth_props.num_layers == 2 ? "homogeneous" : "multilayer"
+	orientation = system.earth_props.vertical_layers ? "vertical" : "horizontal"
+	layer_word = (system.earth_props.num_layers - 1) == 1 ? "layer" : "layers"
+
+	# Format earth model info
+	earth_model_summary = "EarthModel: $(system.earth_props.num_layers-1) $(orientation) $(model_type) $(layer_word)"
+
+	# Add formulation info if available
+	if !isnothing(system.earth_props.FDformulation)
+		formulation_tag =
+			EarthProps._get_earth_formulation_tag(system.earth_props.FDformulation)
+		earth_model_summary *= ", $(formulation_tag)"
+	end
+
+	println(io, "├─ $(earth_model_summary)")
+
+	# Print cable definitions
+	println(io, "└─ $(length(system.cables))-element CableDef:")
+
+	# Display each cable definition
+	for (i, cabledef) in enumerate(system.cables)
+		# Cable prefix
+		prefix = i == length(system.cables) ? "   └─" : "   ├─"
+
+		# Format connections as a string
+		components = collect(keys(cabledef.cable.components))
+		conn_str = join(
+			["$(comp)→$(phase)" for (comp, phase) in zip(components, cabledef.conn)],
+			", ",
+		)
+
+		# Print cable info
+		println(
+			io,
+			"$(prefix) CableDesign \"$(cabledef.cable.cable_id)\": [horz=$(round(cabledef.horz, sigdigits=4)), vert=$(round(cabledef.vert, sigdigits=4)), conn=[$(conn_str)]",
+		)
+	end
+end
 @reexport using .BaseParams
 Utils.@_autoexport
 

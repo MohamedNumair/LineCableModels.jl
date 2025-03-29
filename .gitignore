@@ -29,11 +29,6 @@ temp/
 bibliography/
 presentations/
 projects/
-examples/MeasuredDims.jl
-examples/*.jls
-examples/*.csv
-examples/*.pscx
-examples/data/
 *.ipynb
-# the secret shame folder
+# the secret folder of shame
 local/ 

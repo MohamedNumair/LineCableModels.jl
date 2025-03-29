@@ -223,6 +223,7 @@ function store_materials_library!(
 		error("Material $name already exists in the library.")
 	end
 	library.materials[String(name)] = material
+	library
 end
 
 """
@@ -259,6 +260,7 @@ function remove_materials_library!(library::MaterialsLibrary, name::String)
 		error("Material $name not found in the library.")
 	end
 	delete!(library.materials, name)
+	library
 end
 
 """
@@ -439,6 +441,43 @@ function Base.show(io::IO, ::MIME"text/plain", library::MaterialsLibrary)
 		# Optional: list the first few materials
 		shown_materials = min(5, num_materials)
 		material_names = collect(keys(library.materials))[1:shown_materials]
+
+		for (i, name) in enumerate(material_names)
+			print(io, "\n$(i == shown_materials ? "└─" : "├─") $name")
+		end
+
+		# If there are more materials than we're showing
+		if num_materials > shown_materials
+			print(io, "\n└─ ... and $(num_materials - shown_materials) more")
+		end
+	end
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Defines the display representation of a [`MaterialsLibrary`](@ref) object for REPL or text output.
+
+# Arguments
+
+- `io`: Output stream.
+- `::MIME"text/plain"`: MIME type for plain text output.
+- `dict`: The [`MaterialsLibrary`](@ref) contents to be displayed.
+
+# Returns
+
+- Nothing. Modifies `io` by writing text representation of the library.
+"""
+function Base.show(io::IO, ::MIME"text/plain", dict::Dict{String, Material})
+	num_materials = length(dict)
+	material_word = num_materials == 1 ? "material" : "materials"
+	print(io, "Dict{String, Material} with $num_materials $material_word")
+
+	if num_materials > 0
+		print(io, ":")
+		# List the first few materials
+		shown_materials = min(5, num_materials)
+		material_names = collect(keys(dict))[1:shown_materials]
 
 		for (i, name) in enumerate(material_names)
 			print(io, "\n$(i == shown_materials ? "└─" : "├─") $name")

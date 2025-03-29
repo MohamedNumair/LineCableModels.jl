@@ -687,7 +687,7 @@ function export_pscad_lcp(
 	# Write to file
 	try
 		write(filename, doc)
-		println("File successfully created at: $filename")
+		return filename
 	catch e
 		println("Failed to create file: ", e)
 	end

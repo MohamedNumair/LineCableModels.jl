@@ -1,16 +1,26 @@
-# # Tutorial 1 - Using the materials library
+# # Tutorial 1 - Using the  materials library
 
 #=
-This tutorial demonstrates how to manage material properties for power cable modeling. Knowledge of materials commonly used in cable designs forms the essential basis for accurate power cable modeling. This tutorial serves as a practical reference, providing property values from recognized sources, namely CIGRE TB-531 [cigre531](@cite) and IEC 60287 [IEC60287](@cite), that can be stored and retrieved for consistent use across design iterations and simulation studies.
+This tutorial demonstrates how to manage material properties for power cable modeling using the package [`LineCableModels.jl`](@ref). Accurate knowledge of electromagnetic properties is essential for reliable cable design and analysis.
+
+Beyond showcasing the API, this guide serves as a practical reference by providing standard property values from recognized industry sources like CIGRE TB-531 [cigre531](@cite) and IEC 60287 [IEC60287](@cite) that can be stored and consistently applied across multiple design iterations and simulation studies.
 =#
 
-# ## Loading required packages
+#=
+**Tutorial outline**
+```@contents
+Pages = [
+	"tutorial1.md",
+]
+Depth = 2:3
+```
+=#
 
-# Ensure the package is in the load path and import necessary libraries:
-push!(LOAD_PATH, joinpath(@__DIR__, "..", "src"))
+# ##   Getting started
+
+# Load the package:
+push!(LOAD_PATH, joinpath(@__DIR__, "..", "src")) # hide
 using LineCableModels
-
-# ## Initializing a [`MaterialsLibrary`](@ref)
 
 #=
 The [`MaterialsLibrary`](@ref) is a container for storing electromagnetic properties of 
@@ -18,136 +28,126 @@ different materials used in power cables. By default, it initializes with severa
 materials with their standard properties.
 =#
 
-# Initialize a materials library with default materials
+# Initialize a [`MaterialsLibrary`](@ref) with default values:
 materials_db = MaterialsLibrary()
 
-# Inspect the contents of the materials library
-println("Initial contents of the materials library:")
+# Inspect the contents of the materials library:
 df_initial = list_materials_library(materials_db)
 
-# The function returns a DataFrame with all materials and their properties
-# This shows materials like copper, aluminum, XLPE, etc. with their
-# electrical resistivity, relative permittivity, relative permeability,
-# reference temperature, and temperature coefficient
+#=
+The function [`list_materials_library`](@ref) returns a `DataFrame` with all materials and their properties, namely: electrical resistivity, relative permittivity, relative permeability, reference temperature, and temperature coefficient.
+=#
 
-# ## Adding New Materials to the Library
-#
-# New materials can be added to the library using the `Material` constructor followed by
-# `store_materials_library!`. Let's add some standard materials from IEC standards.
+# ##   Adding new materials
+#=
+!!! note "Note"
+	New materials can be added to the library using the [`Material`](@ref) constructor followed by [`store_materials_library!`](@ref).
 
-# Define new materials based on IEC 60287 standards
+It might be useful to add other conductor materials with corrected properties based on recognized standards [cigre531](@cite) [IEC60287](@cite).
+=#
 
-# Copper with corrected resistivity from IEC 60287-3-2
+# Copper with corrected resistivity from IEC 60287-3-2:
 copper_corrected = Material(1.835e-8, 1.0, 0.999994, 20.0, 0.00393)
 store_materials_library!(materials_db, "copper_corrected", copper_corrected)
 
-# Aluminum with corrected resistivity from IEC 60287-3-2
+# Aluminum with corrected resistivity from IEC 60287-3-2:
 aluminum_corrected = Material(3.03e-8, 1.0, 0.999994, 20.0, 0.00403)
 store_materials_library!(materials_db, "aluminum_corrected", aluminum_corrected)
 
-# Lead or lead alloy
+# Lead or lead alloy:
 lead = Material(21.4e-8, 1.0, 1.0, 20.0, 0.00400)
 store_materials_library!(materials_db, "lead", lead)
 
-# Steel
+# Steel:
 steel = Material(13.8e-8, 1.0, 300.0, 20.0, 0.00450)
 store_materials_library!(materials_db, "steel", steel)
 
-# Bronze
+# Bronze:
 bronze = Material(3.5e-8, 1.0, 1.0, 20.0, 0.00300)
 store_materials_library!(materials_db, "bronze", bronze)
 
-# Stainless steel
+# Stainless steel:
 stainless_steel = Material(70.0e-8, 1.0, 500.0, 20.0, 0.0)
 store_materials_library!(materials_db, "stainless_steel", stainless_steel)
 
-# Insulation materials with different dielectric properties
+#=
+When modeling cables for EMT analysis, one might be concerned with the impact of insulators and semiconductive layers on cable constants. Common insulation materials and semicons with different dielectric properties are reported in Table 6 of [cigre531](@cite). Let us include some of these materials in the [`MaterialsLibrary`](@ref) to help our future selves.
+=#
 
-# EPR (Ethylene Propylene Rubber)
-epr = Material(1e15, 3.0, 1.0, 20.0, 0.0)
+# EPR (ethylene propylene rubber):
+epr = Material(1e15, 3.0, 1.0, 20.0, 0.005)
 store_materials_library!(materials_db, "epr", epr)
 
-# PVC (Polyvinyl Chloride)
-pvc = Material(1e15, 8.0, 1.0, 20.0, 0.0)
+# PVC (polyvinyl chloride):
+pvc = Material(1e15, 8.0, 1.0, 20.0, 0.1)
 store_materials_library!(materials_db, "pvc", pvc)
 
-# Impregnated paper
-impregnated_paper = Material(1e15, 3.5, 1.0, 20.0, 0.0)
-store_materials_library!(materials_db, "impregnated_paper", impregnated_paper)
-
-# Laminated paper propylene
+# Laminated paper propylene:
 laminated_paper = Material(1e15, 2.8, 1.0, 20.0, 0.0)
 store_materials_library!(materials_db, "laminated_paper", laminated_paper)
 
-# Carbon-polyethylene compound (semiconductor material)
+# Carbon-polyethylene compound (semicon):
 carbon_pe = Material(0.06, 1e3, 1.0, 20.0, 0.0)
 store_materials_library!(materials_db, "carbon_pe", carbon_pe)
 
-# Conductive paper layer
+# Conductive paper layer (semicon):
 conductive_paper = Material(18.5, 8.6, 1.0, 20.0, 0.0)
 store_materials_library!(materials_db, "conductive_paper", conductive_paper)
 
-# Examine the updated library
-println("\nUpdated contents of the materials library:")
-df_updated = list_materials_library(materials_db)
+# ##  Removing materials
+#=
+!!! note "Note"
+	Materials can be removed from the library with the [`remove_materials_library!`](@ref) function.
+=#
 
-# ## Checking for Duplicate Materials
-#
-# The default library already contains some common materials. Let's check for duplicates
-# and remove them if necessary.
+# Add a duplicate material by accident:
+store_materials_library!(materials_db, "epr_dupe", epr)
 
-# Check if copper and aluminum already exist in the default library
-# (Note: these are already included but with slightly different values)
-println("\nChecking for duplicate materials:")
+# And now remove it using the [`remove_materials_library!`](@ref) function:
+remove_materials_library!(materials_db, "epr_dupe")
 
-# Remove duplicate materials (keeping the corrected versions)
-if "copper" in names(df_updated)
-	println("Removing duplicate 'copper' entry (keeping corrected version)")
-	remove_materials_library!(materials_db, "copper")
-end
-
-if "aluminum" in names(df_updated)
-	println("Removing duplicate 'aluminum' entry (keeping corrected version)")
-	remove_materials_library!(materials_db, "aluminum")
-end
-
-# Check the final library after removing duplicates
-println("\nFinal contents of the materials library after removing duplicates:")
+# Examine the updated library after removing the duplicate:
+println("Material properties compiled from CIGRE TB-531 and IEC 60287:")
 df_final = list_materials_library(materials_db)
 
-# ## Saving the Materials Library to a File
-#
-# The materials library can be saved to a CSV file for later use.
+# ##  Saving the materials library to CSV
+output_path = joinpath(dirname(Base.source_path()), "src", "tutorials")
+output_path = isdir(output_path) ? output_path : "."
+output_file = joinpath(output_path, "materials_library.csv")
+save_materials_library(materials_db, file_name = output_file)
+if isfile(output_file)
+	println("\nMaterials library saved sucessfully!")
+end
 
-# Save the materials library to a CSV file
-output_path = joinpath(@__DIR__, "materials_library.csv")
-save_materials_library(materials_db, file_name = output_path)
-println("\nMaterials library saved to: $output_path")
+# ##  Retrieving materials for use
+#=
+!!! note "Note"
+	To load from an existing CSV file, instantiate a new [`MaterialsLibrary`](@ref) passing the file path as argument. Materials can be retrieved from the library using the [`get_material`](@ref) function.
+=#
 
-# ## Retrieving Materials for Use in Cable Modeling
-#
-# Materials can be retrieved from the library using the `get_material` function.
-# This is useful when building cable models as demonstrated in other tutorials.
+# Start a new [`MaterialsLibrary`](@ref) from the CSV file:
+materials_from_csv = MaterialsLibrary(file_name = output_file)
 
-# Retrieve a material for use in cable modeling
-copper_material = get_material(materials_db, "copper_corrected")
+# Retrieve a material and display the object:
+copper = get_material(materials_from_csv, "copper_corrected")
+
+# Access the material properties:
 println("\nRetrieved copper_corrected material properties:")
-println("Resistivity: $(copper_material.rho) Ω·m")
-println("Relative permittivity: $(copper_material.eps_r)")
-println("Relative permeability: $(copper_material.mu_r)")
-println("Reference temperature: $(copper_material.T0) °C")
-println("Temperature coefficient: $(copper_material.alpha) 1/°C")
+println("Resistivity: $(copper.rho) Ω·m")
+println("Relative permittivity: $(copper.eps_r)")
+println("Relative permeability: $(copper.mu_r)")
+println("Reference temperature: $(copper.T0) °C")
+println("Temperature coefficient: $(copper.alpha) 1/°C")
 
-# ## Conclusion
-#
-# This tutorial has demonstrated how to:
-#
-# 1. Initialize a materials library with default materials
-# 2. Add new materials with specific properties
-# 3. Check for and remove duplicate materials
-# 4. Save the library to a file for future use
-# 5. Retrieve materials for use in cable modeling
-#
-# The materials library provides a flexible way to manage material properties
-# for accurate power cable modeling. The properties can be customized to match
-# specific manufacturer data or standards requirements.
+# ##  Conclusion
+#=
+This tutorial has demonstrated how to:
+
+1. Initialize a [`MaterialsLibrary`](@ref) with default [`Material`](@ref) objects.
+2. Add new materials with specific properties.
+3. Remove duplicate materials.
+4. Save the library to a file for future use.
+5. Retrieve materials for use in cable modeling.
+
+The [`MaterialsLibrary`](@ref) provides a flexible and traceable framework to manage material properties for accurate power cable modeling. Custom [`Material`](@ref) objects can be defined and used to match specific manufacturer data or standards requirements.
+=#
