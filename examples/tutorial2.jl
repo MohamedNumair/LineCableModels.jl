@@ -276,7 +276,7 @@ cable_design =
 
 # At this point, it becomes possible to preview the cable design:
 plt1 = design_preview(cable_design)
-plt1 = DisplayAs.PNG(plt1)
+plt1 = DisplayAs.Text(DisplayAs.PNG(plt1))
 
 # ## Sheath and PE jacket
 
@@ -309,7 +309,7 @@ addto_design!(cable_design, "sheath", sheath_parts)
 
 # Examine the newly added components:
 plt2 = design_preview(cable_design)
-plt2 = DisplayAs.PNG(plt2)
+plt2 = DisplayAs.Text(DisplayAs.PNG(plt2))
 
 #=
 ### Outer jacket components
@@ -336,7 +336,7 @@ addto_design!(cable_design, "jacket", jacket_parts)
 
 # Inspect the finished cable design:
 plt3 = design_preview(cable_design)
-plt3 = DisplayAs.PNG(plt3)
+plt3 = DisplayAs.Text(DisplayAs.PNG(plt3))
 
 # ## RLC results
 
@@ -440,14 +440,14 @@ system_data_df = system_data(cable_system)
 
 # Visualize the cross-section of the three-phase system:
 plt4 = system_preview(cable_system, zoom_factor = 0.15)
-plt4 = DisplayAs.PNG(plt4)
+plt4 = DisplayAs.Text(DisplayAs.PNG(plt4))
 
 # ## PSCAD Export
 #
 # The final step exports the model for electromagnetic transient simulations in PSCAD.
 
 # Export to PSCAD input file
-export_file = export_pscad_lcp(cable_system, folder_path = export_path)
+export_file = export_pscad_lcp(cable_system, folder_path = output_path)
 if isfile(export_file)
 	println("\nFile created sucessfully!")
 end
