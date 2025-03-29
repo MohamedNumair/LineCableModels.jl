@@ -5,22 +5,19 @@
 [![Build Status](https://github.com/Electa-Git/LineCableModels.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Electa-Git/LineCableModels.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
-`LineCableModels.jl` is a Julia package for computing the electrical parameters of arbitrary arrangements of underground and overhead power cables, with built-in uncertainty quantification. It is designed as a general-purpose and scalable toolbox to calculate transmission line parameters and to construct models for steady-state analysis and electromagnetic transient (EMT) simulations. 
+`LineCableModels.jl` is a Julia package for computing the electrical parameters of arbitrary arrangements of underground and overhead power cables, with built-in uncertainty quantification. It is designed as a general-purpose and scalable toolbox to calculate transmission line parameters and to construct models for steady-state analysis and electromagnetic transient (EMT) simulations.
   
-
 ## Main features
 
-- Models power cable geometries with uncertainty quantification using `Measurements.jl`.
-- Calculates DC and AC electrical parameters (R, L, C, G) for various conductor types.
-- Provides detailed representation of all cable components: including semiconductors, screens, armoring, insulators, tapes, and water-blocking materials.
-- Supports temperature, twisting, and stranding corrections for accurate simulations.
-- Offers both internal impedance/admittance calculation and PSCAD export capabilities.
-- Implements rigorous electromagnetic formulations for cable and earth-return impedances.
-- Features extensible, object-oriented design with customizable parameters.
+- **Comprehensive cable modeling:** Detailed representation of conductors (solid, tubular, stranded), insulation layers, screens, armoring, and semicons.
+- **Line and cable constants:** Accurate DC and AC parameters (R, L, C, G) with correction factors for temperature, stranding, and helical effects.
+- **Propagation characteristics:** Rigorous electromagnetic models for cable internal impedances and earth-return paths.
+- **Multiple solvers:** Analytical formulations, finite element modeling, and interfaces to EMT programs, including PSCAD.
+- **Materials and cables library:** Store and reuse standardized material properties and cable designs across projects.
 
-## Formulation
+## Documentation
 
-An overview of the methods implemented in `LineCableModels.jl` is given in the document titled [Cable modeling for assessment of uncertainties](https://www.overleaf.com/read/xhmvbjgdqjxn#5e6f69).
+See the [full documentation](https://electa-git.github.io/LineCableModels.jl/stable/) for detailed usage instructions, technical background, and examples.
 
 ## Usage
 

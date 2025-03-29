@@ -2,7 +2,7 @@ using Documenter
 using DocumenterCitations
 using Literate
 using Pkg
-using Revise
+using Changelog
 
 function get_project_toml()
 	# Get the current active environment (docs)
@@ -13,82 +13,12 @@ function get_project_toml()
 
 	# Parse the main project's TOML
 	project_toml = Pkg.TOML.parsefile(joinpath(main_project_path, "Project.toml"))
-	project_name = project_toml["name"]
-
-	# First, switch back to docs environment to check if main project is available
-	Pkg.activate(docs_env)
-
-	# Check if main project is added to docs
-	try
-		# Try to import the main package in the docs environment
-		@eval import $(Symbol(project_name))
-		@info "Main project already available in docs environment."
-	catch e
-		# If it fails, develop the main package into docs environment
-		@info "Adding main project to docs environment..."
-		Pkg.develop(path = main_project_path)
-	end
-
-	# Now try to load it
-	@eval using $(Symbol(project_name))
-
-	# Check if docs has all the dependencies from the main project
-	@info "Checking if docs has all dependencies from main project..."
-	main_deps = get_dependencies(main_project_path)
-	docs_deps = get_dependencies(dirname(docs_env))
-
-	# Add missing dependencies
-	for dep in main_deps
-		if dep ∉ docs_deps && dep != project_name
-			@info "Adding dependency $dep to docs environment..."
-			Pkg.add(dep)
-		end
-	end
 
 	return project_toml
 end
 
-function get_dependencies(project_path)
-	# Parse project TOML to get dependencies
-	toml_path = joinpath(project_path, "Project.toml")
-	proj = Pkg.TOML.parsefile(toml_path)
 
-	# Return list of dependency names (skip extras/targets)
-	return haskey(proj, "deps") ? collect(keys(proj["deps"])) : String[]
-end
-
-# function get_project_toml()
-# 	# Get the current active environment
-# 	docs_env = Pkg.project().path
-
-# 	# Path to the main project (one level up from docs)
-# 	main_project_path = joinpath(dirname(docs_env), "..")
-
-# 	# Parse the main project's TOML
-# 	project_toml = Pkg.TOML.parsefile(joinpath(main_project_path, "Project.toml"))
-# 	project_name = project_toml["name"]
-
-# 	# Activate main project temporarily to check dependencies
-# 	Pkg.activate(main_project_path)
-# 	# Pkg.activate(docs_env)
-
-# 	# Check if main project is added to docs
-# 	try
-# 		# Try to import the main package
-# 		@eval import $(Symbol(project_name))
-# 	catch e
-# 		# If it fails, develop the main package into docs environment
-# 		@info "Adding main project to docs environment..."
-# 		Pkg.develop(path = main_project_path)
-# 	end
-
-# 	# Now try to load it
-# 	@eval using $(Symbol(project_name))
-
-# 	return project_toml
-# end
-
-# Ensure dependencies and get project data
+# Get project data
 PROJECT_TOML = get_project_toml()
 PROJECT_VERSION = PROJECT_TOML["version"]
 NAME = PROJECT_TOML["name"]
@@ -126,7 +56,7 @@ for file in readdir(tutorial_source)
 			tutorial_output,
 			documenter = true,
 			postprocess = content ->
-				customize_literate_footer(content, "« Back to [Tutorials](@ref)\n"),
+				customize_literate_footer(content, "🏠 Back to [Tutorials](@ref)\n"),
 		)
 	end
 end
@@ -181,6 +111,17 @@ mathengine = MathJax3(
 	),
 )
 
+Changelog.generate(
+	Changelog.Documenter(),                 # output type
+	joinpath(@__DIR__, "..", "CHANGELOG.md"),  # input file
+	joinpath(@__DIR__, "src", "CHANGELOG.md"); # output file
+	repo = "Electa-Git/LineCableModels.jl",        # default repository for links
+)
+
+todo_src = joinpath(@__DIR__, "..", "TODO.md")
+todo_dest = joinpath(@__DIR__, "src", "TODO.md")
+cp(todo_src, todo_dest, force = true)
+
 makedocs(;
 	modules = [main_module],
 	authors = "Amauri Martins",
@@ -206,6 +147,8 @@ makedocs(;
 		"Toolbox reference" => "reference.md",
 		"Development" => Any[
 			"Naming conventions"=>"conventions.md",
+			"TODO"=>"TODO.md",
+			"Changelog"=>"CHANGELOG.md",
 		],
 		"Bibliography" => "bib.md",
 	],

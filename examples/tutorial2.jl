@@ -143,15 +143,13 @@ CableDesign
 │   │       ├── WireArray
 │   │       ├── ...
 │   │       └── Any <: AbstractConductorPart
-│  ...
+│   ⋮
 │   ├── Any <: AbstractConductorPart
 │   ├── Semicon
 │   ├── Insulator
-│  ...
+│   ⋮
 │   └── Any <: AbstractInsulatorPart
-.
-.
-.
+⋮
 ```
 
 ### Cable designs

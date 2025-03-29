@@ -1,0 +1,41 @@
+{
+    "tasks": [
+        {
+            "label": "🧪 Run Tests",
+            "presentation": {
+                "panel": "new",
+                "reveal": "always"
+            },
+            "command": "julia --project=test -e 'include(\"test/runtests.jl\")'",
+            "problemMatcher": [],
+            "type": "shell"
+        },
+        {
+            "label": "📚 Build Documentation",
+            "presentation": {
+                "panel": "new",
+                "showReuseMessage": false,
+                "reveal": "always",
+                "clear": true,
+                "close": true
+            },
+            "command": "julia --project=docs -e 'include(\"docs/make.jl\")'",
+            "problemMatcher": [],
+            "type": "shell"
+        },
+        {
+            "label": "⚙️ Redefine All Environments",
+            "presentation": {
+                "panel": "new",
+                "showReuseMessage": false,
+                "reveal": "always",
+                "clear": true,
+                "close": true
+            },
+            "command": "julia .dev/setup_environments.jl",
+            "problemMatcher": [],
+            "type": "shell"
+        }
+    ],
+    "version": "2.0.0"
+}

@@ -23,12 +23,22 @@ docs/src/tutorials/
 # committed for packages, but should be committed for applications that require a static
 # environment.
 Manifest.toml
+*/Manifest.toml
 
-# Temporary and internal files
+# the hidden folder of shame
 temp/
+
+# Internal files
+.dev
 bibliography/
 presentations/
 projects/
-*.ipynb
-# the secret folder of shame
-local/ 
+confidential/
+*.code-workspace
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/tasks.json
+.dev/Manifest.toml
+docs/Manifest.toml
+test/Manifest.toml
