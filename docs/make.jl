@@ -159,15 +159,19 @@ makedocs(;
 	warnonly = false,
 )
 
-html_path = joinpath(@__DIR__, "build", "index.html")
-browser_cmd = `google-chrome-stable --new-window file://$(html_path)`
+deploydocs(
+	repo = "github.com/Electa-Git/LineCableModels.jl.git",
+)
 
-# browser_cmd = `firefox --new-window file://$(html_path)`
-# try
-# 	run(`killall firefox`)
-# catch e
-# 	println("No existing Firefox process found. Continuing...")
-# end
+# html_path = joinpath(@__DIR__, "build", "index.html")
+# browser_cmd = `google-chrome-stable --new-window file://$(html_path)`
 
-run(browser_cmd, wait = false)
+# # browser_cmd = `firefox --new-window file://$(html_path)`
+# # try
+# # 	run(`killall firefox`)
+# # catch e
+# # 	println("No existing Firefox process found. Continuing...")
+# # end
+
+# run(browser_cmd, wait = false)
 
