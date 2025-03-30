@@ -1748,19 +1748,7 @@ function design_preview(
 )
 	if isnothing(plt)
 		# Choose appropriate backend based on environment
-		if isnothing(backend)
-			# Check if running in a headless environment
-			if haskey(ENV, "CI") || !haskey(ENV, "DISPLAY")
-				# Use GR or a non-interactive backend for CI/headless
-				gr()
-			else
-				# Use PlotlyJS for interactive use
-				plotlyjs()
-			end
-		else
-			# Use the specified backend if provided
-			backend()
-		end
+		_resolve_backend(backend)
 		plt = plot(size = (800, 600),
 			aspect_ratio = :equal,
 			legend = (0.875, 1.0),
@@ -2419,19 +2407,7 @@ $(FUNCTIONNAME)(system, zoom_factor=0.5)
 """
 function system_preview(system::LineCableSystem; zoom_factor = 0.25, backend = nothing)
 
-	if isnothing(backend)
-		# Check if running in a headless environment
-		if haskey(ENV, "CI") || !haskey(ENV, "DISPLAY")
-			# Use GR or a non-interactive backend for CI/headless
-			gr()
-		else
-			# Use PlotlyJS for interactive use
-			plotlyjs()
-		end
-	else
-		# Use the specified backend if provided
-		backend()
-	end
+	_resolve_backend(backend)
 	plt = plot(size = (800, 600),
 		aspect_ratio = :equal,
 		legend = (0.8, 0.9),
@@ -3072,6 +3048,44 @@ function Base.show(io::IO, ::MIME"text/plain", system::LineCableSystem)
 		)
 	end
 end
+
+"""
+$(TYPEDSIGNATURES)
+
+Selects the appropriate plotting backend based on the environment.
+
+# Arguments
+
+- `backend`: Optional explicit backend to use. If provided, this backend will be activated.
+
+# Returns
+
+Nothing. The function activates the chosen backend.
+
+# Notes
+
+Automatically selects GR for headless environments (CI or no DISPLAY) and PlotlyJS
+for interactive use when no backend is explicitly specified. This is particularly needed when running within CI environments
+
+# Examples
+
+```julia
+choose_proper_backend()           # Auto-selects based on environment
+choose_proper_backend(pyplot)     # Explicitly use PyPlot backend
+```
+"""
+function _resolve_backend(backend = nothing)
+	if isnothing(backend) # Check if running in a headless environment 
+		if haskey(ENV, "CI") || !haskey(ENV, "DISPLAY") # Use GR for CI/headless environments 
+			gr()
+		else # Use PlotlyJS for interactive use 
+			plotlyjs()
+		end
+	else # Use the specified backend if provided 
+		backend()
+	end
+end
+
 @reexport using .BaseParams
 Utils.@_autoexport
 

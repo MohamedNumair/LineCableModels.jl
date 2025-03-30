@@ -37,8 +37,6 @@ using LineCableModels
 using DataFrames
 using DisplayAs: DisplayAs
 using Plots
-ENV["GKSwstype"] = "100"
-gr(); # Use GR backend for plotting
 
 #=
 ```julia
@@ -275,7 +273,7 @@ cable_design =
 
 # At this point, it becomes possible to preview the cable design:
 plt1 = design_preview(cable_design, backend = gr)
-plt1 = DisplayAs.Text(DisplayAs.PNG(plt1))
+plt1 = DisplayAs.Text(DisplayAs.PNG(plt1)) # hide
 
 # ## Sheath and PE jacket
 
@@ -308,7 +306,7 @@ addto_design!(cable_design, "sheath", sheath_parts)
 
 # Examine the newly added components:
 plt2 = design_preview(cable_design, backend = gr)
-plt2 = DisplayAs.Text(DisplayAs.PNG(plt2))
+plt2 = DisplayAs.Text(DisplayAs.PNG(plt2)) # hide
 
 #=
 ### Outer jacket components
@@ -335,7 +333,7 @@ addto_design!(cable_design, "jacket", jacket_parts)
 
 # Inspect the finished cable design:
 plt3 = design_preview(cable_design, backend = gr)
-plt3 = DisplayAs.Text(DisplayAs.PNG(plt3))
+plt3 = DisplayAs.Text(DisplayAs.PNG(plt3)) # hide
 
 # ## RLC results
 
@@ -439,7 +437,7 @@ system_data_df = system_data(cable_system)
 
 # Visualize the cross-section of the three-phase system:
 plt4 = system_preview(cable_system, zoom_factor = 0.15, backend = gr)
-plt4 = DisplayAs.Text(DisplayAs.PNG(plt4))
+plt4 = DisplayAs.Text(DisplayAs.PNG(plt4)) # hide
 
 # ## PSCAD Export
 #
