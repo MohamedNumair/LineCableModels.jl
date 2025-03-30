@@ -3,7 +3,7 @@ name: Create Release from Tag
 on:
   push:
     tags:
-      - 'v*'  # Triggers on v1.0.0, v2.3.4, etc.
+      - 'v*'
 
 jobs:
   create-release:
@@ -14,11 +14,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Get Tag Message
-        id: tag
+      - name: Extract Changelog Section
+        id: changelog
         run: |
-          TAG_MESSAGE=$(git tag -l --format='%(contents)' ${{ github.ref_name }})
-          echo "message=$TAG_MESSAGE" >> $GITHUB_OUTPUT
+          # Grab the section for this tag from CHANGELOG.md
+          sed -n "/^## \[${{ github.ref_name }}\]/,/^## \[/p" CHANGELOG.md | \
+          sed '$d' > release_notes.md  # Exclude next section header
+          cat release_notes.md
 
       - name: Create GitHub Release
         uses: actions/create-release@v1
@@ -27,6 +29,6 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           release_name: ${{ github.ref_name }}
-          body: ${{ steps.tag.outputs.message }}
+          body_path: release_notes.md
           draft: false
           prerelease: false

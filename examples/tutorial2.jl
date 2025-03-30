@@ -37,6 +37,7 @@ using LineCableModels
 using DataFrames
 using DisplayAs: DisplayAs
 using Plots
+ENV["GKSwstype"] = "100"
 gr(); # Use GR backend for plotting
 
 #=
@@ -273,7 +274,7 @@ cable_design =
 	CableDesign(cable_id, "core", core_parts, nominal_data = datasheet_info)
 
 # At this point, it becomes possible to preview the cable design:
-plt1 = design_preview(cable_design)
+plt1 = design_preview(cable_design, backend = gr)
 plt1 = DisplayAs.Text(DisplayAs.PNG(plt1))
 
 # ## Sheath and PE jacket
@@ -306,7 +307,7 @@ sheath_parts = [wire_screen, wb_tape_scr]
 addto_design!(cable_design, "sheath", sheath_parts)
 
 # Examine the newly added components:
-plt2 = design_preview(cable_design)
+plt2 = design_preview(cable_design, backend = gr)
 plt2 = DisplayAs.Text(DisplayAs.PNG(plt2))
 
 #=
@@ -333,7 +334,7 @@ jacket_parts = [alu_tape, alu_tape_pe, pe_insu]
 addto_design!(cable_design, "jacket", jacket_parts)
 
 # Inspect the finished cable design:
-plt3 = design_preview(cable_design)
+plt3 = design_preview(cable_design, backend = gr)
 plt3 = DisplayAs.Text(DisplayAs.PNG(plt3))
 
 # ## RLC results
@@ -437,7 +438,7 @@ addto_system!(
 system_data_df = system_data(cable_system)
 
 # Visualize the cross-section of the three-phase system:
-plt4 = system_preview(cable_system, zoom_factor = 0.15)
+plt4 = system_preview(cable_system, zoom_factor = 0.15, backend = gr)
 plt4 = DisplayAs.Text(DisplayAs.PNG(plt4))
 
 # ## PSCAD Export

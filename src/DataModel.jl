@@ -1714,6 +1714,7 @@ Displays the cross-section of a cable design.
 - `plt`: An optional `Plots.Plot` object to use for plotting.
 - `display_plot`: Boolean flag to display the plot after rendering.
 - `display_legend`: Boolean flag to display the legend in the plot.
+- `backend`: Optional plotting backend to use. If not specified, the function will choose a suitable backend based on the environment (e.g., GR for headless, PlotlyJS for interactive).
 
 # Returns
 
@@ -1743,9 +1744,23 @@ function design_preview(
 	plt = nothing,
 	display_plot = true,
 	display_legend = true,
+	backend = nothing,
 )
 	if isnothing(plt)
-		plotlyjs()  # Initialize only if plt is not provided
+		# Choose appropriate backend based on environment
+		if isnothing(backend)
+			# Check if running in a headless environment
+			if haskey(ENV, "CI") || !haskey(ENV, "DISPLAY")
+				# Use GR or a non-interactive backend for CI/headless
+				gr()
+			else
+				# Use PlotlyJS for interactive use
+				plotlyjs()
+			end
+		else
+			# Use the specified backend if provided
+			backend()
+		end
 		plt = plot(size = (800, 600),
 			aspect_ratio = :equal,
 			legend = (0.875, 1.0),
@@ -2383,6 +2398,7 @@ Displays the cross-section of a cable system, including earth layers and cables.
 
 - `system`: A [`LineCableSystem`](@ref) object containing the cable arrangement and earth properties.
 - `zoom_factor`: A scaling factor for adjusting the x-axis limits \\[dimensionless\\].
+- `backend`: Optional plotting backend to use. If not specified, the function will choose a suitable backend based on the environment (e.g., GR for headless, PlotlyJS for interactive).
 
 # Returns
 
@@ -2401,8 +2417,21 @@ $(FUNCTIONNAME)(system, zoom_factor=0.5)
 - [`EarthModel`](@ref)
 - [`CableDef`](@ref)
 """
-function system_preview(system::LineCableSystem; zoom_factor = 0.25)
-	plotlyjs()
+function system_preview(system::LineCableSystem; zoom_factor = 0.25, backend = nothing)
+
+	if isnothing(backend)
+		# Check if running in a headless environment
+		if haskey(ENV, "CI") || !haskey(ENV, "DISPLAY")
+			# Use GR or a non-interactive backend for CI/headless
+			gr()
+		else
+			# Use PlotlyJS for interactive use
+			plotlyjs()
+		end
+	else
+		# Use the specified backend if provided
+		backend()
+	end
 	plt = plot(size = (800, 600),
 		aspect_ratio = :equal,
 		legend = (0.8, 0.9),
