@@ -4,7 +4,6 @@
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://electa-git.github.io/LineCableModels.jl/stable/)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://electa-git.github.io/LineCableModels.jl/dev/)
-
 [![Build Status](https://github.com/Electa-Git/LineCableModels.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Electa-Git/LineCableModels.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
@@ -20,7 +19,7 @@
 
 ## Documentation
 
-See the [full documentation](https://electa-git.github.io/LineCableModels.jl/stable/) for detailed usage instructions, technical background, and examples.
+See the [full documentation](https://electa-git.github.io/LineCableModels.jl/) for detailed usage instructions, technical background, and examples.
 
 ## Usage
 
@@ -34,7 +33,7 @@ Clone the package and add to the Julia environment:
 using LineCableModels
 ```
 
-For application examples, please refer to the [documentation](https://electa-git.github.io/LineCableModels.jl/stable/tutorials/) and the [examples folder](examples).
+For application examples, please refer to the [tutorials section](https://electa-git.github.io/LineCableModels.jl/) and the [examples folder](examples).
 
 ## License
 
