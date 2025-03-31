@@ -272,7 +272,7 @@ cable_design =
 	CableDesign(cable_id, "core", core_parts, nominal_data = datasheet_info)
 
 # At this point, it becomes possible to preview the cable design:
-plt1 = design_preview(cable_design)
+plt1 = preview_cabledesign(cable_design)
 
 # ## Sheath and PE jacket
 
@@ -304,7 +304,7 @@ sheath_parts = [wire_screen, wb_tape_scr]
 addto_design!(cable_design, "sheath", sheath_parts)
 
 # Examine the newly added components:
-plt2 = design_preview(cable_design)
+plt2 = preview_cabledesign(cable_design)
 
 #=
 ### Outer jacket components
@@ -330,7 +330,7 @@ jacket_parts = [alu_tape, alu_tape_pe, pe_insu]
 addto_design!(cable_design, "jacket", jacket_parts)
 
 # Inspect the finished cable design:
-plt3 = design_preview(cable_design)
+plt3 = preview_cabledesign(cable_design)
 
 # ## Examining cable parameters (RLC)
 
@@ -339,13 +339,13 @@ This section examines the cable design and compares calculated parameters with d
 =#
 
 # Compare with datasheet information (R, L, C values):
-data1 = design_data(cable_design, :core)
+core_df = cabledesign_todf(cable_design, :core)
 
 # Obtain the equivalent electromagnetic properties of the cable:
-data2 = design_data(cable_design, :components)
+components_df = cabledesign_todf(cable_design, :components)
 
 # Get detailed description of all cable parts:
-data3 = design_data(cable_design, :detailed)
+detailed_df = cabledesign_todf(cable_design, :detailed)
 
 # ## Saving the cable design
 
@@ -423,10 +423,10 @@ addto_system!(
 # This section examines the complete three-phase cable system.
 
 # Display system details:
-system_data_df = system_data(cable_system)
+system_df = linecablesystem_todf(cable_system)
 
 # Visualize the cross-section of the three-phase system:
-plt4 = system_preview(cable_system, zoom_factor = 0.15)
+plt4 = preview_linecablesystem(cable_system, zoom_factor = 0.15)
 
 # ## PSCAD Export
 #
