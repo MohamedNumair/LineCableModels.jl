@@ -1,0 +1,46 @@
+name: "Release approval request"
+description: "Validation checklist before public release"
+title: "Release rpproval: [REPO_NAME] v[VERSION]"
+labels: ["release-approval"]
+assignees:
+  - amaurigmartins
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Pre-release validation checklist
+        Complete **all** items before requesting approval.
+
+  - type: checkboxes
+    id: ip_check
+    attributes:
+      label: "IP protection"
+      description: "Confirm all IP/confidential material has been removed"
+      options:
+        - label: "No proprietary algorithms or internal data included"
+          required: true
+        - label: "No API keys, passwords or credentials in code/history"
+          required: true
+        - label: "No scientific code released before publication in conference/journal"
+          required: true
+
+  - type: checkboxes
+    id: visual_identity
+    attributes:
+      label: "Visual identity and branding"
+      options:
+        - label: "Official university and funding parties logos used"
+          required: true
+        - label: "Standard acknowledgment template included"
+          required: true
+
+  - type: checkboxes
+    id: quality
+    attributes:
+      label: "Code quality"
+      options:
+        - label: "Basic tests pass"
+          required: true
+        - label: "Documentation complete"
+          required: true

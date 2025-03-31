@@ -33,6 +33,7 @@ This tutorial covers:
 
 # Load the package and set up the environment:
 push!(LOAD_PATH, joinpath(@__DIR__, "..", "src")) # hide
+include("../dev/startup.jl") # hide
 using LineCableModels
 using DataFrames
 
@@ -359,7 +360,7 @@ store_cables_library!(library, cable_design)
 list_cables_library(library)
 
 # Save to file for later use:
-output_path = joinpath(dirname(Base.source_path()), "src", "tutorials")
+@show output_path = joinpath(dirname(Base.source_path()), "src", "tutorials")
 output_path = isdir(output_path) ? output_path : "."
 output_file = joinpath(output_path, "cables_library.jls")
 save_cables_library(library, file_name = output_file)

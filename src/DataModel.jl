@@ -191,6 +191,76 @@ end
 """
 $(TYPEDEF)
 
+Represents a composite coaxial conductor group assembled from multiple conductive layers.
+
+This structure serves as a container for different [`AbstractConductorPart`](@ref) elements 
+(such as wire arrays, strips, and tubular conductors) arranged in concentric layers. 
+The `ConductorGroup` aggregates these individual parts and provides equivalent electrical 
+properties that represent the composite behavior of the entire assembly, stored in the attributes:
+
+$(TYPEDFIELDS)
+"""
+mutable struct ConductorGroup <: AbstractConductorPart
+	"Inner radius of the conductor group \\[m\\]."
+	radius_in::Number
+	"Outer radius of the conductor group \\[m\\]."
+	radius_ext::Number
+	"Cross-sectional area of the entire conductor group \\[m²\\]."
+	cross_section::Number
+	"Number of individual wires in the conductor group \\[dimensionless\\]."
+	num_wires::Number
+	"DC resistance of the conductor group \\[Ω\\]."
+	resistance::Number
+	"Temperature coefficient of resistance \\[1/°C\\]."
+	alpha::Number
+	"Geometric mean radius of the conductor group \\[m\\]."
+	gmr::Number
+	"Vector of conductor layer components."
+	layers::Vector{AbstractConductorPart}
+
+	@doc """
+	$(TYPEDSIGNATURES)
+
+	Constructs a [`ConductorGroup`](@ref) instance initializing with the central conductor part.
+
+	# Arguments
+
+	- `central_conductor`: An [`AbstractConductorPart`](@ref) object located at the center of the conductor group.
+
+	# Returns
+
+	- A [`ConductorGroup`](@ref) object initialized with geometric and electrical properties derived from the central conductor.
+
+	# Examples
+
+	```julia
+	material_props = Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393)
+	central_strip = Strip(0.01, 0.002, 0.05, 10, material_props)
+	conductor_group = $(FUNCTIONNAME)(central_strip)
+	println(conductor_group.layers)      # Output: [central_strip]
+	println(conductor_group.resistance)  # Output: Resistance in \\[Ω\\]
+	```
+	"""
+	function ConductorGroup(central_conductor::AbstractConductorPart)
+		num_wires = central_conductor isa WireArray ? central_conductor.num_wires : 0
+
+		# Initialize object
+		return new(
+			central_conductor.radius_in,
+			central_conductor.radius_ext,
+			central_conductor.cross_section,
+			num_wires,
+			central_conductor.resistance,
+			central_conductor.material_props.alpha,
+			central_conductor.gmr,
+			[central_conductor],
+		)
+	end
+end
+
+"""
+$(TYPEDEF)
+
 Represents a composite coaxial conductor assembled from multiple conductive layers.
 
 This structure serves as a container for different [`AbstractConductorPart`](@ref) elements 
@@ -313,6 +383,74 @@ mutable struct Insulator <: AbstractInsulatorPart
 	shunt_capacitance::Number
 	"Shunt conductance per unit length of the insulating layer \\[S/m\\]."
 	shunt_conductance::Number
+end
+
+"""
+$(TYPEDEF)
+
+Represents a composite coaxial insulator group assembled from multiple insulating layers.
+
+This structure serves as a container for different [`AbstractInsulatorPart`](@ref) elements
+(such as insulators and semiconductors) arranged in concentric layers.
+The `InsulatorGroup` aggregates these individual parts and provides equivalent electrical
+properties that represent the composite behavior of the entire assembly, stored in the attributes:
+
+$(TYPEDFIELDS)
+"""
+mutable struct InsulatorGroup <: AbstractInsulatorPart
+	"Inner radius of the insulator group \\[m\\]."
+	radius_in::Number
+	"Outer radius of the insulator group \\[m\\]."
+	radius_ext::Number
+	"Cross-sectional area of the entire insulator group \\[m²\\]."
+	cross_section::Number
+	"Material properties of the insulator group."
+	material_props::Material
+	"Operating temperature of the insulator group \\[°C\\]."
+	temperature::Number
+	"Shunt capacitance per unit length of the insulator group \\[F/m\\]."
+	shunt_capacitance::Number
+	"Shunt conductance per unit length of the insulator group \\[S/m\\]."
+	shunt_conductance::Number
+	"Vector of insulator layer components."
+	layers::Vector{AbstractInsulatorPart}
+
+	@doc """
+	$(TYPEDSIGNATURES)
+
+	Constructs an [`InsulatorGroup`](@ref) instance initializing with the initial insulator part.
+
+	# Arguments
+
+	- `initial_insulator`: An [`AbstractInsulatorPart`](@ref) object located at the innermost position of the insulator group.
+
+	# Returns
+
+	- An [`InsulatorGroup`](@ref) object initialized with geometric and electrical properties derived from the initial insulator.
+
+	# Examples
+
+	```julia
+	material_props = Material(1e10, 3.0, 1.0, 20.0, 0.0)
+	initial_insulator = Insulator(0.01, 0.015, material_props, temperature=25)
+	insulator_group = $(FUNCTIONNAME)(initial_insulator)
+	println(insulator_group.layers)           # Output: [initial_insulator]
+	println(insulator_group.shunt_capacitance) # Output: Capacitance in \\[F/m\\]
+	```
+	"""
+	function InsulatorGroup(initial_insulator::AbstractInsulatorPart)
+		# Initialize object
+		return new(
+			initial_insulator.radius_in,
+			initial_insulator.radius_ext,
+			initial_insulator.cross_section,
+			initial_insulator.material_props,
+			initial_insulator.temperature,
+			initial_insulator.shunt_capacitance,
+			initial_insulator.shunt_conductance,
+			[initial_insulator],
+		)
+	end
 end
 
 # Submodule `BaseParams`
