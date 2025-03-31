@@ -34,6 +34,8 @@ body:
     attributes:
       label: "IP and Legal Requirements"
       options:
+        - label: "Written consent secured from faculty advisor or PI"
+          required: true
         - label: "Software disclosure submitted to tech transfer/IP office"
           required: true
         - label: "Funding/sponsorship contracts reviewed for restrictions or obligations"
@@ -126,6 +128,15 @@ body:
       placeholder: "Add any relevant information or clarifications here..."
     validations:
       required: false
+
+  - type: input
+    id: institutional_email
+    attributes:
+      label: "Institutional email"
+      description: "Provide your university/institutional email"
+      placeholder: "researcher.name@kuleuven.be"
+    validations:
+      required: true
 
   - type: markdown
     attributes:
