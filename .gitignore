@@ -29,7 +29,7 @@ Manifest.toml
 temp/
 
 # Internal files
-.dev
+dev
 bibliography/
 presentations/
 projects/
@@ -39,6 +39,3 @@ confidential/
 !.vscode/settings.json
 !.vscode/extensions.json
 !.vscode/tasks.json
-.dev/Manifest.toml
-docs/Manifest.toml
-test/Manifest.toml

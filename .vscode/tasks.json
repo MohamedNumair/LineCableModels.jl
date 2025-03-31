@@ -8,7 +8,11 @@
             },
             "command": "julia --project=test -e 'include(\"test/runtests.jl\")'",
             "problemMatcher": [],
-            "type": "shell"
+            "type": "shell",
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            }
         },
         {
             "label": "📚 Build Documentation",
@@ -21,7 +25,11 @@
             },
             "command": "julia --project=docs -e 'include(\"docs/make.jl\")'",
             "problemMatcher": [],
-            "type": "shell"
+            "type": "shell",
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
         },
         {
             "label": "⚙️ Redefine All Environments",
@@ -32,9 +40,30 @@
                 "clear": true,
                 "close": true
             },
-            "command": "julia .dev/setup_environments.jl",
+            "command": "julia -e 'include(\"setup.jl\"); setup_envs_only()'",
             "problemMatcher": [],
-            "type": "shell"
+            "type": "shell",
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
+            "label": "🔧 Setup VSCode Configuration",
+            "presentation": {
+                "panel": "new",
+                "showReuseMessage": false,
+                "reveal": "always",
+                "clear": true,
+                "close": true
+            },
+            "command": "julia -e 'include(\"setup.jl\"); setup_vscode_only()'",
+            "problemMatcher": [],
+            "type": "shell",
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
         }
     ],
     "version": "2.0.0"

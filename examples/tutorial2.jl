@@ -35,7 +35,6 @@ This tutorial covers:
 push!(LOAD_PATH, joinpath(@__DIR__, "..", "src")) # hide
 using LineCableModels
 using DataFrames
-using DisplayAs: DisplayAs
 using Plots
 
 #=
@@ -140,12 +139,13 @@ CableDesign
 │   │   ├── Strip
 │   │   └── Conductor <: AbstractConductorPart
 │   │       ├── WireArray
-│   │       ├── ...
+│   │       ├── …
 │   │       └── Any <: AbstractConductorPart
 │   ⋮
 │   ├── Any <: AbstractConductorPart
 │   ├── Semicon
 │   ├── Insulator
+│   ├── …
 │   ⋮
 │   └── Any <: AbstractInsulatorPart
 ⋮
@@ -194,7 +194,7 @@ core = Conductor(WireArray(0, Diameter(d_w), 1, 0, material))
 
 #=
 !!! tip "Convenience methods"
-	The [`addto_conductor!`](@ref) method internally passes the `radius_ext` of the existing object to the `radius_in` argument of the new conductor. This allows for easy stacking of multiple layers without redundancy. Moreover, the [`Diameter`](@ref) method is a convenience function that converts the diameter to radius at the constructor level. This maintains alignment with manufacturer specifications while enabling internal calculations to use radius values directly. This approach eliminates repetitive unit conversions and potential sources of implementation error.
+	The [`addto_conductor!`](@ref) method internally passes the `radius_ext` of the existing object to the `radius_in` argument of the new conductor. This enables easy stacking of multiple layers without redundancy. Moreover, the [`Diameter`](@ref) method is a convenience function that converts the diameter to radius at the constructor level. This maintains alignment with manufacturer specifications while enabling internal calculations to use radius values directly. This approach eliminates repetitive unit conversions and potential sources of implementation error.
 =#
 
 # Add the subsequent layers of wires and inspect the object:
@@ -272,8 +272,7 @@ cable_design =
 	CableDesign(cable_id, "core", core_parts, nominal_data = datasheet_info)
 
 # At this point, it becomes possible to preview the cable design:
-plt1 = design_preview(cable_design, backend = gr)
-plt1 = DisplayAs.Text(DisplayAs.PNG(plt1)) # hide
+plt1 = design_preview(cable_design)
 
 # ## Sheath and PE jacket
 
@@ -305,8 +304,7 @@ sheath_parts = [wire_screen, wb_tape_scr]
 addto_design!(cable_design, "sheath", sheath_parts)
 
 # Examine the newly added components:
-plt2 = design_preview(cable_design, backend = gr)
-plt2 = DisplayAs.Text(DisplayAs.PNG(plt2)) # hide
+plt2 = design_preview(cable_design)
 
 #=
 ### Outer jacket components
@@ -332,10 +330,9 @@ jacket_parts = [alu_tape, alu_tape_pe, pe_insu]
 addto_design!(cable_design, "jacket", jacket_parts)
 
 # Inspect the finished cable design:
-plt3 = design_preview(cable_design, backend = gr)
-plt3 = DisplayAs.Text(DisplayAs.PNG(plt3)) # hide
+plt3 = design_preview(cable_design)
 
-# ## RLC results
+# ## Examining cable parameters (RLC)
 
 #=
 This section examines the cable design and compares calculated parameters with datasheet values. [`LineCableModels.jl`](@ref) provides several functions to analyze the design in different levels of detail.
@@ -374,7 +371,7 @@ end
 
 #=
 !!! note "Cables systems"
-	A cable system is a collection of cables with defined positions, length and environmental characteristics. The [`LineCableSystem`](@ref) object is the main container for all cable systems, and it allows for the definition of multiple cables in different configurations (e.g., trifoil, flat etc.). This object is the entry point for all system-related calculations and analyses.
+	A cable system is a collection of cables with defined positions, length and environmental characteristics. The [`LineCableSystem`](@ref) object is the main container for all cable systems, and it allows the definition of multiple cables in different configurations (e.g., trifoil, flat etc.). This object is the entry point for all system-related calculations and analyses.
 =#
 
 #=
@@ -408,24 +405,17 @@ cabledef = CableDef(cable_design, xa, ya, Dict("core" => 1, "sheath" => 0, "jack
 cable_system = LineCableSystem("tutorial2", 20.0, earth_params, 1000.0, cabledef)
 
 # Add remaining cables (phases B and C):
-addto_system!(
-	cable_system,
-	cable_design,
-	xb,
-	yb,
+addto_system!(cable_system, cable_design, xb, yb,
 	Dict("core" => 2, "sheath" => 0, "jacket" => 0),
 )
 addto_system!(
-	cable_system,
-	cable_design,
-	xc,
-	yc,
+	cable_system, cable_design, xc, yc,
 	Dict("core" => 3, "sheath" => 0, "jacket" => 0),
 )
 
 #=
 !!! note "Phase mapping"
-	The [`addto_system!`](@ref) function allows for the specification of phase mapping for each cable. The `Dict` argument maps the cable components to their respective phases, where `core` is the conductor, `sheath` is the screen, and `jacket` is the outer jacket. The values (1, 2, 3) represent the phase numbers (A, B, C) in this case. Components mapped to phase 0 will be Kron-eliminated (grounded). Components set to the same phase will be bundled into an equivalent phase.
+	The [`addto_system!`](@ref) function allows the specification of phase mapping for each cable. The `Dict` argument maps the cable components to their respective phases, where `core` is the conductor, `sheath` is the screen, and `jacket` is the outer jacket. The values (1, 2, 3) represent the phase numbers (A, B, C) in this case. Components mapped to phase 0 will be Kron-eliminated (grounded). Components set to the same phase will be bundled into an equivalent phase.
 =#
 
 # ### Cable system preview
@@ -436,8 +426,7 @@ addto_system!(
 system_data_df = system_data(cable_system)
 
 # Visualize the cross-section of the three-phase system:
-plt4 = system_preview(cable_system, zoom_factor = 0.15, backend = gr)
-plt4 = DisplayAs.Text(DisplayAs.PNG(plt4)) # hide
+plt4 = system_preview(cable_system, zoom_factor = 0.15)
 
 # ## PSCAD Export
 #

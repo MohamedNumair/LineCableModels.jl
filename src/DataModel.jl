@@ -34,6 +34,7 @@ using Colors
 using Plots
 using DataStructures
 using Serialization
+using DisplayAs: DisplayAs
 
 """
 $(TYPEDEF)
@@ -562,7 +563,7 @@ Constructs a [`Strip`](@ref) object with specified geometric and material parame
 - `width`: Width of the strip \\[m\\].
 - `lay_ratio`: Ratio defining the lay length of the strip \\[dimensionless\\].
 - `material_props`: Material properties of the strip.
-- `temperature`: Temperature at which the properties are evaluated \\[°C\\]. Defaults to T₀.
+- `temperature`: Temperature at which the properties are evaluated \\[°C\\]. Defaults to [`T₀`](@ref).
 - `lay_direction`: Twisting direction of the strip (1 = unilay, -1 = contralay) \\[dimensionless\\]. Defaults to 1.
 
 # Returns
@@ -644,7 +645,7 @@ Initializes a [`Tubular`](@ref) object with specified geometric and material par
 - `radius_in`: Internal radius of the tubular conductor \\[m\\].
 - `radius_ext`: External radius of the tubular conductor \\[m\\].
 - `material_props`: A [`Material`](@ref) object representing the physical properties of the conductor material.
-- `temperature`: Temperature at which the properties are evaluated \\[°C\\]. Defaults to T₀.
+- `temperature`: Temperature at which the properties are evaluated \\[°C\\]. Defaults to [`T₀`](@ref).
 
 # Returns
 
@@ -1481,16 +1482,16 @@ Extracts and displays data from a [`CableDesign`](@ref).
 
 ```julia
 # Get basic RLC parameters
-data = design_data(design)  # Default is :core format
+data = cabledesign_todf(design)  # Default is :core format
 
 # Get component-level data
-comp_data = design_data(design, :components)
+comp_data = cabledesign_todf(design, :components)
 
 # Get detailed part-by-part breakdown
-detailed_data = design_data(design, :detailed)
+detailed_data = cabledesign_todf(design, :detailed)
 
 # Specify earth parameters for core calculations
-core_data = design_data(design, :core, S=0.5, rho_e=150)
+core_data = cabledesign_todf(design, :core, S=0.5, rho_e=150)
 ```
 
 # See also
@@ -1500,7 +1501,7 @@ core_data = design_data(design, :core, S=0.5, rho_e=150)
 - [`calc_inductance_trifoil`](@ref)
 - [`calc_shunt_capacitance`](@ref)
 """
-function design_data(
+function cabledesign_todf(
 	design::CableDesign,
 	format::Symbol = :core;
 	S::Union{Nothing, Number} = nothing,
@@ -1708,7 +1709,7 @@ Displays the cross-section of a cable design.
 
 # Arguments
 
-- `design`: A `[CableDesign`](@ref) object representing the cable structure.
+- `design`: A [`CableDesign`](@ref) object representing the cable structure.
 - `x_offset`: Horizontal offset for the plot \\[m\\].
 - `y_offset`: Vertical offset for the plot \\[m\\].
 - `plt`: An optional `Plots.Plot` object to use for plotting.
@@ -1737,7 +1738,7 @@ cable_plot = $(FUNCTIONNAME)(design)  # Cable cross-section is displayed
 - [`Strip`](@ref)
 - [`Semicon`](@ref)
 """
-function design_preview(
+function preview_cabledesign(
 	design::CableDesign;
 	x_offset = 0.0,
 	y_offset = 0.0,
@@ -1851,7 +1852,11 @@ function design_preview(
 	end
 
 	if display_plot
-		display(plt)
+		if _is_headless()
+			DisplayAs.Text(DisplayAs.PNG(plt))
+		else
+			display(plt)
+		end
 	end
 
 	return plt
@@ -2405,7 +2410,11 @@ $(FUNCTIONNAME)(system, zoom_factor=0.5)
 - [`EarthModel`](@ref)
 - [`CableDef`](@ref)
 """
-function system_preview(system::LineCableSystem; zoom_factor = 0.25, backend = nothing)
+function preview_linecablesystem(
+	system::LineCableSystem;
+	zoom_factor = 0.25,
+	backend = nothing,
+)
 
 	_resolve_backend(backend)
 	plt = plot(size = (800, 600),
@@ -2464,7 +2473,7 @@ function system_preview(system::LineCableSystem; zoom_factor = 0.25, backend = n
 	for cabledef in system.cables
 		x_offset = to_nominal(cabledef.horz)
 		y_offset = to_nominal(cabledef.vert)
-		design_preview(
+		preview_cabledesign(
 			cabledef.cable;
 			x_offset,
 			y_offset,
@@ -2476,7 +2485,12 @@ function system_preview(system::LineCableSystem; zoom_factor = 0.25, backend = n
 
 	plot!(plt, xlim = (x_limits[1], x_limits[2]) .* zoom_factor)
 
-	display(plt)
+	if _is_headless()
+		DisplayAs.Text(DisplayAs.PNG(plt))
+	else
+		display(plt)
+	end
+
 	return plt
 end
 
@@ -2608,7 +2622,7 @@ println(df)
 - [`LineCableSystem`](@ref)
 - [`CableDef`](@ref)
 """
-function system_data(system::LineCableSystem)
+function linecablesystem_todf(system::LineCableSystem)
 	cable_ids = String[]
 	horz_coords = Number[]
 	vert_coords = Number[]
@@ -3065,7 +3079,7 @@ Nothing. The function activates the chosen backend.
 # Notes
 
 Automatically selects GR for headless environments (CI or no DISPLAY) and PlotlyJS
-for interactive use when no backend is explicitly specified. This is particularly needed when running within CI environments
+for interactive use when no backend is explicitly specified. This is particularly needed when running within CI environments.
 
 # Examples
 
@@ -3076,7 +3090,8 @@ choose_proper_backend(pyplot)     # Explicitly use PyPlot backend
 """
 function _resolve_backend(backend = nothing)
 	if isnothing(backend) # Check if running in a headless environment 
-		if haskey(ENV, "CI") || !haskey(ENV, "DISPLAY") # Use GR for CI/headless environments 
+		if _is_headless() # Use GR for CI/headless environments
+			ENV["GKSwstype"] = "100"
 			gr()
 		else # Use PlotlyJS for interactive use 
 			plotlyjs()
@@ -3084,6 +3099,32 @@ function _resolve_backend(backend = nothing)
 	else # Use the specified backend if provided 
 		backend()
 	end
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Determines if the current execution environment is headless (without display capability).
+
+# Returns
+
+- `true` if running in a continuous integration environment or without display access.
+- `false` otherwise when a display is available.
+
+# Examples
+
+```julia
+if $(FUNCTIONNAME)()
+	# Use non-graphical backend
+	gr()
+else
+	# Use interactive backend
+	plotlyjs()
+end
+```
+"""
+function _is_headless()
+	return haskey(ENV, "CI") || !haskey(ENV, "DISPLAY")
 end
 
 @reexport using .BaseParams
