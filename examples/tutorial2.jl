@@ -55,7 +55,7 @@ using DataFrames
 
 # Load materials library:
 materials_db = MaterialsLibrary()
-list_materials_library(materials_db)
+list_materialslibrary(materials_db)
 
 # ## Cable dimensions
 #=
@@ -193,14 +193,14 @@ core = Conductor(WireArray(0, Diameter(d_w), 1, 0, material))
 
 #=
 !!! tip "Convenience methods"
-	The [`addto_conductor!`](@ref) method internally passes the `radius_ext` of the existing object to the `radius_in` argument of the new conductor. This enables easy stacking of multiple layers without redundancy. Moreover, the [`Diameter`](@ref) method is a convenience function that converts the diameter to radius at the constructor level. This maintains alignment with manufacturer specifications while enabling internal calculations to use radius values directly. This approach eliminates repetitive unit conversions and potential sources of implementation error.
+	The [`addto_conductorgroup!`](@ref) method internally passes the `radius_ext` of the existing object to the `radius_in` argument of the new conductor. This enables easy stacking of multiple layers without redundancy. Moreover, the [`Diameter`](@ref) method is a convenience function that converts the diameter to radius at the constructor level. This maintains alignment with manufacturer specifications while enabling internal calculations to use radius values directly. This approach eliminates repetitive unit conversions and potential sources of implementation error.
 =#
 
 # Add the subsequent layers of wires and inspect the object:
-addto_conductor!(core, WireArray, Diameter(d_w), 6, 15, material)
-addto_conductor!(core, WireArray, Diameter(d_w), 12, 13.5, material)
-addto_conductor!(core, WireArray, Diameter(d_w), 18, 12.5, material)
-addto_conductor!(core, WireArray, Diameter(d_w), 24, 11, material)
+addto_conductorgroup!(core, WireArray, Diameter(d_w), 6, 15, material)
+addto_conductorgroup!(core, WireArray, Diameter(d_w), 12, 13.5, material)
+addto_conductorgroup!(core, WireArray, Diameter(d_w), 18, 12.5, material)
+addto_conductorgroup!(core, WireArray, Diameter(d_w), 24, 11, material)
 
 #=
 ### Inner semiconductor
@@ -292,7 +292,7 @@ wire_screen =
 	Conductor(WireArray(sc_tape_co, Diameter(d_ws), num_sc_wires, lay_ratio, material))
 
 # Add equalizing copper tape that wraps the wire screen:
-addto_conductor!(wire_screen, Strip, Thickness(t_cut), w_cut, lay_ratio, material)
+addto_conductorgroup!(wire_screen, Strip, Thickness(t_cut), w_cut, lay_ratio, material)
 
 # Water blocking tape over screen:
 material = get_material(materials_db, "polyacrylate")
@@ -300,7 +300,7 @@ wb_tape_scr = Semicon(wire_screen, Thickness(t_wbt), material)
 
 # Group sheath components and assign to design:
 sheath_parts = [wire_screen, wb_tape_scr]
-addto_design!(cable_design, "sheath", sheath_parts)
+addto_cabledesign!(cable_design, "sheath", sheath_parts)
 
 # Examine the newly added components:
 plt2 = preview_cabledesign(cable_design)
@@ -326,7 +326,7 @@ pe_insu = Insulator(alu_tape_pe, Thickness(t_jac), material)
 
 # Group jacket components and assign to design:
 jacket_parts = [alu_tape, alu_tape_pe, pe_insu]
-addto_design!(cable_design, "jacket", jacket_parts)
+addto_cabledesign!(cable_design, "jacket", jacket_parts)
 
 # Inspect the finished cable design:
 plt3 = preview_cabledesign(cable_design)
@@ -350,19 +350,19 @@ detailed_df = cabledesign_todf(cable_design, :detailed)
 
 #=
 !!! note "Cables library"
-	Designs can be saved to a library for future use. The [`CablesLibrary`](@ref) is a container for storing multiple cable designs, allowing for easy access and reuse in different projects.  Lirabry management is performed using the [`list_cables_library`](@ref), [`store_cables_library!`](@ref), and [`save_cables_library`](@ref) functions.
+	Designs can be saved to a library for future use. The [`CablesLibrary`](@ref) is a container for storing multiple cable designs, allowing for easy access and reuse in different projects.  Lirabry management is performed using the [`list_cableslibrary`](@ref), [`store_cableslibrary!`](@ref), and [`save_cableslibrary`](@ref) functions.
 =#
 
 # Store the cable design and inspect the library contents:
 library = CablesLibrary()
-store_cables_library!(library, cable_design)
-list_cables_library(library)
+store_cableslibrary!(library, cable_design)
+list_cableslibrary(library)
 
 # Save to file for later use:
 output_path = joinpath(dirname(Base.source_path()), "src", "tutorials")
 output_path = isdir(output_path) ? output_path : "."
 output_file = joinpath(output_path, "cables_library.jls")
-save_cables_library(library, file_name = output_file)
+save_cableslibrary(library, file_name = output_file)
 if isfile(output_file)
 	println("\nMaterials library saved sucessfully!")
 end
@@ -385,7 +385,7 @@ f = 10.0 .^ range(0, stop = 6, length = 10)  # Frequency range
 earth_params = EarthModel(f, 100.0, 10.0, 1.0)  # 100 Ω·m resistivity, εr=10, μr=1
 
 # Earth model base (DC) properties:
-earth_data_df = earth_data(earth_params)
+earthmodel_todf_df = earthmodel_todf(earth_params)
 
 #=
 ### Three-phase system in trifoil configuration
@@ -404,17 +404,17 @@ cabledef = CableDef(cable_design, xa, ya, Dict("core" => 1, "sheath" => 0, "jack
 cable_system = LineCableSystem("tutorial2", 20.0, earth_params, 1000.0, cabledef)
 
 # Add remaining cables (phases B and C):
-addto_system!(cable_system, cable_design, xb, yb,
+addto_linecablesystem!(cable_system, cable_design, xb, yb,
 	Dict("core" => 2, "sheath" => 0, "jacket" => 0),
 )
-addto_system!(
+addto_linecablesystem!(
 	cable_system, cable_design, xc, yc,
 	Dict("core" => 3, "sheath" => 0, "jacket" => 0),
 )
 
 #=
 !!! note "Phase mapping"
-	The [`addto_system!`](@ref) function allows the specification of phase mapping for each cable. The `Dict` argument maps the cable components to their respective phases, where `core` is the conductor, `sheath` is the screen, and `jacket` is the outer jacket. The values (1, 2, 3) represent the phase numbers (A, B, C) in this case. Components mapped to phase 0 will be Kron-eliminated (grounded). Components set to the same phase will be bundled into an equivalent phase.
+	The [`addto_linecablesystem!`](@ref) function allows the specification of phase mapping for each cable. The `Dict` argument maps the cable components to their respective phases, where `core` is the conductor, `sheath` is the screen, and `jacket` is the outer jacket. The values (1, 2, 3) represent the phase numbers (A, B, C) in this case. Components mapped to phase 0 will be Kron-eliminated (grounded). Components set to the same phase will be bundled into an equivalent phase.
 =#
 
 # ### Cable system preview

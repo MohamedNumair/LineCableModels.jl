@@ -94,3 +94,20 @@ The `addto_<entity>!` pattern:
 - Typically invokes `calc_` methods to update derived properties.
 
 This pattern allows for hierarchical composition of components while maintaining a clear distinction from library management operations.
+
+## DataFrame view pattern
+
+The codebase implements a consistent pattern for generating `DataFrame` views of complex objects through a standardized naming convention:
+
+```
+<entity>_todf        # Convert entity to a `DataFrame` representation
+```
+
+This pattern:
+
+- Takes an entity object as input and creates a `DataFrame` visualization.
+- Uses the suffix `_todf` to clearly indicate the conversion operation.
+- Produces non-mutating transformations (no exclamation mark needed).
+- Facilitates analysis, visualization, and reporting of complex data structures.
+
+The `_todf` suffix provides a concise and immediately recognizable identifier for functions that expose object data in tabular format.

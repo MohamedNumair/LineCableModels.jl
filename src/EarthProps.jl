@@ -46,28 +46,6 @@ Represents an earth model with constant properties (CP), i.e. frequency-invarian
 """
 struct CPEarth <: AbstractFDEMFormulation end
 
-# "Identifier displayed in parametric analyses."
-# 	description::String
-
-# 	@doc """
-# 	$(TYPEDSIGNATURES)
-
-# 	Constructs a [`CPEarth`](@ref) instance.
-
-# 	# Returns
-
-# 	- A [`CPEarth`](@ref) object with a predefined description label.
-
-# 	# Examples
-
-# 	```julia
-# 	cp_model = $(FUNCTIONNAME)()
-# 	println(cp_model.description) # Output: "CP model"
-# 	```
-# 	"""
-# 	CPEarth() = new("CP model")
-# end
-
 """
 $(TYPEDSIGNATURES)
 
@@ -361,7 +339,7 @@ mutable struct EarthModel
 	# See also
 
 	- [`EarthLayer`](@ref)
-	- [`addto_earth_model!`](@ref)
+	- [`addto_earthmodel!`](@ref)
 	"""
 	function EarthModel(
 		frequencies::Vector{<:Number},
@@ -471,7 +449,7 @@ println(vert_earth_model.num_layers) # Output: 4
 - [`EarthLayer`](@ref)
 - [`_calc_ehem_properties!`](@ref)
 """
-function addto_earth_model!(
+function addto_earthmodel!(
 	model::EarthModel,
 	frequencies::Vector{<:Number},
 	base_rho_g::Number,
@@ -607,7 +585,7 @@ df = $(FUNCTIONNAME)(earth_model)
 println(df)
 ```
 """
-function earth_data(earth_model::EarthModel)
+function earthmodel_todf(earth_model::EarthModel)
 	layers = earth_model.layers
 
 	base_rho_g = [layer.base_rho_g for layer in layers]

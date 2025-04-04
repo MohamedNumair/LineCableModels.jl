@@ -1,0 +1,274 @@
+{
+    "tutorial2": {
+        "cable_id": "tutorial2",
+        "nominal_data": {
+            "U": 30,
+            "screen_cross_section": 35,
+            "capacitance": 0.39,
+            "U0": 18,
+            "conductor_cross_section": 1000,
+            "resistance": 0.0291,
+            "inductance": 0.3,
+            "designation_code": "NA2XS(FL)2Y"
+        },
+        "components": [
+            {
+                "insulator_group": [
+                    {
+                        "material_props": {
+                            "T0": 20,
+                            "alpha": 0,
+                            "eps_r": 32.3,
+                            "mu_r": 1,
+                            "rho": 5300
+                        },
+                        "radius_in": 0.02115,
+                        "type": "Semicon",
+                        "radius_ext": 0.02145,
+                        "temperature": 20
+                    },
+                    {
+                        "material_props": {
+                            "T0": 20,
+                            "alpha": 0,
+                            "eps_r": 1000,
+                            "mu_r": 1,
+                            "rho": 1000
+                        },
+                        "radius_in": 0.02145,
+                        "type": "Semicon",
+                        "radius_ext": 0.02205,
+                        "temperature": 20
+                    },
+                    {
+                        "material_props": {
+                            "T0": 20,
+                            "alpha": 0,
+                            "eps_r": 2.3,
+                            "mu_r": 1,
+                            "rho": 197000000000000
+                        },
+                        "radius_in": 0.02205,
+                        "type": "Insulator",
+                        "radius_ext": 0.03005,
+                        "temperature": 20
+                    },
+                    {
+                        "material_props": {
+                            "T0": 20,
+                            "alpha": 0,
+                            "eps_r": 1000,
+                            "mu_r": 1,
+                            "rho": 500
+                        },
+                        "radius_in": 0.03005,
+                        "type": "Semicon",
+                        "radius_ext": 0.030350000000000002,
+                        "temperature": 20
+                    },
+                    {
+                        "material_props": {
+                            "T0": 20,
+                            "alpha": 0,
+                            "eps_r": 32.3,
+                            "mu_r": 1,
+                            "rho": 5300
+                        },
+                        "radius_in": 0.030350000000000002,
+                        "type": "Semicon",
+                        "radius_ext": 0.030650000000000004,
+                        "temperature": 20
+                    }
+                ],
+                "id": "core",
+                "conductor_group": [
+                    {
+                        "temperature": 20,
+                        "lay_ratio": 0,
+                        "lay_direction": 1,
+                        "material_props": {
+                            "T0": 20,
+                            "alpha": 0.00429,
+                            "eps_r": 1,
+                            "mu_r": 1.000022,
+                            "rho": 2.8264e-8
+                        },
+                        "radius_in": 0,
+                        "radius_wire": 0.00235,
+                        "type": "WireArray",
+                        "radius_ext": 0.00235,
+                        "num_wires": 1
+                    },
+                    {
+                        "temperature": 20,
+                        "lay_ratio": 15,
+                        "lay_direction": 1,
+                        "material_props": {
+                            "T0": 20,
+                            "alpha": 0.00429,
+                            "eps_r": 1,
+                            "mu_r": 1.000022,
+                            "rho": 2.8264e-8
+                        },
+                        "radius_in": 0.00235,
+                        "radius_wire": 0.00235,
+                        "type": "WireArray",
+                        "radius_ext": 0.007050000000000001,
+                        "num_wires": 6
+                    },
+                    {
+                        "temperature": 20,
+                        "lay_ratio": 13.5,
+                        "lay_direction": 1,
+                        "material_props": {
+                            "T0": 20,
+                            "alpha": 0.00429,
+                            "eps_r": 1,
+                            "mu_r": 1.000022,
+                            "rho": 2.8264e-8
+                        },
+                        "radius_in": 0.007050000000000001,
+                        "radius_wire": 0.00235,
+                        "type": "WireArray",
+                        "radius_ext": 0.01175,
+                        "num_wires": 12
+                    },
+                    {
+                        "temperature": 20,
+                        "lay_ratio": 12.5,
+                        "lay_direction": 1,
+                        "material_props": {
+                            "T0": 20,
+                            "alpha": 0.00429,
+                            "eps_r": 1,
+                            "mu_r": 1.000022,
+                            "rho": 2.8264e-8
+                        },
+                        "radius_in": 0.01175,
+                        "radius_wire": 0.00235,
+                        "type": "WireArray",
+                        "radius_ext": 0.01645,
+                        "num_wires": 18
+                    },
+                    {
+                        "temperature": 20,
+                        "lay_ratio": 11,
+                        "lay_direction": 1,
+                        "material_props": {
+                            "T0": 20,
+                            "alpha": 0.00429,
+                            "eps_r": 1,
+                            "mu_r": 1.000022,
+                            "rho": 2.8264e-8
+                        },
+                        "radius_in": 0.01645,
+                        "radius_wire": 0.00235,
+                        "type": "WireArray",
+                        "radius_ext": 0.02115,
+                        "num_wires": 24
+                    }
+                ]
+            },
+            {
+                "insulator_group": [
+                    {
+                        "material_props": {
+                            "T0": 20,
+                            "alpha": 0,
+                            "eps_r": 32.3,
+                            "mu_r": 1,
+                            "rho": 5300
+                        },
+                        "radius_in": 0.031700000000000006,
+                        "type": "Semicon",
+                        "radius_ext": 0.03200000000000001,
+                        "temperature": 20
+                    }
+                ],
+                "id": "sheath",
+                "conductor_group": [
+                    {
+                        "temperature": 20,
+                        "lay_ratio": 10,
+                        "lay_direction": 1,
+                        "material_props": {
+                            "T0": 20,
+                            "alpha": 0.00393,
+                            "eps_r": 1,
+                            "mu_r": 0.999994,
+                            "rho": 1.7241e-8
+                        },
+                        "radius_in": 0.030650000000000004,
+                        "radius_wire": 0.000475,
+                        "type": "WireArray",
+                        "radius_ext": 0.0316,
+                        "num_wires": 49
+                    },
+                    {
+                        "lay_ratio": 10,
+                        "lay_direction": 1,
+                        "material_props": {
+                            "T0": 20,
+                            "alpha": 0.00393,
+                            "eps_r": 1,
+                            "mu_r": 0.999994,
+                            "rho": 1.7241e-8
+                        },
+                        "radius_in": 0.0316,
+                        "thickness": 0.0001,
+                        "width": 0.01,
+                        "type": "Strip",
+                        "radius_ext": 0.031700000000000006,
+                        "temperature": 20
+                    }
+                ]
+            },
+            {
+                "insulator_group": [
+                    {
+                        "material_props": {
+                            "T0": 20,
+                            "alpha": 0,
+                            "eps_r": 2.3,
+                            "mu_r": 1,
+                            "rho": 197000000000000
+                        },
+                        "radius_in": 0.032150000000000005,
+                        "type": "Insulator",
+                        "radius_ext": 0.032200000000000006,
+                        "temperature": 20
+                    },
+                    {
+                        "material_props": {
+                            "T0": 20,
+                            "alpha": 0,
+                            "eps_r": 2.3,
+                            "mu_r": 1,
+                            "rho": 197000000000000
+                        },
+                        "radius_in": 0.032200000000000006,
+                        "type": "Insulator",
+                        "radius_ext": 0.034600000000000006,
+                        "temperature": 20
+                    }
+                ],
+                "id": "jacket",
+                "conductor_group": [
+                    {
+                        "material_props": {
+                            "T0": 20,
+                            "alpha": 0.00429,
+                            "eps_r": 1,
+                            "mu_r": 1.000022,
+                            "rho": 2.8264e-8
+                        },
+                        "radius_in": 0.03200000000000001,
+                        "type": "Tubular",
+                        "radius_ext": 0.032150000000000005,
+                        "temperature": 20
+                    }
+                ]
+            }
+        ]
+    }
+}

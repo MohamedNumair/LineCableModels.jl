@@ -2,7 +2,6 @@
 
 <img src="docs/src/assets/logo.svg" align="left" width="150" alt="LineCableModels.jl logo" />
 
-[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://electa-git.github.io/LineCableModels.jl/stable/)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://electa-git.github.io/LineCableModels.jl/dev/)
 [![Build Status](https://github.com/Electa-Git/LineCableModels.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Electa-Git/LineCableModels.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
@@ -13,7 +12,7 @@
 
 - **Comprehensive cable modeling:** Detailed representation of conductors (solid, tubular, stranded), insulation layers, screens, armoring, and semicons.
 - **Line and cable constants:** Accurate DC and AC parameters (R, L, C, G) with correction factors for temperature, stranding, and helical effects.
-- **Propagation characteristics:** Rigorous electromagnetic models for cable internal impedances and earth-return paths.
+- **Propagation characteristics:** Rigorous electromagnetic   models for cable internal impedances and earth-return paths.
 - **Multiple solvers:** Analytical formulations, finite element modeling, and interfaces to EMT programs, including PSCAD.
 - **Materials and cables library:** Store and reuse standardized material properties and cable designs across projects.
 

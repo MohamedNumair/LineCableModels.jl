@@ -61,11 +61,11 @@ body:
     attributes:
       label: "Code Quality Requirements"
       options:
-        - label: "Codebase cleaned: No credentials, passwords, API keys, sensitive URLs, or debug code"
+        - label: "Codebase cleaned: no credentials, passwords, API keys, sensitive URLs, or debug code"
           required: true
         - label: "Out-of-the-box functionality confirmed in a clean environment"
           required: true
-        - label: "Reproducibility ensured: Scripts or datasets included to reproduce main results"
+        - label: "Reproducibility ensured: scripts or datasets included to reproduce main results"
           required: true
         - label: "Dependencies clearly documented (requirements.txt, compiler info, etc.)"
           required: true

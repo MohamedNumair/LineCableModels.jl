@@ -1021,6 +1021,10 @@ function calc_equivalent_lossfact(G_eq::Number, C_eq::Number, ω::Number)
 	return G_eq / (ω * C_eq)
 end
 
+function calc_sigma_lossfact(G_eq::Number, radius_in::Number, radius_ext::Number)
+	return G_eq * log(radius_ext / radius_in) / (2 * pi)
+end
+
 Utils.@_autoexport
 
 end
