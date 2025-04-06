@@ -1,6 +1,6 @@
-# # Tutorial 2 - Building a cable design
-
 #=
+# Tutorial 2 - Building a cable design
+
 This tutorial demonstrates how to model a typical medium-voltage single-core power cable 
 using the [`LineCableModels.jl`](@ref) package. The objective is to build a complete representation of a single-core 18/30 kV cable with a 1000 mm² aluminum conductor and 35 mm² copper screen.
 =#
@@ -15,9 +15,9 @@ Depth = 2:3
 ```
 =#
 
-# ## Introduction
-
 #=
+## Introduction
+
 Single-core power cables have a complex structure consisting of multiple concentric layers, each with specific geometric and material properties -- for example, a cable of type NA2XS(FL)2Y 18/30 [is shown here](https://www.google.com/search?udm=2&q=%22NA2XS(FL)2Y%2018/30%20kV%20cable%22). Prior to building actual transmission line models that incorporate cables as part of the transmission system, e.g. for EMT simulations, power flow, harmonics, protection studies etc., it is necessary to determine the base (or DC) electrical parameters of the cable itself.
 
 This tutorial covers:
@@ -29,36 +29,27 @@ This tutorial covers:
 4. Assigning [`CableDesign`](@ref) objects to a [`LineCableSystem`](@ref) and exporting the model to PSCAD for EMT analysis.
 =#
 
-# ## Getting started
+#=
+## Getting started
+=#
 
 # Load the package and set up the environment:
 push!(LOAD_PATH, joinpath(@__DIR__, "..", "src")) # hide
-using LineCableModels
+using Revise
 using DataFrames
+using LineCableModels
 
-#=
-```julia
-# Alternatively, use the PlotlyJS backend for interactive plots:
-# plotlyjs()
-# base_font_size = 12
-# title_base_font_size = 14
-# leg_base_font_size = 10
-# default(
-# 	fontfamily = "Computer Modern",
-# 	guidefontsize = base_font_size,   # Axis labels (x/y/z)
-# 	tickfontsize = base_font_size,    # Tick labels
-# 	titlefontsize = title_base_font_size, # Title font size
-# 	legendfontsize = leg_base_font_size,  # Legend font size
-# )
-```
-=#
-
-# Load materials library:
-materials_db = MaterialsLibrary()
+# Load materials library with default values and export as JSON file for future use:
+materials_db = MaterialsLibrary(add_defaults = true)
+save_materialslibrary(
+	materials_db,
+	file_name = joinpath(@__DIR__, "materials_library.json"),
+)
 list_materialslibrary(materials_db)
 
-# ## Cable dimensions
 #=
+## Cable dimensions
+
 The cable under consideration is a medium-voltage, stranded aluminum conductor cable with XLPE insulation, copper wire concentric screens, water-blocking tape, and PE jacket that is rated for 18/30 kV systems. This information is typically found in the cable datasheet and is fully described in the code type under standards HD 620 10C [CENELEC_HD620_S3_2023](@cite) or DIN VDE 0276-620 [VDE_DIN_VDE_0276_620_2024](@cite):
 
 ```
@@ -124,30 +115,32 @@ df = DataFrame( # hide
 	diameter = [round(d, digits = 2) for d in getindex.(layers, 3)], # hide
 ) # hide
 
-# ## Using the cable constructors
 #=
+## Using the cable constructors
+
 !!! note "Object hierarchy"
 	The [`LineCableModels.DataModel`](@ref) module implements a carefully designed component hierarchy that mirrors the physical construction of power cables while maintaining the mathematical relationships required for accurate electrical modeling.
 
 ```
 CableDesign
-├── CableComponent <: AbstractCablePart
-│   ├── Conductor <: AbstractConductorPart
-│   │   ├── WireArray
-│   │   ├── Tubular
-│   │   ├── Strip
-│   │   └── Conductor <: AbstractConductorPart
-│   │       ├── WireArray
-│   │       ├── …
-│   │       └── Any <: AbstractConductorPart
-│   ⋮
-│   ├── Any <: AbstractConductorPart
-│   ├── Semicon
-│   ├── Insulator
-│   ├── …
-│   ⋮
-│   └── Any <: AbstractInsulatorPart
+├── CableComponent
+│   ├── conductor_group::ConductorGroup <: AbstractConductorPart
+│   │   ├── layers::Vector{AbstractConductorPart}
+│   │   │   ├── WireArray
+│   │   │   ├── Tubular
+│   │   │   ├── Strip
+│   │   │   └── …
+│   ├── conductor_props::Material
+│   ├── insulator_group::InsulatorGroup <: AbstractInsulatorPart
+│   │   ├── layers::Vector{AbstractInsulatorPart}
+│   │   │   ├── Insulator
+│   │   │   ├── Semicon
+│   │   │   └── …
+│   └── insulator_props::Material
 ⋮
+├── CableComponent
+│   ├── …
+⋮  ⋮
 ```
 
 ### Cable designs
@@ -156,11 +149,11 @@ The [`CableDesign`](@ref) object is the main container for all cable components.
 
 ### Cable components
 
-Each [`CableComponent`](@ref) represents a functional group of the cable (core, sheath, armor, outer), and must contain at least one [`AbstractConductorPart`](@ref) and one [`AbstractInsulatorPart`](@ref). These containers are subsequently used to calculate the equivalent electromagnetic parameters of the coaxial cable layers.
+Each [`CableComponent`](@ref) represents a functional group of the cable (core, sheath, armor, outer), organized into a conductor group and an insulator group with their respective effective material properties. This structure allows for precise calculation of electromagnetic parameters.
 
-### Conductors
+### Conductor groups
 
-The [`Conductor`](@ref) object represents a specialized container for grouping various [`AbstractConductorPart`](@ref) objects. It calculates equivalent resistance (R) and inductance (L) values for all contained conductive elements, handling the complexity of different geometrical arrangements.
+The [`ConductorGroup`](@ref) object serves as a specialized container for organizing [`AbstractConductorPart`](@ref) elements in layers. It calculates equivalent resistance (R) and inductance (L) values for all contained conductive elements, handling the complexity of different geometrical arrangements.
 
 #### AbstractConductorPart implementations
 
@@ -168,28 +161,33 @@ The [`Conductor`](@ref) object represents a specialized container for grouping v
 - The [`Tubular`](@ref) object represents simple tubular conductors with straightforward parameter calculations.
 - The [`Strip`](@ref) object models conductor tapes following helical patterns with rectangular cross-sections.
 
-### Insulators and Semicons
+### Insulator groups
 
-The [`Insulator`](@ref) and the [`Semicon`](@ref) objects represent the insulating and semiconducting layers, primarily tubular in shape, with methods to calculate capacitance (C) and conductance (G).
+The [`InsulatorGroup`](@ref) object organizes [`AbstractInsulatorPart`](@ref) elements in concentric layers, calculating the equivalent capacitance (C) and conductance (G) properties.
+
+#### AbstractInsulatorPart implementations
+
+- The [`Insulator`](@ref) object represents dielectric layers with very high resistivity.
+- The [`Semicon`](@ref) object models semiconducting layers with intermediate resistivity and high permittivity.
 
 !!! note "Equivalent circuit parameters"
-	The hierarchical structure enables accurate calculation of equivalent circuit parameters by:
+	The  hierarchical structure enables accurate calculation of equivalent circuit parameters by:
 
-	1. Computing geometry-specific parameters at the [`AbstractConductorPart`](@ref) level.
-	2. Aggregating these into equivalent parameters at the [`Conductor`](@ref) level.
-	3. Further combining these with [`AbstractInsulatorPart`](@ref) properties at the [`CableComponent`](@ref) level.
-	4. Converting the composite structure into an equivalent coaxial model by matching lumped circuit quantities (R, L, C, G) to effective electromagnetic properties (ρ, ε, µ, tan δ).
+	1. Computing geometry-specific parameters at the [`AbstractConductorPart`](@ref) and [`AbstractInsulatorPart`](@ref) levels.
+	2. Aggregating these into equivalent parameters within [`ConductorGroup`](@ref) and [`InsulatorGroup`](@ref).
+	3. Converting the composite structure into an equivalent coaxial model by matching lumped circuit quantities (R, L, C, G) to effective electromagnetic properties (ρ, ε, µ) at the [`CableComponent`](@ref) level. The effective properties are stored in dedicated [`Material`](@ref) objects.
 =#
 
-# ## Core and main insulation
 
 #=
+## Core and main insulation
+
 The core consists of a 4-layer AAAC stranded conductor with 61 wires arranged in (1/6/12/18/24) pattern, with respective lay ratios of (15/13.5/12.5/11) [CENELEC50182](@cite). Stranded conductors are modeled using the [`WireArray`](@ref) object, which handles the helical pattern and twisting effects via the [`calc_helical_params`](@ref) method.
 =#
 
 # Initialize the conductor object and assign the central wire:
 material = get_material(materials_db, "aluminum")
-core = Conductor(WireArray(0, Diameter(d_w), 1, 0, material))
+core = ConductorGroup(WireArray(0, Diameter(d_w), 1, 0, material))
 
 #=
 !!! tip "Convenience methods"
@@ -216,11 +214,11 @@ the conductor and insulation, eliminating air gaps and reducing field concentrat
 
 # Inner semiconductive tape:
 material = get_material(materials_db, "polyacrylate")
-sctape_in = Semicon(core, Thickness(t_sct), material)
+main_insu = InsulatorGroup(Semicon(core, Thickness(t_sct), material))
 
 # Inner semiconductor (1000 Ω.m as per IEC 840):
 material = get_material(materials_db, "semicon1")
-semicon_in = Semicon(sctape_in, Thickness(t_sc_in), material)
+addto_insulatorgroup!(main_insu, Semicon, Thickness(t_sc_in), material, temperature = 30)
 
 #=
 ### Main insulation
@@ -231,7 +229,8 @@ medium and high voltage cables due to its excellent dielectric properties.
 
 # Add the insulation layer:
 material = get_material(materials_db, "pe")
-main_insu = Insulator(semicon_in, Thickness(t_ins), material)
+addto_insulatorgroup!(main_insu, Insulator, Thickness(t_ins), material)
+
 
 #=
 ### Outer semiconductor
@@ -242,20 +241,20 @@ transition from insulation to the metallic screen.
 
 # Outer semiconductor (500 Ω.m as per IEC 840):
 material = get_material(materials_db, "semicon2")
-semicon_out = Semicon(main_insu, Thickness(t_sc_out), material)
+addto_insulatorgroup!(main_insu, Semicon, Thickness(t_sc_out), material)
 
 # Outer semiconductive tape:
 material = get_material(materials_db, "polyacrylate")
-sc_tape_co = Semicon(semicon_out, Thickness(t_sct), material)
+addto_insulatorgroup!(main_insu, Semicon, Thickness(t_sct), material)
 
-# Group all core-related components:
-core_parts = [core, sctape_in, semicon_in, main_insu, semicon_out, sc_tape_co]
+# Group core-related components:
+core_cc = CableComponent("core", core, main_insu)
 
 #=
 With the core parts properly defined, the [`CableDesign`](@ref) object is initialized with nominal data from the datasheet. This includes voltage ratings and reference electrical parameters that will be used to benchmark the design.
 =#
 
-# Define the nominal values and instantiate the CableDesign with the core_parts:
+# # Define the nominal values and instantiate the CableDesign with the core_parts:
 cable_id = "tutorial2"
 datasheet_info = NominalData(
 	designation_code = "NA2XS(FL)2Y",
@@ -267,13 +266,10 @@ datasheet_info = NominalData(
 	capacitance = 0.39,               # Capacitance [μF/km]
 	inductance = 0.3,                 # Inductance in trifoil [mH/km]
 )
-cable_design =
-	CableDesign(cable_id, "core", core_parts, nominal_data = datasheet_info)
+cable_design = CableDesign(cable_id, core_cc, nominal_data = datasheet_info)
 
 # At this point, it becomes possible to preview the cable design:
 plt1 = preview_cabledesign(cable_design)
-
-# ## Sheath and PE jacket
 
 #=
 ### Wire screens
@@ -288,19 +284,19 @@ The metallic screen (typically copper) serves multiple purposes:
 # Build the wire screens on top of the previous layer:
 lay_ratio = 10 # typical value for wire screens
 material = get_material(materials_db, "copper")
-wire_screen =
-	Conductor(WireArray(sc_tape_co, Diameter(d_ws), num_sc_wires, lay_ratio, material))
+screen_con =
+	ConductorGroup(WireArray(main_insu, Diameter(d_ws), num_sc_wires, lay_ratio, material))
 
 # Add equalizing copper tape that wraps the wire screen:
-addto_conductorgroup!(wire_screen, Strip, Thickness(t_cut), w_cut, lay_ratio, material)
+addto_conductorgroup!(screen_con, Strip, Thickness(t_cut), w_cut, lay_ratio, material)
 
 # Water blocking tape over screen:
 material = get_material(materials_db, "polyacrylate")
-wb_tape_scr = Semicon(wire_screen, Thickness(t_wbt), material)
+screen_insu = InsulatorGroup(Semicon(screen_con, Thickness(t_wbt), material))
 
 # Group sheath components and assign to design:
-sheath_parts = [wire_screen, wb_tape_scr]
-addto_cabledesign!(cable_design, "sheath", sheath_parts)
+sheath_cc = CableComponent("sheath", screen_con, screen_insu)
+addto_cabledesign!(cable_design, sheath_cc)
 
 # Examine the newly added components:
 plt2 = preview_cabledesign(cable_design)
@@ -314,26 +310,26 @@ and PE (polyethylene) outer jacket for mechanical protection.
 
 # Add the aluminum foil (moisture barrier):
 material = get_material(materials_db, "aluminum")
-alu_tape = Conductor(Tubular(wb_tape_scr, Thickness(t_alt), material))
+jacket_con = ConductorGroup(Tubular(screen_insu, Thickness(t_alt), material))
 
 # PE layer after aluminum foil:
 material = get_material(materials_db, "pe")
-alu_tape_pe = Insulator(alu_tape, Thickness(t_pet), material)
+jacket_insu = InsulatorGroup(Insulator(jacket_con, Thickness(t_pet), material))
 
 # PE jacket (outer mechanical protection):
 material = get_material(materials_db, "pe")
-pe_insu = Insulator(alu_tape_pe, Thickness(t_jac), material)
+addto_insulatorgroup!(jacket_insu, Insulator, Thickness(t_jac), material)
 
 # Group jacket components and assign to design:
-jacket_parts = [alu_tape, alu_tape_pe, pe_insu]
-addto_cabledesign!(cable_design, "jacket", jacket_parts)
+jacket_cc = CableComponent("jacket", jacket_con, jacket_insu)
+addto_cabledesign!(cable_design, jacket_cc)
 
 # Inspect the finished cable design:
 plt3 = preview_cabledesign(cable_design)
 
-# ## Examining cable parameters (RLC)
-
 #=
+## Examining the cable parameters (RLC)
+
 This section examines the cable design and compares calculated parameters with datasheet values. [`LineCableModels.jl`](@ref) provides several functions to analyze the design in different levels of detail.
 =#
 
@@ -346,9 +342,9 @@ components_df = cabledesign_todf(cable_design, :components)
 # Get detailed description of all cable parts:
 detailed_df = cabledesign_todf(cable_design, :detailed)
 
-# ## Saving the cable design
-
 #=
+## Saving the cable design
+
 !!! note "Cables library"
 	Designs can be saved to a library for future use. The [`CablesLibrary`](@ref) is a container for storing multiple cable designs, allowing for easy access and reuse in different projects.  Lirabry management is performed using the [`list_cableslibrary`](@ref), [`store_cableslibrary!`](@ref), and [`save_cableslibrary`](@ref) functions.
 =#
@@ -359,16 +355,13 @@ store_cableslibrary!(library, cable_design)
 list_cableslibrary(library)
 
 # Save to file for later use:
-output_path = joinpath(dirname(Base.source_path()), "src", "tutorials")
-output_path = isdir(output_path) ? output_path : "."
-output_file = joinpath(output_path, "cables_library.jls")
+output_file = joinpath(@__DIR__, "cables_library.json")
 save_cableslibrary(library, file_name = output_file)
-if isfile(output_file)
-	println("\nMaterials library saved sucessfully!")
-end
-# ## Defining a cable system
+
 
 #=
+### Defining a cable system
+
 !!! note "Cables systems"
 	A cable system is a collection of cables with defined positions, length and environmental characteristics. The [`LineCableSystem`](@ref) object is the main container for all cable systems, and it allows the definition of multiple cables in different configurations (e.g., trifoil, flat etc.). This object is the entry point for all system-related calculations and analyses.
 =#
@@ -376,8 +369,7 @@ end
 #=
 ### Earth model 
 
-The earth return path significantly affects cable impedance calculations.
-A frequency-dependent earth model with typical soil properties is defined.
+The earth return path significantly affects cable impedance calculations and needs to be properly modeled. In this tutorial, only a basic model with typical soil properties is defined. This will be further elaborated in the subsequent tutorials.
 =#
 
 # Define a frequency-dependent earth model (10^0 to 10^6 Hz):
@@ -390,7 +382,7 @@ earthmodel_todf_df = earthmodel_todf(earth_params)
 #=
 ### Three-phase system in trifoil configuration
 
-This section creates a cable system with three identical cables arranged in a trifoil formation.
+This section ilustrates the construction of a cable system with three identical cables arranged in a trifoil formation.
 =#
 
 
@@ -417,9 +409,11 @@ addto_linecablesystem!(
 	The [`addto_linecablesystem!`](@ref) function allows the specification of phase mapping for each cable. The `Dict` argument maps the cable components to their respective phases, where `core` is the conductor, `sheath` is the screen, and `jacket` is the outer jacket. The values (1, 2, 3) represent the phase numbers (A, B, C) in this case. Components mapped to phase 0 will be Kron-eliminated (grounded). Components set to the same phase will be bundled into an equivalent phase.
 =#
 
-# ### Cable system preview
-#
-# This section examines the complete three-phase cable system.
+#=
+### Cable system preview
+
+In this section the complete three-phase cable system is examined.
+=#
 
 # Display system details:
 system_df = linecablesystem_todf(cable_system)
@@ -427,18 +421,19 @@ system_df = linecablesystem_todf(cable_system)
 # Visualize the cross-section of the three-phase system:
 plt4 = preview_linecablesystem(cable_system, zoom_factor = 0.15)
 
-# ## PSCAD Export
-#
-# The final step exports the model for electromagnetic transient simulations in PSCAD.
+#=
+## PSCAD Export
+
+The final step showcases how to export the model for electromagnetic transient simulations in PSCAD.
+=#
 
 # Export to PSCAD input file
-export_file = export_pscad_lcp(cable_system, folder_path = output_path)
-if isfile(export_file)
-	println("\nFile created sucessfully!")
-end
+output_file = joinpath(@__DIR__, "tutorial2.pscx")
+export_file = export_pscad_lcp(cable_system, file_name = output_file);
 
-# ## Conclusion
 #=
+## Conclusion
+
 This tutorial has demonstrated how to:
 
 1. Create a detailed model of a complex power cable with multiple concentric layers.

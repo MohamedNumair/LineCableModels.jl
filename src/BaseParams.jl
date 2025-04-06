@@ -731,7 +731,7 @@ function calc_shunt_conductance(radius_in::Number, radius_ext::Number, rho::Numb
 	return 2 * π * (1 / rho) / log(radius_ext / radius_in)
 end
 
-using ..DataModel: AbstractCablePart, Conductor, WireArray
+using ..DataModel: AbstractCablePart, ConductorGroup, WireArray
 """
 $(TYPEDSIGNATURES)
 
@@ -772,7 +772,7 @@ equivalent_gmr = $(FUNCTIONNAME)(conductor, new_layer)  # Expected output: Updat
 """
 function calc_equivalent_gmr(existing::AbstractCablePart, new_layer::AbstractCablePart)
 	beta = existing.cross_section / (existing.cross_section + new_layer.cross_section)
-	current_conductor = existing isa Conductor ? existing.layers[end] : existing
+	current_conductor = existing isa ConductorGroup ? existing.layers[end] : existing
 	gmd = calc_gmd(current_conductor, new_layer)
 	return existing.gmr^(beta^2) * new_layer.gmr^((1 - beta)^2) *
 		   gmd^(2 * beta * (1 - beta))

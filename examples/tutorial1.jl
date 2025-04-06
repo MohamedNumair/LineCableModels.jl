@@ -1,6 +1,6 @@
-# # Tutorial 1 - Using the  materials library
-
 #=
+# Tutorial 1 - Using the  materials library
+
 This tutorial demonstrates how to manage material properties for power cable modeling using the package [`LineCableModels.jl`](@ref). Accurate knowledge of electromagnetic properties is essential for reliable cable design and analysis.
 
 Beyond showcasing the API, this guide serves as a practical reference by providing standard property values from recognized industry sources like CIGRE TB-531 [cigre531](@cite) and IEC 60287 [IEC60287](@cite) that can be stored and consistently applied across multiple design iterations and simulation studies.
@@ -110,14 +110,13 @@ remove_materialslibrary!(materials_db, "epr_dupe")
 println("Material properties compiled from CIGRE TB-531 and IEC 60287:")
 df_final = list_materialslibrary(materials_db)
 
-# ##  Saving the materials library to CSV
-output_path = joinpath(dirname(Base.source_path()), "src", "tutorials")
-output_path = isdir(output_path) ? output_path : "."
-output_file = joinpath(output_path, "materials_library.csv")
-save_materialslibrary(materials_db, file_name = output_file)
-if isfile(output_file)
-	println("\nMaterials library saved sucessfully!")
-end
+# ##  Saving the materials library to JSON
+output_file = joinpath(@__DIR__, "materials_library.json")
+save_materialslibrary(
+	materials_db,
+	file_name = output_file,
+)
+
 
 # ##  Retrieving materials for use
 #=
@@ -125,11 +124,14 @@ end
 	To load from an existing CSV file, instantiate a new [`MaterialsLibrary`](@ref) passing the file path as argument. Materials can be retrieved from the library using the [`get_material`](@ref) function.
 =#
 
-# Start a new [`MaterialsLibrary`](@ref) from the CSV file:
-materials_from_csv = MaterialsLibrary(file_name = output_file)
-
+# Start a new [`MaterialsLibrary`](@ref) and load from the JSON file:
+materials_from_json = MaterialsLibrary()
+load_materialslibrary!(
+	materials_from_json,
+	file_name = output_file,
+)
 # Retrieve a material and display the object:
-copper = get_material(materials_from_csv, "copper_corrected")
+copper = get_material(materials_from_json, "copper_corrected")
 
 # Access the material properties:
 println("\nRetrieved copper_corrected material properties:")

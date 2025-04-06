@@ -27,13 +27,12 @@ using ..Utils
 
 # Module-specific dependencies
 using Measurements
-using CSV
 using DataFrames
 
 """
 $(TYPEDEF)
 
-Defines electromagnetic and thermal properties of a material used in conductor modeling:
+Defines electromagnetic and thermal properties of a material used in cable modeling:
 
 $(TYPEDFIELDS)
 """
@@ -53,7 +52,7 @@ end
 """
 $(TYPEDEF)
 
-Stores a collection of predefined materials for conductor modeling, indexed by material name:
+Stores a collection of predefined materials for cable modeling, indexed by material name:
 
 $(TYPEDFIELDS)
 """
@@ -62,42 +61,27 @@ mutable struct MaterialsLibrary
 	materials::Dict{String, Material}  # Key: Material name, Value: Material object
 end
 
-"""
-$(TYPEDSIGNATURES)
+# """
+#     MaterialsLibrary(; file_name::String = "materials_library.json")::MaterialsLibrary
 
-Constructs a [`MaterialsLibrary`](@ref) instance, loading materials from a CSV file if available.
+# Constructs a [`MaterialsLibrary`](@ref) instance, loading materials from a file or initializing defaults.
 
-# Arguments
+# # Arguments
+# - `file_name`: Name of the file to load materials from (default: `"materials_library.json"`).
+#   - `.json`: JSON format (default)
+#   - `.csv`: CSV format
 
-- `file_name`: Name of the CSV file containing material definitions (default: `"materials_library.csv"`).
-
-# Returns
-
-- An instance of [`MaterialsLibrary`](@ref), either loaded from the file or initialized with default materials.
-
-# Examples
-
-```julia
-library = MaterialsLibrary()
-```
-
-# See also
-
-- [`Material`](@ref)
-- [`store_materialslibrary!`](@ref)
-- [`remove_materialslibrary!`](@ref)
-- [`save_materialslibrary`](@ref)
-- [`list_materialslibrary`](@ref)
-"""
-function MaterialsLibrary(; file_name::String = "materials_library.csv")::MaterialsLibrary
+# # Returns
+# - An instance of [`MaterialsLibrary`](@ref) containing the loaded materials or default materials.
+# """
+function MaterialsLibrary(; add_defaults::Bool = true)::MaterialsLibrary
 	library = MaterialsLibrary(Dict{String, Material}())
-	if isfile(file_name)
-		println("Loading materials database from $file_name...")
-		_load_from_csv!(library, file_name)
-	else
-		println("No $file_name found. Initializing default materials database...")
+
+	if add_defaults
+		println("Initializing default materials database...")
 		_add_default_materials!(library)
 	end
+
 	return library
 end
 
@@ -157,43 +141,6 @@ function _add_default_materials!(library::MaterialsLibrary)
 	)
 end
 
-"""
-$(TYPEDSIGNATURES)
-
-Loads materials from a CSV file into a [`MaterialsLibrary`](@ref).
-
-# Arguments
-
-- `library`: Instance of [`MaterialsLibrary`](@ref) to be populated.
-- `file_name`: Path to the CSV file containing material properties.
-
-# Returns
-
-- The modified instance of [`MaterialsLibrary`](@ref) with materials loaded from the file.
-
-# Errors
-
-Throws an error if the CSV file format is invalid or missing required fields.
-
-# Examples
-
-```julia
-library = MaterialsLibrary()
-$(FUNCTIONNAME)(library, "materials_library.csv")
-```
-
-# See also
-
-- [`store_materialslibrary!`](@ref)
-- [`MaterialsLibrary`](@ref)
-"""
-function _load_from_csv!(library::MaterialsLibrary, file_name::String)
-	df = DataFrame(CSV.File(file_name))
-	for row in eachrow(df)
-		material = Material(row.rho, row.eps_r, row.mu_r, row.T0, row.alpha)
-		store_materialslibrary!(library, row.name, material)
-	end
-end
 
 """
 $(TYPEDSIGNATURES)
@@ -271,51 +218,6 @@ function remove_materialslibrary!(library::MaterialsLibrary, name::String)
 	library
 end
 
-"""
-$(TYPEDSIGNATURES)
-
-Saves a [`MaterialsLibrary`](@ref) to a CSV file.
-
-# Arguments
-
-- `library`: Instance of [`MaterialsLibrary`](@ref) to be saved.
-- `file_name`: Path to the output CSV file (default: `"materials_library.csv"`).
-
-# Returns
-
-- The path of the saved CSV file.
-
-# Examples
-
-```julia
-library = MaterialsLibrary()
-$(FUNCTIONNAME)(library, file_name = "materials_library.csv")
-```
-
-# See also
-
-- [`_load_from_csv!`](@ref)
-"""
-function save_materialslibrary(
-	library::MaterialsLibrary;
-	file_name::String = "materials_library.csv",
-)::String
-	rows = [
-		(
-			name = name,
-			rho = m.rho,
-			eps_r = m.eps_r,
-			mu_r = m.mu_r,
-			T0 = m.T0,
-			alpha = m.alpha,
-		)
-		for (name, m) in library.materials
-	]
-	df = DataFrame(rows)
-	CSV.write(file_name, df)
-
-	return abspath(file_name)
-end
 
 """
 $(TYPEDSIGNATURES)

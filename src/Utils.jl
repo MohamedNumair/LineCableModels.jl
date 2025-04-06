@@ -349,6 +349,51 @@ macro _autoexport()
 	return esc(Expr(:export, public_names...))
 end
 
+
+# """
+#     format_measurement(x)
+
+# Formats a measurement as a string "value ± uncertainty" if it has uncertainty,
+# otherwise returns the raw value.
+# """
+function _format_measurement(x)
+	if x isa Measurements.Measurement
+		return "$(Measurements.value(x)) ± $(Measurements.uncertainty(x))"
+	else
+		return x
+	end
+end
+
+# """
+#     parse_measurement(x)
+
+# Parses a string, potentially in "value ± uncertainty" format, into a Measurement.
+# If not in that format, attempts to parse as a raw number.
+# """
+function _parse_measurement(x)
+	if isa(x, AbstractString) && occursin('±', x)
+		# Split the string by the ± character
+		parts = split(x, '±')
+		if length(parts) == 2
+			value = parse(Float64, strip(parts[1]))
+			uncertainty = parse(Float64, strip(parts[2]))
+			return value ± uncertainty
+		end
+	end
+
+	# Try to parse as a number if it's a string
+	if isa(x, AbstractString)
+		try
+			return parse(Float64, x)
+		catch
+			return x  # Return as is if parsing fails
+		end
+	end
+
+	# Return as is for other types
+	return x
+end
+
 @_autoexport
 
 end
