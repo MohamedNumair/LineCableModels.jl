@@ -4,6 +4,60 @@ using Literate
 using Pkg
 using Changelog
 
+"""
+Custom METHODLIST generator that uses relative paths.
+"""
+function custom_methodlist(f::Function, M::Module)
+	# Find the root directory of the package associated with module M
+	# This assumes your docs/make.jl is within the standard package structure.
+	pkg_root = pkgdir(M)
+	if pkg_root === nothing
+		@warn "Could not determine package root for module $M. Using absolute paths."
+		# Fallback to default behavior or simpler absolute path if pkgdir fails
+		# For simplicity, let's just signal it didn't work as expected.
+		# A robust fallback might call the original DocStringExtensions implementation.
+		pkg_root = "" # Avoid error later, paths will remain absolute/weird
+	end
+
+	io = IOBuffer()
+	# println(io, "\n# Methods\n") # Add the header manually if desired
+
+	ms = methods(f)
+	if isempty(ms)
+		# Handle the case where the function has no methods defined yet
+		# Or perhaps it's not a function, though METHODLIST implies it is.
+		println(io, "No methods defined.")
+		return String(take!(io))
+	end
+
+	for method in ms
+		sig = Base.tuple_type_head(method.sig) # The signature type tuple
+		file = String(method.file)
+		line = method.line
+
+		# Clean up the path
+		display_path = if !isempty(pkg_root) && startswith(file, pkg_root)
+			# Calculate relative path if possible
+			relpath(file, pkg_root)
+		else
+			# Otherwise, use just the filename as a fallback
+			basename(file)
+		end
+
+		# Generate the list item.
+		# Note: Documenter usually handles linking automatically based on signature.
+		# We just provide the text description. The @ref lookup happens later.
+		# Formatting mimics the default style.
+		println(io, "- `", method.sig, "` defined at `", display_path, ":", line, "`.")
+		# Alternative simpler link (might not always resolve correctly if signatures are ambiguous)
+		# println(io, "- [`", method.sig, "`](@ref) defined at `", display_path, ":", line, "`.")
+	end
+
+	return String(take!(io))
+end
+
+DocStringExtensions.set_template!(:METHODLIST, custom_methodlist)
+
 function get_project_toml()
 	# Get the current active environment (docs)
 	docs_env = Pkg.project().path
