@@ -47,7 +47,7 @@
                                 "radius_in": 0.02145,
                                 "__julia_type__": "LineCableModels.DataModel.Semicon",
                                 "radius_ext": 0.02205,
-                                "temperature": 30
+                                "temperature": 20
                             },
                             {
                                 "material_props": {
