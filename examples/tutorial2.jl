@@ -23,7 +23,7 @@ Single-core power cables have a complex structure consisting of multiple concent
 This tutorial covers:
 
 1. Creating a detailed [`CableDesign`](@ref) with all its components.
-2. Examining the main electrical parameters (R, L, C) of the cable core [`Conductor`](@ref) and main [`Insulator`](@ref).
+2. Examining the main electrical parameters (R, L, C) of the cable core [`ConductorGroup`](@ref) and main [`InsulatorGroup`](@ref).
 3. Examining the equivalent electromagnetic properties of every [`CableComponent`](@ref) (core, sheath, jacket).
 4. Saving the cable design to a [`CablesLibrary`](@ref) for future use.
 4. Assigning [`CableDesign`](@ref) objects to a [`LineCableSystem`](@ref) and exporting the model to PSCAD for EMT analysis.
@@ -35,17 +35,22 @@ This tutorial covers:
 
 # Load the package and set up the environment:
 push!(LOAD_PATH, joinpath(@__DIR__, "..", "src")) # hide
-using Revise
 using DataFrames
 using LineCableModels
 
-# Load materials library with default values and export as JSON file for future use:
+# Initialize materials library with default values:
 materials_db = MaterialsLibrary(add_defaults = true)
-save_materialslibrary(
-	materials_db,
-	file_name = joinpath(@__DIR__, "materials_library.json"),
-)
 list_materialslibrary(materials_db)
+
+#=
+```julia
+# Alternatively, it can be loaded from the example file built in the previous tutorial:
+load_materialslibrary!(
+	materials_db,
+	file_name = "materials_library.json",
+)
+```
+=#
 
 #=
 ## Cable dimensions
@@ -54,6 +59,7 @@ The cable under consideration is a medium-voltage, stranded aluminum conductor c
 
 ```
 NA2XS(FL)2Y
+-----------
 │ │   │  │
 │ │   │  └── 2Y: Outer sheath of polyethylene (PE)
 │ │   └── (FL): Longitudinal watertight protection
@@ -145,11 +151,11 @@ CableDesign
 
 ### Cable designs
 
-The [`CableDesign`](@ref) object is the main container for all cable components. It encapsulates the entire cable structure and provides methods for calculating overall cable properties.
+The [`CableDesign`](@ref) object is the main container for all cable components. It encapsulates the entire cable structure and provides methods for calculating global cable properties.
 
 ### Cable components
 
-Each [`CableComponent`](@ref) represents a functional group of the cable (core, sheath, armor, outer), organized into a conductor group and an insulator group with their respective effective material properties. This structure allows for precise calculation of electromagnetic parameters.
+Each [`CableComponent`](@ref) represents a functional group of the cable (core, sheath, armor, outer), organized into a conductor group and an insulator group with their respective effective material properties. This structure is designed to provide precise calculation of electromagnetic parameters.
 
 ### Conductor groups
 
@@ -157,13 +163,13 @@ The [`ConductorGroup`](@ref) object serves as a specialized container for organi
 
 #### AbstractConductorPart implementations
 
-- The [`WireArray`](@ref) object models stranded cores with twisting effects and helical patterns.
+- The [`WireArray`](@ref) object models stranded cores and screens with helical patterns and circular cross-sections.
 - The [`Tubular`](@ref) object represents simple tubular conductors with straightforward parameter calculations.
 - The [`Strip`](@ref) object models conductor tapes following helical patterns with rectangular cross-sections.
 
 ### Insulator groups
 
-The [`InsulatorGroup`](@ref) object organizes [`AbstractInsulatorPart`](@ref) elements in concentric layers, calculating the equivalent capacitance (C) and conductance (G) properties.
+The [`InsulatorGroup`](@ref) object organizes [`AbstractInsulatorPart`](@ref) elements in concentric layers, calculating the equivalent capacitance (C) and conductance (G) parameters.
 
 #### AbstractInsulatorPart implementations
 
@@ -218,7 +224,7 @@ main_insu = InsulatorGroup(Semicon(core, Thickness(t_sct), material))
 
 # Inner semiconductor (1000 Ω.m as per IEC 840):
 material = get_material(materials_db, "semicon1")
-addto_insulatorgroup!(main_insu, Semicon, Thickness(t_sc_in), material, temperature = 30)
+addto_insulatorgroup!(main_insu, Semicon, Thickness(t_sc_in), material)
 
 #=
 ### Main insulation
@@ -254,7 +260,7 @@ core_cc = CableComponent("core", core, main_insu)
 With the core parts properly defined, the [`CableDesign`](@ref) object is initialized with nominal data from the datasheet. This includes voltage ratings and reference electrical parameters that will be used to benchmark the design.
 =#
 
-# # Define the nominal values and instantiate the CableDesign with the core_parts:
+# Define the nominal values and instantiate the `CableDesign` with the `core_cc` component:
 cable_id = "tutorial2"
 datasheet_info = NominalData(
 	designation_code = "NA2XS(FL)2Y",
@@ -287,7 +293,7 @@ material = get_material(materials_db, "copper")
 screen_con =
 	ConductorGroup(WireArray(main_insu, Diameter(d_ws), num_sc_wires, lay_ratio, material))
 
-# Add equalizing copper tape that wraps the wire screen:
+# Add the equalizing copper tape wrapping the wire screen:
 addto_conductorgroup!(screen_con, Strip, Thickness(t_cut), w_cut, lay_ratio, material)
 
 # Water blocking tape over screen:
@@ -320,9 +326,13 @@ jacket_insu = InsulatorGroup(Insulator(jacket_con, Thickness(t_pet), material))
 material = get_material(materials_db, "pe")
 addto_insulatorgroup!(jacket_insu, Insulator, Thickness(t_jac), material)
 
-# Group jacket components and assign to design:
-jacket_cc = CableComponent("jacket", jacket_con, jacket_insu)
-addto_cabledesign!(cable_design, jacket_cc)
+#=
+!!! tip "Convenience methods"
+	To facilitate data entry, it is possible to call the [`addto_cabledesign!`](@ref) method directly on the [`ConductorGroup`](@ref) and [`InsulatorGroup`](@ref) constituents of the component to include, without instantiating the [`CableComponent`](@ref) first.
+=#
+
+# Assign the jacket parts directly to the design:
+addto_cabledesign!(cable_design, "jacket", jacket_con, jacket_insu)
 
 # Inspect the finished cable design:
 plt3 = preview_cabledesign(cable_design)
@@ -330,7 +340,7 @@ plt3 = preview_cabledesign(cable_design)
 #=
 ## Examining the cable parameters (RLC)
 
-This section examines the cable design and compares calculated parameters with datasheet values. [`LineCableModels.jl`](@ref) provides several functions to analyze the design in different levels of detail.
+In this section, the cable design is examined and the calculated parameters are compared with datasheet values. [`LineCableModels.jl`](@ref) provides methods to analyze the design in different levels of detail.
 =#
 
 # Compare with datasheet information (R, L, C values):
@@ -356,13 +366,13 @@ list_cableslibrary(library)
 
 # Save to file for later use:
 output_file = joinpath(@__DIR__, "cables_library.json")
-save_cableslibrary(library, file_name = output_file)
+save_cableslibrary(library, file_name = output_file);
 
 
 #=
 ### Defining a cable system
 
-!!! note "Cables systems"
+!!! note "Cable systems"
 	A cable system is a collection of cables with defined positions, length and environmental characteristics. The [`LineCableSystem`](@ref) object is the main container for all cable systems, and it allows the definition of multiple cables in different configurations (e.g., trifoil, flat etc.). This object is the entry point for all system-related calculations and analyses.
 =#
 
@@ -372,7 +382,7 @@ save_cableslibrary(library, file_name = output_file)
 The earth return path significantly affects cable impedance calculations and needs to be properly modeled. In this tutorial, only a basic model with typical soil properties is defined. This will be further elaborated in the subsequent tutorials.
 =#
 
-# Define a frequency-dependent earth model (10^0 to 10^6 Hz):
+# Define a frequency-dependent earth model (1 Hz to 1 MHz):
 f = 10.0 .^ range(0, stop = 6, length = 10)  # Frequency range
 earth_params = EarthModel(f, 100.0, 10.0, 1.0)  # 100 Ω·m resistivity, εr=10, μr=1
 
@@ -391,7 +401,7 @@ x0 = 0
 y0 = -1
 xa, ya, xb, yb, xc, yc = trifoil_formation(x0, y0, 0.035)
 
-# Initialize the LineCableSystem with the first cable (phase A):
+# Initialize the `LineCableSystem` with the first cable (phase A):
 cabledef = CableDef(cable_design, xa, ya, Dict("core" => 1, "sheath" => 0, "jacket" => 0))
 cable_system = LineCableSystem("tutorial2", 20.0, earth_params, 1000.0, cabledef)
 
@@ -427,8 +437,8 @@ plt4 = preview_linecablesystem(cable_system, zoom_factor = 0.15)
 The final step showcases how to export the model for electromagnetic transient simulations in PSCAD.
 =#
 
-# Export to PSCAD input file
-output_file = joinpath(@__DIR__, "tutorial2.pscx")
+# Export to PSCAD input file:
+output_file = joinpath(@__DIR__, "tutorial2_export.pscx")
 export_file = export_pscad_lcp(cable_system, file_name = output_file);
 
 #=

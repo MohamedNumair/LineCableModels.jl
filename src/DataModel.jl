@@ -5,7 +5,7 @@ The [`DataModel`](@ref) module provides data structures, constructors and utilit
 
 # Overview
 
-- Provides objects for detailed **cable** modeling with the [`CableDesign`](@ref) and supporting types: [`Conductor`](@ref), [`WireArray`](@ref), [`Strip`](@ref), [`Tubular`](@ref), [`Semicon`](@ref), and [`Insulator`](@ref).
+- Provides objects for detailed cable modeling with the [`CableDesign`](@ref) and supporting types: [`WireArray`](@ref), [`Strip`](@ref), [`Tubular`](@ref), [`Semicon`](@ref), and [`Insulator`](@ref).
 - Includes objects for cable **system** modeling with the [`LineCableSystem`](@ref) type, and multiple formation patterns like trifoil and flat arrangements.
 - Contains functions for calculating the base electric properties of all elements within a [`CableDesign`](@ref), namely: resistance, inductance (via GMR), shunt capacitance, and shunt conductance (via loss factor).
 - Offers visualization tools for previewing cable cross-sections and system layouts.
@@ -32,8 +32,6 @@ using Measurements
 using DataFrames
 using Colors
 using Plots
-# using DataStructures
-# using Serialization
 using DisplayAs: DisplayAs
 
 """
@@ -77,7 +75,6 @@ Subtypes implement specific configurations:
 - [`WireArray`](@ref)
 - [`Tubular`](@ref)
 - [`Strip`](@ref)
-- [`Conductor`](@ref)
 """
 abstract type AbstractConductorPart <: AbstractCablePart end
 
@@ -188,77 +185,6 @@ struct Tubular <: AbstractConductorPart
 	gmr::Number
 end
 
-# """
-# $(TYPEDEF)
-
-# Represents a composite coaxial conductor assembled from multiple conductive layers.
-
-# This structure serves as a container for different [`AbstractConductorPart`](@ref) elements 
-# (such as wire arrays, strips, and tubular conductors) arranged in concentric layers. 
-# The `Conductor` aggregates these individual parts and provides equivalent electrical 
-# properties that represent the composite behavior of the entire assembly, stored in the attributes:
-
-# $(TYPEDFIELDS)
-# """
-# mutable struct Conductor <: AbstractConductorPart
-# 	"Inner radius of the conductor \\[m\\]."
-# 	radius_in::Number
-# 	"Outer radius of the conductor \\[m\\]."
-# 	radius_ext::Number
-# 	"Cross-sectional area of the entire conductor \\[m²\\]."
-# 	cross_section::Number
-# 	"Number of individual wires in the conductor \\[dimensionless\\]."
-# 	num_wires::Number
-# 	"DC resistance of the conductor \\[Ω\\]."
-# 	resistance::Number
-# 	"Temperature coefficient of resistance \\[1/°C\\]."
-# 	alpha::Number
-# 	"Geometric mean radius of the conductor \\[m\\]."
-# 	gmr::Number
-# 	"Vector of conductor layer components."
-# 	layers::Vector{AbstractConductorPart}
-
-# 	@doc """
-# 	$(TYPEDSIGNATURES)
-
-# 	Constructs a [`Conductor`](@ref) instance initializing with the central conductor part.
-
-# 	# Arguments
-
-# 	- `central_conductor`: An [`AbstractConductorPart`](@ref) object located at the center of the conductor.
-
-# 	# Returns
-
-# 	- A [`Conductor`](@ref) object initialized with geometric and electrical properties derived from the central conductor.
-
-# 	# Examples
-
-# 	```julia
-# 	material_props = Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393)
-# 	central_strip = Strip(0.01, 0.002, 0.05, 10, material_props)
-# 	conductor = $(FUNCTIONNAME)(central_strip)
-# 	println(conductor.layers)      # Output: [central_strip]
-# 	println(conductor.resistance)  # Output: Resistance in \\[Ω\\]
-# 	```
-# 	"""
-# 	function Conductor(central_conductor::AbstractConductorPart)
-
-# 		num_wires = central_conductor isa WireArray ? central_conductor.num_wires : 0
-
-# 		# Initialize object
-# 		return new(
-# 			central_conductor.radius_in,
-# 			central_conductor.radius_ext,
-# 			central_conductor.cross_section,
-# 			num_wires,
-# 			central_conductor.resistance,
-# 			central_conductor.material_props.alpha,
-# 			central_conductor.gmr,
-# 			[central_conductor],
-# 		)
-# 	end
-# end
-
 """
 $(TYPEDEF)
 
@@ -283,7 +209,7 @@ mutable struct Semicon <: AbstractInsulatorPart
 	gmr::Number
 	"Shunt capacitance per unit length of the semiconducting layer \\[F/m\\]."
 	shunt_capacitance::Number
-	"Shunt conductance per unit length of the semiconducting layer \\[S/m\\]."
+	"Shunt conductance per unit length of the semiconducting layer \\[S·m\\]."
 	shunt_conductance::Number
 end
 
@@ -311,44 +237,24 @@ mutable struct Insulator <: AbstractInsulatorPart
 	gmr::Number
 	"Shunt capacitance per unit length of the insulating layer \\[F/m\\]."
 	shunt_capacitance::Number
-	"Shunt conductance per unit length of the insulating layer \\[S/m\\]."
+	"Shunt conductance per unit length of the insulating layer \\[S·m\\]."
 	shunt_conductance::Number
 end
 
+"""
+$(TYPEDEF)
 
+Represents a composite conductor group assembled from multiple conductive layers or stranded wires.
 
+This structure serves as a container for different [`AbstractConductorPart`](@ref) elements 
+(such as wire arrays, strips, and tubular conductors) arranged in concentric layers. 
+The `ConductorGroup` aggregates these individual parts and provides equivalent electrical 
+properties that represent the composite behavior of the entire assembly.
 
+# Attributes
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# """
-# $(TYPEDEF)
-
-# Represents a composite conductor group assembled from multiple conductive layers or stranded wires.
-
-# This structure serves as a container for different [`AbstractConductorPart`](@ref) elements 
-# (such as wire arrays, strips, and tubular conductors) arranged in concentric layers. 
-# The `ConductorGroup` aggregates these individual parts and provides equivalent electrical 
-# properties that represent the composite behavior of the entire assembly, stored in the attributes:
-
-# $(TYPEDFIELDS)
-# """
+$(TYPEDFIELDS)
+"""
 mutable struct ConductorGroup <: AbstractConductorPart
 	"Inner radius of the conductor group \\[m\\]."
 	radius_in::Number
@@ -358,7 +264,7 @@ mutable struct ConductorGroup <: AbstractConductorPart
 	cross_section::Number
 	"Number of individual wires in the conductor group \\[dimensionless\\]."
 	num_wires::Number
-	"Number of turns per meter of each wire strand \\[dimensionless\\]."
+	"Number of turns per meter of each wire strand \\[1/m\\]."
 	num_turns::Number
 	"DC resistance of the conductor group \\[Ω\\]."
 	resistance::Number
@@ -369,29 +275,29 @@ mutable struct ConductorGroup <: AbstractConductorPart
 	"Vector of conductor layer components."
 	layers::Vector{AbstractConductorPart}
 
-	# @doc """
-	# $(TYPEDSIGNATURES)
+	@doc """
+	$(TYPEDSIGNATURES)
 
-	# Constructs a [`ConductorGroup`](@ref) instance initializing with the central conductor part.
+	Constructs a [`ConductorGroup`](@ref) instance initializing with the central conductor part.
 
-	# # Arguments
+	# Arguments
 
-	# - `central_conductor`: An [`AbstractConductorPart`](@ref) object located at the center of the conductor group.
+	- `central_conductor`: An [`AbstractConductorPart`](@ref) object located at the center of the conductor group.
 
-	# # Returns
+	# Returns
 
-	# - A [`ConductorGroup`](@ref) object initialized with geometric and electrical properties derived from the central conductor.
+	- A [`ConductorGroup`](@ref) object initialized with geometric and electrical properties derived from the central conductor.
 
-	# # Examples
+	# Examples
 
-	# ```julia
-	# material_props = Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393)
-	# central_strip = Strip(0.01, 0.002, 0.05, 10, material_props)
-	# conductor_group = $(FUNCTIONNAME)(central_strip)
-	# println(conductor_group.layers)      # Output: [central_strip]
-	# println(conductor_group.resistance)  # Output: Resistance in \\[Ω\\]
-	# ```
-	# """
+	```julia
+	material_props = Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393)
+	central_strip = Strip(0.01, 0.002, 0.05, 10, material_props)
+	conductor_group = $(FUNCTIONNAME)(central_strip)
+	println(conductor_group.layers)      # Output: [central_strip]
+	println(conductor_group.resistance)  # Output: Resistance in \\[Ω\\]
+	```
+	"""
 	function ConductorGroup(central_conductor::AbstractConductorPart)
 		num_wires = 0
 		num_turns = 0.0
@@ -418,18 +324,18 @@ mutable struct ConductorGroup <: AbstractConductorPart
 	end
 end
 
-# """
-# $(TYPEDEF)
+"""
+$(TYPEDEF)
 
-# Represents a composite coaxial insulator group assembled from multiple insulating layers.
+Represents a composite coaxial insulator group assembled from multiple insulating layers.
 
-# This structure serves as a container for different [`AbstractInsulatorPart`](@ref) elements
-# (such as insulators and semiconductors) arranged in concentric layers.
-# The `InsulatorGroup` aggregates these individual parts and provides equivalent electrical
-# properties that represent the composite behavior of the entire assembly, stored in the attributes:
+This structure serves as a container for different [`AbstractInsulatorPart`](@ref) elements
+(such as insulators and semiconductors) arranged in concentric layers.
+The `InsulatorGroup` aggregates these individual parts and provides equivalent electrical
+properties that represent the composite behavior of the entire assembly, stored in the attributes:
 
-# $(TYPEDFIELDS)
-# """
+$(TYPEDFIELDS)
+"""
 mutable struct InsulatorGroup <: AbstractInsulatorPart
 	"Inner radius of the insulator group \\[m\\]."
 	radius_in::Number
@@ -439,34 +345,34 @@ mutable struct InsulatorGroup <: AbstractInsulatorPart
 	cross_section::Number
 	"Shunt capacitance per unit length of the insulator group \\[F/m\\]."
 	shunt_capacitance::Number
-	"Shunt conductance per unit length of the insulator group \\[S/m\\]."
+	"Shunt conductance per unit length of the insulator group \\[S·m\\]."
 	shunt_conductance::Number
 	"Vector of insulator layer components."
 	layers::Vector{AbstractInsulatorPart}
 
-	# @doc """
-	# $(TYPEDSIGNATURES)
+	@doc """
+	$(TYPEDSIGNATURES)
 
-	# Constructs an [`InsulatorGroup`](@ref) instance initializing with the initial insulator part.
+	Constructs an [`InsulatorGroup`](@ref) instance initializing with the initial insulator part.
 
-	# # Arguments
+	# Arguments
 
-	# - `initial_insulator`: An [`AbstractInsulatorPart`](@ref) object located at the innermost position of the insulator group.
+	- `initial_insulator`: An [`AbstractInsulatorPart`](@ref) object located at the innermost position of the insulator group.
 
-	# # Returns
+	# Returns
 
-	# - An [`InsulatorGroup`](@ref) object initialized with geometric and electrical properties derived from the initial insulator.
+	- An [`InsulatorGroup`](@ref) object initialized with geometric and electrical properties derived from the initial insulator.
 
-	# # Examples
+	# Examples
 
-	# ```julia
-	# material_props = Material(1e10, 3.0, 1.0, 20.0, 0.0)
-	# initial_insulator = Insulator(0.01, 0.015, material_props)
-	# insulator_group = $(FUNCTIONNAME)(initial_insulator)
-	# println(insulator_group.layers)           # Output: [initial_insulator]
-	# println(insulator_group.shunt_capacitance) # Output: Capacitance in \\[F/m\\]
-	# ```
-	# """
+	```julia
+	material_props = Material(1e10, 3.0, 1.0, 20.0, 0.0)
+	initial_insulator = Insulator(0.01, 0.015, material_props)
+	insulator_group = $(FUNCTIONNAME)(initial_insulator)
+	println(insulator_group.layers)           # Output: [initial_insulator]
+	println(insulator_group.shunt_capacitance) # Output: Capacitance in [F/m]
+	```
+	"""
 	function InsulatorGroup(initial_insulator::AbstractInsulatorPart)
 		# Initialize object
 		return new(
@@ -480,50 +386,50 @@ mutable struct InsulatorGroup <: AbstractInsulatorPart
 	end
 end
 
-# """
-# $(TYPEDSIGNATURES)
+"""
+$(TYPEDSIGNATURES)
 
-# Adds a new part to an existing [`ConductorGroup`](@ref) object and updates its equivalent electrical parameters.
+Adds a new part to an existing [`ConductorGroup`](@ref) object and updates its equivalent electrical parameters.
 
-# # Arguments
+# Arguments
 
-# - `group`: [`ConductorGroup`](@ref) object to which the new part will be added ([`ConductorGroup`](@ref)).
-# - `part_type`: Type of conductor part to add ([`AbstractConductorPart`](@ref)).
-# - `args...`: Positional arguments specific to the constructor of the `part_type` ([`AbstractConductorPart`](@ref)) \\[various\\].
-# - `kwargs...`: Named arguments for the constructor including optional values specific to the constructor of the `part_type` ([`AbstractConductorPart`](@ref)) \\[various\\].
+- `group`: [`ConductorGroup`](@ref) object to which the new part will be added.
+- `part_type`: Type of conductor part to add ([`AbstractConductorPart`](@ref)).
+- `args...`: Positional arguments specific to the constructor of the `part_type` ([`AbstractConductorPart`](@ref)) \\[various\\].
+- `kwargs...`: Named arguments for the constructor including optional values specific to the constructor of the `part_type` ([`AbstractConductorPart`](@ref)) \\[various\\].
 
-# # Returns
+# Returns
 
-# - The function modifies the [`ConductorGroup`](@ref) instance in place and does not return a value.
+- The function modifies the [`ConductorGroup`](@ref) instance in place and does not return a value.
 
-# # Notes
+# Notes
 
-# - Updates `gmr`, `resistance`, `alpha`, `radius_ext`, `cross_section`, and `num_wires` to account for the new part.
-# - The `temperature` of the new part defaults to the temperature of the first layer if not specified.
-# - The `radius_in` of the new part defaults to the external radius of the existing conductor if not specified.
+- Updates `gmr`, `resistance`, `alpha`, `radius_ext`, `cross_section`, and `num_wires` to account for the new part.
+- The `temperature` of the new part defaults to the temperature of the first layer if not specified.
+- The `radius_in` of the new part defaults to the external radius of the existing conductor if not specified.
 
-# !!! warning "Note"
-# 	- When an [`AbstractCablePart`](@ref) is provided as `radius_in`, the constructor retrieves its `radius_ext` value, allowing the new cable part to be placed directly over the existing part in a layered cable design.
-# 	- In case of uncertain measurements, if the added cable part is of a different type than the existing one, the uncertainty is removed from the radius value before being passed to the new component. This ensures that measurement uncertainties do not inappropriately cascade across different cable parts.
+!!! warning "Note"
+	- When an [`AbstractCablePart`](@ref) is provided as `radius_in`, the constructor retrieves its `radius_ext` value, allowing the new cable part to be placed directly over the existing part in a layered cable design.
+	- In case of uncertain measurements, if the added cable part is of a different type than the existing one, the uncertainty is removed from the radius value before being passed to the new component. This ensures that measurement uncertainties do not inappropriately cascade across different cable parts.
 
-# # Examples
+# Examples
 
-# ```julia
-# material_props = Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393)
-# conductor = Conductor(Strip(0.01, 0.002, 0.05, 10, material_props))
-# $(FUNCTIONNAME)(conductor, WireArray, 0.02, 0.002, 7, 15, material_props; temperature = 25)
-# ```
+```julia
+material_props = Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393)
+conductor = ConductorGroup(Strip(0.01, 0.002, 0.05, 10, material_props))
+$(FUNCTIONNAME)(conductor, WireArray, 0.02, 0.002, 7, 15, material_props, temperature = 25)
+```
 
-# # See also
+# See also
 
-# - [`Conductor`](@ref)
-# - [`WireArray`](@ref)
-# - [`Strip`](@ref)
-# - [`Tubular`](@ref)
-# - [`calc_equivalent_gmr`](@ref)
-# - [`calc_parallel_equivalent`](@ref)
-# - [`calc_equivalent_alpha`](@ref)
-# """
+- [`ConductorGroup`](@ref)
+- [`WireArray`](@ref)
+- [`Strip`](@ref)
+- [`Tubular`](@ref)
+- [`calc_equivalent_gmr`](@ref)
+- [`calc_parallel_equivalent`](@ref)
+- [`calc_equivalent_alpha`](@ref)
+"""
 function addto_conductorgroup!(
 	group::ConductorGroup,
 	part_type::Type{T},  # The type of conductor part (WireArray, Strip, Tubular)
@@ -580,48 +486,48 @@ function addto_conductorgroup!(
 	group
 end
 
-# """
-# $(TYPEDSIGNATURES)
+"""
+$(TYPEDSIGNATURES)
 
-# Adds a new part to an existing [`InsulatorGroup`](@ref) object and updates its equivalent electrical parameters.
+Adds a new part to an existing [`InsulatorGroup`](@ref) object and updates its equivalent electrical parameters.
 
-# # Arguments
+# Arguments
 
-# - `group`: [`InsulatorGroup`](@ref) object to which the new part will be added ([`InsulatorGroup`](@ref)).
-# - `part_type`: Type of insulator part to add ([`AbstractInsulatorPart`](@ref)).
-# - `args...`: Positional arguments specific to the constructor of the `part_type` ([`AbstractInsulatorPart`](@ref)) \\[various\\].
-# - `kwargs...`: Named arguments for the constructor including optional values specific to the constructor of the `part_type` ([`AbstractInsulatorPart`](@ref)) \\[various\\].
+- `group`: [`InsulatorGroup`](@ref) object to which the new part will be added.
+- `part_type`: Type of insulator part to add ([`AbstractInsulatorPart`](@ref)).
+- `args...`: Positional arguments specific to the constructor of the `part_type` ([`AbstractInsulatorPart`](@ref)) \\[various\\].
+- `kwargs...`: Named arguments for the constructor including optional values specific to the constructor of the `part_type` ([`AbstractInsulatorPart`](@ref)) \\[various\\].
 
-# # Returns
+# Returns
 
-# - The function modifies the [`InsulatorGroup`](@ref) instance in place and does not return a value.
+- The function modifies the [`InsulatorGroup`](@ref) instance in place and does not return a value.
 
-# # Notes
+# Notes
 
-# - Updates `shunt_capacitance`, `shunt_conductance`, `radius_ext`, and `cross_section` to account for the new part.
-# - The `radius_in` of the new part defaults to the external radius of the existing insulator group if not specified.
+- Updates `shunt_capacitance`, `shunt_conductance`, `radius_ext`, and `cross_section` to account for the new part.
+- The `radius_in` of the new part defaults to the external radius of the existing insulator group if not specified.
 
-# !!! warning "Note"
-# 	- When an [`AbstractCablePart`](@ref) is provided as `radius_in`, the constructor retrieves its `radius_ext` value, allowing the new cable part to be placed directly over the existing part in a layered cable design.
-# 	- In case of uncertain measurements, if the added cable part is of a different type than the existing one, the uncertainty is removed from the radius value before being passed to the new component. This ensures that measurement uncertainties do not inappropriately cascade across different cable parts.
+!!! warning "Note"
+	- When an [`AbstractCablePart`](@ref) is provided as `radius_in`, the constructor retrieves its `radius_ext` value, allowing the new cable part to be placed directly over the existing part in a layered cable design.
+	- In case of uncertain measurements, if the added cable part is of a different type than the existing one, the uncertainty is removed from the radius value before being passed to the new component. This ensures that measurement uncertainties do not inappropriately cascade across different cable parts.
 
-# # Examples
+# Examples
 
-# ```julia
-# material_props = Material(1e10, 3.0, 1.0, 20.0, 0.0)
-# insulator_group = InsulatorGroup(Insulator(0.01, 0.015, material_props))
-# $(FUNCTIONNAME)(insulator_group, Semicon, 0.015, 0.018, material_props)
-# ```
+```julia
+material_props = Material(1e10, 3.0, 1.0, 20.0, 0.0)
+insulator_group = InsulatorGroup(Insulator(0.01, 0.015, material_props))
+$(FUNCTIONNAME)(insulator_group, Semicon, 0.015, 0.018, material_props)
+```
 
-# # See also
+# See also
 
-# - [`InsulatorGroup`](@ref)
-# - [`Insulator`](@ref)
-# - [`Semicon`](@ref)
-# - [`calc_equivalent_gmr`](@ref)
-# - [`calc_parallel_equivalent`](@ref)
-# - [`calc_equivalent_alpha`](@ref)
-# """
+- [`InsulatorGroup`](@ref)
+- [`Insulator`](@ref)
+- [`Semicon`](@ref)
+- [`calc_equivalent_gmr`](@ref) # This should be removed
+- [`calc_parallel_equivalent`](@ref)
+- [`calc_equivalent_alpha`](@ref) # This should be removed
+"""
 function addto_insulatorgroup!(
 	group::InsulatorGroup,
 	part_type::Type{T},  # The type of insulator part (Insulator, Semicon)
@@ -669,18 +575,76 @@ function addto_insulatorgroup!(
 	group
 end
 
+"""
+$(TYPEDEF)
+
+Represents a [`CableComponent`](@ref), i.e. a group of [`AbstractCablePart`](@ref) objects, with the equivalent geometric and material properties:
+
+$(TYPEDFIELDS)
+
+!!! info "Definition & application"
+	Cable components operate as containers for multiple cable parts, allowing the calculation of effective electromagnetic (EM) properties (``\\sigma, \\varepsilon, \\mu``). This is performed by transforming the physical objects within the [`CableComponent`](@ref) into one equivalent coaxial homogeneous structure comprised of one conductor and one insulator, each one represented by effective [`Material`](@ref) types stored in `conductor_props` and `insulator_props` fields.
+
+	The effective properties approach is widely adopted in EMT-type simulations, and involves locking the internal and external radii of the conductor and insulator parts, respectively, and calculating the equivalent EM properties in order to match the previously determined values of R, L, C and G [916943](@cite) [1458878](@cite).
+
+	In applications, the [`CableComponent`](@ref) type is mapped to the main cable structures described in manufacturer datasheets, e.g., core, sheath, armor and jacket.
+"""
 mutable struct CableComponent
 	"Cable component identification (e.g. core/sheath/armor)."
 	id::String
 	"The conductor group containing all conductive parts."
 	conductor_group::ConductorGroup
-	"Effective properties of the composite conductor."
+	"Effective properties of the equivalent coaxial conductor."
 	conductor_props::Material
 	"The insulator group containing all insulating parts."
 	insulator_group::InsulatorGroup
-	"Effective properties of the composite insulator."
+	"Effective properties of the equivalent coaxial insulator."
 	insulator_props::Material
 
+	@doc """
+	$(TYPEDSIGNATURES)
+
+	Initializes a [`CableComponent`](@ref) object based on its constituent conductor and insulator groups. The constructor performs the following sequence of steps:
+
+	1.  Validate that the conductor and insulator groups have matching radii at their interface.
+	2.  Obtain the lumped-parameter values (R, L, C, G) from the conductor and insulator groups, which are computed within their respective constructors.
+	3.  Calculate the correction factors and equivalent electromagnetic properties of the conductor and insulator groups:
+
+
+	| Quantity | Symbol | Function |
+	|----------|--------|----------|
+	| Resistivity (conductor) | ``\\rho_{con}`` | [`calc_equivalent_rho`](@ref) |
+	| Permeability (conductor) | ``\\mu_{con}`` | [`calc_equivalent_mu`](@ref) |
+	| Resistivity (insulator) | ``\\rho_{ins}`` | [`calc_sigma_lossfact`](@ref) |
+	| Permittivity (insulation) | ``\\varepsilon_{ins}`` | [`calc_equivalent_eps`](@ref) |
+	| Permeability (insulation) | ``\\mu_{ins}`` | [`calc_solenoid_correction`](@ref) |
+
+	# Arguments
+
+	- `id`: Cable component identification (e.g. core/sheath/armor).
+	- `conductor_group`: The conductor group containing all conductive parts.
+	- `insulator_group`: The insulator group containing all insulating parts.
+
+	# Returns
+
+	- A [`CableComponent`](@ref) instance with calculated equivalent properties.
+
+	# Examples
+
+	```julia
+	conductor_group = ConductorGroup(...)
+	insulator_group = InsulatorGroup(...)
+	cable = $(FUNCTIONNAME)("component_id", conductor_group, insulator_group)  # Create cable component with base parameters @ 50 Hz
+	```
+
+	# See also
+
+	- [`calc_equivalent_rho`](@ref)
+	- [`calc_equivalent_mu`](@ref)
+	- [`calc_equivalent_eps`](@ref)
+	- [`calc_sigma_lossfact`](@ref)
+	- [`calc_solenoid_correction`](@ref)
+	"""
 	function CableComponent(
 		id::String,
 		conductor_group::ConductorGroup,
@@ -710,7 +674,6 @@ mutable struct CableComponent
 		rho_ins = 1 / calc_sigma_lossfact(G_eq, radius_ext_con, radius_ext_ins)
 		correction_mu_ins = calc_solenoid_correction(
 			conductor_group.num_turns,
-			# 1 / conductor_group.layers[end].pitch_length,
 			radius_ext_con,
 			radius_ext_ins,
 		)
@@ -729,21 +692,21 @@ mutable struct CableComponent
 	end
 end
 
-# """
-# $(TYPEDSIGNATURES)
+"""
+$(TYPEDSIGNATURES)
 
-# Defines the display representation of a [`CableComponent`](@ref) object for REPL or text output.
+Defines the display representation of a [`CableComponent`](@ref) object for REPL or text output.
 
-# # Arguments
+# Arguments
 
-# - `io`: Output stream.
-# - `::MIME"text/plain"`: MIME type for plain text output.
-# - `component`: The [`CableComponent`](@ref) object to be displayed.
+- `io`: Output stream.
+- `::MIME"text/plain"`: MIME type for plain text output.
+- `component`: The [`CableComponent`](@ref) object to be displayed.
 
-# # Returns
+# Returns
 
-# - Nothing. Modifies `io` by writing text representation of the object.
-# """
+- Nothing. Modifies `io` by writing text representation of the object.
+"""
 function Base.show(io::IO, ::MIME"text/plain", component::CableComponent)
 	# Calculate total number of parts across both groups
 	total_parts =
@@ -826,28 +789,6 @@ function Base.show(io::IO, ::MIME"text/plain", component::CableComponent)
 		end
 	end
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 # Submodule `BaseParams`
 include("BaseParams.jl")
@@ -1024,7 +965,7 @@ println(wire_array.resistance)     # Outputs resistance in Ω/m
 # See also
 
 - [`Material`](@ref)
-- [`Conductor`](@ref)
+- [`ConductorGroup`](@ref)
 - [`calc_tubular_resistance`](@ref)
 - [`calc_wirearray_gmr`](@ref)
 - [`calc_helical_params`](@ref)
@@ -1116,7 +1057,7 @@ println(strip.resistance)    # Output: Resistance value [Ω/m]
 # See also
 
 - [`Material`](@ref)
-- [`Conductor`](@ref)
+- [`ConductorGroup`](@ref)
 - [`calc_strip_resistance`](@ref)
 - [`calc_tubular_gmr`](@ref)
 - [`calc_helical_params`](@ref)
@@ -1257,7 +1198,7 @@ println(semicon_layer.cross_section)      # Expected output: ~6.28e-5 [m²]
 println(semicon_layer.resistance)         # Expected output: Resistance in [Ω/m]
 println(semicon_layer.gmr)                # Expected output: GMR in [m]
 println(semicon_layer.shunt_capacitance)  # Expected output: Capacitance in [F/m]
-println(semicon_layer.shunt_conductance)  # Expected output: Conductance in [S/m]
+println(semicon_layer.shunt_conductance)  # Expected output: Conductance in [S·m]
 ```
 """
 function Semicon(
@@ -1476,6 +1417,7 @@ function _get_material_color(
 				RGB(0.8, 0.3, 0.1),  # Dark orange
 				RGB(0.6, 0.4, 0.3),   # Greenish-brown
 			]), rho_norm)
+
 	else
 		# Insulators: Greenish-brown → Black
 		rho_norm = (rho - 10000) / (1e5 - 10000)
@@ -1503,233 +1445,6 @@ function _get_material_color(
 
 	return final_color
 end
-
-# """
-# $(TYPEDEF)
-
-# Represents a [`CableComponent`](@ref), i.e. a group of [`AbstractCablePart`](@ref) objects, with the equivalent geometric and material properties:
-
-# $(TYPEDFIELDS)
-
-# !!! info "Definition & application"
-# 	Cable components operate as containers for multiple cable parts, allowing the calculation of effective electromagnetic (EM) properties (``\\sigma, \\varepsilon, \\mu``). This is performed by transforming the physical objects within the [`CableComponent`](@ref) into one equivalent coaxial homogeneous structure comprised of one conductor and one insulator.
-
-# 	This procedure is the current modeling approach widely adopted in EMT-type simulations, and involves locking the internal and external radii of the conductor and insulator parts, respectively, and calculating the equivalent EM properties in order to match the previously determined values of R, L, C and G [916943](@cite) [1458878](@cite).
-
-# 	In applications, the [`CableComponent`](@ref) type is mapped to the main cable structures described in manufacturer datasheets, e.g., core, sheath, armor and jacket.
-# """
-# mutable struct CableComponent
-# 	"Inner radius of the conductor \\[m\\]."
-# 	radius_in_con::Number
-# 	"Outer radius of the conductor \\[m\\]."
-# 	radius_ext_con::Number
-# 	"Equivalent resistivity of the conductor material \\[Ω·m\\]."
-# 	rho_con::Number
-# 	"Equivalent temperature coefficient of resistance of the conductor \\[1/°C\\]."
-# 	alpha_con::Number
-# 	"Equivalent magnetic permeability of the conductor material \\[H/m\\]."
-# 	mu_con::Number
-# 	"Outer radius of the insulator \\[m\\]."
-# 	radius_ext_ins::Number
-# 	"Equivalent permittivity of the insulator material \\[F/m\\]."
-# 	eps_ins::Number
-# 	"Equivalent magnetic permeability of the insulator material \\[H/m\\]."
-# 	mu_ins::Number
-# 	"Equivalent loss factor of the insulator \\[dimensionless\\]."
-# 	loss_factor_ins::Number
-# 	"Vector of cable parts ([`AbstractCablePart`](@ref))."
-# 	component_data::Vector{<:AbstractCablePart}
-
-# 	@doc """
-# 	$(TYPEDSIGNATURES)
-
-# 	Initializes a [`CableComponent`](@ref) object based on its parts and operating frequency. The constructor performs the following sequence of steps:
-
-# 	1. Group conductors and insulators and calculate their corresponding thicknesses,  internal and external radii.
-# 	2. Series R and L: calculate equivalent resistances through parallel combination, incorporate mutual coupling effects in inductances via GMR transformations.
-# 	3. Shunt C and G: determine capacitances and dielectric losses through series association of components.
-# 	4. Apply correction factors for conductor temperature and solenoid effects on insulation.
-# 	5. Calculate the effective electromagnetic properties:
-
-# 	| Quantity | Symbol | Function |
-# 	|----------|--------|----------|
-# 	| Resistivity (conductor) | ``\\rho_{con}`` | [`calc_equivalent_rho`](@ref) |
-# 	| Permeability (conductor) | ``\\mu_{con}`` | [`calc_equivalent_mu`](@ref) |
-# 	| Permittivity (insulation) | ``\\varepsilon_{ins}`` | [`calc_equivalent_eps`](@ref) |
-# 	| Permeability (insulation) | ``\\mu_{ins}`` | [`calc_solenoid_correction`](@ref) |
-# 	| Loss factor (insulation) | ``\\tan \\,  \\delta`` | [`calc_equivalent_lossfact`](@ref) |
-
-# 	# Arguments
-
-# 	- `component_data`: Vector of objects [`AbstractCablePart`](@ref).
-# 	- `f`: Frequency of operation \\[Hz\\] (default: [`f₀`](@ref)).
-
-# 	# Returns
-
-# 	- A [`CableComponent`](@ref) instance with calculated equivalent properties.
-
-# 	# Examples
-
-# 	```julia
-# 	components = [Conductor(...), Insulator(...)]
-# 	cable = $(FUNCTIONNAME)(components, 50)  # Create cable component with base parameters @ 50 Hz
-# 	```
-
-# 	# See also
-
-# 	- [`calc_equivalent_rho`](@ref)
-# 	- [`calc_equivalent_mu`](@ref)
-# 	- [`calc_equivalent_eps`](@ref)
-# 	- [`calc_equivalent_lossfact`](@ref)
-# 	- [`calc_solenoid_correction`](@ref)
-# 	"""
-# 	function CableComponent(
-# 		component_data::Vector{<:AbstractCablePart},
-# 		f::Number = f₀,
-# 	)
-# 		# Validate the geometry
-# 		radius_exts = [part.radius_ext for part in component_data]
-# 		if !issorted(radius_exts)
-# 			error(
-# 				"Components must be supplied in ascending order of radius_ext.",
-# 			)
-# 		end
-
-# 		ω = 2 * π * f
-
-# 		# Initialize conductor and insulator parameters
-# 		radius_in_con = Inf
-# 		radius_ext_con = 0.0
-# 		rho_con = 0.0
-# 		alpha_con = nothing
-# 		mu_con = 0.0
-# 		radius_ext_ins = 0.0
-# 		eps_ins = 0.0
-# 		mu_ins = 0.0
-# 		loss_factor_ins = 0.0
-# 		equiv_resistance = nothing
-# 		equiv_admittance = nothing
-# 		gmr_eff_con = nothing
-# 		previous_part = nothing
-# 		total_num_wires = 0
-# 		weighted_num_turns = 0.0
-# 		total_cross_section_ins = 0.0
-# 		total_cross_section_con = 0.0
-
-# 		# Helper function to extract equivalent parameters from conductor parts
-# 		function _calc_weighted_num_turns(part)
-# 			if part isa Conductor
-# 				for sub_part in part.layers
-# 					_calc_weighted_num_turns(sub_part)
-# 				end
-# 			elseif part isa WireArray || part isa Strip
-# 				num_wires = part isa WireArray ? part.num_wires : 1
-# 				total_num_wires += num_wires
-# 				weighted_num_turns +=
-# 					part.pitch_length > 0 ? num_wires * 1 / part.pitch_length : 0
-# 			end
-# 		end
-
-# 		for (index, part) in enumerate(component_data)
-# 			if part isa Conductor || part isa Strip || part isa WireArray ||
-# 			   part isa Tubular
-
-# 				if equiv_resistance === nothing
-# 					alpha_con = part isa Conductor ? part.alpha : part.material_props.alpha
-# 					equiv_resistance = part.resistance
-# 				else
-# 					alpha_new = part isa Conductor ? part.alpha : part.material_props.alpha
-# 					alpha_con = calc_equivalent_alpha(
-# 						alpha_con,
-# 						equiv_resistance,
-# 						alpha_new,
-# 						part.resistance,
-# 					)
-# 					# (
-# 					# 	alpha_con * part.resistance +
-# 					# 	alpha_new * equiv_resistance
-# 					# ) /
-# 					# (equiv_resistance + part.resistance) # composite temperature coefficient
-
-# 					equiv_resistance =
-# 						calc_parallel_equivalent(equiv_resistance, part.resistance)
-# 				end
-
-# 				radius_in_con = min(radius_in_con, part.radius_in)
-# 				radius_ext_con += (part.radius_ext - part.radius_in)
-# 				total_num_wires += part.num_wires
-# 				_calc_weighted_num_turns(part)
-
-# 				if gmr_eff_con === nothing
-# 					gmr_eff_con = part.gmr
-# 					temp_con = part # creates a temporary conductor part to use in calc_gmd
-# 				else
-# 					temp_con.gmr = gmr_eff_con
-# 					temp_con.cross_section = total_cross_section_con
-# 					gmr_eff_con = calc_equivalent_gmr(temp_con, part)
-# 					# TODO(feat): Refactor CableComponent constructor to remove redundancy 
-
-# 				end
-# 				total_cross_section_con += part.cross_section
-
-# 			elseif part isa Semicon || part isa Insulator
-# 				radius_ext_ins += (part.radius_ext - part.radius_in)
-# 				Y = Complex(part.shunt_conductance, ω * part.shunt_capacitance)
-# 				if equiv_admittance === nothing
-# 					equiv_admittance = Y
-# 				else
-# 					equiv_admittance = calc_parallel_equivalent(equiv_admittance, Y)
-# 				end
-# 				mu_ins =
-# 					(
-# 						mu_ins * total_cross_section_ins +
-# 						part.material_props.mu_r * part.cross_section
-# 					) / (total_cross_section_ins + part.cross_section)
-
-# 				total_cross_section_ins += part.cross_section
-# 			end
-# 			previous_part = part
-# 		end
-
-# 		# Conductor effective parameters
-# 		radius_ext_con += radius_in_con
-# 		rho_con = calc_equivalent_rho(equiv_resistance, radius_ext_con, radius_in_con)
-# 		mu_con = calc_equivalent_mu(gmr_eff_con, radius_ext_con, radius_in_con)
-# 		num_turns = weighted_num_turns / total_num_wires
-
-# 		# Insulator effective parameters
-# 		if radius_ext_ins > 0
-# 			radius_ext_ins += radius_ext_con
-# 			G_eq = real(equiv_admittance)
-# 			C_eq = imag(equiv_admittance) / ω
-# 			eps_ins = calc_equivalent_eps(C_eq, radius_ext_ins, radius_ext_con)
-# 			loss_factor_ins = calc_equivalent_lossfact(G_eq, C_eq, ω)
-# 			correction_mu_ins =
-# 				calc_solenoid_correction(num_turns, radius_ext_con, radius_ext_ins)
-# 			mu_ins = mu_ins * correction_mu_ins
-# 		else
-# 			radius_ext_ins = NaN
-# 			eps_ins = NaN
-# 			mu_ins = NaN
-# 			loss_factor_ins = NaN
-# 		end
-
-# 		# Initialize object
-# 		return new(
-# 			# name,
-# 			radius_in_con,
-# 			radius_ext_con,
-# 			rho_con,
-# 			alpha_con,
-# 			mu_con,
-# 			radius_ext_ins,
-# 			eps_ins,
-# 			mu_ins,
-# 			loss_factor_ins,
-# 			component_data,
-# 		)
-# 	end
-# end
 
 """
 $(TYPEDEF)
@@ -2068,7 +1783,7 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Adds a cable component to an existing [`CableDesign`](@ref) using separate conductor and insulator groups.
+Adds a cable component to an existing [`CableDesign`](@ref) using separate conductor and insulator groups. Performs as a convenience wrapper to construct the [`CableComponent`](@ref) object with reduced boilerplate.
 
 # Arguments
 
@@ -2349,7 +2064,45 @@ function cabledesign_todf(
 end
 
 """
-Helper function to extract properties from a part for detailed format
+$(TYPEDSIGNATURES)
+
+Helper function to extract properties from a part for detailed format.
+
+# Arguments
+
+- `part`: An instance of [`AbstractCablePart`](@ref) from which to extract properties.
+- `properties`: A vector of symbols indicating which properties to extract (not used in the current implementation).
+
+# Returns
+
+- A vector containing the extracted properties in the following order:
+  - `type`: The lowercase string representation of the part's type.
+  - `radius_in`: The inner radius of the part, if it exists, otherwise `missing`.
+  - `radius_ext`: The outer radius of the part, if it exists, otherwise `missing`.
+  - `diameter_in`: The inner diameter of the part (2 * radius_in), if `radius_in` exists, otherwise `missing`.
+  - `diameter_ext`: The outer diameter of the part (2 * radius_ext), if `radius_ext` exists, otherwise `missing`.
+  - `thickness`: The difference between `radius_ext` and `radius_in`, if both exist, otherwise `missing`.
+  - `cross_section`: The cross-sectional area of the part, if it exists, otherwise `missing`.
+  - `num_wires`: The number of wires in the part, if it exists, otherwise `missing`.
+  - `resistance`: The resistance of the part, if it exists, otherwise `missing`.
+  - `alpha`: The temperature coefficient of resistivity of the part or its material, if it exists, otherwise `missing`.
+  - `gmr`: The geometric mean radius of the part, if it exists, otherwise `missing`.
+  - `gmr_ratio`: The ratio of `gmr` to `radius_ext`, if both exist, otherwise `missing`.
+  - `shunt_capacitance`: The shunt capacitance of the part, if it exists, otherwise `missing`.
+  - `shunt_conductance`: The shunt conductance of the part, if it exists, otherwise `missing`.
+
+# Notes
+
+This function is used to create a standardized format for displaying detailed information about cable parts.
+
+# Examples
+
+```julia
+part = Conductor(...)
+properties = [:radius_in, :radius_ext, :resistance]  # Example of properties to extract
+extracted_properties = _extract_part_properties(part, properties)
+println(extracted_properties)
+```
 """
 function _extract_part_properties(part, properties)
 	return [
@@ -2578,37 +2331,34 @@ mutable struct CablesLibrary
 	"Dictionary mapping cable IDs to the respective CableDesign objects."
 	cable_designs::Dict{String, CableDesign}
 
-	# @doc """
-	# $(TYPEDSIGNATURES)
+	@doc """
+	$(TYPEDSIGNATURES)
 
-	# Constructs a [`CablesLibrary`](@ref) instance, optionally loading cable designs from a file.
+	Constructs an empty [`CablesLibrary`](@ref) instance.
 
-	# # Arguments
+	# Arguments
 
-	# - `file_name`: The name of the file to load cable designs from.
+	- None.
 
-	# # Returns
+	# Returns
 
-	# - A [`CablesLibrary`](@ref) object containing the loaded cable designs or an empty dictionary.
+	- A [`CablesLibrary`](@ref) object with an empty dictionary of cable designs.
 
-	# # Examples
+	# Examples
 
-	# ```julia
-	# # Create a new library without loading any file
-	# library = $(FUNCTIONNAME)()
+	```julia
+	# Create a new, empty library
+	library = $(FUNCTIONNAME)()
+	```
 
-	# # Create a library and load designs from a file
-	# library_with_data = $(FUNCTIONNAME)(file_name="existing_library.jls")
-	# ```
+	# See also
 
-	# # See also
-
-	# - [`CableDesign`](@ref)
-	# - [`store_cableslibrary!`](@ref)
-	# - [`remove_cableslibrary!`](@ref)
-	# - [`save_cableslibrary`](@ref)
-	# - [`list_cableslibrary`](@ref)
-	# """
+	- [`CableDesign`](@ref)
+	- [`store_cableslibrary!`](@ref)
+	- [`remove_cableslibrary!`](@ref)
+	- [`LineCableModels.ImportExport.save_cableslibrary`](@ref)
+	- [`list_cableslibrary`](@ref)
+	"""
 	function CablesLibrary()::CablesLibrary
 		library = new(Dict{String, CableDesign}())
 		println("Initializing empty cables database...")
@@ -2791,7 +2541,7 @@ end
 """
 $(TYPEDEF)
 
-Represents a defined position and phase mapping of a cable within a system.
+Represents a physically defined cable within a system, with position and phase mapping.
 
 $(TYPEDFIELDS)
 """
@@ -2821,9 +2571,10 @@ struct CableDef
 
 	- A [`CableDef`](@ref) object with the assigned cable design, coordinates, and phase mapping.
 
-	# Notes
-
-	Components mapped to phase 0 will be eliminated (grounded). Components set to the same phase will be bundled into an equivalent phase.
+	#=
+	!!! note "Phase mapping"
+		 The `conn` argument is a `Dict` that maps the cable components to their respective phases. The values (1, 2, 3) represent the phase numbers (A, B, C) in a three-phase system. Components mapped to phase 0 will be Kron-eliminated (grounded). Components set to the same phase will be bundled into an equivalent phase.
+	=#
 
 	# Examples
 
@@ -2848,7 +2599,7 @@ struct CableDef
 		vert::Number,
 		conn::Union{Dict{String, Int}, Nothing} = nothing,
 	)
-		components = collect(keys(cable.components))  # Maintain ordered component names
+		components = [comp.id for comp in cable.components]
 		if isnothing(conn)
 			conn_vector = [i == 1 ? 1 : 0 for i in 1:length(components)]  # Default: First component gets phase 1
 		else
@@ -2941,7 +2692,7 @@ Adds a new cable definition to an existing [`LineCableSystem`](@ref), updating i
 # Arguments
 
 - `system`: Instance of [`LineCableSystem`](@ref) to which the cable will be added.
-- `cable`: Instance of [`CableDesign`](@ref) defining the cable structure.
+- `cable`: Instance of [`CableDesign`](@ref) defining the cable characteristics and position.
 - `horz`: Horizontal coordinate \\[m\\].
 - `vert`: Vertical coordinate \\[m\\].
 - `conn`: Dictionary mapping component names to phase indices, or `nothing` for automatic assignment.
@@ -3257,7 +3008,7 @@ function linecablesystem_todf(system::LineCableSystem)
 		push!(horz_coords, cabledef.horz)
 		push!(vert_coords, cabledef.vert)
 
-		component_names = collect(keys(cabledef.cable.components))
+		component_names = [comp.id for comp in cabledef.cable.components]
 		mapping_str = join(
 			["$(name): $(phase)" for (name, phase) in zip(component_names, cabledef.conn)],
 			", ",
@@ -3378,53 +3129,53 @@ function Base.show(io::IO, ::MIME"text/plain", part::T) where {T <: AbstractCabl
 	end
 end
 
-# function Base.show(io::IO, ::MIME"text/plain", system::LineCableSystem)
-# 	# Print top level info
-# 	println(
-# 		io,
-# 		"LineCableSystem \"$(system.case_id)\": [T=$(system.T), line_length=$(system.line_length), num_cables=$(system.num_cables), num_phases=$(system.num_phases)]",
-# 	)
+function Base.show(io::IO, ::MIME"text/plain", system::LineCableSystem)
+	# Print top level info
+	println(
+		io,
+		"LineCableSystem \"$(system.case_id)\": [T=$(system.T), line_length=$(system.line_length), num_cables=$(system.num_cables), num_phases=$(system.num_phases)]",
+	)
 
-# 	# Print earth model summary
-# 	# Get model type summary
-# 	model_type = system.earth_props.num_layers == 2 ? "homogeneous" : "multilayer"
-# 	orientation = system.earth_props.vertical_layers ? "vertical" : "horizontal"
-# 	layer_word = (system.earth_props.num_layers - 1) == 1 ? "layer" : "layers"
+	# Print earth model summary
+	# Get model type summary
+	model_type = system.earth_props.num_layers == 2 ? "homogeneous" : "multilayer"
+	orientation = system.earth_props.vertical_layers ? "vertical" : "horizontal"
+	layer_word = (system.earth_props.num_layers - 1) == 1 ? "layer" : "layers"
 
-# 	# Format earth model info
-# 	earth_model_summary = "EarthModel: $(system.earth_props.num_layers-1) $(orientation) $(model_type) $(layer_word)"
+	# Format earth model info
+	earth_model_summary = "EarthModel: $(system.earth_props.num_layers-1) $(orientation) $(model_type) $(layer_word)"
 
-# 	# Add formulation info if available
-# 	if !isnothing(system.earth_props.FDformulation)
-# 		formulation_tag =
-# 			EarthProps._get_earth_formulation_tag(system.earth_props.FDformulation)
-# 		earth_model_summary *= ", $(formulation_tag)"
-# 	end
+	# Add formulation info if available
+	if !isnothing(system.earth_props.FDformulation)
+		formulation_tag =
+			EarthProps._get_earth_formulation_tag(system.earth_props.FDformulation)
+		earth_model_summary *= ", $(formulation_tag)"
+	end
 
-# 	println(io, "├─ $(earth_model_summary)")
+	println(io, "├─ $(earth_model_summary)")
 
-# 	# Print cable definitions
-# 	println(io, "└─ $(length(system.cables))-element CableDef:")
+	# Print cable definitions
+	println(io, "└─ $(length(system.cables))-element CableDef:")
 
-# 	# Display each cable definition
-# 	for (i, cabledef) in enumerate(system.cables)
-# 		# Cable prefix
-# 		prefix = i == length(system.cables) ? "   └─" : "   ├─"
+	# Display each cable definition
+	for (i, cabledef) in enumerate(system.cables)
+		# Cable prefix
+		prefix = i == length(system.cables) ? "   └─" : "   ├─"
 
-# 		# Format connections as a string
-# 		components = collect(keys(cabledef.cable.components))
-# 		conn_str = join(
-# 			["$(comp)→$(phase)" for (comp, phase) in zip(components, cabledef.conn)],
-# 			", ",
-# 		)
+		# Format connections as a string
+		components = [comp.id for comp in cabledef.cable.components]
+		conn_str = join(
+			["$(comp)→$(phase)" for (comp, phase) in zip(components, cabledef.conn)],
+			", ",
+		)
 
-# 		# Print cable info
-# 		println(
-# 			io,
-# 			"$(prefix) CableDesign \"$(cabledef.cable.cable_id)\": [horz=$(round(cabledef.horz, sigdigits=4)), vert=$(round(cabledef.vert, sigdigits=4)), conn=[$(conn_str)]",
-# 		)
-# 	end
-# end
+		# Print cable info
+		println(
+			io,
+			"$(prefix) CableDesign \"$(cabledef.cable.cable_id)\": [horz=$(round(cabledef.horz, sigdigits=4)), vert=$(round(cabledef.vert, sigdigits=4)), conn=($(conn_str))]",
+		)
+	end
+end
 
 """
 $(TYPEDSIGNATURES)
@@ -3488,6 +3239,47 @@ end
 """
 function _is_headless()
 	return haskey(ENV, "CI") || !haskey(ENV, "DISPLAY")
+end
+
+
+"""
+$(TYPEDSIGNATURES)
+
+Print the specified fields of an object in a compact format.
+
+# Arguments
+- `io`: The output stream.
+- `obj`: The object whose fields will be displayed.
+- `fields_to_show`: Vector of field names (as Symbols) to display.
+- `sigdigits`: Number of significant digits for rounding numeric values.
+
+# Returns
+
+- Number of fields that were actually displayed.
+"""
+function _print_fields(io::IO, obj, fields_to_show::Vector{Symbol}; sigdigits::Int = 4)
+	displayed_fields = 0
+	for field in fields_to_show
+		if hasproperty(obj, field)
+			value = getfield(obj, field)
+			# Skip NaN values
+			if value isa Number && isnan(value)
+				continue
+			end
+			# Add comma if not the first item
+			if displayed_fields > 0
+				print(io, ", ")
+			end
+			# Format numbers with rounding
+			if value isa Number
+				print(io, "$field=$(round(value, sigdigits=sigdigits))")
+			else
+				print(io, "$field=$value")
+			end
+			displayed_fields += 1
+		end
+	end
+	return displayed_fields
 end
 
 @reexport using .BaseParams

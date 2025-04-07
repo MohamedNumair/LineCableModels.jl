@@ -3,6 +3,7 @@ using DocumenterCitations
 using Literate
 using Pkg
 using Changelog
+using Revise
 
 function get_project_toml()
 	# Get the current active environment (docs)
@@ -16,7 +17,6 @@ function get_project_toml()
 
 	return project_toml
 end
-
 
 # Get project data
 PROJECT_TOML = get_project_toml()
@@ -159,9 +159,11 @@ makedocs(;
 	warnonly = false,
 )
 
-deploydocs(
-	repo = "github.com/Electa-Git/LineCableModels.jl.git",
-	devbranch = "main",
-	versions = ["stable" => "v^", "dev" => "main"],
-	branch = "gh-pages",
-)
+if haskey(ENV, "CI")
+	deploydocs(
+		repo = "github.com/Electa-Git/LineCableModels.jl.git",
+		devbranch = "main",
+		versions = ["stable" => "v^", "dev" => "main"],
+		branch = "gh-pages",
+	)
+end

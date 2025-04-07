@@ -81,7 +81,7 @@ Each library operation follows a predictable naming convention:
 
 ## Object modification pattern
 
-For operations that modify components within larger structures (e.g., [`AbstractConductorPart`](@ref) within a parent [`Conductor`](@ref)), the codebase employs the `addto_` prefix:
+For operations that modify components within larger structures (e.g., [`AbstractConductorPart`](@ref) within a parent [`ConductorGroup`](@ref)), the codebase employs the `addto_` prefix:
 
 ```
 addto_<entity>!        # Add or modify a subcomponent within a larger component

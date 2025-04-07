@@ -1,13 +1,31 @@
+"""
+	LineCableModels.ImportExport
+
+The [`ImportExport`](@ref) module provides methods for serializing and deserializing data structures in [`LineCableModels.jl`](index.md), and data exchange with external programs.
+
+# Overview
+
+This module provides functionality for:
+
+- Saving and loading cable designs and material libraries to/from JSON and other formats.
+- Exporting cable system models to PSCAD format.
+- Serializing custom types with special handling for measurements and complex numbers.
+
+The module implements a generic serialization framework with automatic type reconstruction
+and proper handling of Julia-specific types like `Measurement` objects and `Inf`/`NaN` values.
+
+# Dependencies
+
+$(IMPORTS)
+
+# Exports
+
+$(EXPORTS)
+"""
 module ImportExport
 
-#=
-Module for handling the import and export of cable library data,
-material library data, and exporting to specific simulation formats like PSCAD.
-=#
-
-# --- Dependencies ---
-# Load common dependencies (Assuming these modules are accessible)
-include("CommonDeps.jl") # Should define Utils, Materials, EarthProps, DataModel etc.
+# Load common dependencies
+include("CommonDeps.jl")
 using ..Utils
 using ..Materials
 using ..EarthProps
@@ -16,7 +34,7 @@ using ..DataModel
 # Module-specific dependencies
 using Measurements
 using EzXML # For PSCAD export
-using Dates # Potentially for PSCAD export or logging
+using Dates # For PSCAD export
 using JSON3
 using Serialization # For .jls format
 
@@ -25,36 +43,40 @@ function _display_path(file_name)
 	return DataModel._is_headless() ? basename(file_name) : abspath(file_name)
 end
 
-# --- Module State ---
-
 #=
-Generates sequential IDs, typically used for simulation element identification (e.g., PSCAD).
+Generates sequential IDs, used for simulation element identification (e.g., PSCAD).
 Starts from 100,000,000 and increments.
 =#
 let current_id = 100000000
-	global next_id = () -> (id = current_id; current_id += 1; string(id))
+	global _next_id = () -> (id = current_id; current_id += 1; string(id))
 end
 
-# --- PSCAD Export ---
+"""
+$(TYPEDSIGNATURES)
 
-#=
 Exports a [`LineCableSystem`](@ref) to a PSCAD-compatible file format.
-(Implementation details are omitted as they were not provided in the original code snippet)
 
 # Arguments
+
 - `cable_system`: A [`LineCableSystem`](@ref) object representing the cable system to be exported.
-- `base_freq`: The base frequency [Hz] used for the PSCAD export. Defaults to `f₀` (assumed defined elsewhere).
-- `folder_path`: The folder path where the PSCAD file will be saved. Defaults to the current working directory.
+- `base_freq`: The base frequency \\[Hz\\] used for the PSCAD export.
+- `file_name`: The path to the output file (default: "*_export.pscx")
 
 # Returns
-- Nothing. The function writes the exported data to a PSCAD `.pscx` file.
+
+- The absolute path of the saved file, or `nothing` on failure.
 
 # Examples
+
 ```julia
 cable_system = LineCableSystem("example", 20.0, earth_model, 1000.0, cable_def)
-export_pscad_lcp(cable_system, base_freq=50)
+$(FUNCTIONNAME)(cable_system, base_freq=50)
 ```
-=#
+
+# See also
+
+- [`LineCableSystem`](@ref)
+"""
 function export_pscad_lcp(
 	cable_system::LineCableSystem;
 	base_freq = f₀,
@@ -92,7 +114,7 @@ function export_pscad_lcp(
 	# --- Initial Setup (Identical to original) ---
 	# Local Ref for ID generation ensures it's unique to this function call if nested
 	current_id = Ref(100000000)
-	next_id() = string(current_id[] += 1)
+	_next_id() = string(current_id[] += 1)
 
 	# Formatting function (ensure to_nominal is defined or handle types appropriately)
 	format_nominal =
@@ -162,7 +184,7 @@ function export_pscad_lcp(
 
 	# --- StationDefn (Use Helpers for Attrs/Params) ---
 	station = addelement!(definitions, "Definition")
-	station_id = next_id()
+	station_id = _next_id()
 	id_map["DS_Defn"] = station_id # Map Definition ID
 	station_attrs = Dict(
 		"classid" => "StationDefn", "name" => "DS", "id" => station_id,
@@ -193,7 +215,7 @@ function export_pscad_lcp(
 
 	# --- Station Schematic: Wire/User Instance for "Main" (Use Helpers) ---
 	wire = addelement!(schematic, "Wire")
-	wire_id = next_id()
+	wire_id = _next_id()
 	wire_attrs = Dict(
 		"classid" => "Branch", "id" => wire_id, "name" => "Main", "x" => "180",
 		"y" => "180",
@@ -211,7 +233,7 @@ function export_pscad_lcp(
 	end
 
 	user = addelement!(wire, "User") # User instance nested in Wire
-	user_id = next_id()
+	user_id = _next_id()
 	id_map["Main"] = user_id # Original maps the *instance* ID here for hierarchy link
 	user_attrs = Dict(
 		"classid" => "UserCmp", "id" => user_id, "name" => "$project_id:Main",
@@ -229,7 +251,7 @@ function export_pscad_lcp(
 
 	# --- UserCmpDefn "Main" (Use Helpers) ---
 	user_cmp = addelement!(definitions, "Definition")
-	user_cmp_id = next_id() # This is the definition ID
+	user_cmp_id = _next_id() # This is the definition ID
 	id_map["Main_Defn"] = user_cmp_id # Map Definition ID separately
 	user_cmp_attrs = Dict(
 		"classid" => "UserCmpDefn", "name" => "Main", "id" => user_cmp_id,
@@ -260,7 +282,7 @@ function export_pscad_lcp(
 
 	# Graphics Rectangle (Use Helpers)
 	rect = addelement!(graphics, "Gfx")
-	rect_id = next_id()
+	rect_id = _next_id()
 	rect_attrs = Dict(
 		"classid" => "Graphics.Rectangle", "id" => rect_id, "x" => "-36", "y" => "-36",
 		"w" => "72", "h" => "72",
@@ -276,7 +298,7 @@ function export_pscad_lcp(
 
 	# Graphics Text (Use Helpers)
 	text = addelement!(graphics, "Gfx")
-	text_id = next_id()
+	text_id = _next_id()
 	text_attrs = Dict("classid" => "Graphics.Text", "id" => text_id, "x" => "0", "y" => "0")
 	_set_attributes!(text, text_attrs) # Use helper
 	text_pl = addelement!(text, "paramlist") # No name attribute
@@ -303,7 +325,7 @@ function export_pscad_lcp(
 
 	# --- UserCmpDefn "Main" Schematic: CableSystem Instance (Use Helpers) ---
 	cable = addelement!(user_schematic, "Wire") # Wire instance
-	cable_id = next_id()
+	cable_id = _next_id()
 	cable_attrs = Dict(
 		"classid" => "Cable", "id" => cable_id, "name" => "$project_id:CableSystem",
 		"x" => "72", "y" => "36", "w" => "107", "h" => "128", "orient" => "0",
@@ -320,7 +342,7 @@ function export_pscad_lcp(
 	end
 
 	cable_user = addelement!(cable, "User") # User instance nested in Wire
-	cable_user_id = next_id()
+	cable_user_id = _next_id()
 	id_map["CableSystem"] = cable_user_id # Original maps this *instance* ID for hierarchy link
 	cable_user_attrs = Dict(
 		"classid" => "UserCmp", "id" => cable_user_id,
@@ -349,7 +371,7 @@ function export_pscad_lcp(
 
 	# --- RowDefn "CableSystem" (Use Helpers) ---
 	row = addelement!(definitions, "Definition")
-	row_id = next_id()
+	row_id = _next_id()
 	id_map["CableSystem_Defn"] = row_id # Map definition ID separately
 	row_attrs = Dict(
 		"id" => row_id, "classid" => "RowDefn", "name" => "CableSystem", "group" => "",
@@ -373,7 +395,7 @@ function export_pscad_lcp(
 
 	# FrePhase Component (Use Helpers)
 	fre_phase = addelement!(row_schematic, "User")
-	fre_phase_id = next_id()
+	fre_phase_id = _next_id()
 	fre_phase_attrs = Dict(
 		"id" => fre_phase_id, "name" => "master:Line_FrePhase_Options",
 		"classid" => "UserCmp",
@@ -409,7 +431,7 @@ function export_pscad_lcp(
 	for i in 1:num_cables
 		cabledef = cable_system.cables[i]
 		coax1 = addelement!(row_schematic, "User")
-		coax1_id = next_id()
+		coax1_id = _next_id()
 		coax1_attrs = Dict(
 			"classid" => "UserCmp", "name" => "master:Cable_Coax", "id" => coax1_id,
 			"x" => "$(234+(i-1)*dx)", "y" => "612", "w" => "311", "h" => "493",
@@ -806,7 +828,7 @@ function export_pscad_lcp(
 
 	# --- Line_Ground Component (Use Helpers) ---
 	ground = addelement!(row_schematic, "User")
-	ground_id = next_id()
+	ground_id = _next_id()
 	ground_attrs = Dict(
 		"classid" => "UserCmp", "name" => "master:Line_Ground", "id" => ground_id,
 		"x" => "504", "y" => "288", "w" => "793", "h" => "88", "z" => "-1",
@@ -870,25 +892,36 @@ function export_pscad_lcp(
 	catch e
 		println("ERROR: Failed to write PSCAD file '$(_display_path(file_name))': ", e)
 		isa(e, SystemError) && println("SystemError details: ", e.extrainfo)
-		# return nothing # Optionally return nothing on failure
+		return nothing
 		rethrow(e) # Rethrow to indicate failure clearly
 	end
 end
 
-# --- Serialization / Deserialization ---
+"""
+$(TYPEDSIGNATURES)
 
-#=
 Defines which fields of a given object should be serialized to JSON.
 This function acts as a trait. Specific types should overload this method
-to customize which fields are essential for reconstruction.
-=#
+to customize which fields are needed for reconstruction.
+
+# Arguments
+
+- `obj`: The object whose serializable fields are to be determined.
+
+# Returns
+
+- A tuple of symbols representing the fields of `obj` that should be serialized.
+
+# Methods
+
+$(METHODLIST)
+"""
 function _serializable_fields end
 
 # Default fallback: Serialize all fields. This might include computed fields
 # that are not needed for reconstruction. Overload for specific types.
 _serializable_fields(obj::T) where {T} = fieldnames(T)
 
-# --- Type-Specific Serialization Field Definitions ---
 # Define exactly which fields are needed to reconstruct each object.
 # These typically match the constructor arguments or the minimal set
 # required by the reconstruction logic (e.g., for groups).
@@ -960,7 +993,6 @@ _serializable_fields(::CableDesign) = (:cable_id, :nominal_data, :components)
 _serializable_fields(::CablesLibrary) = (:cable_designs,)
 _serializable_fields(::MaterialsLibrary) = (:materials,)
 
-# --- JSON Serialization Core Logic ---
 
 #=
 Serializes a Julia value into a JSON-compatible representation.
@@ -1019,17 +1051,19 @@ function _serialize_value(value)
 	end
 end
 
-#=
-Serializes a custom Julia object (struct) to a dictionary based on the
-fields defined by `_serializable_fields(obj)`. Includes the Julia type name
-for deserialization.
+"""
+$(TYPEDSIGNATURES)
+
+Serializes a Julia value into a JSON-compatible representation.
+Handles special types like Measurements, Inf/NaN, Symbols, and custom structs
+using the [`_serializable_fields`](@ref) trait.
 
 # Arguments
-- `obj`: The Julia object to serialize.
+- `value`: The Julia value to serialize.
 
 # Returns
-- A dictionary representing the object, ready for JSON serialization.
-=#
+- A JSON-compatible representation (Dict, Vector, Number, String, Bool, Nothing).
+"""
 function _serialize_obj(obj)
 	T = typeof(obj)
 	# Get fully qualified type name (e.g., Main.MyModule.MyType)
@@ -1065,11 +1099,12 @@ function _serialize_obj(obj)
 	end
 end
 
-# --- JSON Deserialization Core Logic ---
 
-#=
-Resolves a fully qualified type name string (e.g., "MyModule.MyType")
-into a Julia Type object. Assumes the type is loaded in the current environment.
+"""
+$(TYPEDSIGNATURES)
+
+Resolves a fully qualified type name string (e.g., \"Module.Type\")
+into a Julia `Type` object. Assumes the type is loaded in the current environment.
 
 # Arguments
 - `type_str`: The string representation of the type.
@@ -1078,8 +1113,8 @@ into a Julia Type object. Assumes the type is loaded in the current environment.
 - The corresponding Julia `Type` object.
 
 # Throws
-- Error if the type cannot be resolved.
-=#
+- `Error` if the type cannot be resolved.
+"""
 function _resolve_type(type_str::String)
 	try
 		return Core.eval(Main, Meta.parse(type_str))
@@ -1096,9 +1131,11 @@ function _resolve_type(type_str::String)
 	end
 end
 
-#=
+"""
+$(TYPEDSIGNATURES)
+
 Deserializes a value from its JSON representation back into a Julia value.
-Handles special type markers for Measurements, Inf/NaN, and custom structs
+Handles special type markers for `Measurements`, `Inf`/`NaN`, and custom structs
 identified by `__julia_type__`. Ensures plain dictionaries use Symbol keys.
 
 # Arguments
@@ -1106,7 +1143,7 @@ identified by `__julia_type__`. Ensures plain dictionaries use Symbol keys.
 
 # Returns
 - The deserialized Julia value.
-=#
+"""
 function _deserialize_value(value)
 	if value isa Dict
 		# Check for special type markers first
@@ -1173,10 +1210,12 @@ function _deserialize_value(value)
 	end
 end
 
-#=
+"""
+$(TYPEDSIGNATURES)
+
 Deserializes a dictionary (parsed from JSON) into a Julia object of type `T`.
 Attempts keyword constructor first, then falls back to positional constructor
-if the keyword attempt fails with a specific MethodError.
+if the keyword attempt fails with a specific `MethodError`.
 
 # Arguments
 - `dict`: Dictionary containing the serialized object data. Keys should match field names.
@@ -1186,8 +1225,8 @@ if the keyword attempt fails with a specific MethodError.
 - An instance of type `T`.
 
 # Throws
-- Error if construction fails by both methods.
-=#
+- `Error` if construction fails by both methods.
+"""
 function _deserialize_obj(dict::Dict, ::Type{T}) where {T}
 	# Prepare a dictionary mapping field symbols to deserialized values
 	deserialized_fields = Dict{Symbol, Any}()
@@ -1287,15 +1326,13 @@ function _deserialize_obj(dict::Dict, ::Type{T}) where {T}
 	)
 end
 
+"""
+$(TYPEDSIGNATURES)
 
-
-# --- Library Saving Functions ---
-
-#=
 Saves a [`CablesLibrary`](@ref) to a file.
 The format is determined by the file extension:
 - `.json`: Saves using the custom JSON serialization.
-- `.jls`: Saves using Julia's native binary serialization.
+- `.jls`: Saves using Julia native binary serialization.
 
 # Arguments
 - `library`: The [`CablesLibrary`](@ref) instance to save.
@@ -1303,7 +1340,7 @@ The format is determined by the file extension:
 
 # Returns
 - The absolute path of the saved file, or `nothing` on failure.
-=#
+"""
 function save_cableslibrary(
 	library::CablesLibrary;
 	file_name::String = "cables_library.json",
@@ -1335,8 +1372,10 @@ function save_cableslibrary(
 	end
 end
 
-#=
-Saves the [`CablesLibrary`](@ref) using Julia's native binary serialization.
+"""
+$(TYPEDSIGNATURES)
+
+Saves the [`CablesLibrary`](@ref) using Julia native binary serialization.
 This format is generally not portable across Julia versions or machine architectures
 but can be faster and preserves exact types.
 
@@ -1346,7 +1385,7 @@ but can be faster and preserves exact types.
 
 # Returns
 - The absolute path of the saved file.
-=#
+"""
 function _save_cableslibrary_jls(library::CablesLibrary, file_name::String)::String
 	# Note: Serializing the whole library object directly might be problematic
 	# if the library struct itself changes. Serializing the core data (designs) is safer.
@@ -1355,7 +1394,9 @@ function _save_cableslibrary_jls(library::CablesLibrary, file_name::String)::Str
 	return abspath(file_name)
 end
 
-#=
+"""
+$(TYPEDSIGNATURES)
+
 Saves the [`CablesLibrary`](@ref) to a JSON file using the custom serialization logic.
 
 # Arguments
@@ -1364,7 +1405,7 @@ Saves the [`CablesLibrary`](@ref) to a JSON file using the custom serialization 
 
 # Returns
 - The absolute path of the saved file.
-=#
+"""
 function _save_cableslibrary_json(library::CablesLibrary, file_name::String)::String
 	# Use the generic _serialize_value, which will delegate to _serialize_obj
 	# for the library object, which in turn uses _serializable_fields(::CablesLibrary)
@@ -1381,8 +1422,9 @@ function _save_cableslibrary_json(library::CablesLibrary, file_name::String)::St
 	return abspath(file_name)
 end
 
+"""
+$(TYPEDSIGNATURES)
 
-#=
 Saves a [`MaterialsLibrary`](@ref) to a JSON file.
 
 # Arguments
@@ -1391,7 +1433,7 @@ Saves a [`MaterialsLibrary`](@ref) to a JSON file.
 
 # Returns
 - The absolute path of the saved file, or `nothing` on failure.
-=#
+"""
 function save_materialslibrary(
 	library::MaterialsLibrary;
 	file_name::String = "materials_library.json",
@@ -1419,7 +1461,9 @@ function save_materialslibrary(
 	end
 end
 
-#=
+"""
+$(TYPEDSIGNATURES)
+
 Internal function to save the [`MaterialsLibrary`](@ref) to JSON.
 
 # Arguments
@@ -1428,7 +1472,7 @@ Internal function to save the [`MaterialsLibrary`](@ref) to JSON.
 
 # Returns
 - The absolute path of the saved file.
-=#
+"""
 function _save_materialslibrary_json(library::MaterialsLibrary, file_name::String)::String
 	# Check if the library has the materials field initialized correctly
 	if !isdefined(library, :materials) || !(library.materials isa AbstractDict)
@@ -1448,10 +1492,9 @@ function _save_materialslibrary_json(library::MaterialsLibrary, file_name::Strin
 	return abspath(file_name)
 end
 
+"""
+$(TYPEDSIGNATURES)
 
-# --- Library Loading Functions ---
-
-#=
 Loads cable designs from a file into an existing [`CablesLibrary`](@ref) object.
 Modifies the library in-place.
 The format is determined by the file extension:
@@ -1464,7 +1507,7 @@ The format is determined by the file extension:
 
 # Returns
 - The modified [`CablesLibrary`](@ref) instance.
-=#
+"""
 function load_cableslibrary!(
 	library::CablesLibrary; # Type annotation ensures it's the correct object
 	file_name::String = "cables_library.json",
@@ -1500,7 +1543,9 @@ function load_cableslibrary!(
 	return library # Return the modified library
 end
 
-#=
+"""
+$(TYPEDSIGNATURES)
+
 Loads cable designs from a Julia binary serialization file (`.jls`)
 into the provided library object.
 
@@ -1510,7 +1555,7 @@ into the provided library object.
 
 # Returns
 - Nothing. Modifies `library` in-place.
-=#
+"""
 function _load_cableslibrary_jls!(library::CablesLibrary, file_name::String)
 	loaded_data = deserialize(file_name)
 
@@ -1532,9 +1577,9 @@ function _load_cableslibrary_jls!(library::CablesLibrary, file_name::String)
 	return nothing
 end
 
+"""
+$(TYPEDSIGNATURES)
 
-
-#=
 Loads cable designs from a JSON file into the provided library object
 using the detailed, sequential reconstruction logic.
 
@@ -1544,7 +1589,7 @@ using the detailed, sequential reconstruction logic.
 
 # Returns
 - Nothing. Modifies `library` in-place.
-=#
+"""
 function _load_cableslibrary_json!(library::CablesLibrary, file_name::String)
 	# Ensure library structure is initialized
 	if !isdefined(library, :cable_designs) || !(library.cable_designs isa AbstractDict)
@@ -1618,20 +1663,20 @@ function _load_cableslibrary_json!(library::CablesLibrary, file_name::String)
 	return nothing
 end
 
-#=
-Helper function to reconstruct the *first* layer of a conductor or insulator group.
-This is needed because the group constructors (`ConductorGroup`, `InsulatorGroup`)
-require an initial layer object. Subsequent layers are added using `addto_*` methods.
+"""
+$(TYPEDSIGNATURES)
+
+Helper function to reconstruct a [`ConductorGroup`](@ref) or [`InsulatorGroup`](@ref) object with the first layer of the respective [`AbstractCablePart`](@ref). Subsequent layers are added using `addto_*` methods.
 
 # Arguments
 - `layer_data`: Dictionary containing the data for the first layer, parsed from JSON.
 
 # Returns
-- A constructed layer object (e.g., `WireArray`, `Tubular`, `Insulator`, `Semicon`).
+- A reconstructed [`ConductorGroup`](@ref) object with the initial [`AbstractCablePart`](@ref).
 
 # Throws
 - Error if essential data is missing or the layer type is unsupported.
-=#
+"""
 function _reconstruct_partsgroup(layer_data::Dict)
 	if !haskey(layer_data, "__julia_type__")
 		error("Layer data missing '__julia_type__' key: $layer_data")
@@ -1747,20 +1792,21 @@ function _reconstruct_partsgroup(layer_data::Dict)
 	end
 end
 
+"""
+$(TYPEDSIGNATURES)
 
-#=
 Reconstructs a complete [`CableDesign`](@ref) object from its dictionary representation (parsed from JSON).
-This function handles the sequential nature of building cable designs:
-1. Deserialize `NominalData`.
-2. Iterate through components.
-3. For each component:
-	a. Reconstruct the first layer of the conductor group.
-	b. Create the `ConductorGroup` with the first layer.
-	c. Add subsequent conductor layers using `addto_conductorgroup!`.
-	d. Repeat a-c for the `InsulatorGroup`.
-	e. Create the `CableComponent`.
-4. Create the `CableDesign` with the first component.
-5. Add subsequent components using `addto_cabledesign!`.
+This function handles the sequential process of building cable designs:
+ 1. Deserialize [`NominalData`](@ref).
+ 2. Iterate through components.
+ 3. For each component:
+    a. Reconstruct the first layer of the conductor group.
+    b. Create the [`ConductorGroup`](@ref) with the first layer.
+    c. Add subsequent conductor layers using [`addto_conductorgroup!`](@ref).
+    d. Repeat a-c for the [`InsulatorGroup`](@ref).
+    e. Create the [`CableComponent`](@ref).
+ 4. Create the [`CableDesign`](@ref) with the first component.
+ 5. Add subsequent components using [`addto_cabledesign!`](@ref).
 
 # Arguments
 - `cable_id`: The identifier string for the cable design.
@@ -1771,7 +1817,7 @@ This function handles the sequential nature of building cable designs:
 
 # Throws
 - Error if reconstruction fails at any step.
-=#
+"""
 function _reconstruct_cabledesign(
 	cable_id::String,
 	design_data::Dict,
@@ -2009,18 +2055,22 @@ function _reconstruct_cabledesign(
 	return cable_design
 end
 
+"""
+$(TYPEDSIGNATURES)
 
-#=
 Loads materials from a JSON file into an existing [`MaterialsLibrary`](@ref) object.
 Modifies the library in-place.
 
 # Arguments
 - `library`: The [`MaterialsLibrary`](@ref) instance to populate (modified in-place).
-- `file_name`: Path to the JSON file to load (default: "materials_library.json").
+- `file_name`: Path to the JSON file to load (default: \"materials_library.json\").
 
 # Returns
 - The modified [`MaterialsLibrary`](@ref) instance.
-=#
+
+# See also
+- [`MaterialsLibrary`](@ref)
+"""
 function load_materialslibrary!(
 	library::MaterialsLibrary;
 	file_name::String = "materials_library.json",
@@ -2055,7 +2105,9 @@ function load_materialslibrary!(
 	return library
 end
 
-#=
+"""
+$(TYPEDSIGNATURES)
+
 Internal function to load materials from JSON into the library.
 
 # Arguments
@@ -2064,7 +2116,13 @@ Internal function to load materials from JSON into the library.
 
 # Returns
 - Nothing. Modifies `library` in-place.
-=#
+
+# See also
+- [`MaterialsLibrary`](@ref)
+- [`Material`](@ref)
+- [`store_materialslibrary!`](@ref)
+- [`_deserialize_value`](@ref)
+"""
 function _load_materialslibrary_json!(library::MaterialsLibrary, file_name::String)
 	# Ensure library structure is initialized
 	if !isdefined(library, :materials) || !(library.materials isa AbstractDict)

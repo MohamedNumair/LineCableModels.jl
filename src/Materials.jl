@@ -8,7 +8,7 @@ The [`Materials`](@ref) module provides functionality for managing and utilizing
 - Defines the [`Material`](@ref) struct representing fundamental physical properties of materials.
 - Provides the [`MaterialsLibrary`](@ref) mutable struct for storing a collection of materials.
 - Includes functions for adding, removing, and retrieving materials from the library.
-- Supports loading material data from CSV files and saving material data to CSV files.
+- Supports loading and saving material data from/to JSON files.
 - Contains utility functions for displaying material data.
 
 # Dependencies
@@ -61,19 +61,31 @@ mutable struct MaterialsLibrary
 	materials::Dict{String, Material}  # Key: Material name, Value: Material object
 end
 
-# """
-#     MaterialsLibrary(; file_name::String = "materials_library.json")::MaterialsLibrary
+"""
+$(TYPEDSIGNATURES)
 
-# Constructs a [`MaterialsLibrary`](@ref) instance, loading materials from a file or initializing defaults.
+Constructs an empty [`MaterialsLibrary`](@ref) instance and initializes with default materials.
 
-# # Arguments
-# - `file_name`: Name of the file to load materials from (default: `"materials_library.json"`).
-#   - `.json`: JSON format (default)
-#   - `.csv`: CSV format
+# Arguments
 
-# # Returns
-# - An instance of [`MaterialsLibrary`](@ref) containing the loaded materials or default materials.
-# """
+- None.
+
+# Returns
+
+- A [`MaterialsLibrary`](@ref) object populated with default materials.
+
+# Examples
+
+```julia
+# Create a new, empty library
+library = $(FUNCTIONNAME)()
+```
+
+# See also
+
+- [`Material`](@ref)
+- [`_add_default_materials!`](@ref)
+"""
 function MaterialsLibrary(; add_defaults::Bool = true)::MaterialsLibrary
 	library = MaterialsLibrary(Dict{String, Material}())
 
@@ -241,7 +253,7 @@ df = $(FUNCTIONNAME)(library)
 
 # See also
 
-- [`save_materialslibrary`](@ref)
+- [`LineCableModels.ImportExport.save_materialslibrary`](@ref)
 """
 function list_materialslibrary(library::MaterialsLibrary)::DataFrame
 	rows = [

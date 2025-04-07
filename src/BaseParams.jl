@@ -601,7 +601,7 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Calculates the relative permeability (`mu_r`) based on the geometric mean radius (GMR) and conductor dimensions, by executing the inverse of [`calc_tubular_gmr`](@ref), ans solving for `mu_r`:
+Calculates the relative permeability (`mu_r`) based on the geometric mean radius (GMR) and conductor dimensions, by executing the inverse of [`calc_tubular_gmr`](@ref), and solving for `mu_r`:
 
 ```math
 \\log GMR = \\log r_2 - \\mu_r \\left[ \\frac{r_1^4}{\\left(r_2^2 - r_1^2\\right)^2} \\log\\left(\\frac{r_2}{r_1}\\right) - \\frac{3r_1^2 - r_2^2}{4\\left(r_2^2 - r_1^2\\right)} \\right]
@@ -696,7 +696,6 @@ function calc_shunt_capacitance(radius_in::Number, radius_ext::Number, epsr::Num
 	return 2 * π * ε₀ * epsr / log(radius_ext / radius_in)
 end
 
-
 """
 $(TYPEDSIGNATURES)
 
@@ -715,7 +714,7 @@ where ``\\sigma = \\frac{1}{\\rho}`` is the conductivity of the dielectric/semic
 
 # Returns
 
-- Shunt conductance per unit length \\[S/m\\].
+- Shunt conductance per unit length \\[S·m\\].
 
 # Examples
 
@@ -724,7 +723,7 @@ radius_in = 0.01
 radius_ext = 0.02
 rho = 1e9
 g = $(FUNCTIONNAME)(radius_in, radius_ext, rho)
-println(g) # Expected output: 2.7169e-9 [S/m]
+println(g) # Expected output: 2.7169e-9 [S·m]
 ```
 """
 function calc_shunt_conductance(radius_in::Number, radius_ext::Number, rho::Number)
@@ -962,7 +961,7 @@ $(TYPEDSIGNATURES)
 Calculates the equivalent permittivity for a coaxial cable insulation, using the formula [916943](@cite):
 
 ```math
-\\rho_{eq} = \\frac{C_{eq} \\log(\\frac{r_{ext}}{r_{in}})}{2\\pi \\varepsilon_0}
+\\varepsilon_{eq} = \\frac{C_{eq} \\log(\\frac{r_{ext}}{r_{in}})}{2\\pi \\varepsilon_0}
 ```
 
 where ``\\varepsilon_0`` is the permittivity of free space.
@@ -980,7 +979,7 @@ where ``\\varepsilon_0`` is the permittivity of free space.
 # Examples
 
 ```julia
-rho_eq = $(FUNCTIONNAME)(1e-10, 0.01, 0.005)  # Expected output: ~2.26 [dimensionless]
+eps_eq = $(FUNCTIONNAME)(1e-10, 0.01, 0.005)  # Expected output: ~2.26 [dimensionless]
 ```
 
 # See also
@@ -1003,7 +1002,7 @@ where ``\\tan \\delta`` is the loss factor (tangent).
 
 # Arguments
 
-- `G_eq`: Equivalent conductance of the material \\[S/m\\].
+- `G_eq`: Equivalent conductance of the material \\[S·m\\].
 - `C_eq`: Equivalent capacitance of the material \\[F/m\\].
 - `ω`: Angular frequency \\[rad/s\\].
 
@@ -1021,6 +1020,33 @@ function calc_equivalent_lossfact(G_eq::Number, C_eq::Number, ω::Number)
 	return G_eq / (ω * C_eq)
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Calculates the effective conductivity of a dielectric material from the known conductance (related to the loss factor ``\\tan \\delta``) via [916943](@cite) [Karmokar2025](@cite) [4389974](@cite):
+
+```math
+\\sigma_{eq} = \\frac{G_{eq}}{2\\pi} \\log(\\frac{r_{ext}}{r_{in}})
+```
+where ``\\sigma_{eq} = \\frac{1}{\\rho_{eq}}`` is the conductivity of the dielectric/semiconducting material, ``G_{eq}`` is the shunt conductance per unit length, ``r_{in}`` is the internal radius, and ``r_{ext}`` is the external radius of the coaxial structure.
+
+# Arguments
+
+- `G_eq`: Equivalent conductance of the material \\[S·m\\].
+- `radius_in`: Internal radius of the coaxial structure \\[m\\].
+- `radius_ext`: External radius of the coaxial structure \\[m\\].
+
+# Returns
+
+- Effective material conductivity per unit length \\[S·m\\].
+
+# Examples
+
+```julia
+Geq = 2.7169e-9
+sigma_eq = $(FUNCTIONNAME)(G_eq, radius_in, radius_ext)
+```
+"""
 function calc_sigma_lossfact(G_eq::Number, radius_in::Number, radius_ext::Number)
 	return G_eq * log(radius_ext / radius_in) / (2 * pi)
 end
