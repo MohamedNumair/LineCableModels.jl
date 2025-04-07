@@ -3,9 +3,6 @@ using DocumenterCitations
 using Literate
 using Pkg
 using Changelog
-using DocStringExtensions
-using Documenter.Utilities: @docerror
-using Base.Docs: DocStr
 
 function get_project_toml()
 	# Get the current active environment (docs)
@@ -123,97 +120,6 @@ Changelog.generate(
 todo_src = joinpath(@__DIR__, "..", "TODO.md")
 todo_dest = joinpath(@__DIR__, "src", "TODO.md")
 cp(todo_src, todo_dest, force = true)
-
-# --- Monkey-Patch DocStringExtensions.format for MethodList ---
-@info "Applying monkey-patch to DocStringExtensions.format(::MethodList, ...) for relative paths."
-
-# Define the NEW format method, OVERWRITING the default one for MethodList
-function DocStringExtensions.format(
-	::DocStringExtensions.MethodList,
-	buf::IOBuffer,
-	doc::Documenter.Utilities.DocStr,
-)
-	# --- Logic copied/adapted from DocStringExtensions internal format(::MethodList, ...) ---
-	# (Using the robust logic from the previous attempt)
-	local binding = doc.data[:binding]
-	local typesig = doc.data[:typesig]
-	local modname = doc.data[:module] # Module where the docstring is defined
-
-	local func = nothing
-	try
-		func = Docs.resolve(binding)
-	catch err
-		@docerror(
-			Documenter,
-			doc,
-			"'$binding' could not be resolved in module '$modname': $err"
-		)
-		return
-	end
-
-	if !(func isa Function || func isa DataType)
-		@docerror(
-			Documenter,
-			doc,
-			"METHODLIST can only be applied to Functions or DataTypes, got $(typeof(func)) for binding '$binding'."
-		)
-		return
-	end
-
-	local groups = DocStringExtensions.methodgroups(func, typesig, modname; exact = false)
-
-	if isempty(groups)
-		println(buf)
-		return
-	end
-
-	println(buf) # Add leading newline
-
-	local pkg_root = Pkg.pkgdir(modname) # Use Pkg.pkgdir here
-	if pkg_root === nothing
-		@warn "Could not determine package root for module $modname using METHODLIST. Paths will be shown as basenames."
-	end
-
-	for group in groups
-		isempty(group) && continue
-
-		println(buf, "```julia")
-		for method in group
-			# Ensure printmethod is qualified if not automatically found
-			DocStringExtensions.printmethod(buf, binding, func, method)
-			println(buf)
-		end
-		println(buf, "```\n")
-
-		local method = first(group)
-		local file_str = string(method.file)
-		local line = method.line
-
-		# --- Path Modification Logic ---
-		local display_path =
-			if pkg_root !== nothing && !isempty(file_str) && startswith(file_str, pkg_root)
-				relpath(file_str, pkg_root)
-			elseif !isempty(file_str) && isfile(file_str)
-				basename(file_str)
-			else
-				string(method.file) # Fallback
-			end
-		# --- End Path Modification ---
-
-		# Get URL using qualified helper
-		local URL = DocStringExtensions.url(method)
-
-		if !isempty(URL)
-			println(buf, "defined at [`$display_path:$line`]($URL).")
-		elseif !isempty(display_path) && line > 0
-			println(buf, "defined at `$display_path:$line`.")
-		end
-		println(buf) # Add newline after the 'defined at' line
-	end
-
-	return nothing # Format functions modify the buffer directly
-end
-# --- End Monkey-Patch ---
 
 makedocs(;
 	modules = [main_module],
