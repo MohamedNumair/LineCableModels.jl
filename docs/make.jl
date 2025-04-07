@@ -3,19 +3,15 @@ using DocumenterCitations
 using Literate
 using Pkg
 using Changelog
-
+using DocStringExtensions
 """
 Custom METHODLIST generator that uses relative paths.
 """
 function custom_methodlist(f::Function, M::Module)
 	# Find the root directory of the package associated with module M
-	# This assumes your docs/make.jl is within the standard package structure.
 	pkg_root = pkgdir(M)
 	if pkg_root === nothing
 		@warn "Could not determine package root for module $M. Using absolute paths."
-		# Fallback to default behavior or simpler absolute path if pkgdir fails
-		# For simplicity, let's just signal it didn't work as expected.
-		# A robust fallback might call the original DocStringExtensions implementation.
 		pkg_root = "" # Avoid error later, paths will remain absolute/weird
 	end
 
