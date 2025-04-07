@@ -4,55 +4,8 @@ using Literate
 using Pkg
 using Changelog
 using DocStringExtensions
-"""
-Custom METHODLIST generator that uses relative paths.
-"""
-function custom_methodlist(f::Function, M::Module)
-	# Find the root directory of the package associated with module M
-	pkg_root = pkgdir(M)
-	if pkg_root === nothing
-		@warn "Could not determine package root for module $M. Using absolute paths."
-		pkg_root = "" # Avoid error later, paths will remain absolute/weird
-	end
-
-	io = IOBuffer()
-	# println(io, "\n# Methods\n") # Add the header manually if desired
-
-	ms = methods(f)
-	if isempty(ms)
-		# Handle the case where the function has no methods defined yet
-		# Or perhaps it's not a function, though METHODLIST implies it is.
-		println(io, "No methods defined.")
-		return String(take!(io))
-	end
-
-	for method in ms
-		sig = Base.tuple_type_head(method.sig) # The signature type tuple
-		file = String(method.file)
-		line = method.line
-
-		# Clean up the path
-		display_path = if !isempty(pkg_root) && startswith(file, pkg_root)
-			# Calculate relative path if possible
-			relpath(file, pkg_root)
-		else
-			# Otherwise, use just the filename as a fallback
-			basename(file)
-		end
-
-		# Generate the list item.
-		# Note: Documenter usually handles linking automatically based on signature.
-		# We just provide the text description. The @ref lookup happens later.
-		# Formatting mimics the default style.
-		println(io, "- `", method.sig, "` defined at `", display_path, ":", line, "`.")
-		# Alternative simpler link (might not always resolve correctly if signatures are ambiguous)
-		# println(io, "- [`", method.sig, "`](@ref) defined at `", display_path, ":", line, "`.")
-	end
-
-	return String(take!(io))
-end
-
-DocStringExtensions.set_template!(:METHODLIST, custom_methodlist)
+using Documenter.Utilities: @docerror
+using Base.Docs: DocStr
 
 function get_project_toml()
 	# Get the current active environment (docs)
@@ -170,6 +123,97 @@ Changelog.generate(
 todo_src = joinpath(@__DIR__, "..", "TODO.md")
 todo_dest = joinpath(@__DIR__, "src", "TODO.md")
 cp(todo_src, todo_dest, force = true)
+
+# --- Monkey-Patch DocStringExtensions.format for MethodList ---
+@info "Applying monkey-patch to DocStringExtensions.format(::MethodList, ...) for relative paths."
+
+# Define the NEW format method, OVERWRITING the default one for MethodList
+function DocStringExtensions.format(
+	::DocStringExtensions.MethodList,
+	buf::IOBuffer,
+	doc::Documenter.Utilities.DocStr,
+)
+	# --- Logic copied/adapted from DocStringExtensions internal format(::MethodList, ...) ---
+	# (Using the robust logic from the previous attempt)
+	local binding = doc.data[:binding]
+	local typesig = doc.data[:typesig]
+	local modname = doc.data[:module] # Module where the docstring is defined
+
+	local func = nothing
+	try
+		func = Docs.resolve(binding)
+	catch err
+		@docerror(
+			Documenter,
+			doc,
+			"'$binding' could not be resolved in module '$modname': $err"
+		)
+		return
+	end
+
+	if !(func isa Function || func isa DataType)
+		@docerror(
+			Documenter,
+			doc,
+			"METHODLIST can only be applied to Functions or DataTypes, got $(typeof(func)) for binding '$binding'."
+		)
+		return
+	end
+
+	local groups = DocStringExtensions.methodgroups(func, typesig, modname; exact = false)
+
+	if isempty(groups)
+		println(buf)
+		return
+	end
+
+	println(buf) # Add leading newline
+
+	local pkg_root = Pkg.pkgdir(modname) # Use Pkg.pkgdir here
+	if pkg_root === nothing
+		@warn "Could not determine package root for module $modname using METHODLIST. Paths will be shown as basenames."
+	end
+
+	for group in groups
+		isempty(group) && continue
+
+		println(buf, "```julia")
+		for method in group
+			# Ensure printmethod is qualified if not automatically found
+			DocStringExtensions.printmethod(buf, binding, func, method)
+			println(buf)
+		end
+		println(buf, "```\n")
+
+		local method = first(group)
+		local file_str = string(method.file)
+		local line = method.line
+
+		# --- Path Modification Logic ---
+		local display_path =
+			if pkg_root !== nothing && !isempty(file_str) && startswith(file_str, pkg_root)
+				relpath(file_str, pkg_root)
+			elseif !isempty(file_str) && isfile(file_str)
+				basename(file_str)
+			else
+				string(method.file) # Fallback
+			end
+		# --- End Path Modification ---
+
+		# Get URL using qualified helper
+		local URL = DocStringExtensions.url(method)
+
+		if !isempty(URL)
+			println(buf, "defined at [`$display_path:$line`]($URL).")
+		elseif !isempty(display_path) && line > 0
+			println(buf, "defined at `$display_path:$line`.")
+		end
+		println(buf) # Add newline after the 'defined at' line
+	end
+
+	return nothing # Format functions modify the buffer directly
+end
+# --- End Monkey-Patch ---
 
 makedocs(;
 	modules = [main_module],
