@@ -3,7 +3,6 @@ using DocumenterCitations
 using Literate
 using Pkg
 using Changelog
-using Revise
 
 function get_project_toml()
 	# Get the current active environment (docs)
