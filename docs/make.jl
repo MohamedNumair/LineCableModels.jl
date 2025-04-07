@@ -260,3 +260,5 @@ if haskey(ENV, "CI")
 		branch = "gh-pages",
 	)
 end
+@info "Finished docs build." # Good to know the script completed
+
