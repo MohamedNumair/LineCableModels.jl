@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Included basic coverage tests.
+
 - Included import/export of CableDesigns to JSON files.
 
 ## [v0.1.0] - 2025-03-29
