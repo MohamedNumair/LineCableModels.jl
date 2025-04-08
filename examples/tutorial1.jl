@@ -101,7 +101,7 @@ save_materialslibrary(
 # ##  Retrieving materials for use
 #=
 !!! note "Note"
-	To load from an existing CSV file, instantiate a new [`MaterialsLibrary`](@ref) passing the file path as argument. Materials can be retrieved from the library using the [`get_material`](@ref) function.
+	To load from an existing JSON file, instantiate a new [`MaterialsLibrary`](@ref) followed by a call to the [`load_materialslibrary!`](@ref) method. Materials can be retrieved from the library using the [`get_material`](@ref) function.
 =#
 
 # Initialize a new [`MaterialsLibrary`](@ref) and load from the JSON file:
