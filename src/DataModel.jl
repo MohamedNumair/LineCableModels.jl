@@ -857,7 +857,7 @@ radius = $(FUNCTIONNAME)(Thickness(5.0), ...)  # From thickness object
 
 # Methods
 
-$(METHODLIST)
+$(_CLEANMETHODLIST)
 
 # See also
 

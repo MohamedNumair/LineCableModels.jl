@@ -67,7 +67,7 @@ tag = _get_earth_formulation_tag(cp)  # Returns "CP model"
 
 # Methods
 
-$(METHODLIST)
+$(_CLEANMETHODLIST)
 
 # See also
 
