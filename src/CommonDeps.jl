@@ -1,4 +1,5 @@
 using DocStringExtensions, Reexport, ForceImport, Pkg
+using DocStringExtensions: Abbreviation
 
 struct _CleanMethodList <: Abbreviation end
 

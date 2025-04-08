@@ -23,7 +23,7 @@
                 "clear": true,
                 "close": true
             },
-            "command": "julia --project=docs -e 'include(\"docs/make.jl\")'",
+            "command": "julia --project=docs -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate(); include(\"docs/make.jl\")'",
             "problemMatcher": [],
             "type": "shell",
             "group": {
