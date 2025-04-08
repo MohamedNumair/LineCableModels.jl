@@ -300,7 +300,6 @@ function calc_tubular_resistance(
 	T0::Number,
 	T::Number,
 )
-	# temp_correction_factor = (1 + alpha * (T - T0))
 	cross_section = π * (radius_ext^2 - radius_in^2)
 	return calc_temperature_correction(alpha, T, T0) * rho / cross_section
 end

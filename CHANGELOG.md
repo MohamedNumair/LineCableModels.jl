@@ -9,11 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - /
 
+### Changed
+
+- Refactored CodeComponent structure and constructors.
+
+### Added
+
+- Included import/export of CableDesigns to JSON files.
+
 ## [v0.1.0] - 2025-03-29
 
 ### Added
 
 - First release. See [README.md](https://github.com/Electa-Git/LineCableModels.jl/blob/main/README.md) for more details.
 
-[Unreleased]: https://github.com/Electa-Git/LineCableModels.jl/compare/v0.1.0...HEAD
-[v0.1.0]: https://github.com/Electa-Git/LineCableModels.jl/releases/tag/v0.1.0
+[Unreleased]: [https://github.com/Electa-Git/LineCableModels.jl/compare/v0.1.0...HEAD](https://github.com/Electa-Git/LineCableModels.jl/compare/v0.1.0...HEAD)
+[v0.1.0]: [https://github.com/Electa-Git/LineCableModels.jl/releases/tag/v0.1.0](https://github.com/Electa-Git/LineCableModels.jl/releases/tag/v0.1.0)
