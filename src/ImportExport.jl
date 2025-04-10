@@ -1439,6 +1439,7 @@ function save_materialslibrary(
 	file_name::String = "materials_library.json",
 )::Union{String, Nothing}
 	# TODO: Add jls serialization to materials library.
+	# Issue URL: https://github.com/Electa-Git/LineCableModels.jl/issues/3
 	file_name = isabspath(file_name) ? file_name : joinpath(@__DIR__, file_name)
 
 
