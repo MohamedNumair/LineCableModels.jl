@@ -1,5 +1,3 @@
-# test/datamodel.jl
-
 using Test
 using LineCableModels
 using DataFrames

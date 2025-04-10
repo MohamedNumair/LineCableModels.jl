@@ -2161,6 +2161,7 @@ Displays the cross-section of a cable design.
 - `display_plot`: Boolean flag to display the plot after rendering.
 - `display_legend`: Boolean flag to display the legend in the plot.
 - `backend`: Optional plotting backend to use. If not specified, the function will choose a suitable backend based on the environment (e.g., GR for headless, PlotlyJS for interactive).
+- `sz`: Optional plot dimensions (width, height). Default: (800, 600).
 
 # Returns
 
@@ -2194,11 +2195,12 @@ function preview_cabledesign(
 	display_plot = true,
 	display_legend = true,
 	backend = nothing,
+	sz = (800, 600),
 )
 	if isnothing(plt)
 		# Choose appropriate backend based on environment
 		_resolve_backend(backend)
-		plt = plot(size = (800, 600),
+		plt = plot(size = sz,
 			aspect_ratio = :equal,
 			legend = (0.875, 1.0),
 			title = "Cable design preview",
@@ -2766,6 +2768,7 @@ Displays the cross-section of a cable system, including earth layers and cables.
 - `system`: A [`LineCableSystem`](@ref) object containing the cable arrangement and earth properties.
 - `zoom_factor`: A scaling factor for adjusting the x-axis limits \\[dimensionless\\].
 - `backend`: Optional plotting backend to use. If not specified, the function will choose a suitable backend based on the environment (e.g., GR for headless, PlotlyJS for interactive).
+- `sz`: Optional plot dimensions (width, height). Default: (800, 600).
 
 # Returns
 
@@ -2788,10 +2791,11 @@ function preview_linecablesystem(
 	system::LineCableSystem;
 	zoom_factor = 0.25,
 	backend = nothing,
+	sz = (800, 600),
 )
 
 	_resolve_backend(backend)
-	plt = plot(size = (800, 600),
+	plt = plot(size = sz,
 		aspect_ratio = :equal,
 		legend = (0.8, 0.9),
 		title = "Cable system cross-section",

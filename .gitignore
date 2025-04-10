@@ -39,3 +39,6 @@ confidential/
 !.vscode/settings.json
 !.vscode/extensions.json
 !.vscode/tasks.json
+onelab
+showcase
+!showcase/*.jl

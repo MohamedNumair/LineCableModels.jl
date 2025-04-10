@@ -44,7 +44,7 @@ The source code is provided under the [BSD 3-Clause License](LICENSE).
 This work is supported by the Etch Competence Hub of EnergyVille, financed by the Flemish Government. The primary developer is Amauri Martins ([@amaurigmartins](https://github.com/amaurigmartins)).
 
 <p align = "left">
-  <p><br><img src="assets/img/etch_logo.png" width="150" alt="Etch logo"></p>
-  <p><img src="assets/img/energyville_logo.png" width="150" alt="EV logo"></p>
-  <p><img src="assets/img/kul_logo.png" width="150" alt="KUL logo"></p>
+  <p><br><img src="assets/img/ETCH_LOGO_RGB_NEG.svg" width="150" alt="Etch logo"></p>
+  <p><img src="assets/img/ENERGYVILLE-LOGO.svg" width="150" alt="EV logo"></p>
+  <p><img src="assets/img/kul_logo.svg" width="150" alt="KUL logo"></p>
 </p>

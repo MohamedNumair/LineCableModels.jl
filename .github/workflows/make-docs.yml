@@ -17,7 +17,7 @@ jobs:
         with:
           version: '1.11'
       - name: Install Dependencies
-        run: julia --project=docs -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate();'
+        run: julia docs/setup.jl
       - name: Build and Deploy
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

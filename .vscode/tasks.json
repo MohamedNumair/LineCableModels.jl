@@ -23,7 +23,10 @@
                 "clear": true,
                 "close": true
             },
-            "command": "julia --project=docs -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate(); include(\"docs/make.jl\")'",
+            "command": "julia --project -e 'include(\"docs/setup.jl\"); include(\"docs/make.jl\")'",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
             "problemMatcher": [],
             "type": "shell",
             "group": {
