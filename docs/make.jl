@@ -17,6 +17,27 @@ function get_project_toml()
 	return project_toml
 end
 
+function open_in_default_browser(url::AbstractString)::Bool
+	try
+		if Sys.isapple()
+			Base.run(`open $url`)
+			true
+		elseif Sys.iswindows()
+			Base.run(`powershell.exe Start "'$url'"`)
+			true
+		elseif Sys.islinux()
+			Base.run(`xdg-open $url`, devnull, devnull, devnull)
+			true
+		else
+			false
+		end
+	catch ex
+		false
+	end
+end
+
+
+
 # Get project data
 PROJECT_TOML = get_project_toml()
 PROJECT_VERSION = PROJECT_TOML["version"]
@@ -165,6 +186,11 @@ if haskey(ENV, "CI")
 		versions = ["stable" => "v^", "dev" => "main"],
 		branch = "gh-pages",
 	)
+else
+	open_in_default_browser(
+		"file://$(abspath(joinpath(@__DIR__, "build", "index.html")))",
+	) ||
+		println("Failed to open the documentation in the browser.")
 end
 @info "Finished docs build." # Good to know the script completed
 

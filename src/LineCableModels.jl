@@ -23,6 +23,11 @@ include("DataModel.jl")
 @force using .DataModel
 @reexport using .DataModel
 
+# Submodule `FEMTools`
+include("FEMTools.jl")
+@force using .FEMTools
+@reexport using .FEMTools
+
 # Submodule `ImportExport`
 include("ImportExport.jl")
 @force using .ImportExport

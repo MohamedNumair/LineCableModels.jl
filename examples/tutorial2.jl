@@ -387,7 +387,7 @@ f = 10.0 .^ range(0, stop = 6, length = 10)  # Frequency range
 earth_params = EarthModel(f, 100.0, 10.0, 1.0)  # 100 Ω·m resistivity, εr=10, μr=1
 
 # Earth model base (DC) properties:
-earthmodel_todf_df = earthmodel_todf(earth_params)
+earthmodel_todf = earthmodel_todf(earth_params)
 
 #=
 ### Three-phase system in trifoil configuration
