@@ -1,8 +1,8 @@
 {
     "__julia_type__": "LineCableModels.DataModel.CablesLibrary",
     "cable_designs": {
-        "tutorial2": {
-            "cable_id": "tutorial2",
+        "tutorial": {
+            "cable_id": "tutorial",
             "nominal_data": {
                 "U": 30,
                 "screen_cross_section": 35,

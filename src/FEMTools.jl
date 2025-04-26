@@ -5,7 +5,7 @@ The [`FEMTools`](@ref) module provides functionality for generating geometric me
 
 # Overview
 
-- Defines core types [`FEMFormulation`](@ref), [`FEMSolver`](@ref), and [`FEMWorkspace`](@ref) for managing simulation parameters and state.
+- Defines core types [`FEMProblemDefinition`](@ref), [`FEMSolver`](@ref), and [`FEMWorkspace`](@ref) for managing simulation parameters and state.
 - Implements a physical tag encoding system (CCOGYYYYY scheme for cable components, EPFXXXXX for domain regions).
 - Provides primitive drawing functions for geometric elements.
 - Creates a two-phase workflow: creation → fragmentation → identification.
@@ -36,7 +36,7 @@ using Measurements
 using Colors
 
 # Export public API
-export FEMFormulation
+export FEMProblemDefinition
 export FEMSolver
 export run_fem_model, preview_mesh, preview_results
 export encode_cable_tag, decode_cable_tag
@@ -54,14 +54,14 @@ abstract type AbstractEntityData end
 """
 $(TYPEDEF)
 
-Abstract base type for all formulation strategies in the FEM simulation framework.
-Formulations define the physics-related parameters of the simulation, including domain 
+Abstract base type for all problem definitions in the FEM simulation framework.
+Problem definitions include physics-related parameters of the simulation, domain 
 characteristics, meshing parameters, and analysis types.
 
 Concrete implementations should specify the complete set of physics parameters 
 needed to define a mathematical model for a simulation.
 """
-abstract type AbstractFormulation end
+abstract type AbstractProblemDefinition end
 
 """
 $(TYPEDEF)
@@ -97,12 +97,10 @@ $(TYPEDFIELDS)
 struct CoreEntityData
     "Encoded physical tag \\[dimensionless\\]."
     physical_group_tag::Int
-    "Human-readable name for the entity."
+    "Name of the elementary surface."
     elementary_name::String
     "Target mesh size \\[m\\]."
     mesh_size::Float64
-    # "Position for identification (3D) \\[m\\]."
-    # marker::Vector{Float64}
 end
 
 """
@@ -122,11 +120,25 @@ end
 """
 $(TYPEDEF)
 
-Entity data structure for domain boundaries and regions.
+Entity data structure for domain surfaces external to cable parts.
 
 $(TYPEDFIELDS)
 """
-struct SpaceEntity <: AbstractEntityData
+struct SurfaceEntity <: AbstractEntityData
+    "Core entity data."
+    core::CoreEntityData
+    "Material properties of the domain."
+    material::Material
+end
+
+"""
+$(TYPEDEF)
+
+Entity data structure for domain curves (boundaries and layer interfaces).
+
+$(TYPEDFIELDS)
+"""
+struct CurveEntity <: AbstractEntityData
     "Core entity data."
     core::CoreEntityData
     "Material properties of the domain."
@@ -170,7 +182,7 @@ This constructor automatically converts any integer tag to Int32 for compatibili
 ```julia
 # Create domain entity with tag and data
 core_data = CoreEntityData([0.0, 0.0, 0.0])
-domain_data = SpaceEntity(core_data, material)
+domain_data = SurfaceEntity(core_data, material)
 entity = $(FUNCTIONNAME)(1, domain_data)
 ```
 """
@@ -181,12 +193,12 @@ end
 """
 $(TYPEDEF)
 
-Abstract formulation type for FEM simulation parameters.
+Abstract problem definition type for FEM simulation parameters.
 This contains the physics-related parameters of the simulation.
 
 $(TYPEDFIELDS)
 """
-struct FEMFormulation <: AbstractFormulation
+struct FEMProblemDefinition <: AbstractProblemDefinition
     "Domain radius for the simulation \\[m\\]."
     domain_radius::Float64
     "Flag to correct for twisting effects \\[dimensionless\\]."
@@ -216,7 +228,7 @@ struct FEMFormulation <: AbstractFormulation
     """
     $(TYPEDSIGNATURES)
 
-    Constructs a [`FEMFormulation`](@ref) instance with default values.
+    Constructs a [`FEMProblemDefinition`](@ref) instance with default values.
 
     # Arguments
 
@@ -229,29 +241,29 @@ struct FEMFormulation <: AbstractFormulation
     - `analysis_type`: Analysis types to perform \\[dimensionless\\]. Default: [0, 1].
     - `mesh_size_min`: Minimum mesh size \\[m\\]. Default: 1e-4.
     - `mesh_size_max`: Maximum mesh size \\[m\\]. Default: 1.0.
-    - `mesh_size_default`: Default mesh size \\[m\\]. Default: 0.1.
+    - `mesh_size_default`: Default mesh size \\[m\\]. Default: `domain_radius/10`.
     - `mesh_algorithm`: Mesh algorithm to use \\[dimensionless\\]. Default: 6.
     - `materials_db`: Materials database. Default: MaterialsLibrary().
 
     # Returns
 
-    - A [`FEMFormulation`](@ref) instance with the specified parameters.
+    - A [`FEMProblemDefinition`](@ref) instance with the specified parameters.
 
     # Examples
 
     ```julia
-    # Create a formulation with default parameters
-    formulation = $(FUNCTIONNAME)()
+    # Create a problem definition with default parameters
+    problem_def = $(FUNCTIONNAME)()
 
-    # Create a formulation with custom parameters
-    formulation = $(FUNCTIONNAME)(
+    # Create a problem definition with custom parameters
+    problem_def = $(FUNCTIONNAME)(
         domain_radius=10.0,
         elements_per_scale_length_conductor=5.0,
         mesh_algorithm=2
     )
     ```
     """
-    function FEMFormulation(;
+    function FEMProblemDefinition(;
         domain_radius::Float64=5.0,
         correct_twisting::Bool=true,
         elements_per_scale_length_conductor::Float64=3.0,
@@ -261,7 +273,7 @@ struct FEMFormulation <: AbstractFormulation
         analysis_type::Vector{Int}=[0, 1],
         mesh_size_min::Float64=1e-4,
         mesh_size_max::Float64=1.0,
-        mesh_size_default::Float64=0.1,
+        mesh_size_default::Float64=domain_radius / 10,
         mesh_algorithm::Int=6,
         materials_db::MaterialsLibrary=MaterialsLibrary()
     )
@@ -395,8 +407,8 @@ $(TYPEDFIELDS)
 mutable struct FEMWorkspace
     "Cable system being simulated."
     cable_system::LineCableSystem
-    "Formulation parameters."
-    formulation::FEMFormulation
+    "Problem definition parameters."
+    problem_def::FEMProblemDefinition
     "Solver parameters."
     solver::FEMSolver
     "Simulation frequency \\[Hz\\]."
@@ -411,29 +423,14 @@ mutable struct FEMWorkspace
     insulators::Vector{FEMEntity{<:AbstractEntityData}}
     "Domain-space physical surfaces (air and earth layers)."
     space_regions::Vector{FEMEntity{<:AbstractEntityData}}
-    "Layer interface curves/lines."
-    interfaces::Vector{FEMEntity{<:AbstractEntityData}}
-    "Domain boundary surfaces."
+    "Domain boundary curves."
     boundaries::Vector{FEMEntity{<:AbstractEntityData}}
     "Container for all pre-fragmentation entities."
-    # unassigned_entities::Vector{AbstractEntityData}
     unassigned_entities::Dict{Vector{Float64},AbstractEntityData}
-
-    # "Mapping from physical tag to material properties."
-    # material_map::Dict{Int,Material}
-    # "Mapping from physical tag to mesh size."
-    # mesh_size_map::Dict{Int,Float64}
-    # "Mapping from marker position to physical tag."
-    # marker_map::Dict{Vector{Float64},Int}
-    # "Mapping from marker position to physical name."
-    # name_map::Dict{Vector{Float64},String}
-
-    # "Mapping from fragmented tag to original tag."
-    # identified_entities::Dict{Int,Tuple{Int,String}}
-
+    "Container for all material names used in the model."
+    material_registry::Dict{String,Int}
     "ONELAB parameters."
     onelab_params::Dict{String,Any}
-
     "Results storage."
     results::Dict{String,Any}
 
@@ -445,7 +442,7 @@ mutable struct FEMWorkspace
     # Arguments
 
     - `cable_system`: Cable system being simulated.
-    - `formulation`: Problem formulation parameters.
+    - `problem_def`: Problem definition parameters.
     - `solver`: Solver parameters.
     - `frequency`: Simulation frequency \\[Hz\\]. Default: 50.0.
 
@@ -457,29 +454,24 @@ mutable struct FEMWorkspace
 
     ```julia
     # Create a workspace
-    workspace = $(FUNCTIONNAME)(cable_system, formulation, solver)
+    workspace = $(FUNCTIONNAME)(cable_system, problem_def, solver)
     ```
     """
     function FEMWorkspace(cable_system::LineCableSystem,
-        formulation::FEMFormulation,
+        problem_def::FEMProblemDefinition,
         solver::FEMSolver;
         frequency::Float64=50.0)
 
         # Initialize empty workspace
         workspace = new(
-            cable_system, formulation, solver, frequency,
+            cable_system, problem_def, solver, frequency,
             Dict{Symbol,String}(), # Path information.
             Vector{FEMEntity{<:AbstractEntityData}}(), #conductors
             Vector{FEMEntity{<:AbstractEntityData}}(), #insulators
             Vector{FEMEntity{<:AbstractEntityData}}(), #space_regions
-            Vector{FEMEntity{<:AbstractEntityData}}(), #interfaces
             Vector{FEMEntity{<:AbstractEntityData}}(), #boundaries
             Dict{Vector{Float64},AbstractEntityData}(), #unassigned_entities
-            # Dict{Int,Material}(),
-            # Dict{Int,Float64}(),
-            # Dict{Vector{Float64},Int}(),
-            # Dict{Vector{Float64},String}(),
-            # Dict{Int,Tuple{Int,String}}(),
+            Dict{String,Int}(),  # Initialize empty material registry
             Dict{String,Any}(),
             Dict{String,Any}()
         )
@@ -499,7 +491,7 @@ Main function to run the FEM simulation workflow for a cable system.
 # Arguments
 
 - `cable_system`: Cable system to simulate.
-- `formulation`: Problem formulation parameters.
+- `problem_def`: Problem definition parameters.
 - `solver`: Solver parameters.
 - `frequency`: Simulation frequency \\[Hz\\]. Default: 50.0.
 
@@ -511,19 +503,19 @@ Main function to run the FEM simulation workflow for a cable system.
 
 ```julia
 # Run a FEM simulation
-workspace = $(FUNCTIONNAME)(cable_system, formulation, solver)
+workspace = $(FUNCTIONNAME)(cable_system, problem_def, solver)
 ```
 """
 function run_fem_model(cable_system::LineCableSystem,
-    formulation::FEMFormulation,
+    problem_def::FEMProblemDefinition,
     solver::FEMSolver;
     frequency::Float64=50.0)
     # Create and initialize workspace
-    workspace = FEMWorkspace(cable_system, formulation, solver, frequency=frequency)
+    workspace = FEMWorkspace(cable_system, problem_def, solver, frequency=frequency)
 
     # Log start
     _log(workspace, 1, "Starting FEM simulation for cable system: $(cable_system.case_id)")
-    _log(workspace, 1, "Configuration: domain_radius=$(formulation.domain_radius) m, mesh_algorithm=$(formulation.mesh_algorithm)")
+    _log(workspace, 1, "Configuration: domain_radius=$(problem_def.domain_radius) m, mesh_algorithm=$(problem_def.mesh_algorithm)")
 
     # Clean up files based on configuration
     _cleanup_files(workspace.paths, solver)
@@ -555,7 +547,7 @@ function run_fem_model(cable_system::LineCableSystem,
             _log(workspace, 1, "Running meshing phase...")
 
             # Initialize Gmsh model and set parameters
-            _initialize_gmsh(cable_system.case_id, formulation, solver)
+            _initialize_gmsh(cable_system.case_id, problem_def, solver)
 
             # Create geometry
             _log(workspace, 1, "Creating domain boundaries...")
@@ -563,6 +555,9 @@ function run_fem_model(cable_system::LineCableSystem,
 
             _log(workspace, 1, "Creating cable geometry...")
             _make_cable_geometry(workspace)
+
+            # Synchronize the model
+            gmsh.model.occ.synchronize()
 
             # Boolean operations
             _log(workspace, 1, "Performing boolean operations...")
@@ -576,7 +571,7 @@ function run_fem_model(cable_system::LineCableSystem,
             _log(workspace, 1, "Assigning physical groups...")
             _assign_physical_groups(workspace)
 
-            # # Mesh sizing
+            # Mesh sizing
             # _log(workspace, 1, "Setting up physics-based mesh sizing...")
             # _config_mesh_sizes(workspace)
 

@@ -125,6 +125,7 @@ function _draw_annular(x::Number, y::Number, radius_in::Number, radius_ext::Numb
     end
 end
 
+
 """
 $(TYPEDSIGNATURES)
 

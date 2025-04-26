@@ -62,7 +62,7 @@ println(alpha_eq)  # Output: 0.00396 (approximately)
 ```
 """
 function calc_equivalent_alpha(alpha1::Number, R1::Number, alpha2::Number, R2::Number)
-	return (alpha1 * R2 + alpha2 * R1) / (R1 + R2)
+    return (alpha1 * R2 + alpha2 * R1) / (R1 + R2)
 end
 
 """
@@ -109,7 +109,7 @@ println(Req) # Outputs: 3.3333333333333335
 - [`calc_helical_params`](@ref)
 """
 function calc_parallel_equivalent(Z1::Number, Z2::Number)
-	return 1 / (1 / Z1 + 1 / Z2)
+    return 1 / (1 / Z1 + 1 / Z2)
 end
 
 """
@@ -162,11 +162,11 @@ mean_diam, pitch, overlength = $(FUNCTIONNAME)(radius_in, radius_ext, lay_ratio)
 ```
 """
 function calc_helical_params(radius_in::Number, radius_ext::Number, lay_ratio::Number)
-	mean_diameter = 2 * (radius_in + (radius_ext - radius_in) / 2)
-	pitch_length = lay_ratio * mean_diameter
-	overlength = pitch_length != 0 ? sqrt(1 + (π * mean_diameter / pitch_length)^2) : 1
+    mean_diameter = 2 * (radius_in + (radius_ext - radius_in) / 2)
+    pitch_length = lay_ratio * mean_diameter
+    overlength = pitch_length != 0 ? sqrt(1 + (π * mean_diameter / pitch_length)^2) : 1
 
-	return mean_diameter, pitch_length, overlength
+    return mean_diameter, pitch_length, overlength
 end
 
 """
@@ -210,15 +210,15 @@ resistance = $(FUNCTIONNAME)(thickness, width, rho, alpha, T0, T)
 - [`calc_temperature_correction`](@ref)
 """
 function calc_strip_resistance(
-	thickness::Number,
-	width::Number,
-	rho::Number,
-	alpha::Number,
-	T0::Number,
-	T::Number,
+    thickness::Number,
+    width::Number,
+    rho::Number,
+    alpha::Number,
+    T0::Number,
+    T::Number,
 )
-	cross_section = thickness * width
-	return calc_temperature_correction(alpha, T, T0) * rho / cross_section
+    cross_section = thickness * width
+    return calc_temperature_correction(alpha, T, T0) * rho / cross_section
 end
 
 """
@@ -248,8 +248,8 @@ where ``\\alpha`` is the temperature coefficient of the material resistivity, ``
 k = $(FUNCTIONNAME)(0.00393, 75.0, 20.0)  # Expected output: 1.2158
 ```
 """
-function calc_temperature_correction(alpha::Number, T::Number, T0::Number = T₀)
-	return 1 + alpha * (T - T0)
+function calc_temperature_correction(alpha::Number, T::Number, T0::Number=T₀)
+    return 1 + alpha * (T - T0)
 end
 
 """
@@ -293,15 +293,15 @@ resistance = $(FUNCTIONNAME)(radius_in, radius_ext, rho, alpha, T0, T)
 - [`calc_temperature_correction`](@ref)
 """
 function calc_tubular_resistance(
-	radius_in::Number,
-	radius_ext::Number,
-	rho::Number,
-	alpha::Number,
-	T0::Number,
-	T::Number,
+    radius_in::Number,
+    radius_ext::Number,
+    rho::Number,
+    alpha::Number,
+    T0::Number,
+    T::Number,
 )
-	cross_section = π * (radius_ext^2 - radius_in^2)
-	return calc_temperature_correction(alpha, T, T0) * rho / cross_section
+    cross_section = π * (radius_ext^2 - radius_in^2)
+    return calc_temperature_correction(alpha, T, T0) * rho / cross_section
 end
 
 """
@@ -339,7 +339,7 @@ L = $(FUNCTIONNAME)(radius_in, radius_ext, mu_r)
 - [`calc_tubular_resistance`](@ref)
 """
 function calc_tubular_inductance(radius_in::Number, radius_ext::Number, mu_r::Number)
-	return mu_r * μ₀ / (2 * π) * log(radius_ext / radius_in)
+    return mu_r * μ₀ / (2 * π) * log(radius_ext / radius_in)
 end
 
 """
@@ -374,25 +374,23 @@ wire_coords = $(FUNCTIONNAME)(7, 0.002, 0.01, C=(0.5, 0.3))
 - [`LineCableModels.DataModel.WireArray`](@ref)
 """
 function calc_wirearray_coords(
-	num_wires::Number,
-	radius_wire::Number,
-	radius_in::Number;
-	C = (0.0, 0.0),
+    num_wires::Number,
+    radius_wire::Number,
+    radius_in::Number;
+    C=(0.0, 0.0),
 )
-	wire_coords = []  # Global coordinates of all wires
-	# radius_wire = wa.radius_wire
-	# num_wires = wa.num_wires
-	lay_radius = num_wires == 1 ? 0 : radius_in + radius_wire
+    wire_coords = []  # Global coordinates of all wires
+    lay_radius = num_wires == 1 ? 0 : radius_in + radius_wire
 
-	# Calculate the angle between each wire
-	angle_step = 2 * π / num_wires
-	for i in 0:num_wires-1
-		angle = i * angle_step
-		x = C[1] + lay_radius * cos(angle)
-		y = C[2] + lay_radius * sin(angle)
-		push!(wire_coords, (x, y))  # Add wire center
-	end
-	return wire_coords
+    # Calculate the angle between each wire
+    angle_step = 2 * π / num_wires
+    for i in 0:num_wires-1
+        angle = i * angle_step
+        x = C[1] + lay_radius * cos(angle)
+        y = C[2] + lay_radius * sin(angle)
+        push!(wire_coords, (x, y))  # Add wire center
+    end
+    return wire_coords
 end
 
 """
@@ -438,63 +436,63 @@ println(L) # Output: Inductance value in H/m
 - [`calc_tubular_gmr`](@ref)
 """
 function calc_inductance_trifoil(
-	r_in_co::Number,
-	r_ext_co::Number,
-	rho_co::Number,
-	mu_r_co::Number,
-	r_in_scr::Number,
-	r_ext_scr::Number,
-	rho_scr::Number,
-	mu_r_scr::Number,
-	S::Number;
-	rho_e::Number = 100,
-	f::Number = f₀,
+    r_in_co::Number,
+    r_ext_co::Number,
+    rho_co::Number,
+    mu_r_co::Number,
+    r_in_scr::Number,
+    r_ext_scr::Number,
+    rho_scr::Number,
+    mu_r_scr::Number,
+    S::Number;
+    rho_e::Number=100,
+    f::Number=f₀,
 )
 
-	ω = 2 * π * f
-	C = μ₀ / (2π)
+    ω = 2 * π * f
+    C = μ₀ / (2π)
 
-	# Compute simplified earth return depth
-	DE = 659 * sqrt(rho_e / f)
+    # Compute simplified earth return depth
+    DE = 659 * sqrt(rho_e / f)
 
-	# Compute R'_E
-	RpE = (ω * μ₀) / 8
+    # Compute R'_E
+    RpE = (ω * μ₀) / 8
 
-	# Compute Xa
-	GMRa = calc_tubular_gmr(r_ext_co, r_in_co, mu_r_co)
-	Xa = (ω * C) * log(DE / GMRa)
+    # Compute Xa
+    GMRa = calc_tubular_gmr(r_ext_co, r_in_co, mu_r_co)
+    Xa = (ω * C) * log(DE / GMRa)
 
-	# Self impedance of a phase conductor with earth return
-	Ra = rho_co / (π * (r_ext_co^2 - r_in_co^2))
-	Za = RpE + Ra + im * Xa
+    # Self impedance of a phase conductor with earth return
+    Ra = rho_co / (π * (r_ext_co^2 - r_in_co^2))
+    Za = RpE + Ra + im * Xa
 
-	# Compute rs
-	GMRscr = calc_tubular_gmr(r_ext_scr, r_in_scr, mu_r_scr)
-	# Compute Xs
-	Xs = (ω * C) * log(DE / GMRscr)
+    # Compute rs
+    GMRscr = calc_tubular_gmr(r_ext_scr, r_in_scr, mu_r_scr)
+    # Compute Xs
+    Xs = (ω * C) * log(DE / GMRscr)
 
-	# Self impedance of metal screen with earth return
-	Rs = rho_scr / (π * (r_ext_scr^2 - r_in_scr^2))
-	Zs = RpE + Rs + im * Xs
+    # Self impedance of metal screen with earth return
+    Rs = rho_scr / (π * (r_ext_scr^2 - r_in_scr^2))
+    Zs = RpE + Rs + im * Xs
 
-	# Mutual impedance between phase conductor and screen
-	Zm = RpE + im * Xs
+    # Mutual impedance between phase conductor and screen
+    Zm = RpE + im * Xs
 
-	# Compute GMD
-	GMD = S # trifoil, for flat use: 2^(1/3) * S
+    # Compute GMD
+    GMD = S # trifoil, for flat use: 2^(1/3) * S
 
-	# Compute Xap
-	Xap = (ω * C) * log(DE / GMD)
+    # Compute Xap
+    Xap = (ω * C) * log(DE / GMD)
 
-	# Equivalent mutual impedances between cables
-	Zx = RpE + im * Xap
+    # Equivalent mutual impedances between cables
+    Zx = RpE + im * Xap
 
-	# Formula from CIGRE TB-531, 4.2.4.3, solid bonding
-	Z1_sb = (Za - Zx) - ((Zm - Zx)^2 / (Zs - Zx))
+    # Formula from CIGRE TB-531, 4.2.4.3, solid bonding
+    Z1_sb = (Za - Zx) - ((Zm - Zx)^2 / (Zs - Zx))
 
-	# Likewise, but for single point bonding
-	# Z1_sp = (Za - Zx)
-	return imag(Z1_sb) / ω
+    # Likewise, but for single point bonding
+    # Z1_sp = (Za - Zx)
+    return imag(Z1_sb) / ω
 end
 
 """
@@ -531,9 +529,9 @@ println(gmr) # Expected output: 0.01187... [m]
 ```
 """
 function calc_wirearray_gmr(lay_rad::Number, N::Number, rad_wire::Number, mu_r::Number)
-	gmr_wire = rad_wire * exp(-mu_r / 4)
-	log_gmr_array = log(gmr_wire * N * lay_rad^(N - 1)) / N
-	return exp(log_gmr_array)
+    gmr_wire = rad_wire * exp(-mu_r / 4)
+    log_gmr_array = log(gmr_wire * N * lay_rad^(N - 1)) / N
+    return exp(log_gmr_array)
 end
 
 """
@@ -572,29 +570,29 @@ println(gmr) # Expected output: ~0.0135 [m]
 ```
 """
 function calc_tubular_gmr(radius_ext::Number, radius_in::Number, mu_r::Number)
-	if radius_ext < radius_in
-		throw(ArgumentError("Invalid parameters: radius_ext must be >= radius_in."))
-	end
+    if radius_ext < radius_in
+        throw(ArgumentError("Invalid parameters: radius_ext must be >= radius_in."))
+    end
 
-	# Constants
-	if abs(radius_ext - radius_in) < TOL
-		# Tube collapses into a thin shell with infinitesimal thickness and the GMR is simply the radius
-		gmr = radius_ext
-	elseif abs(radius_in / radius_ext) < eps() && abs(radius_in) > TOL
-		# Tube becomes infinitely thick up to floating point precision
-		gmr = Inf
-	else
-		term1 =
-			radius_in == 0 ? 0 :
-			(radius_in^4 / (radius_ext^2 - radius_in^2)^2) * log(radius_ext / radius_in)
-		term2 = (3 * radius_in^2 - radius_ext^2) / (4 * (radius_ext^2 - radius_in^2))
-		Lin = (μ₀ * mu_r / (2 * π)) * (term1 - term2)
+    # Constants
+    if abs(radius_ext - radius_in) < TOL
+        # Tube collapses into a thin shell with infinitesimal thickness and the GMR is simply the radius
+        gmr = radius_ext
+    elseif abs(radius_in / radius_ext) < eps() && abs(radius_in) > TOL
+        # Tube becomes infinitely thick up to floating point precision
+        gmr = Inf
+    else
+        term1 =
+            radius_in == 0 ? 0 :
+            (radius_in^4 / (radius_ext^2 - radius_in^2)^2) * log(radius_ext / radius_in)
+        term2 = (3 * radius_in^2 - radius_ext^2) / (4 * (radius_ext^2 - radius_in^2))
+        Lin = (μ₀ * mu_r / (2 * π)) * (term1 - term2)
 
-		# Compute the GMR
-		gmr = exp(log(radius_ext) - (2 * π / μ₀) * Lin)
-	end
+        # Compute the GMR
+        gmr = exp(log(radius_ext) - (2 * π / μ₀) * Lin)
+    end
 
-	return gmr
+    return gmr
 end
 
 """
@@ -644,21 +642,21 @@ println(mu_r) # Expected output: ~1.5 [dimensionless]
 - [`calc_tubular_gmr`](@ref)
 """
 function calc_equivalent_mu(gmr::Number, radius_ext::Number, radius_in::Number)
-	if radius_ext < radius_in
-		throw(ArgumentError("Invalid parameters: radius_ext must be >= radius_in."))
-	end
+    if radius_ext < radius_in
+        throw(ArgumentError("Invalid parameters: radius_ext must be >= radius_in."))
+    end
 
-	term1 =
-		radius_in == 0 ? 0 :
-		(radius_in^4 / (radius_ext^2 - radius_in^2)^2) * log(radius_ext / radius_in)
-	term2 = (3 * radius_in^2 - radius_ext^2) / (4 * (radius_ext^2 - radius_in^2))
-	# Compute the log difference
-	log_diff = log(gmr) - log(radius_ext)
+    term1 =
+        radius_in == 0 ? 0 :
+        (radius_in^4 / (radius_ext^2 - radius_in^2)^2) * log(radius_ext / radius_in)
+    term2 = (3 * radius_in^2 - radius_ext^2) / (4 * (radius_ext^2 - radius_in^2))
+    # Compute the log difference
+    log_diff = log(gmr) - log(radius_ext)
 
-	# Compute mu_r
-	mu_r = -log_diff / (term1 - term2)
+    # Compute mu_r
+    mu_r = -log_diff / (term1 - term2)
 
-	return mu_r
+    return mu_r
 end
 
 """
@@ -692,7 +690,7 @@ println(capacitance) # Expected output: ~1.24e-10 [F/m]
 ```
 """
 function calc_shunt_capacitance(radius_in::Number, radius_ext::Number, epsr::Number)
-	return 2 * π * ε₀ * epsr / log(radius_ext / radius_in)
+    return 2 * π * ε₀ * epsr / log(radius_ext / radius_in)
 end
 
 """
@@ -726,7 +724,7 @@ println(g) # Expected output: 2.7169e-9 [S·m]
 ```
 """
 function calc_shunt_conductance(radius_in::Number, radius_ext::Number, rho::Number)
-	return 2 * π * (1 / rho) / log(radius_ext / radius_in)
+    return 2 * π * (1 / rho) / log(radius_ext / radius_in)
 end
 
 using ..DataModel: AbstractCablePart, ConductorGroup, WireArray
@@ -769,11 +767,11 @@ equivalent_gmr = $(FUNCTIONNAME)(conductor, new_layer)  # Expected output: Updat
 - [`calc_gmd`](@ref)
 """
 function calc_equivalent_gmr(existing::AbstractCablePart, new_layer::AbstractCablePart)
-	beta = existing.cross_section / (existing.cross_section + new_layer.cross_section)
-	current_conductor = existing isa ConductorGroup ? existing.layers[end] : existing
-	gmd = calc_gmd(current_conductor, new_layer)
-	return existing.gmr^(beta^2) * new_layer.gmr^((1 - beta)^2) *
-		   gmd^(2 * beta * (1 - beta))
+    beta = existing.cross_section / (existing.cross_section + new_layer.cross_section)
+    current_conductor = existing isa ConductorGroup ? existing.layers[end] : existing
+    gmd = calc_gmd(current_conductor, new_layer)
+    return existing.gmr^(beta^2) * new_layer.gmr^((1 - beta)^2) *
+           gmd^(2 * beta * (1 - beta))
 end
 
 """
@@ -826,53 +824,53 @@ gmd = $(FUNCTIONNAME)(strip, tubular)  # Expected output: GMD value [m]
 """
 function calc_gmd(co1::AbstractCablePart, co2::AbstractCablePart)
 
-	if co1 isa WireArray
-		coords1 = calc_wirearray_coords(co1.num_wires, co1.radius_wire, co1.radius_in)
-		n1 = co1.num_wires
-		r1 = co1.radius_wire
-		s1 = pi * r1^2
-	else
-		coords1 = [(0, 0)]
-		n1 = 1
-		r1 = co1.radius_ext
-		s1 = co1.cross_section
-	end
+    if co1 isa WireArray
+        coords1 = calc_wirearray_coords(co1.num_wires, co1.radius_wire, co1.radius_in)
+        n1 = co1.num_wires
+        r1 = co1.radius_wire
+        s1 = pi * r1^2
+    else
+        coords1 = [(0, 0)]
+        n1 = 1
+        r1 = co1.radius_ext
+        s1 = co1.cross_section
+    end
 
-	if co2 isa WireArray
-		coords2 = calc_wirearray_coords(co2.num_wires, co2.radius_wire, co2.radius_in)
-		n2 = co2.num_wires
-		r2 = co2.radius_wire
-		s2 = pi * r2^2
-	else
-		coords2 = [(0, 0)]
-		n2 = 1
-		r2 = co2.radius_ext
-		s2 = co2.cross_section
-	end
+    if co2 isa WireArray
+        coords2 = calc_wirearray_coords(co2.num_wires, co2.radius_wire, co2.radius_in)
+        n2 = co2.num_wires
+        r2 = co2.radius_wire
+        s2 = pi * r2^2
+    else
+        coords2 = [(0, 0)]
+        n2 = 1
+        r2 = co2.radius_ext
+        s2 = co2.cross_section
+    end
 
-	log_sum = 0.0
-	area_weights = 0.0
+    log_sum = 0.0
+    area_weights = 0.0
 
-	for i in 1:n1
-		for j in 1:n2
-			# Pair-wise distances
-			x1, y1 = coords1[i]
-			x2, y2 = coords2[j]
-			d_ij = sqrt((x1 - x2)^2 + (y1 - y2)^2)
-			if d_ij > eps()
-				# The GMD is computed as the Euclidean distance from center-to-center
-				log_dij = log(d_ij)
-			else
-				# This means two concentric structures (solid/strip or tubular, tubular/strip or tubular, strip/strip or tubular)
-				# In all cases the GMD is the outermost radius
-				max(r1, r2)
-				log_dij = log(max(r1, r2))
-			end
-			log_sum += (s1 * s2) * log_dij
-			area_weights += (s1 * s2)
-		end
-	end
-	return exp(log_sum / area_weights)
+    for i in 1:n1
+        for j in 1:n2
+            # Pair-wise distances
+            x1, y1 = coords1[i]
+            x2, y2 = coords2[j]
+            d_ij = sqrt((x1 - x2)^2 + (y1 - y2)^2)
+            if d_ij > eps()
+                # The GMD is computed as the Euclidean distance from center-to-center
+                log_dij = log(d_ij)
+            else
+                # This means two concentric structures (solid/strip or tubular, tubular/strip or tubular, strip/strip or tubular)
+                # In all cases the GMD is the outermost radius
+                max(r1, r2)
+                log_dij = log(max(r1, r2))
+            end
+            log_sum += (s1 * s2) * log_dij
+            area_weights += (s1 * s2)
+        end
+    end
+    return exp(log_sum / area_weights)
 end
 """
 $(TYPEDSIGNATURES)
@@ -909,17 +907,17 @@ correction = $(FUNCTIONNAME)(NaN, 0.005, 0.01)  # Expected output: 1.0 [dimensio
 ```
 """
 function calc_solenoid_correction(
-	num_turns::Number,
-	radius_ext_con::Number,
-	radius_ext_ins::Number,
+    num_turns::Number,
+    radius_ext_con::Number,
+    radius_ext_ins::Number,
 )
-	if isnan(num_turns)
-		return 1.0
-	else
-		return 1.0 +
-			   2 * num_turns^2 * pi^2 * (radius_ext_ins^2 - radius_ext_con^2) /
-			   log(radius_ext_ins / radius_ext_con)
-	end
+    if isnan(num_turns)
+        return 1.0
+    else
+        return 1.0 +
+               2 * num_turns^2 * pi^2 * (radius_ext_ins^2 - radius_ext_con^2) /
+               log(radius_ext_ins / radius_ext_con)
+    end
 end
 
 """
@@ -950,8 +948,8 @@ rho_eq = $(FUNCTIONNAME)(0.01, 0.02, 0.01)  # Expected output: ~9.42e-4 [Ω·m]
 ```
 """
 function calc_equivalent_rho(R::Number, radius_ext_con::Number, radius_in_con::Number)
-	eff_conductor_area = π * (radius_ext_con^2 - radius_in_con^2)
-	return R * eff_conductor_area
+    eff_conductor_area = π * (radius_ext_con^2 - radius_in_con^2)
+    return R * eff_conductor_area
 end
 
 """
@@ -985,7 +983,7 @@ eps_eq = $(FUNCTIONNAME)(1e-10, 0.01, 0.005)  # Expected output: ~2.26 [dimensio
 - [`ε₀`](@ref)
 """
 function calc_equivalent_eps(C_eq::Number, radius_ext::Number, radius_in::Number)
-	return (C_eq * log(radius_ext / radius_in)) / (2 * pi) / ε₀
+    return (C_eq * log(radius_ext / radius_in)) / (2 * pi) / ε₀
 end
 
 """
@@ -1016,7 +1014,7 @@ loss_factor = $(FUNCTIONNAME)(1e-8, 1e-10, 2π*50)  # Expected output: ~0.0318 [
 ```
 """
 function calc_equivalent_lossfact(G_eq::Number, C_eq::Number, ω::Number)
-	return G_eq / (ω * C_eq)
+    return G_eq / (ω * C_eq)
 end
 
 """
@@ -1047,7 +1045,7 @@ sigma_eq = $(FUNCTIONNAME)(G_eq, radius_in, radius_ext)
 ```
 """
 function calc_sigma_lossfact(G_eq::Number, radius_in::Number, radius_ext::Number)
-	return G_eq * log(radius_ext / radius_in) / (2 * pi)
+    return G_eq * log(radius_ext / radius_in) / (2 * pi)
 end
 
 Utils.@_autoexport

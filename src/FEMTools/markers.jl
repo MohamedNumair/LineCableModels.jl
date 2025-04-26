@@ -38,23 +38,18 @@ markers = $(FUNCTIONNAME)(7, 0.002, 0.01)
 function _get_air_gap_markers(num_wires::Int, radius_wire::Number, radius_in::Number)
     markers = Vector{Vector{Float64}}()
 
-    # Skip if only one wire (no air gaps)
-    if num_wires <= 1
-        return markers
-    end
-
     lay_radius = radius_in + radius_wire
-    angle_step = 2π / num_wires
 
-    # Create markers between wires
-    for i in 0:num_wires-1
+    num_angular_markers = num_wires == 1 ? 6 : num_wires
+    # For multiple wires, place markers between adjacent wires
+    angle_step = 2π / num_angular_markers
+    for i in 0:num_angular_markers-1
         angle = i * angle_step + (angle_step / 2)  # Midway between wires
         r = lay_radius + (radius_wire / 2)  # Slightly outward
         x = r * cos(angle)
         y = r * sin(angle)
         push!(markers, [x, y, 0.0])
     end
-
     return markers
 end
 

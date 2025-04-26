@@ -48,7 +48,7 @@ function get_material_name(material::Material, library::MaterialsLibrary; tol=1e
     end
 
     # If no match, create a unique hash-based name
-    return "mat_" * hash_material_properties(material)
+    return "material_" * hash_material_properties(material)
 end
 
 """
@@ -80,7 +80,7 @@ function hash_material_properties(material::Material)
     eps_str = "$(round(eps_r, sigdigits=6))"
     mu_str = "$(round(mu_r, sigdigits=6))"
 
-    return "$(rho_str)_$(eps_str)_$(mu_str)"
+    return "rho=$(rho_str)_epsr=$(eps_str)_mu=$(mu_str)"
 end
 
 # """
@@ -134,8 +134,8 @@ function get_space_material(workspace::FEMWorkspace, layer_idx::Int)
 end
 
 function get_air_material(workspace::FEMWorkspace)
-    if !isnothing(workspace.formulation.materials_db)
-        air_material = get_material(workspace.formulation.materials_db, "air")
+    if !isnothing(workspace.problem_def.materials_db)
+        air_material = get_material(workspace.problem_def.materials_db, "air")
         if isnothing(air_material)
             @warn("Air material not found in database. Overriding with default properties.")
             air_material = Material(Inf, 1.0, 1.0, 20.0, 0.0)

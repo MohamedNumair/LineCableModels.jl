@@ -112,7 +112,7 @@ The `_todf` suffix provides a concise and immediately recognizable identifier fo
 
 ## Docstrings
 
-The following docstring standards are generally adopted across the codebase. The phrasing in this section is optimized to be passed as `<custom instructions>` to have an LLM doing the heavy lifting.
+The following docstring standards are generally adopted across the codebase.
 
 ### General Docstring principles
 
@@ -145,13 +145,13 @@ All variables corresponding to physical quantities must be annotated with their 
     - **Correct:** `\\mu_r`, ```math \\frac{a}{b}```
     - **Incorrect:** `\mu_r`, ```math \frac{a}{b}```
 
-### Documentation structure by entity type
+### Documentation templates
 
-Adhere strictly to the following structures for different code entities.
+The subsections below contain templates for different types of code elements.
 
 #### 1. Structs
 
-- **Main docstring:** Use `$(TYPEDEF)` for the signature and `$(TYPEDFIELDS)` to list the fields automatically. Provide a concise description of the struct's purpose.
+- **Main docstring:** Use `$(TYPEDEF)` for the signature and `$(TYPEDFIELDS)` to list the fields automatically. Provide a concise description of the struct purpose.
 
     ```julia
     """
@@ -169,11 +169,11 @@ Adhere strictly to the following structures for different code entities.
 - **Field documentation:**
   - Place *directly above* each field definition.
   - Use single-line double quotes: `"Description with units \\[unit\\] or \\[dimensionless\\] if applicable."`
-  - **CRITICAL:** Do NOT use `""" """` block quotes or inline comments (`#`) for documenting struct fields.
+  - Do NOT use `""" """` block quotes or inline comments (`#`) for documenting struct fields.
 
 #### 2. Constructors (inside or outside structs)
 
-- **CRITICAL:** ALL constructors MUST be documented using the `@doc` macro placed immediately before the `function` keyword or the compact assignment form (`TypeName(...) = ...`). This applies even to default constructors if explicitly defined.
+- ALL constructors MUST be documented using the `@doc` macro placed immediately before the `function` keyword or the compact assignment form (`TypeName(...) = ...`). This applies even to default constructors if explicitly defined.
 - **Format:** Use `$(TYPEDSIGNATURES)`. Include standard sections (`Arguments`, `Returns`, `Examples`).
 
     ````julia
@@ -204,7 +204,7 @@ Adhere strictly to the following structures for different code entities.
 
 #### 3. Functions / methods
 
-- **Format:** Start with `$(TYPEDSIGNATURES)`. Follow the mandatory section order.
+- **Format:** Start with `$(TYPEDSIGNATURES)`. Follow the section order described.
   
     ````julia
     """
@@ -248,7 +248,7 @@ Adhere strictly to the following structures for different code entities.
     end
     ````
   
-- **Section order (MANDATORY):**
+- **Section order:**
     1. Description (no heading)
     2. `# Arguments`
     3. `# Returns`
@@ -289,7 +289,7 @@ Adhere strictly to the following structures for different code entities.
 
 #### 5. Constants
 
-- **Format:** Use a single-line docstring with double quotes (`"..."`). Include a brief description, the constant's symbol if standard (e.g., `μ₀`), its value, and its units using the `\\[unit\\]` format.
+- **Format:** Use a single-line docstring with double quotes (`"..."`). Include a brief description, the symbol of the constant if standard (e.g., `μ₀`), its value, and its units using the `\\[unit\\]` format.
 
     ```julia
     "Magnetic constant (vacuum permeability), μ₀ = 4π * 1e-7 \\[H/m\\]]."
@@ -298,7 +298,7 @@ Adhere strictly to the following structures for different code entities.
 
 #### Common mistakes to avoid
 
-Double-check your docstrings to avoid these common errors:
+Double-check the docstrings to avoid these common errors:
 
 - **Missing `@doc` for constructors:** ALL constructors require the `@doc` macro before their definition.
 - **Incorrect struct field docstrings:** Use single-line `"..."` *above* the field, not block `"""..."""` quotes or inline `#` comments.
@@ -323,7 +323,7 @@ Double-check your docstrings to avoid these common errors:
 - Main module (`LineCableModels`) reexports from submodules.
 - Submodules (`DataModel`, `Materials`, etc.) handle their own exports.
 - Maximum nesting depth is 3 levels (parent → child → grandchild).
-- Documentation is maintained at all levels using DocStringExtensions.
+- Documentation is maintained at all levels using `DocStringExtensions`.
 
 ### Code navigation
 
@@ -337,19 +337,19 @@ Double-check your docstrings to avoid these common errors:
 
 ### Core architecture
 
-The LineCableModels package implements a consistent framework pattern across all modules, designed to provide maximum flexibility while maintaining type stability and performance. The architecture is built around three key components:
+The `LineCableModels.jl` package implements a consistent framework pattern across all modules, designed to provide flexibility while maintaining type stability and performance. The architecture is built around three key components:
 
-1. **Formulation**: Defines the physics/mathematical approach
+1. **Problem definition**: Defines the physics/mathematical approach
 2. **Solver**: Controls execution parameters
 3. **Workspace**: Centralizes all state during computation
 
-This pattern separates *what* is being calculated (formulation) from *how* it's calculated (solver) and *where* data is stored (workspace).
+This pattern separates *what* is being calculated (problem definition, formulation) from *how* calculations are executed (engine used, solver) and *where* data is stored (workspace).
 
 ### The workspace pattern
 
-At the core of the framework is the Workspace pattern, exemplified by `FEMWorkspace` in the FEMTools module. This pattern can be replicated across all modules (e.g., `EMTWorkspace`).
+At the core of the framework is the Workspace pattern, exemplified by `FEMWorkspace` in the `FEMTools` module. This pattern can be replicated across other modules (e.g., `EMTWorkspace`).
 
-A Workspace:
+A workspace:
 
 - Acts as a centralized state container.
 - Stores all intermediate computation data.
@@ -362,8 +362,8 @@ A Workspace:
 Each module follows a consistent type hierarchy:
 
 ```julia
-AbstractFormulation
-  ├── FEMFormulation
+AbstractProblemDefinition
+  ├── FEMProblemDefinition
   ├── AbstractFDEMFormulation :> {CPEarth, CIGRE, ...}
   ├── AbstractEHEMFormulation :> {EnforceLayer, EquivalentSigma, ...}
   ├── ...
@@ -392,7 +392,7 @@ This hierarchy enables both specialization and shared interfaces.
 Data flows through the system in a consistent pattern:
 
 1. System definition (LineCableSystem instance).
-2. Formulation selection (physics parameters).
+2. Problem definition (physics parameters, formulations to employ).
 3. Solver configuration (execution parameters).
 4. Workspace initialization (state container).
 5. Execution (multi-phase processing).
@@ -402,13 +402,13 @@ This pattern applies regardless of the specific module or calculation type.
 
 ### Multi-phase processing
 
-All modules implement a multi-phase execution pattern with clear separation between phases:
+All modules implement a multi-phase execution pattern with clear separation between phases. For example, the `FEMTools` module follows this pattern:
 
 1. **Initialization phase**: Setup workspace, load configurations.
-2. **Creation phase**: Create entities based on system definition.
-3. **Processing phase**: Execute calculations (may include fragments/synchronization steps).
-4. **Assignment phase**: Assign properties to processed entities.
-5. **Result rhase**: Extract and format results.
+2. **Construction phase**: Create entities based on system definition (may include specific preliminary tasks, e.g. fragments/synchronization steps FEM simulations).
+3. **Processing phase**: Execute main computation loops, store raw results in workspace container.
+4. **Post processing phase**: Assign properties to processed entities.
+5. **Result phase**: Extract and format results.
 
 This pattern ensures clean separation of concerns, making the code more maintainable.
 
@@ -428,7 +428,7 @@ This centralized approach eliminates global state and ensures thread safety.
 
 The FEMTools module exemplifies this pattern:
 
-- `FEMFormulation`: Physics parameters for FEM simulation.
+- `FEMProblemDefinition`: Physics parameters for FEM simulation.
 - `FEMSolver`: Execution parameters for meshing and solving.
 - `FEMWorkspace`: Central state container for all FEM operations.
 - Entity types: Typed data containers for different geometric elements.
@@ -438,7 +438,7 @@ The FEMTools module exemplifies this pattern:
 
 When creating new modules, the following patterns should be followed:
 
-1. Define formulation type (physics parameters).
+1. Define problem & formulation type (physics parameters).
 2. Define solver type (execution parameters).
 3. Define workspace type (state container).
 4. Implement entity types specific to the domain.

@@ -62,7 +62,7 @@ Calculate appropriate mesh size for a cable part based on its physical propertie
 # Arguments
 
 - `part`: The cable part to calculate mesh size for.
-- `workspace`: The [`FEMWorkspace`](@ref) containing formulation parameters.
+- `workspace`: The [`FEMWorkspace`](@ref) containing problem_def parameters.
 
 # Returns
 
@@ -85,8 +85,8 @@ function calc_mesh_size(part::AbstractCablePart, workspace::FEMWorkspace)
     radius_ext = to_nominal(part.radius_ext)
     thickness = radius_ext - radius_in
 
-    # Extract formulation parameters
-    formulation = workspace.formulation
+    # Extract problem_def parameters
+    problem_def = workspace.problem_def
     freq = workspace.frequency
 
     # Calculate skin depth
@@ -98,23 +98,23 @@ function calc_mesh_size(part::AbstractCablePart, workspace::FEMWorkspace)
         wire_radius = to_nominal(part.radius_wire)
 
         if isinf(skin_depth)  # Insulator or semiconductor
-            mesh_size = wire_radius / formulation.elements_per_scale_length_insulator
+            mesh_size = wire_radius / problem_def.elements_per_scale_length_insulator
         else  # Conductor - use either skin depth or geometry, whichever needs finer mesh
-            skin_based_size = skin_depth / formulation.elements_per_scale_length_conductor
-            geometry_based_size = wire_radius * 2 / formulation.elements_per_scale_length_insulator
+            skin_based_size = skin_depth / problem_def.elements_per_scale_length_conductor
+            geometry_based_size = wire_radius * 2 / problem_def.elements_per_scale_length_insulator
             mesh_size = min(skin_based_size, geometry_based_size)
         end
     else
         # For tubular, strip, insulator, semicon
         if isinf(skin_depth)  # Insulator
             if part isa Semicon
-                mesh_size = thickness / formulation.elements_per_scale_length_semicon
+                mesh_size = thickness / problem_def.elements_per_scale_length_semicon
             else
-                mesh_size = thickness / formulation.elements_per_scale_length_insulator
+                mesh_size = thickness / problem_def.elements_per_scale_length_insulator
             end
         else  # Conductor - ensure proper skin depth resolution
-            skin_based_size = skin_depth / formulation.elements_per_scale_length_conductor
-            geometry_based_size = thickness / formulation.elements_per_scale_length_insulator
+            skin_based_size = skin_depth / problem_def.elements_per_scale_length_conductor
+            geometry_based_size = thickness / problem_def.elements_per_scale_length_insulator
             mesh_size = min(skin_based_size, geometry_based_size)
         end
 
@@ -127,8 +127,8 @@ function calc_mesh_size(part::AbstractCablePart, workspace::FEMWorkspace)
     end
 
     # Apply bounds from configuration
-    mesh_size = max(mesh_size, formulation.mesh_size_min)
-    mesh_size = min(mesh_size, formulation.mesh_size_max)
+    mesh_size = max(mesh_size, problem_def.mesh_size_min)
+    mesh_size = min(mesh_size, problem_def.mesh_size_max)
 
     return mesh_size
 end
@@ -161,8 +161,8 @@ $(FUNCTIONNAME)(workspace)
 #     end
 
 #     # Set global mesh size parameters
-#     gmsh.option.setNumber("Mesh.MeshSizeMin", workspace.formulation.mesh_size_min)
-#     gmsh.option.setNumber("Mesh.MeshSizeMax", workspace.formulation.mesh_size_max)
+#     gmsh.option.setNumber("Mesh.MeshSizeMin", workspace.problem_def.mesh_size_min)
+#     gmsh.option.setNumber("Mesh.MeshSizeMax", workspace.problem_def.mesh_size_max)
 #     gmsh.option.setNumber("Mesh.MeshSizeFromPoints", 1)
 #     gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 1)
 
@@ -194,8 +194,8 @@ function _config_mesh_sizes(workspace::FEMWorkspace)
     end
 
     # Set global mesh size parameters
-    gmsh.option.setNumber("Mesh.MeshSizeMin", workspace.formulation.mesh_size_min)
-    gmsh.option.setNumber("Mesh.MeshSizeMax", workspace.formulation.mesh_size_max)
+    gmsh.option.setNumber("Mesh.MeshSizeMin", workspace.problem_def.mesh_size_min)
+    gmsh.option.setNumber("Mesh.MeshSizeMax", workspace.problem_def.mesh_size_max)
     gmsh.option.setNumber("Mesh.MeshSizeFromPoints", 1)
     gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 1)
 
@@ -225,7 +225,7 @@ function _mesh_generate(workspace::FEMWorkspace)
     _log(workspace, 1, "Generating mesh...")
 
     # Set mesh algorithm
-    gmsh.option.setNumber("Mesh.Algorithm", workspace.formulation.mesh_algorithm)
+    gmsh.option.setNumber("Mesh.Algorithm", workspace.problem_def.mesh_algorithm)
 
     # Set mesh optimization parameters
     gmsh.option.setNumber("Mesh.Optimize", 1)
@@ -253,7 +253,7 @@ Initialize a Gmsh model with appropriate settings.
 # Arguments
 
 - `case_id`: Identifier for the model.
-- `formulation`: The [`FEMFormulation`](@ref) containing mesh parameters.
+- `problem_def`: The [`FEMProblemDefinition`](@ref) containing mesh parameters.
 - `solver`: The [`FEMSolver`](@ref) containing visualization parameters.
 
 # Returns
@@ -263,10 +263,10 @@ Initialize a Gmsh model with appropriate settings.
 # Examples
 
 ```julia
-$(FUNCTIONNAME)("test_case", formulation, solver)
+$(FUNCTIONNAME)("test_case", problem_def, solver)
 ```
 """
-function _initialize_gmsh(case_id::String, formulation::FEMFormulation, solver::FEMSolver)
+function _initialize_gmsh(case_id::String, problem_def::FEMProblemDefinition, solver::FEMSolver)
     # Create a new model
     gmsh.model.add(case_id)
 
@@ -286,9 +286,9 @@ function _initialize_gmsh(case_id::String, formulation::FEMFormulation, solver::
 
     # Set critical options
     gmsh.option.setNumber("Mesh.SaveAll", 1)  # Mesh all regions
-    gmsh.option.setNumber("Mesh.Algorithm", formulation.mesh_algorithm)
-    gmsh.option.setNumber("Mesh.MeshSizeMin", formulation.mesh_size_min)
-    gmsh.option.setNumber("Mesh.MeshSizeMax", formulation.mesh_size_max)
+    gmsh.option.setNumber("Mesh.Algorithm", problem_def.mesh_algorithm)
+    gmsh.option.setNumber("Mesh.MeshSizeMin", problem_def.mesh_size_min)
+    gmsh.option.setNumber("Mesh.MeshSizeMax", problem_def.mesh_size_max)
     gmsh.option.setNumber("Mesh.MeshSizeFromPoints", 1)
     gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 1)
 
@@ -299,6 +299,6 @@ function _initialize_gmsh(case_id::String, formulation::FEMFormulation, solver::
 
     # Log settings based on verbosity
     _log(solver, 2, "Initialized Gmsh model: $case_id")
-    _log(solver, 2, "Mesh algorithm: $(formulation.mesh_algorithm)")
-    _log(solver, 2, "Mesh size range: [$(formulation.mesh_size_min), $(formulation.mesh_size_max)]")
+    _log(solver, 2, "Mesh algorithm: $(problem_def.mesh_algorithm)")
+    _log(solver, 2, "Mesh size range: [$(problem_def.mesh_size_min), $(problem_def.mesh_size_max)]")
 end

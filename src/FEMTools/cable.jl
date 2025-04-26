@@ -115,27 +115,30 @@ function _make_cablepart!(workspace::FEMWorkspace, part::AbstractCablePart,
     x_center = cabledef.horz
     y_center = cabledef.vert
 
-    # Determine the group type
-    if part isa AbstractConductorPart
-        group_type = 1  # Conductor
-    elseif part isa AbstractInsulatorPart
-        group_type = 2  # Insulator
-    else
-        error("Unknown part type: $(typeof(part))")
-    end
+    # Determine material group directly from part type
+    material_group = get_material_group(part)
+
+    # Get or register material ID
+    material_id = get_or_register_material_id(workspace, part.material_props)
+
+    # Create physical tag with new encoding scheme
+    physical_group_tag = encode_physical_group_tag(
+        1,              # Surface type 1 = cable component
+        cable_idx,      # Cable number
+        comp_idx,       # Component number
+        material_group, # Material group from part type
+        material_id     # Material ID from registry
+    )
 
     # Calculate mesh size for this part
     mesh_size = calc_mesh_size(part, workspace)
-
-    # Create physical tag
-    physical_group_tag = encode_cable_tag(cable_idx, comp_idx, group_type, layer_idx)
 
     # Create physical name
     part_type = lowercase(string(nameof(typeof(part))))
     elementary_name = create_cable_elementary_name(
         cable_idx=cable_idx,
         component_id=comp_id,
-        group_type=group_type,
+        group_type=material_group,
         part_type=part_type,
         layer_idx=layer_idx,
         phase=phase
@@ -201,6 +204,21 @@ function _make_cablepart!(workspace::FEMWorkspace, part::WireArray,
     x_center = cabledef.horz
     y_center = cabledef.vert
 
+    # Determine material group directly from part type
+    material_group = get_material_group(part)
+
+    # Get or register material ID
+    material_id = get_or_register_material_id(workspace, part.material_props)
+
+    # Create physical tag with new encoding scheme
+    physical_group_tag = encode_physical_group_tag(
+        1,              # Surface type 1 = cable component
+        cable_idx,      # Cable number
+        comp_idx,       # Component number
+        material_group, # Material group from part type
+        material_id     # Material ID from registry
+    )
+
     # Calculate mesh size for this part
     mesh_size = calc_mesh_size(part, workspace)
 
@@ -208,22 +226,18 @@ function _make_cablepart!(workspace::FEMWorkspace, part::WireArray,
     # First handle the wires
     #
 
-    # Determine the group type
-    group_type = 1
-
-    # Create physical tag
-    physical_group_tag = encode_cable_tag(cable_idx, comp_idx, group_type, layer_idx)
-
     # Create physical name
     part_type = lowercase(string(nameof(typeof(part))))
 
     # Extract parameters
     radius_in = to_nominal(part.radius_in)
+
     radius_wire = to_nominal(part.radius_wire)
     num_wires = part.num_wires
+    lay_radius = num_wires == 1 ? 0 : to_nominal(part.radius_in)
 
     # Calculate wire positions
-    wire_positions = calc_wirearray_coords(num_wires, radius_wire, radius_in, C=(x_center, y_center))
+    wire_positions = calc_wirearray_coords(num_wires, radius_wire, lay_radius, C=(x_center, y_center))
 
 
     # Create wires
@@ -238,7 +252,7 @@ function _make_cablepart!(workspace::FEMWorkspace, part::WireArray,
         elementary_name = create_cable_elementary_name(
             cable_idx=cable_idx,
             component_id=comp_id,
-            group_type=group_type,
+            group_type=material_group,
             part_type=part_type,
             layer_idx=layer_idx,
             phase=phase,
@@ -257,9 +271,6 @@ function _make_cablepart!(workspace::FEMWorkspace, part::WireArray,
     # Then those nasty air gaps, the cause of this entire suffering
     #
 
-    # Determine the group type - 3 for air gaps
-    group_type = 3
-
     # Air gaps will be determined from the boolean fragmentation operation and do not need to be drawn. Only the markers are needed.
     markers_air_gap = _get_air_gap_markers(num_wires, radius_wire, radius_in)
 
@@ -269,25 +280,31 @@ function _make_cablepart!(workspace::FEMWorkspace, part::WireArray,
         marker[2] += y_center
     end
 
-    # Create air gap physical tag
-    physical_group_tag_air_gap = encode_cable_tag(cable_idx, comp_idx, group_type, layer_idx)
-
-    # Create physical name for air gaps
-    elementary_name_air_gap = create_cable_elementary_name(
-        cable_idx=cable_idx,
-        component_id=comp_id,
-        group_type=group_type,
-        part_type=part_type,
-        layer_idx=layer_idx
-    )
+    # Determine material group - air gaps map to insulators
+    material_group = 2
 
     # Get air material
     air_material = get_air_material(workspace)
 
-    for marker in markers_air_gap
+    # Get or register material ID
+    material_id = get_or_register_material_id(workspace, air_material)
 
-        core_data = CoreEntityData(physical_group_tag_air_gap, elementary_name_air_gap, mesh_size)
-        entity_data = SpaceEntity(core_data, air_material)
+    # Create physical tag with new encoding scheme
+    physical_group_tag_air_gap = encode_physical_group_tag(
+        1,              # Surface type 1 = cable component
+        cable_idx,      # Cable number
+        comp_idx,       # Component number
+        material_group, # Material group from part type
+        material_id     # Material ID from registry
+    )
+
+    # Calculate mesh size for this part
+    mesh_size = calc_mesh_size(part, workspace)
+
+    for marker in markers_air_gap
+        # elementary names are not assigned to the air gaps because they are not drawn and appear as a result of the boolean operation
+        core_data = CoreEntityData(physical_group_tag_air_gap, "", mesh_size)
+        entity_data = SurfaceEntity(core_data, air_material)
 
         # Add to unassigned entities with type information
         workspace.unassigned_entities[marker] = entity_data

@@ -10,7 +10,7 @@ cables_library = CablesLibrary()
 load_cableslibrary!(cables_library, file_name=joinpath(@__DIR__, "cables_library.json"))
 
 # Retrieve the reloaded design
-cable_design = get_cabledesign(cables_library, "tutorial2")
+cable_design = get_cabledesign(cables_library, "tutorial")
 
 f = 10.0 .^ range(0, stop=6, length=10)  # Frequency range
 earth_params = EarthModel(f, 100.0, 10.0, 1.0)  # 100 Ω·m resistivity, εr=10, μr=1
@@ -22,7 +22,7 @@ xa, ya, xb, yb, xc, yc = trifoil_formation(x0, y0, 0.035)
 
 # Initialize the `LineCableSystem` with the first cable (phase A):
 cabledef = CableDef(cable_design, xa, ya, Dict("core" => 1, "sheath" => 0, "jacket" => 0))
-cable_system = LineCableSystem("tutorial3", 20.0, earth_params, 1000.0, cabledef)
+cable_system = LineCableSystem("tutorial", 20.0, earth_params, 1000.0, cabledef)
 
 # Add remaining cables (phases B and C):
 addto_linecablesystem!(cable_system, cable_design, xb, yb,
@@ -35,11 +35,8 @@ addto_linecablesystem!(
 
 display(cable_system)
 
-# includet(joinpath(@__DIR__, "src", "FEMTools.jl")) # hide
-# using .FEMTools
-
-# Create a FEMFormulation with custom parameters
-formulation = FEMFormulation(
+# Create a FEMProblemDefinition with custom parameters
+problem = FEMProblemDefinition(
     domain_radius=5.0,  # 5 m radius
     correct_twisting=true,
     elements_per_scale_length_conductor=3.0,
@@ -57,15 +54,15 @@ formulation = FEMFormulation(
 # Create a FEMSolver with custom parameters
 solver = FEMSolver(
     force_remesh=true,  # Force remeshing
-    run_solver=false,   # Don't run solver yet (just mesh)
-    preview_mesh=false,  # Preview the mesh
+    run_solver=false,
     preview_geo=true,  # Preview geometry
+    preview_mesh=false,  # Preview the mesh
     base_path=joinpath(@__DIR__, "fem_output"),
     verbosity=2,  # Verbose output
     getdp_executable=joinpath("/home/amartins/Applications/onelab-Linux64", "getdp"),  # Path to GetDP executable
 )
 
 # Run the FEM model
-workspace = run_fem_model(cable_system, formulation, solver, frequency=50.0)
+workspace = run_fem_model(cable_system, problem, solver, frequency=50.0)
 
 println("FEM model run completed.")
