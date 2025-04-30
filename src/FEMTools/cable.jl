@@ -130,9 +130,6 @@ function _make_cablepart!(workspace::FEMWorkspace, part::AbstractCablePart,
         material_id     # Material ID from registry
     )
 
-    # Calculate mesh size for this part
-    mesh_size = calc_mesh_size(part, workspace)
-
     # Create physical name
     part_type = lowercase(string(nameof(typeof(part))))
     elementary_name = create_cable_elementary_name(
@@ -148,15 +145,39 @@ function _make_cablepart!(workspace::FEMWorkspace, part::AbstractCablePart,
     radius_in = to_nominal(part.radius_in)
     radius_ext = to_nominal(part.radius_ext)
 
+    # Calculate mesh size for this part
+    if part isa AbstractConductorPart
+        num_elements = workspace.problem_def.elements_per_length_conductor
+    elseif part isa Insulator
+        num_elements = workspace.problem_def.elements_per_length_insulator
+    elseif part isa Semicon
+        num_elements = workspace.problem_def.elements_per_length_semicon
+    end
+
+    mesh_size_current = calc_mesh_size(radius_in, radius_ext, part.material_props, num_elements, workspace)
+
+    # Calculate mesh size for the next part
+    num_layers = length(cabledef.cable.components[comp_idx].conductor_group.layers)
+    next_part = layer_idx < num_layers ? cabledef.cable.components[comp_idx].conductor_group.layers[layer_idx+1] : nothing
+
+    if !isnothing(next_part)
+        next_radius_in = to_nominal(next_part.radius_in)
+        next_radius_ext = to_nominal(next_part.radius_ext)
+        mesh_size_next = calc_mesh_size(next_radius_in, next_radius_ext, next_part.material_props, num_elements, workspace)
+    else
+        mesh_size_next = mesh_size_current
+    end
+
+    mesh_size = min(mesh_size_current, mesh_size_next)
+    num_points_circumference = workspace.problem_def.points_per_circumference
+
     # Create annular shape and assign marker
     if radius_in ≈ 0
         # Solid disk
-        marker = _get_disk_marker(x_center, y_center)
-        entity_tag = _draw_disk(x_center, y_center, radius_ext, mesh_size)
+        _, _, marker = _draw_disk(x_center, y_center, radius_ext, mesh_size, num_points_circumference)
     else
         # Annular shape
-        marker = _get_annular_marker(x_center, y_center, radius_in, radius_ext)
-        entity_tag = _draw_annular(x_center, y_center, radius_in, radius_ext, mesh_size)
+        _, _, marker = _draw_annular(x_center, y_center, radius_in, radius_ext, mesh_size, num_points_circumference)
     end
 
     # Create entity data
@@ -219,34 +240,67 @@ function _make_cablepart!(workspace::FEMWorkspace, part::WireArray,
         material_id     # Material ID from registry
     )
 
-    # Calculate mesh size for this part
-    mesh_size = calc_mesh_size(part, workspace)
-
-    #
-    # First handle the wires
-    #
+    # -------- First handle the wires
 
     # Create physical name
     part_type = lowercase(string(nameof(typeof(part))))
 
     # Extract parameters
     radius_in = to_nominal(part.radius_in)
+    radius_ext = to_nominal(part.radius_ext)
 
-    radius_wire = to_nominal(part.radius_wire)
+    TOL = 5e-6 # Shrink the radius to avoid overlapping boundaries, this must be greater than Gmsh geometry tolerance
+    radius_wire = to_nominal(part.radius_wire) - TOL
     num_wires = part.num_wires
-    lay_radius = num_wires == 1 ? 0 : to_nominal(part.radius_in)
+
+
+    # Calculate mesh size for this part
+    num_elements = workspace.problem_def.elements_per_length_conductor
+    mesh_size_current = calc_mesh_size(radius_in, radius_ext, part.material_props, num_elements, workspace)
+
+    # Calculate mesh size for the next part
+    num_layers = length(cabledef.cable.components[comp_idx].conductor_group.layers)
+    next_part = layer_idx < num_layers ? cabledef.cable.components[comp_idx].conductor_group.layers[layer_idx+1] : nothing
+
+    if !isnothing(next_part)
+        next_radius_in = to_nominal(next_part.radius_in)
+        next_radius_ext = to_nominal(next_part.radius_ext)
+        mesh_size_next = calc_mesh_size(next_radius_in, next_radius_ext, next_part.material_props, num_elements, workspace)
+    else
+        mesh_size_next = mesh_size_current
+    end
+
+    mesh_size = min(mesh_size_current, mesh_size_next)
+    num_points_circumference = workspace.problem_def.points_per_circumference
 
     # Calculate wire positions
-    wire_positions = calc_wirearray_coords(num_wires, radius_wire, lay_radius, C=(x_center, y_center))
+    function _calc_wirearray_coords(
+        num_wires::Number,
+        # radius_wire::Number,
+        radius_in::Number,
+        radius_ext::Number;
+        C=(0.0, 0.0),
+    )
+        wire_coords = []  # Global coordinates of all wires
+        lay_radius = num_wires == 1 ? 0 : (radius_in + radius_ext) / 2
 
+        # Calculate the angle between each wire
+        angle_step = 2 * π / num_wires
+        for i in 0:num_wires-1
+            angle = i * angle_step
+            x = C[1] + lay_radius * cos(angle)
+            y = C[2] + lay_radius * sin(angle)
+            push!(wire_coords, (x, y))  # Add wire center
+        end
+        return wire_coords
+    end
+
+    wire_positions = _calc_wirearray_coords(num_wires, radius_in, radius_ext, C=(x_center, y_center))
 
     # Create wires
     for (wire_idx, (wx, wy)) in enumerate(wire_positions)
-        # Create wire marker
-        marker = _get_disk_marker(wx, wy)
 
-        # Create wire disk
-        entity_tag = _draw_disk(wx, wy, radius_wire, mesh_size)
+        _, _, marker = _draw_disk(wx, wy, radius_wire, mesh_size, num_points_circumference)
 
         # Create wire name
         elementary_name = create_cable_elementary_name(
@@ -267,9 +321,24 @@ function _make_cablepart!(workspace::FEMWorkspace, part::WireArray,
         workspace.unassigned_entities[marker] = entity_data
     end
 
-    #
-    # Then those nasty air gaps, the cause of this entire suffering
-    #
+    # Handle WireArray outermost boundary
+    mesh_size = (radius_ext - radius_in)
+    if !(next_part isa WireArray) && !isnothing(next_part)
+        # step_angle = 2 * pi / num_wires
+        _add_mesh_points(
+            radius_in=radius_ext,
+            radius_ext=radius_ext,
+            theta_0=0,
+            theta_1=2 * pi,
+            mesh_size=mesh_size,
+            num_points_ang=num_points_circumference,
+            num_points_rad=0,
+            C=(x_center, y_center),
+            theta_offset=0 #step_angle / 2
+        )
+    end
+
+    # --------Then those nasty air gaps
 
     # Air gaps will be determined from the boolean fragmentation operation and do not need to be drawn. Only the markers are needed.
     markers_air_gap = _get_air_gap_markers(num_wires, radius_wire, radius_in)
@@ -297,9 +366,6 @@ function _make_cablepart!(workspace::FEMWorkspace, part::WireArray,
         material_group, # Material group from part type
         material_id     # Material ID from registry
     )
-
-    # Calculate mesh size for this part
-    mesh_size = calc_mesh_size(part, workspace)
 
     for marker in markers_air_gap
         # elementary names are not assigned to the air gaps because they are not drawn and appear as a result of the boolean operation

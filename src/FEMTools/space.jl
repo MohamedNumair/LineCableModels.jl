@@ -30,18 +30,21 @@ function _make_space_geometry(workspace::FEMWorkspace)
     domain_radius = problem_def.domain_radius
     domain_radius_inf = domain_radius * 1.25  # External radius for boundary transform
     mesh_size_default = problem_def.mesh_size_default
+    mesh_size_domain = problem_def.mesh_size_max
+    mesh_size_inf = 1.25 * problem_def.mesh_size_max
 
     # Center coordinates
     x_center = 0.0
     y_center = 0.0
 
     # Create inner domain disk
+    num_points_circumference = workspace.problem_def.points_per_circumference
     _log(workspace, 2, "Creating inner domain disk with radius $(domain_radius) m")
-    inner_disk = _draw_disk(x_center, y_center, domain_radius, mesh_size_default)
+    _, _, air_region_marker = _draw_disk(x_center, y_center, domain_radius, mesh_size_domain, num_points_circumference)
 
     # Create outer domain annular region
     _log(workspace, 2, "Creating outer domain annular region with radius $(domain_radius_inf) m")
-    outer_shell = _draw_annular(x_center, y_center, domain_radius, domain_radius_inf, mesh_size_default)
+    _, _, air_infshell_marker = _draw_annular(x_center, y_center, domain_radius, domain_radius_inf, mesh_size_inf, num_points_circumference)
 
     # Get earth model from workspace
     earth_model = workspace.cable_system.earth_props
@@ -61,7 +64,7 @@ function _make_space_geometry(workspace::FEMWorkspace)
         air_material_group, # Material group 2 (insulator)
         air_material_id   # Material ID
     )
-    air_region_name = create_physical_group_name(workspace, air_region_tag)#create_space_elementary_name(air_layer_idx)
+    air_region_name = create_physical_group_name(workspace, air_region_tag)
 
     # Infinite shell air tag
     air_infshell_tag = encode_physical_group_tag(
@@ -71,7 +74,7 @@ function _make_space_geometry(workspace::FEMWorkspace)
         air_material_group, # Material group 2 (insulator)
         air_material_id   # Material ID
     )
-    air_infshell_name = create_physical_group_name(workspace, air_infshell_tag) #create_infshell_elementary_name(air_layer_idx)
+    air_infshell_name = create_physical_group_name(workspace, air_infshell_tag)
 
 
     # Earth layer (Layer 2+)
@@ -87,8 +90,7 @@ function _make_space_geometry(workspace::FEMWorkspace)
         earth_material_group, # Material group 1 (conductor)
         earth_material_id   # Material ID
     )
-    earth_region_name = create_physical_group_name(workspace, earth_region_tag)  #create_space_elementary_name(earth_layer_idx)
-
+    earth_region_name = create_physical_group_name(workspace, earth_region_tag)
 
     # Infinite shell earth tag
     earth_infshell_tag = encode_physical_group_tag(
@@ -98,55 +100,57 @@ function _make_space_geometry(workspace::FEMWorkspace)
         earth_material_group, # Material group 1 (conductor)
         earth_material_id   # Material ID
     )
-    earth_infshell_name = create_physical_group_name(workspace, earth_infshell_tag)  #create_infshell_elementary_name(earth_layer_idx)
+    earth_infshell_name = create_physical_group_name(workspace, earth_infshell_tag)
 
 
-    # Create group tags for boundary curves
-    # Above ground (air) - inner domain
+    # Create group tags for boundary curves - above ground (air) - inner domain
     air_boundary_tag = encode_boundary_tag(1, air_layer_idx, 1)
-    air_boundary_name = create_physical_group_name(workspace, air_boundary_tag)#create_boundary_elementary_name(air_layer_idx, false)
+    air_boundary_name = create_physical_group_name(workspace, air_boundary_tag)
     air_boundary_marker = [0.0, domain_radius, 0.0]
 
     # Below ground (earth) - inner domain
     earth_boundary_tag = encode_boundary_tag(1, earth_layer_idx, 1)
-    earth_boundary_name = create_physical_group_name(workspace, earth_boundary_tag) #create_boundary_elementary_name(earth_layer_idx, false)
+    earth_boundary_name = create_physical_group_name(workspace, earth_boundary_tag)
     earth_boundary_marker = [0.0, -domain_radius, 0.0]
 
     # Above ground (air) - domain -> infinity
     air_infty_tag = encode_boundary_tag(2, air_layer_idx, 1)
-    air_infty_name = create_physical_group_name(workspace, air_infty_tag) #create_boundary_elementary_name(air_layer_idx, true)
+    air_infty_name = create_physical_group_name(workspace, air_infty_tag)
     air_infty_marker = [0.0, domain_radius_inf, 0.0]
 
     # Below ground (earth) - domain -> infinity
     earth_infty_tag = encode_boundary_tag(2, earth_layer_idx, 1)
-    earth_infty_name = create_physical_group_name(workspace, earth_infty_tag)  #create_boundary_elementary_name(earth_layer_idx, true)
+    earth_infty_name = create_physical_group_name(workspace, earth_infty_tag)
     earth_infty_marker = [0.0, -domain_radius_inf, 0.0]
 
     # Create markers for the domain surfaces
-    air_region_marker = _get_midpoint_marker(0, 0, domain_radius)
-    earth_region_marker = _get_midpoint_marker(0, 0, -domain_radius)
-    air_infshell_marker = _get_midpoint_marker(0, domain_radius, domain_radius_inf)
-    earth_infshell_marker = _get_midpoint_marker(0, -domain_radius_inf, -domain_radius)
+    earth_region_marker = [0.0, -domain_radius / 2, 0.0]
+    marker_tag = gmsh.model.occ.add_point(earth_region_marker[1], earth_region_marker[2], earth_region_marker[3], mesh_size_domain)
+    gmsh.model.set_entity_name(0, marker_tag, "marker_$(round(mesh_size_domain, sigdigits=6))")
+
+    earth_infshell_marker = [0.0, -(domain_radius + domain_radius_inf) / 2, 0.0]
+    marker_tag = gmsh.model.occ.add_point(earth_infshell_marker[1], earth_infshell_marker[2], earth_infshell_marker[3], mesh_size_inf)
+    gmsh.model.set_entity_name(0, marker_tag, "marker_$(round(mesh_size_inf, sigdigits=6))")
 
     # Create boundary curves
     air_boundary_entity = CurveEntity(
-        CoreEntityData(air_boundary_tag, air_boundary_name, mesh_size_default),
-        get_space_material(workspace, air_layer_idx)
+        CoreEntityData(air_boundary_tag, air_boundary_name, mesh_size_domain),
+        air_material
     )
 
     earth_boundary_entity = CurveEntity(
-        CoreEntityData(earth_boundary_tag, earth_boundary_name, mesh_size_default),
-        get_space_material(workspace, earth_layer_idx)
+        CoreEntityData(earth_boundary_tag, earth_boundary_name, mesh_size_domain),
+        earth_material
     )
 
     air_infty_entity = CurveEntity(
-        CoreEntityData(air_infty_tag, air_infty_name, mesh_size_default),
-        get_space_material(workspace, air_layer_idx)
+        CoreEntityData(air_infty_tag, air_infty_name, mesh_size_inf),
+        air_material
     )
 
     earth_infty_entity = CurveEntity(
-        CoreEntityData(earth_infty_tag, earth_infty_name, mesh_size_default),
-        get_space_material(workspace, earth_layer_idx)
+        CoreEntityData(earth_infty_tag, earth_infty_name, mesh_size_inf),
+        earth_material
     )
 
     # Add surfaces to the workspace
@@ -189,19 +193,19 @@ function _make_space_geometry(workspace::FEMWorkspace)
     _log(workspace, 2, "Creating earth interface line at y=0")
 
     # Create line from -domain_radius to +domain_radius at y=0
-    earth_interface_line = _draw_line(-domain_radius_inf, 0.0, domain_radius_inf, 0.0, mesh_size_default)
+    num_elements = workspace.problem_def.elements_per_length_interfaces
+    earth_interface_mesh_size = calc_mesh_size(0, domain_radius, earth_material, num_elements, workspace)
+
+    _, _, earth_interface_marker = _draw_line(-domain_radius_inf, 0.0, domain_radius_inf, 0.0, earth_interface_mesh_size, round(Int, domain_radius))
 
     # Create physical tag for the earth interface
     interface_idx = 1  # Earth interface index
     earth_interface_tag = encode_boundary_tag(3, interface_idx, 1)
-    earth_interface_name = create_physical_group_name(workspace, earth_interface_tag)   #create_interface_elementary_name(interface_idx)
-
-    # Create marker for the earth interface
-    earth_interface_marker = [0.0, 0.0, 0.0]
+    earth_interface_name = create_physical_group_name(workspace, earth_interface_tag)
 
     # Create domain entity
     earth_interface_entity = CurveEntity(
-        CoreEntityData(earth_interface_tag, earth_interface_name, mesh_size_default),
+        CoreEntityData(earth_interface_tag, earth_interface_name, earth_interface_mesh_size),
         get_space_material(workspace, earth_layer_idx)  # Earth material
     )
 

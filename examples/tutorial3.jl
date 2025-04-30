@@ -36,18 +36,20 @@ addto_linecablesystem!(
 display(cable_system)
 
 # Create a FEMProblemDefinition with custom parameters
+domain_radius = 5.0
 problem = FEMProblemDefinition(
-    domain_radius=5.0,  # 5 m radius
+    domain_radius=domain_radius,
     correct_twisting=true,
-    elements_per_scale_length_conductor=3.0,
-    elements_per_scale_length_insulator=2.0,
-    elements_per_scale_length_semicon=4.0,
-    elements_per_scale_length_interfaces=0.1,
+    elements_per_length_conductor=1,
+    elements_per_length_insulator=2,
+    elements_per_length_semicon=1,
+    elements_per_length_interfaces=5,
+    points_per_circumference=8,
     analysis_type=[0, 1],  # Electrostatic and magnetostatic
-    mesh_size_min=1e-4,
-    mesh_size_max=0.5,
-    mesh_size_default=0.01,
-    mesh_algorithm=6,  # Frontal-Delaunay
+    mesh_size_min=1e-6,
+    mesh_size_max=domain_radius / 5,
+    mesh_size_default=domain_radius / 10,
+    mesh_algorithm=5,
     materials_db=materials_db
 )
 
@@ -55,10 +57,10 @@ problem = FEMProblemDefinition(
 solver = FEMSolver(
     force_remesh=true,  # Force remeshing
     run_solver=false,
-    preview_geo=true,  # Preview geometry
-    preview_mesh=false,  # Preview the mesh
+    preview_geo=false,  # Preview geometry
+    preview_mesh=true,  # Preview the mesh
     base_path=joinpath(@__DIR__, "fem_output"),
-    verbosity=2,  # Verbose output
+    verbosity=0,  # Verbose output
     getdp_executable=joinpath("/home/amartins/Applications/onelab-Linux64", "getdp"),  # Path to GetDP executable
 )
 

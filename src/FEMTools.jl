@@ -203,18 +203,18 @@ struct FEMProblemDefinition <: AbstractProblemDefinition
     domain_radius::Float64
     "Flag to correct for twisting effects \\[dimensionless\\]."
     correct_twisting::Bool
-    "Elements per scale length for conductors \\[dimensionless\\]."
-    elements_per_scale_length_conductor::Float64
-    "Elements per scale length for insulators \\[dimensionless\\]."
-    elements_per_scale_length_insulator::Float64
-    "Elements per scale length for semiconductors \\[dimensionless\\]."
-    elements_per_scale_length_semicon::Float64
-    "Elements per scale length for interfaces \\[dimensionless\\]."
-    elements_per_scale_length_interfaces::Float64
+    "Elements per characteristic length for conductors \\[dimensionless\\]."
+    elements_per_length_conductor::Int
+    "Elements per characteristic length for insulators \\[dimensionless\\]."
+    elements_per_length_insulator::Int
+    "Elements per characteristic length for semiconductors \\[dimensionless\\]."
+    elements_per_length_semicon::Int
+    "Elements per characteristic length for interfaces \\[dimensionless\\]."
+    elements_per_length_interfaces::Int
+    "Points per circumference length (2π radians) \\[dimensionless\\]."
+    points_per_circumference::Int
     "Analysis types to perform \\[dimensionless\\]."
     analysis_type::Vector{Int}
-    "Materials database."
-    materials_db::MaterialsLibrary
 
     "Minimum mesh size \\[m\\]."
     mesh_size_min::Float64
@@ -225,6 +225,9 @@ struct FEMProblemDefinition <: AbstractProblemDefinition
     "Mesh algorithm to use \\[dimensionless\\]."
     mesh_algorithm::Int
 
+    "Materials database."
+    materials_db::MaterialsLibrary
+
     """
     $(TYPEDSIGNATURES)
 
@@ -234,10 +237,10 @@ struct FEMProblemDefinition <: AbstractProblemDefinition
 
     - `domain_radius`: Domain radius for the simulation \\[m\\]. Default: 5.0.
     - `correct_twisting`: Flag to correct for twisting effects \\[dimensionless\\]. Default: true.
-    - `elements_per_scale_length_conductor`: Elements per scale length for conductors \\[dimensionless\\]. Default: 3.0.
-    - `elements_per_scale_length_insulator`: Elements per scale length for insulators \\[dimensionless\\]. Default: 2.0.
-    - `elements_per_scale_length_semicon`: Elements per scale length for semiconductors \\[dimensionless\\]. Default: 4.0.
-    - `elements_per_scale_length_interfaces`: Elements per scale length for interfaces \\[dimensionless\\]. Default: 0.1.
+    - `elements_per_length_conductor`: Elements per scale length for conductors \\[dimensionless\\]. Default: 3.0.
+    - `elements_per_length_insulator`: Elements per scale length for insulators \\[dimensionless\\]. Default: 2.0.
+    - `elements_per_length_semicon`: Elements per scale length for semiconductors \\[dimensionless\\]. Default: 4.0.
+    - `elements_per_length_interfaces`: Elements per scale length for interfaces \\[dimensionless\\]. Default: 0.1.
     - `analysis_type`: Analysis types to perform \\[dimensionless\\]. Default: [0, 1].
     - `mesh_size_min`: Minimum mesh size \\[m\\]. Default: 1e-4.
     - `mesh_size_max`: Maximum mesh size \\[m\\]. Default: 1.0.
@@ -258,7 +261,7 @@ struct FEMProblemDefinition <: AbstractProblemDefinition
     # Create a problem definition with custom parameters
     problem_def = $(FUNCTIONNAME)(
         domain_radius=10.0,
-        elements_per_scale_length_conductor=5.0,
+        elements_per_length_conductor=5.0,
         mesh_algorithm=2
     )
     ```
@@ -266,10 +269,11 @@ struct FEMProblemDefinition <: AbstractProblemDefinition
     function FEMProblemDefinition(;
         domain_radius::Float64=5.0,
         correct_twisting::Bool=true,
-        elements_per_scale_length_conductor::Float64=3.0,
-        elements_per_scale_length_insulator::Float64=2.0,
-        elements_per_scale_length_semicon::Float64=4.0,
-        elements_per_scale_length_interfaces::Float64=0.1,
+        elements_per_length_conductor::Int=3,
+        elements_per_length_insulator::Int=2,
+        elements_per_length_semicon::Int=4,
+        elements_per_length_interfaces::Int=3,
+        points_per_circumference::Int=16,
         analysis_type::Vector{Int}=[0, 1],
         mesh_size_min::Float64=1e-4,
         mesh_size_max::Float64=1.0,
@@ -279,10 +283,8 @@ struct FEMProblemDefinition <: AbstractProblemDefinition
     )
         return new(
             domain_radius, correct_twisting,
-            elements_per_scale_length_conductor, elements_per_scale_length_insulator,
-            elements_per_scale_length_semicon, elements_per_scale_length_interfaces,
-            analysis_type, materials_db,
-            mesh_size_min, mesh_size_max, mesh_size_default, mesh_algorithm
+            elements_per_length_conductor, elements_per_length_insulator,
+            elements_per_length_semicon, elements_per_length_interfaces, points_per_circumference, analysis_type, mesh_size_min, mesh_size_max, mesh_size_default, mesh_algorithm, materials_db
         )
     end
 end
@@ -572,8 +574,8 @@ function run_fem_model(cable_system::LineCableSystem,
             _assign_physical_groups(workspace)
 
             # Mesh sizing
-            # _log(workspace, 1, "Setting up physics-based mesh sizing...")
-            # _config_mesh_sizes(workspace)
+            _log(workspace, 1, "Setting up physics-based mesh sizing...")
+            _config_mesh_sizes(workspace)
 
             # Preview pre-meshing configuration if requested
             if solver.preview_geo

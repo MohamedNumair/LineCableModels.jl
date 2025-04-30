@@ -37,11 +37,6 @@ depth = $(FUNCTIONNAME)(1.7241e-8, 1.0, 50.0)
 where \\(\\mu_0 = 4\\pi \\times 10^{-7}\\) H/m is the vacuum permeability.
 """
 function calc_skin_depth(rho::Number, mu_r::Number, freq::Number)
-    # If material is an insulator (high resistivity), return infinity
-    if isinf(rho) || rho > 1e6
-        return Inf
-    end
-
     # Convert to nominal values in case of Measurement types
     rho = to_nominal(rho)
     mu_r = to_nominal(mu_r)
@@ -54,31 +49,32 @@ function calc_skin_depth(rho::Number, mu_r::Number, freq::Number)
     return sqrt(rho / (π * freq * mu_0 * mu_r))
 end
 
-"""
-$(TYPEDSIGNATURES)
+# """
+# $(TYPEDSIGNATURES)
 
-Calculate appropriate mesh size for a cable part based on its physical properties.
+# Calculate appropriate mesh size for a cable part based on its physical properties.
 
-# Arguments
+# # Arguments
 
-- `part`: The cable part to calculate mesh size for.
-- `workspace`: The [`FEMWorkspace`](@ref) containing problem_def parameters.
+# - `part`: The cable part to calculate mesh size for.
+# - `workspace`: The [`FEMWorkspace`](@ref) containing problem_def parameters.
 
-# Returns
+# # Returns
 
-- Mesh size \\[m\\].
+# - Mesh size \\[m\\].
 
-# Examples
+# # Examples
 
-```julia
-mesh_size = $(FUNCTIONNAME)(cable_part, workspace)
-```
-"""
+# ```julia
+# mesh_size = $(FUNCTIONNAME)(cable_part, workspace)
+# ```
+# """
 function calc_mesh_size(part::AbstractCablePart, workspace::FEMWorkspace)
     # Extract material properties
     material = part.material_props
     rho = to_nominal(material.rho)
     mu_r = to_nominal(material.mu_r)
+    eps_r = to_nominal(material.eps_r)
 
     # Extract geometric properties
     radius_in = to_nominal(part.radius_in)
@@ -89,42 +85,68 @@ function calc_mesh_size(part::AbstractCablePart, workspace::FEMWorkspace)
     problem_def = workspace.problem_def
     freq = workspace.frequency
 
-    # Calculate skin depth
+    # Calculate skin depth & wavelength
     skin_depth = calc_skin_depth(rho, mu_r, freq)
+    wavelength = 1 / sqrt(ε₀ * eps_r * μ₀ * mu_r) / freq
 
     # Calculate mesh size based on part type and properties
+    scale_length = thickness
+    arc_length = 2 * π * radius_ext
     if part isa WireArray
         # For wire arrays, consider the wire radius
-        wire_radius = to_nominal(part.radius_wire)
-
-        if isinf(skin_depth)  # Insulator or semiconductor
-            mesh_size = wire_radius / problem_def.elements_per_scale_length_insulator
-        else  # Conductor - use either skin depth or geometry, whichever needs finer mesh
-            skin_based_size = skin_depth / problem_def.elements_per_scale_length_conductor
-            geometry_based_size = wire_radius * 2 / problem_def.elements_per_scale_length_insulator
-            mesh_size = min(skin_based_size, geometry_based_size)
-        end
-    else
-        # For tubular, strip, insulator, semicon
-        if isinf(skin_depth)  # Insulator
-            if part isa Semicon
-                mesh_size = thickness / problem_def.elements_per_scale_length_semicon
-            else
-                mesh_size = thickness / problem_def.elements_per_scale_length_insulator
-            end
-        else  # Conductor - ensure proper skin depth resolution
-            skin_based_size = skin_depth / problem_def.elements_per_scale_length_conductor
-            geometry_based_size = thickness / problem_def.elements_per_scale_length_insulator
-            mesh_size = min(skin_based_size, geometry_based_size)
-        end
-
-        # For thin shells with large radius, adjust circumferential sizing
-        if thickness < radius_ext * 0.1
-            # Aim for approximately 20-30 elements around the circumference
-            circumferential_size = 2 * π * radius_ext / 25
-            mesh_size = min(mesh_size, circumferential_size)
-        end
+        scale_length = to_nominal(part.radius_wire) * 2
+        num_elements = problem_def.elements_per_length_conductor
+    elseif part isa AbstractConductorPart
+        num_elements = problem_def.elements_per_length_conductor
+    elseif part isa Insulator
+        num_elements = problem_def.elements_per_length_insulator
+    elseif part isa Semicon
+        num_elements = problem_def.elements_per_length_semicon
     end
+
+    skin_based_size = skin_depth / num_elements
+    wavelength_based_size = wavelength / num_elements
+    geometry_based_size = scale_length / num_elements
+    arc_length_based_size = arc_length / num_elements
+    # mesh_size = min(skin_based_size, wavelength_based_size, geometry_based_size, arc_length_based_size)
+
+    mesh_size = min(geometry_based_size, arc_length_based_size)
+
+    # Apply bounds from configuration
+    mesh_size = max(mesh_size, problem_def.mesh_size_min)
+    mesh_size = min(mesh_size, problem_def.mesh_size_max)
+
+    return mesh_size
+end
+
+function calc_mesh_size(radius_in::Number, radius_ext::Number, material::Material, num_elements::Int, workspace::FEMWorkspace)
+    # Extract material properties
+    rho = to_nominal(material.rho)
+    mu_r = to_nominal(material.mu_r)
+    eps_r = to_nominal(material.eps_r)
+
+    # Extract geometric properties
+    thickness = radius_ext - radius_in
+
+    # Extract problem_def parameters
+    problem_def = workspace.problem_def
+    freq = workspace.frequency
+
+    # Calculate skin depth & wavelength
+    skin_depth = calc_skin_depth(rho, mu_r, freq)
+    wavelength = 1 / sqrt(ε₀ * eps_r * μ₀ * mu_r) / freq
+
+    # Calculate mesh size based on part type and properties
+    scale_length = thickness
+    arc_length = 2 * π * radius_ext
+
+    skin_based_size = skin_depth / num_elements
+    wavelength_based_size = wavelength / num_elements
+    geometry_based_size = scale_length / num_elements
+    arc_length_based_size = arc_length / num_elements
+    # @show mesh_size = min(skin_based_size, wavelength_based_size, geometry_based_size, arc_length_based_size)
+
+    mesh_size = min(geometry_based_size, arc_length_based_size)
 
     # Apply bounds from configuration
     mesh_size = max(mesh_size, problem_def.mesh_size_min)
@@ -152,54 +174,30 @@ Configure mesh sizes for all entities in the model.
 $(FUNCTIONNAME)(workspace)
 ```
 """
-# function _config_mesh_sizes(workspace::FEMWorkspace)
-#     _log(workspace, 1, "Configuring mesh sizes...")
-
-#     # Apply mesh sizes from the mesh_size_map
-#     for (tag, mesh_size) in workspace.mesh_size_map
-#         gmsh.model.mesh.setSize(gmsh.model.getBoundary([(2, tag)], false, false, true), mesh_size)
-#     end
-
-#     # Set global mesh size parameters
-#     gmsh.option.setNumber("Mesh.MeshSizeMin", workspace.problem_def.mesh_size_min)
-#     gmsh.option.setNumber("Mesh.MeshSizeMax", workspace.problem_def.mesh_size_max)
-#     gmsh.option.setNumber("Mesh.MeshSizeFromPoints", 1)
-#     gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 1)
-
-#     _log(workspace, 1, "Mesh sizes configured")
-# end
 function _config_mesh_sizes(workspace::FEMWorkspace)
-    _log(workspace, 1, "Configuring mesh sizes...")
 
-    # Track how many entities had mesh sizes applied
-    applied_count = 0
+    gmsh.option.setNumber("General.InitialModule", 2)
 
-    # Loop through identified entities (these are the actual Gmsh entity tags after fragmentation)
-    for (entity_tag, (physical_group_tag, _)) in workspace.identified_entities
-        # Look up the mesh size for this physical tag
-        if haskey(workspace.mesh_size_map, physical_group_tag)
-            mesh_size = workspace.mesh_size_map[physical_group_tag]
+    # Set mesh algorithm
+    gmsh.option.setNumber("Mesh.Algorithm", workspace.problem_def.mesh_algorithm)
 
-            # Get the boundary points/curves of this entity
-            boundary_entities = gmsh.model.get_boundary([(2, entity_tag)], false, false, true)
+    # Set mesh optimization parameters
+    gmsh.option.setNumber("Mesh.Optimize", 0)
+    gmsh.option.setNumber("Mesh.OptimizeNetgen", 0)
 
-            # Apply mesh size to all boundary entities
-            gmsh.model.mesh.set_size(boundary_entities, mesh_size)
-            applied_count += 1
-
-            _log(workspace, 3, "Applied mesh size $(mesh_size) to entity $(entity_tag) (physical tag: $(physical_group_tag))")
-        else
-            _log(workspace, 2, "No mesh size defined for entity $(entity_tag) (physical tag: $(physical_group_tag))")
-        end
-    end
-
-    # Set global mesh size parameters
+    # Set mesh globals
+    gmsh.option.setNumber("Mesh.SaveAll", 1)  # Mesh all regions
     gmsh.option.setNumber("Mesh.MeshSizeMin", workspace.problem_def.mesh_size_min)
     gmsh.option.setNumber("Mesh.MeshSizeMax", workspace.problem_def.mesh_size_max)
     gmsh.option.setNumber("Mesh.MeshSizeFromPoints", 1)
-    gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 1)
+    gmsh.option.setNumber("Mesh.MeshSizeFromParametricPoints", 0)
 
-    _log(workspace, 1, "Mesh sizes configured for $(applied_count) entities")
+    gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 1)
+    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 4 * workspace.problem_def.points_per_circumference)
+
+
+    _log(workspace, 2, "Mesh algorithm: $(workspace.problem_def.mesh_algorithm)")
+    _log(workspace, 2, "Mesh size range: [$(workspace.problem_def.mesh_size_min), $(workspace.problem_def.mesh_size_max)]")
 end
 
 """
@@ -223,14 +221,6 @@ $(FUNCTIONNAME)(workspace)
 """
 function _mesh_generate(workspace::FEMWorkspace)
     _log(workspace, 1, "Generating mesh...")
-
-    # Set mesh algorithm
-    gmsh.option.setNumber("Mesh.Algorithm", workspace.problem_def.mesh_algorithm)
-
-    # Set mesh optimization parameters
-    gmsh.option.setNumber("Mesh.Optimize", 1)
-    gmsh.option.setNumber("Mesh.OptimizeNetgen", 1)
-
     # Generate 2D mesh
     gmsh.model.mesh.generate(2)
 
@@ -284,21 +274,20 @@ function _initialize_gmsh(case_id::String, problem_def::FEMProblemDefinition, so
     # }
     # """)
 
-    # Set critical options
-    gmsh.option.setNumber("Mesh.SaveAll", 1)  # Mesh all regions
-    gmsh.option.setNumber("Mesh.Algorithm", problem_def.mesh_algorithm)
-    gmsh.option.setNumber("Mesh.MeshSizeMin", problem_def.mesh_size_min)
-    gmsh.option.setNumber("Mesh.MeshSizeMax", problem_def.mesh_size_max)
-    gmsh.option.setNumber("Mesh.MeshSizeFromPoints", 1)
-    gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 1)
-
     # Set general visualization options
     gmsh.option.setNumber("Geometry.Points", 1)  # Show points
     gmsh.option.setNumber("Geometry.Curves", 1)  # Show curves
-    gmsh.option.setNumber("Geometry.SurfaceLabels", 1)  # Show surface labels
+    gmsh.option.setNumber("Geometry.SurfaceLabels", 0)  # Show surface labels
+
+    # Set OCC model healing options
+    gmsh.option.setNumber("Geometry.AutoCoherence", 1)
+    gmsh.option.setNumber("Geometry.OCCFixDegenerated", 1)
+    gmsh.option.setNumber("Geometry.OCCFixSmallEdges", 1)
+    gmsh.option.setNumber("Geometry.OCCFixSmallFaces", 1)
+    gmsh.option.setNumber("Geometry.OCCSewFaces", 1)
+    gmsh.option.setNumber("Geometry.OCCMakeSolids", 1)
 
     # Log settings based on verbosity
     _log(solver, 2, "Initialized Gmsh model: $case_id")
-    _log(solver, 2, "Mesh algorithm: $(problem_def.mesh_algorithm)")
-    _log(solver, 2, "Mesh size range: [$(problem_def.mesh_size_min), $(problem_def.mesh_size_max)]")
+
 end
