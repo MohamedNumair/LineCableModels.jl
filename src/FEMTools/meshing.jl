@@ -193,7 +193,7 @@ function _config_mesh_sizes(workspace::FEMWorkspace)
     gmsh.option.setNumber("Mesh.MeshSizeFromParametricPoints", 0)
 
     gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 1)
-    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 4 * workspace.problem_def.points_per_circumference)
+    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", workspace.problem_def.points_per_circumference)
 
 
     _log(workspace, 2, "Mesh algorithm: $(workspace.problem_def.mesh_algorithm)")

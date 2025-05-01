@@ -29,45 +29,6 @@ After fragmentation, the original entities are replaced with new entities that r
 the intersections between them. The original entity tags are no longer valid after
 this operation.
 """
-# function _process_fragments(workspace::FEMWorkspace)
-#     _log(workspace, 1, "Performing boolean fragmentation...")
-
-#     # Get all surfaces and curves
-#     surfaces = gmsh.model.getEntities(2)  # dim=2 for surfaces
-#     curves = gmsh.model.getEntities(1)    # dim=1 for curves
-#     points = gmsh.model.getEntities(0)
-
-#     # Perform boolean fragmentation points -> curves
-#     gmsh.model.occ.fragment(curves, points)
-#     # Synchronize again after fragmentation
-#     gmsh.model.occ.synchronize()
-
-#     # Get updated counts
-#     new_surfaces = gmsh.model.getEntities(2)
-#     new_curves = gmsh.model.getEntities(1)
-
-#     # Perform boolean fragmentation
-#     gmsh.model.occ.fragment(new_surfaces, new_curves)
-
-#     # Synchronize again after fragmentation
-#     gmsh.model.occ.synchronize()
-
-#     # Remove duplicates after fragmentation
-#     _log(workspace, 2, "Removing duplicate entities after fragmentation...")
-#     gmsh.model.occ.remove_all_duplicates()
-
-#     gmsh.model.occ.synchronize()
-
-#     # Get updated counts
-#     new_surfaces = gmsh.model.getEntities(2)
-#     new_curves = gmsh.model.getEntities(1)
-
-#     _log(workspace, 1, "Boolean fragmentation completed")
-#     _log(workspace, 2, "Found $(length(surfaces)) surfaces and $(length(curves)) curves before fragmentation")
-#     _log(workspace, 2, "After fragmentation: $(length(new_surfaces)) surfaces and $(length(new_curves)) curves")
-#     _log(workspace, 2, "Unique markers in workspace: $(length(workspace.unassigned_entities)) markers")
-# end
-
 function _process_fragments(workspace::FEMWorkspace)
     _log(workspace, 1, "Performing boolean fragmentation...")
 
@@ -90,18 +51,6 @@ function _process_fragments(workspace::FEMWorkspace)
     updated_points = gmsh.model.getEntities(0)
 
     _log(workspace, 2, "After fragmenting points onto curves: $(length(updated_curves)) curves, $(length(updated_points)) points")
-
-    # # Fragment internal points directly into surfaces
-    # # These are points not lying on any curve but inside surfaces
-    # if !isempty(surfaces) && !isempty(updated_points)
-    #     _log(workspace, 2, "Fragmenting remaining points directly into surfaces...")
-    #     gmsh.model.occ.fragment(surfaces, updated_points)
-    #     gmsh.model.occ.synchronize()
-    # end
-
-    # # Get updated entities
-    # updated_surfaces = gmsh.model.getEntities(2)
-    # updated_curves = gmsh.model.getEntities(1)
 
     # Fragment curves onto surfaces
     if !isempty(surfaces) && !isempty(updated_curves)
@@ -126,7 +75,6 @@ function _process_fragments(workspace::FEMWorkspace)
     _log(workspace, 2, "Unique markers in workspace: $(length(workspace.unassigned_entities)) markers")
 
 end
-
 
 function _identify_by_marker(workspace::FEMWorkspace)
     _log(workspace, 1, "Identifying entities after fragmentation...")

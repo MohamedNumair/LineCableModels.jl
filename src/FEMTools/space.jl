@@ -124,11 +124,11 @@ function _make_space_geometry(workspace::FEMWorkspace)
     earth_infty_marker = [0.0, -domain_radius_inf, 0.0]
 
     # Create markers for the domain surfaces
-    earth_region_marker = [0.0, -domain_radius / 2, 0.0]
+    earth_region_marker = [0.0, -domain_radius * 0.99, 0.0]
     marker_tag = gmsh.model.occ.add_point(earth_region_marker[1], earth_region_marker[2], earth_region_marker[3], mesh_size_domain)
     gmsh.model.set_entity_name(0, marker_tag, "marker_$(round(mesh_size_domain, sigdigits=6))")
 
-    earth_infshell_marker = [0.0, -(domain_radius + domain_radius_inf) / 2, 0.0]
+    earth_infshell_marker = [0.0, -(domain_radius + 0.99 * (domain_radius_inf - domain_radius)), 0.0]
     marker_tag = gmsh.model.occ.add_point(earth_infshell_marker[1], earth_infshell_marker[2], earth_infshell_marker[3], mesh_size_inf)
     gmsh.model.set_entity_name(0, marker_tag, "marker_$(round(mesh_size_inf, sigdigits=6))")
 
@@ -208,6 +208,35 @@ function _make_space_geometry(workspace::FEMWorkspace)
         CoreEntityData(earth_interface_tag, earth_interface_name, earth_interface_mesh_size),
         get_space_material(workspace, earth_layer_idx)  # Earth material
     )
+
+    # Create a transition region between the cables and the surrounding earth
+    # TODO: Transition regions should use the specific earth layer properties
+    cable_system = workspace.cable_system
+    all_cables = collect(1:length(cable_system.cables))
+    (cx, cy, bounding_radius, characteristic_len) = _get_system_centroid(cable_system, all_cables)
+    n_regions = 3  # number of regions
+    r_min = bounding_radius + 1e-3
+    r_max = bounding_radius + abs(cy) / 2
+    transition_radii = collect(LinRange(r_min, r_max, n_regions))
+    mesh_size_min = earth_interface_mesh_size / 100 #characteristic_len / workspace.problem_def.elements_per_length_insulator
+    mesh_size_max = earth_interface_mesh_size
+    transition_mesh = collect(LinRange(mesh_size_min, mesh_size_max, n_regions))
+    _, _, earth_transition_markers = _draw_transition_region(cx, cy, transition_radii, transition_mesh, num_points_circumference)
+
+    # Register transition regions in the workspace
+    for k in 1:n_regions
+        earth_transition_region = SurfaceEntity(
+            CoreEntityData(earth_region_tag, earth_region_name, transition_mesh[k]),
+            earth_material
+        )
+        # Register the surface entity with its corresponding marker
+        workspace.unassigned_entities[earth_transition_markers[k]] = earth_transition_region
+
+        # Optional logging
+        _log(workspace, 2, "Created transition region $k with radius $(transition_radii[k]) m")
+    end
+
+    _log(workspace, 1, "Transition regions created")
 
     # Add interface to the workspace
     workspace.unassigned_entities[earth_interface_marker] = earth_interface_entity

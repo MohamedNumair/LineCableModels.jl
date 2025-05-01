@@ -89,6 +89,7 @@ function _add_mesh_points(;
     return point_tags
 end
 
+
 """
 $(TYPEDSIGNATURES)
 
@@ -210,8 +211,9 @@ function _draw_disk(x::Number, y::Number, radius::Number, mesh_size::Number, num
         theta_offset=0 #pi / 15
     )
 
-    marker = [x, y + (radius / 2), 0.0]  # Center of the disk
-    marker_tag = gmsh.model.occ.add_point(marker[1], marker[2], marker[3], 2 * mesh_size)
+    # marker = [x, y + (radius / 2), 0.0]
+    marker = [x, y + 0.99 * radius, 0.0] # A very small offset inwards the circle
+    marker_tag = gmsh.model.occ.add_point(marker[1], marker[2], marker[3], mesh_size)
     gmsh.model.set_entity_name(0, marker_tag, "marker_$(round(mesh_size, sigdigits=6))")
 
 
@@ -282,8 +284,8 @@ function _draw_annular(x::Number, y::Number, radius_in::Number, radius_ext::Numb
         )
     end
 
-    marker = [x, y + ((radius_in + radius_ext) / 2), 0.0]  # Center of the annular shape
-
+    # marker = [x, y + ((radius_in + radius_ext) / 2), 0.0]
+    marker = [x, y + (radius_in + 0.99 * (radius_ext - radius_in)), 0.0]
     marker_tag = gmsh.model.occ.add_point(marker[1], marker[2], marker[3], mesh_size)
     gmsh.model.set_entity_name(0, marker_tag, "marker_$(round(mesh_size, sigdigits=6))")
 
@@ -420,4 +422,150 @@ function _draw_polygon(vertices::Vector{<:Tuple{<:Number,<:Number}})
 
     # Create surface
     return gmsh.model.occ.addPlaneSurface([curve_loop])
+end
+
+function _draw_transition_region(x::Number, y::Number, radii::Vector{<:Number}, mesh_sizes::Vector{<:Number}, num_points::Number)
+    # Validate inputs
+    if length(radii) != length(mesh_sizes)
+        error("Radii and mesh_sizes vectors must have the same length")
+    end
+
+    n_regions = length(radii)
+    if n_regions < 1
+        error("At least one radius must be provided")
+    end
+
+    # Sort radii in ascending order if not already sorted
+    if !issorted(radii)
+        p = sortperm(radii)
+        radii = radii[p]
+        mesh_sizes = mesh_sizes[p]
+    end
+
+    tags = Int[]
+    all_mesh_points = Int[]
+    markers = Vector{Vector{Float64}}()
+
+    # Create all disks
+    disk_tags = Int[]
+    for i in 1:n_regions
+        disk_tag = gmsh.model.occ.add_disk(x, y, 0.0, radii[i], radii[i])
+        push!(disk_tags, disk_tag)
+    end
+
+    # Add the innermost disk to output
+    push!(tags, disk_tags[1])
+
+    # Add mesh points for innermost disk
+    inner_mesh_points = _add_mesh_points(
+        radius_in=radii[1],
+        radius_ext=radii[1],
+        theta_0=0,
+        theta_1=2 * pi,
+        mesh_size=mesh_sizes[1],
+        num_points_ang=num_points,
+        C=(x, y),
+        theta_offset=0
+    )
+    append!(all_mesh_points, inner_mesh_points)
+
+    # Create marker for innermost disk
+    inner_marker = [x, y, 0.0] # will be placed at the centroid
+    marker_tag = gmsh.model.occ.add_point(inner_marker[1], inner_marker[2], inner_marker[3], mesh_sizes[1])
+    gmsh.model.set_entity_name(0, marker_tag, "marker_$(round(mesh_sizes[1], sigdigits=6))")
+    push!(markers, inner_marker)
+
+    # Create annular regions for the rest
+    for i in 2:n_regions
+        # Cut the inner disk from the outer disk
+        annular_obj, _ = gmsh.model.occ.cut([(2, disk_tags[i])], [(2, disk_tags[i-1])])
+
+        # Get the resulting surface tag
+        if length(annular_obj) > 0
+            annular_tag = annular_obj[1][2]
+            push!(tags, annular_tag)
+
+            # Add mesh points on the boundary
+            boundary_points = _add_mesh_points(
+                radius_in=radii[i],
+                radius_ext=radii[i],
+                theta_0=0,
+                theta_1=2 * pi,
+                mesh_size=mesh_sizes[i],
+                num_points_ang=num_points,
+                C=(x, y),
+                theta_offset=0
+            )
+            append!(all_mesh_points, boundary_points)
+
+            # Create marker at 99% of the way from inner to outer radius
+            radius_marker = radii[i-1] + 0.99 * (radii[i] - radii[i-1])
+            annular_marker = [x, y + radius_marker, 0.0]
+            marker_tag = gmsh.model.occ.add_point(annular_marker[1], annular_marker[2], annular_marker[3], mesh_sizes[i])
+            gmsh.model.set_entity_name(0, marker_tag, "marker_$(round(mesh_sizes[i], sigdigits=6))")
+            push!(markers, annular_marker)
+        else
+            error("Failed to create annular region for radii $(radii[i-1]) and $(radii[i])")
+        end
+    end
+
+    return tags, all_mesh_points, markers
+end
+
+function _get_system_centroid(cable_system::LineCableSystem, cable_idx::Vector{<:Integer})
+    # Check if cable_idx is empty
+    if isempty(cable_idx)
+        error("Cable index vector cannot be empty")
+    end
+
+    # Check if any index is out of bounds
+    if any(idx -> idx < 1 || idx > length(cable_system.cables), cable_idx)
+        error("Cable index out of bounds")
+    end
+
+    # Extract coordinates
+    horz_coords = [cable_system.cables[idx].horz for idx in cable_idx]
+    vert_coords = [cable_system.cables[idx].vert for idx in cable_idx]
+
+    # Calculate centroid
+    centroid_x = sum(horz_coords) / length(horz_coords)
+    centroid_y = sum(vert_coords) / length(vert_coords)
+
+    # Find the maximum distance from centroid to any cable's edge
+    max_distance = 0.0
+    characteristic_len = Inf
+
+    for idx in cable_idx
+        cabledef = cable_system.cables[idx]
+
+        # Calculate distance from centroid to cable center
+        distance_to_center = sqrt((cabledef.horz - centroid_x)^2 + (cabledef.vert - centroid_y)^2)
+
+        # Get the outermost component (last component in the vector)
+        if !isempty(cabledef.cable.components)
+            last_component = cabledef.cable.components[end]
+
+            # Determine the outermost radius from conductor and insulator groups
+            # conductor_radius = last_component.conductor_group.radius_ext
+            # insulator_radius = last_component.insulator_group.radius_ext
+            outer_radius = last_component.insulator_group.radius_ext
+
+            insulator_radius_in = last_component.insulator_group.layers[end].radius_in
+            last_layer_thickness = outer_radius - insulator_radius_in
+
+            # # Take the larger radius that's not NaN
+            # outer_radius = if !isnan(insulator_radius)
+            #     insulator_radius
+            # else
+            #     conductor_radius
+            # end
+
+            # Add cable radius to get distance to edge
+            total_distance = distance_to_center + outer_radius
+            max_distance = max(max_distance, total_distance)
+            characteristic_len = min(characteristic_len, last_layer_thickness)
+        end
+    end
+
+    return (centroid_x, centroid_y, max_distance, characteristic_len)
 end
