@@ -211,6 +211,7 @@ function _make_space_geometry(workspace::FEMWorkspace)
 
     # Create a transition region between the cables and the surrounding earth
     # TODO: Transition regions should use the specific earth layer properties
+    # Issue URL: https://github.com/Electa-Git/LineCableModels.jl/issues/6
     cable_system = workspace.cable_system
     all_cables = collect(1:length(cable_system.cables))
     (cx, cy, bounding_radius, characteristic_len) = _get_system_centroid(cable_system, all_cables)
