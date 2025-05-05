@@ -159,6 +159,12 @@ function _make_space_geometry(workspace::FEMWorkspace)
     workspace.unassigned_entities[earth_boundary_marker] = earth_boundary_entity
     workspace.unassigned_entities[earth_infty_marker] = earth_infty_entity
 
+    # Add physical groups to the workspace
+    register_physical_group!(workspace, air_region_tag, air_material)
+    register_physical_group!(workspace, earth_region_tag, earth_material)
+    register_physical_group!(workspace, air_infshell_tag, air_material)
+    register_physical_group!(workspace, earth_infshell_tag, earth_material)
+
     # Create domain surfaces
     air_region_entity = SurfaceEntity(
         CoreEntityData(air_region_tag, air_region_name, mesh_size_default),

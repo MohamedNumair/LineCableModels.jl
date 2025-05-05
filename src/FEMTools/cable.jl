@@ -187,6 +187,9 @@ function _make_cablepart!(workspace::FEMWorkspace, part::AbstractCablePart,
     # Add to workspace in the unassigned container for subsequent processing
     workspace.unassigned_entities[marker] = entity_data
 
+    # Add physical groups to the workspace
+    register_physical_group!(workspace, physical_group_tag, part.material_props)
+
 end
 
 """
@@ -320,6 +323,8 @@ function _make_cablepart!(workspace::FEMWorkspace, part::WireArray,
         # Add to workspace
         workspace.unassigned_entities[marker] = entity_data
     end
+    # Add physical groups to the workspace
+    register_physical_group!(workspace, physical_group_tag, part.material_props)
 
     # Handle WireArray outermost boundary
     mesh_size = (radius_ext - radius_in)
@@ -375,5 +380,8 @@ function _make_cablepart!(workspace::FEMWorkspace, part::WireArray,
         # Add to unassigned entities with type information
         workspace.unassigned_entities[marker] = entity_data
     end
+
+    # Add physical groups to the workspace
+    register_physical_group!(workspace, physical_group_tag_air_gap, air_material)
 
 end

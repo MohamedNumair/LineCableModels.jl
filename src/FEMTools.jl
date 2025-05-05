@@ -431,8 +431,8 @@ mutable struct FEMWorkspace
     unassigned_entities::Dict{Vector{Float64},AbstractEntityData}
     "Container for all material names used in the model."
     material_registry::Dict{String,Int}
-    "ONELAB parameters."
-    onelab_params::Dict{String,Any}
+    "Container for unique physical groups."
+    physical_groups::Dict{Int,Material}
     "Results storage."
     results::Dict{String,Any}
 
@@ -474,7 +474,7 @@ mutable struct FEMWorkspace
             Vector{FEMEntity{<:AbstractEntityData}}(), #boundaries
             Dict{Vector{Float64},AbstractEntityData}(), #unassigned_entities
             Dict{String,Int}(),  # Initialize empty material registry
-            Dict{String,Any}(),
+            Dict{Int,Material}(), # Maps physical group tags to materials
             Dict{String,Any}()
         )
 
@@ -511,9 +511,13 @@ workspace = $(FUNCTIONNAME)(cable_system, problem_def, solver)
 function run_fem_model(cable_system::LineCableSystem,
     problem_def::FEMProblemDefinition,
     solver::FEMSolver;
-    frequency::Float64=50.0)
+    frequency::Float64=50.0, workspace::Union{FEMWorkspace,Nothing}=nothing)
+
     # Create and initialize workspace
-    workspace = FEMWorkspace(cable_system, problem_def, solver, frequency=frequency)
+    if isnothing(workspace) || !isa(workspace, FEMWorkspace)
+        workspace = FEMWorkspace(cable_system, problem_def, solver, frequency=frequency)
+    end
+    # workspace = FEMWorkspace(cable_system, problem_def, solver, frequency=frequency)
 
     # Log start
     _log(workspace, 1, "Starting FEM simulation for cable system: $(cable_system.case_id)")

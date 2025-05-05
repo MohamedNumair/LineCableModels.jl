@@ -281,7 +281,23 @@ function get_or_register_material_id(workspace::FEMWorkspace, material::Material
     return material_id
 end
 
+function register_physical_group!(workspace::FEMWorkspace, physical_group_tag::Int, material::Material)
 
+    # Create physical_groups if it doesn't exist
+    if !isdefined(workspace, :physical_groups)
+        workspace.physical_groups = Dict{Int,Material}()
+    end
+
+    # # Get material name using existing function that checks library first
+    # material_name = get_material_name(material, workspace.problem_def.materials_db)
+
+    # Find or create the ID
+    if !haskey(workspace.physical_groups, physical_group_tag)
+        # New material - assign next available ID
+        workspace.physical_groups[physical_group_tag] = material
+    end
+
+end
 """
 $(TYPEDSIGNATURES)
 
