@@ -362,18 +362,18 @@ A workspace:
 Each module follows a consistent type hierarchy:
 
 ```julia
-AbstractProblemDefinition
-  ├── FEMProblemDefinition
+AbstractProblemFormulation
+  ├── FEMFormulation :> {FEMDarwin, FEMElectrodynamics, ...}
   ├── AbstractFDEMFormulation :> {CPEarth, CIGRE, ...}
   ├── AbstractEHEMFormulation :> {EnforceLayer, EquivalentSigma, ...}
   ├── ...
   └── [Other specialized formulations, concrete or abstract]
 
-AbstractSolverMethod
-  ├── FEMSolver
-  ├── EMTSolver
+FormulationOptions
+  ├── FEMOptions
+  ├── EMTOptions
   ├── ...
-  └── [Other specialized solvers]
+  └── [Other specialized options sets]
 
 AbstractWorkspace
   ├── FEMWorkspace
@@ -416,7 +416,7 @@ This pattern ensures clean separation of concerns, making the code more maintain
 
 State is managed exclusively through the Workspace, which contains:
 
-1. **Configuration state**: Original system, formulation, and solver.
+1. **Configuration state**: Original system, formulation, and opts.
 2. **Entity state**: Collections of typed entities.
 3. **Lookup maps**: Efficient mappings between entities and properties.
 4. **Processing state**: Temporary calculation state.
@@ -428,7 +428,7 @@ This centralized approach eliminates global state and ensures thread safety.
 
 The FEMTools module exemplifies this pattern:
 
-- `FEMProblemDefinition`: Physics parameters for FEM simulation.
+- `FEMFormulation`: Physics parameters for FEM simulation.
 - `FEMSolver`: Execution parameters for meshing and solving.
 - `FEMWorkspace`: Central state container for all FEM operations.
 - Entity types: Typed data containers for different geometric elements.

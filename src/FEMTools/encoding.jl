@@ -264,7 +264,7 @@ function get_or_register_material_id(workspace::FEMWorkspace, material::Material
     end
 
     # Get material name using existing function that checks library first
-    material_name = get_material_name(material, workspace.problem_def.materials_db)
+    material_name = get_material_name(material, workspace.formulation.materials_db)
 
     # Find or create the ID
     if !haskey(workspace.material_registry, material_name)
@@ -287,9 +287,6 @@ function register_physical_group!(workspace::FEMWorkspace, physical_group_tag::I
     if !isdefined(workspace, :physical_groups)
         workspace.physical_groups = Dict{Int,Material}()
     end
-
-    # # Get material name using existing function that checks library first
-    # material_name = get_material_name(material, workspace.problem_def.materials_db)
 
     # Find or create the ID
     if !haskey(workspace.physical_groups, physical_group_tag)
@@ -410,12 +407,12 @@ function _create_surface_physical_name(workspace::FEMWorkspace, tag::Int)
         # Cable component
         # Try to get component name
         component_name = "unknown"
-        if 1 <= entity_num <= length(workspace.cable_system.cables)
-            cable = workspace.cable_system.cables[entity_num]
+        if 1 <= entity_num <= length(workspace.problem_def.system.cables)
+            cable = workspace.problem_def.system.cables[entity_num]
 
             # Validate component_num is within range
-            if 1 <= component_num <= length(cable.cable.components)
-                component = cable.cable.components[component_num]
+            if 1 <= component_num <= length(cable.design_data.components)
+                component = cable.design_data.components[component_num]
                 component_name = component.id
             end
         end

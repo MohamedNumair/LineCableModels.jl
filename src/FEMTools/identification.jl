@@ -29,19 +29,18 @@ After fragmentation, the original entities are replaced with new entities that r
 the intersections between them. The original entity tags are no longer valid after
 this operation.
 """
-function _process_fragments(workspace::FEMWorkspace)
-    _log(workspace, 1, "Performing boolean fragmentation...")
+function process_fragments(workspace::FEMWorkspace)
 
     # Get all entities
     surfaces = gmsh.model.getEntities(2)
     curves = gmsh.model.getEntities(1)
     points = gmsh.model.getEntities(0)
 
-    _log(workspace, 2, "Initial counts: $(length(surfaces)) surfaces, $(length(curves)) curves, $(length(points)) points")
+    @debug "Initial counts: $(length(surfaces)) surfaces, $(length(curves)) curves, $(length(points)) points"
 
     # Fragment points onto curves
     if !isempty(curves) && !isempty(points)
-        _log(workspace, 2, "Fragmenting points onto curves...")
+        @debug "Fragmenting points onto curves..."
         gmsh.model.occ.fragment(curves, points)
         gmsh.model.occ.synchronize()
     end
@@ -50,17 +49,17 @@ function _process_fragments(workspace::FEMWorkspace)
     updated_curves = gmsh.model.getEntities(1)
     updated_points = gmsh.model.getEntities(0)
 
-    _log(workspace, 2, "After fragmenting points onto curves: $(length(updated_curves)) curves, $(length(updated_points)) points")
+    @debug "After fragmenting points onto curves: $(length(updated_curves)) curves, $(length(updated_points)) points"
 
     # Fragment curves onto surfaces
     if !isempty(surfaces) && !isempty(updated_curves)
-        _log(workspace, 2, "Fragmenting curves onto surfaces...")
+        @debug "Fragmenting curves onto surfaces..."
         gmsh.model.occ.fragment(surfaces, updated_curves)
         gmsh.model.occ.synchronize()
     end
 
     # Remove duplicates
-    _log(workspace, 2, "Removing duplicate entities...")
+    @debug "Removing duplicate entities..."
     gmsh.model.occ.remove_all_duplicates()
     gmsh.model.occ.synchronize()
 
@@ -69,15 +68,14 @@ function _process_fragments(workspace::FEMWorkspace)
     final_curves = gmsh.model.getEntities(1)
     final_points = gmsh.model.getEntities(0)
 
-    _log(workspace, 1, "Boolean fragmentation completed")
-    _log(workspace, 2, "Before: $(length(surfaces)) surfaces, $(length(curves)) curves, $(length(points)) points")
-    _log(workspace, 2, "After: $(length(final_surfaces)) surfaces, $(length(final_curves)) curves, $(length(final_points)) points")
-    _log(workspace, 2, "Unique markers in workspace: $(length(workspace.unassigned_entities)) markers")
+    @info "Boolean fragmentation completed"
+    @debug "Before: $(length(surfaces)) surfaces, $(length(curves)) curves, $(length(points)) points"
+    @debug "After: $(length(final_surfaces)) surfaces, $(length(final_curves)) curves, $(length(final_points)) points"
+    @debug "Unique markers in workspace: $(length(workspace.unassigned_entities)) markers"
 
 end
 
-function _identify_by_marker(workspace::FEMWorkspace)
-    _log(workspace, 1, "Identifying entities after fragmentation...")
+function identify_by_marker(workspace::FEMWorkspace)
 
     # Get all surfaces after fragmentation
     all_surfaces = gmsh.model.getEntities(2)
@@ -115,7 +113,7 @@ function _identify_by_marker(workspace::FEMWorkspace)
 
                     delete!(workspace.unassigned_entities, marker)
                     identified_count += 1
-                    _log(workspace, 2, "Marker at $(marker) identified entity $(tag) as $(elementary_name) (tag: $(physical_group_tag))")
+                    @debug "Marker at $(marker) identified entity $(tag) as $(elementary_name) (tag: $(physical_group_tag))"
                     break
                 end
             end
@@ -147,20 +145,20 @@ function _identify_by_marker(workspace::FEMWorkspace)
 
                 delete!(workspace.unassigned_entities, marker)
                 identified_count += 1
-                _log(workspace, 2, "Marker at $(marker) identified entity $(tag) as $(elementary_name) (tag: $(physical_group_tag))")
+                @debug "Marker at $(marker) identified entity $(tag) as $(elementary_name) (tag: $(physical_group_tag))"
                 break
             end
         end
     end
 
     # Report identification stats
-    _log(workspace, 1, "Entity identification completed: $(identified_count)/$(total_entities) entities identified")
+    @info "Entity identification completed: $(identified_count)/$(total_entities) entities identified"
 
     if !isempty(workspace.unassigned_entities)
-        _log(workspace, 0, "WARNING: $(length(workspace.unassigned_entities))/$(total_entities) markers could not be matched to entities")
+        @warn "$(length(workspace.unassigned_entities))/$(total_entities) markers could not be matched to entities"
     end
 end
-function _assign_physical_groups(workspace::FEMWorkspace)
+function assign_physical_groups(workspace::FEMWorkspace)
     # Group entities by physical tag and dimension
     entities_by_physical_group_tag = Dict{Tuple{Int,Int},Vector{Int}}()
 
@@ -195,18 +193,18 @@ function _assign_physical_groups(workspace::FEMWorkspace)
     for ((physical_group_tag, dim), entity_tags) in entities_by_physical_group_tag
         try
             physical_group_name = create_physical_group_name(workspace, physical_group_tag)
-            _log(workspace, 2, "Creating physical group $(physical_group_name) (tag: $(physical_group_tag), dim: $(dim)) with $(length(entity_tags)) entities")
+            @debug "Creating physical group $(physical_group_name) (tag: $(physical_group_tag), dim: $(dim)) with $(length(entity_tags)) entities"
 
             # Use the correct dimension when creating the physical group
             gmsh.model.add_physical_group(dim, entity_tags, physical_group_tag, physical_group_name)
             successful_groups += 1
         catch e
-            _log(workspace, 0, "Failed to create physical group tag: $(physical_group_tag), dim: $(dim): $(e)")
+            @warn "Failed to create physical group tag: $(physical_group_tag), dim: $(dim): $(e)"
             failed_groups += 1
         end
     end
 
-    _log(workspace, 1, "Physical groups assigned: $(successful_groups) successful, $(failed_groups) failed out of $(length(entities_by_physical_group_tag)) total")
+    @info "Physical groups assigned: $(successful_groups) successful, $(failed_groups) failed out of $(length(entities_by_physical_group_tag)) total"
 end
 
 """

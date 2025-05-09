@@ -3,7 +3,7 @@ Primitive drawing functions for the FEMTools.jl module.
 These functions handle the creation of geometric entities in Gmsh.
 """
 
-function _add_mesh_points(;
+function add_mesh_points(;
     radius_ext::Number,
     theta_0::Number,
     theta_1::Number,
@@ -111,7 +111,7 @@ Draw a point with specified coordinates and mesh size.
 point_tag = $(FUNCTIONNAME)(0.0, 0.0, 0.0, 0.01)
 ```
 """
-function _draw_point(x::Number, y::Number, z::Number)
+function draw_point(x::Number, y::Number, z::Number)
     return gmsh.model.occ.addPoint(x, y, z)
 end
 
@@ -137,7 +137,7 @@ Draw a line between two points.
 line_tag = $(FUNCTIONNAME)(0.0, 0.0, 1.0, 0.0, 0.01)
 ```
 """
-function _draw_line(x1::Number, y1::Number, x2::Number, y2::Number, mesh_size::Number, num_points::Number)
+function draw_line(x1::Number, y1::Number, x2::Number, y2::Number, mesh_size::Number, num_points::Number)
 
     # Calculate line parameters
     line_length = sqrt((x2 - x1)^2 + (y2 - y1)^2)
@@ -156,7 +156,7 @@ function _draw_line(x1::Number, y1::Number, x2::Number, y2::Number, mesh_size::N
     marker_tag = gmsh.model.occ.add_point(marker[1], marker[2], marker[3], mesh_size)
     gmsh.model.set_entity_name(0, marker_tag, "marker_$(round(mesh_size, sigdigits=6))")
 
-    mesh_points = _add_mesh_points(
+    mesh_points = add_mesh_points(
         radius_in=-radius,
         radius_ext=radius,
         theta_0=theta,
@@ -196,11 +196,11 @@ Draw a circular disk with specified center and radius.
 disk_tag = $(FUNCTIONNAME)(0.0, 0.0, 0.5, 0.01)
 ```
 """
-function _draw_disk(x::Number, y::Number, radius::Number, mesh_size::Number, num_points::Number)
+function draw_disk(x::Number, y::Number, radius::Number, mesh_size::Number, num_points::Number)
 
     tag = gmsh.model.occ.add_disk(x, y, 0.0, radius, radius)
 
-    mesh_points = _add_mesh_points(
+    mesh_points = add_mesh_points(
         radius_in=radius,
         radius_ext=radius,
         theta_0=0,
@@ -243,7 +243,7 @@ Draw an annular (ring) shape with specified center, inner radius, and outer radi
 annular_tag = $(FUNCTIONNAME)(0.0, 0.0, 0.3, 0.5, 0.01)
 ```
 """
-function _draw_annular(x::Number, y::Number, radius_in::Number, radius_ext::Number, mesh_size::Number, num_points::Number; inner_points::Bool=false)
+function draw_annular(x::Number, y::Number, radius_in::Number, radius_ext::Number, mesh_size::Number, num_points::Number; inner_points::Bool=false)
     # Create outer disk
     outer_disk = gmsh.model.occ.add_disk(x, y, 0.0, radius_ext, radius_ext)
 
@@ -260,7 +260,7 @@ function _draw_annular(x::Number, y::Number, radius_in::Number, radius_ext::Numb
         error("Failed to create annular shape.")
     end
 
-    mesh_points = _add_mesh_points(
+    mesh_points = add_mesh_points(
         radius_in=radius_ext,
         radius_ext=radius_ext,
         theta_0=0,
@@ -272,7 +272,7 @@ function _draw_annular(x::Number, y::Number, radius_in::Number, radius_ext::Numb
     )
 
     if inner_points
-        mesh_points = _add_mesh_points(
+        mesh_points = add_mesh_points(
             radius_in=radius_in,
             radius_ext=radius_in,
             theta_0=0,
@@ -315,7 +315,7 @@ Draw a rectangle with specified center, width, and height.
 rect_tag = $(FUNCTIONNAME)(0.0, 0.0, 1.0, 0.5, 0.01)
 ```
 """
-function _draw_rectangle(x::Number, y::Number, width::Number, height::Number)
+function draw_rectangle(x::Number, y::Number, width::Number, height::Number)
     # Calculate corner coordinates
     x1 = x - width / 2
     y1 = y - height / 2
@@ -350,7 +350,7 @@ Draw a circular arc between two points with a specified center.
 arc_tag = $(FUNCTIONNAME)(1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.01)
 ```
 """
-function _draw_arc(x1::Number, y1::Number, x2::Number, y2::Number, xc::Number, yc::Number)
+function draw_arc(x1::Number, y1::Number, x2::Number, y2::Number, xc::Number, yc::Number)
     p1 = gmsh.model.occ.addPoint(x1, y1, 0.0)
     p2 = gmsh.model.occ.addPoint(x2, y2, 0.0)
     pc = gmsh.model.occ.addPoint(xc, yc, 0.0)
@@ -379,7 +379,7 @@ Draw a circle with specified center and radius.
 circle_tag = $(FUNCTIONNAME)(0.0, 0.0, 0.5, 0.01)
 ```
 """
-function _draw_circle(x::Number, y::Number, radius::Number)
+function draw_circle(x::Number, y::Number, radius::Number)
     return gmsh.model.occ.addCircle(x, y, 0.0, radius)
 end
 
@@ -403,7 +403,7 @@ vertices = [(0.0, 0.0), (1.0, 0.0), (0.5, 1.0)]
 polygon_tag = $(FUNCTIONNAME)(vertices, 0.01)
 ```
 """
-function _draw_polygon(vertices::Vector{<:Tuple{<:Number,<:Number}})
+function draw_polygon(vertices::Vector{<:Tuple{<:Number,<:Number}})
     # Create points
     points = Vector{Int}()
     for (x, y) in vertices
@@ -424,7 +424,7 @@ function _draw_polygon(vertices::Vector{<:Tuple{<:Number,<:Number}})
     return gmsh.model.occ.addPlaneSurface([curve_loop])
 end
 
-function _draw_transition_region(x::Number, y::Number, radii::Vector{<:Number}, mesh_sizes::Vector{<:Number}, num_points::Number)
+function draw_transition_region(x::Number, y::Number, radii::Vector{<:Number}, mesh_sizes::Vector{<:Number}, num_points::Number)
     # Validate inputs
     if length(radii) != length(mesh_sizes)
         error("Radii and mesh_sizes vectors must have the same length")
@@ -457,7 +457,7 @@ function _draw_transition_region(x::Number, y::Number, radii::Vector{<:Number}, 
     push!(tags, disk_tags[1])
 
     # Add mesh points for innermost disk
-    inner_mesh_points = _add_mesh_points(
+    inner_mesh_points = add_mesh_points(
         radius_in=radii[1],
         radius_ext=radii[1],
         theta_0=0,
@@ -486,7 +486,7 @@ function _draw_transition_region(x::Number, y::Number, radii::Vector{<:Number}, 
             push!(tags, annular_tag)
 
             # Add mesh points on the boundary
-            boundary_points = _add_mesh_points(
+            boundary_points = add_mesh_points(
                 radius_in=radii[i],
                 radius_ext=radii[i],
                 theta_0=0,
@@ -512,7 +512,7 @@ function _draw_transition_region(x::Number, y::Number, radii::Vector{<:Number}, 
     return tags, all_mesh_points, markers
 end
 
-function _get_system_centroid(cable_system::LineCableSystem, cable_idx::Vector{<:Integer})
+function get_system_centroid(cable_system::LineCableSystem, cable_idx::Vector{<:Integer})
     # Check if cable_idx is empty
     if isempty(cable_idx)
         error("Cable index vector cannot be empty")
@@ -536,14 +536,14 @@ function _get_system_centroid(cable_system::LineCableSystem, cable_idx::Vector{<
     characteristic_len = Inf
 
     for idx in cable_idx
-        cabledef = cable_system.cables[idx]
+        cable_position = cable_system.cables[idx]
 
         # Calculate distance from centroid to cable center
-        distance_to_center = sqrt((cabledef.horz - centroid_x)^2 + (cabledef.vert - centroid_y)^2)
+        distance_to_center = sqrt((cable_position.horz - centroid_x)^2 + (cable_position.vert - centroid_y)^2)
 
         # Get the outermost component (last component in the vector)
-        if !isempty(cabledef.cable.components)
-            last_component = cabledef.cable.components[end]
+        if !isempty(cable_position.design_data.components)
+            last_component = cable_position.design_data.components[end]
 
             # Determine the outermost radius from conductor and insulator groups
             # conductor_radius = last_component.conductor_group.radius_ext

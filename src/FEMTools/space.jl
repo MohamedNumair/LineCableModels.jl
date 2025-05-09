@@ -22,39 +22,39 @@ Create the domain boundaries (inner solid disk and outer annular region) for the
 $(FUNCTIONNAME)(workspace)
 ```
 """
-function _make_space_geometry(workspace::FEMWorkspace)
-    _log(workspace, 1, "Creating domain boundaries...")
+function make_space_geometry(workspace::FEMWorkspace)
+    @info "Creating domain boundaries..."
 
     # Extract parameters
-    problem_def = workspace.problem_def
-    domain_radius = problem_def.domain_radius
-    domain_radius_inf = domain_radius * 1.25  # External radius for boundary transform
-    mesh_size_default = problem_def.mesh_size_default
-    mesh_size_domain = problem_def.mesh_size_max
-    mesh_size_inf = 1.25 * problem_def.mesh_size_max
+    formulation = workspace.formulation
+    domain_radius = formulation.domain_radius
+    domain_radius_inf = formulation.domain_radius_inf  # External radius for boundary transform
+    mesh_size_default = formulation.mesh_size_default
+    mesh_size_domain = formulation.mesh_size_max
+    mesh_size_inf = 1.25 * formulation.mesh_size_max
 
     # Center coordinates
     x_center = 0.0
     y_center = 0.0
 
     # Create inner domain disk
-    num_points_circumference = workspace.problem_def.points_per_circumference
-    _log(workspace, 2, "Creating inner domain disk with radius $(domain_radius) m")
-    _, _, air_region_marker = _draw_disk(x_center, y_center, domain_radius, mesh_size_domain, num_points_circumference)
+    num_points_circumference = formulation.points_per_circumference
+    @debug "Creating inner domain disk with radius $(domain_radius) m"
+    _, _, air_region_marker = draw_disk(x_center, y_center, domain_radius, mesh_size_domain, num_points_circumference)
 
     # Create outer domain annular region
-    _log(workspace, 2, "Creating outer domain annular region with radius $(domain_radius_inf) m")
-    _, _, air_infshell_marker = _draw_annular(x_center, y_center, domain_radius, domain_radius_inf, mesh_size_inf, num_points_circumference)
+    @debug "Creating outer domain annular region with radius $(domain_radius_inf) m"
+    _, _, air_infshell_marker = draw_annular(x_center, y_center, domain_radius, domain_radius_inf, mesh_size_inf, num_points_circumference)
 
     # Get earth model from workspace
-    earth_model = workspace.cable_system.earth_props
+    earth_props = workspace.problem_def.earth_props
     air_layer_idx = 1 # air layer is 1 by default
-    earth_layer_idx = workspace.cable_system.earth_props.num_layers
+    earth_layer_idx = earth_props.num_layers
 
     # Air layer (Layer 1)
-    air_material = get_space_material(workspace, air_layer_idx)
+    air_material = get_earth_model_material(workspace, air_layer_idx)
     air_material_id = get_or_register_material_id(workspace, air_material)
-    air_material_group = get_material_group(earth_model, air_layer_idx) # Will return 2 (insulator)
+    air_material_group = get_material_group(earth_props, air_layer_idx) # Will return 2 (insulator)
 
     # Physical domain air tag 
     air_region_tag = encode_physical_group_tag(
@@ -78,9 +78,9 @@ function _make_space_geometry(workspace::FEMWorkspace)
 
 
     # Earth layer (Layer 2+)
-    earth_material = get_space_material(workspace, earth_layer_idx)
+    earth_material = get_earth_model_material(workspace, earth_layer_idx)
     earth_material_id = get_or_register_material_id(workspace, earth_material)
-    earth_material_group = get_material_group(earth_model, earth_layer_idx) # Will return 1 (conductor)
+    earth_material_group = get_material_group(earth_props, earth_layer_idx) # Will return 1 (conductor)
 
     # Physical domain earth tag
     earth_region_tag = encode_physical_group_tag(
@@ -193,16 +193,16 @@ function _make_space_geometry(workspace::FEMWorkspace)
     workspace.unassigned_entities[earth_region_marker] = earth_region_entity
     workspace.unassigned_entities[earth_infshell_marker] = earth_infshell_entity
 
-    _log(workspace, 1, "Domain boundaries created")
+    @info "Domain boundaries created"
 
     # Create earth interface line (y=0)
-    _log(workspace, 2, "Creating earth interface line at y=0")
+    @debug "Creating earth interface line at y=0"
 
     # Create line from -domain_radius to +domain_radius at y=0
-    num_elements = workspace.problem_def.elements_per_length_interfaces
-    earth_interface_mesh_size = calc_mesh_size(0, domain_radius, earth_material, num_elements, workspace)
+    num_elements = formulation.elements_per_length_interfaces
+    earth_interface_mesh_size = _calc_mesh_size(0, domain_radius, earth_material, num_elements, workspace)
 
-    _, _, earth_interface_marker = _draw_line(-domain_radius_inf, 0.0, domain_radius_inf, 0.0, earth_interface_mesh_size, round(Int, domain_radius))
+    _, _, earth_interface_marker = draw_line(-domain_radius_inf, 0.0, domain_radius_inf, 0.0, earth_interface_mesh_size, round(Int, domain_radius))
 
     # Create physical tag for the earth interface
     interface_idx = 1  # Earth interface index
@@ -212,23 +212,23 @@ function _make_space_geometry(workspace::FEMWorkspace)
     # Create domain entity
     earth_interface_entity = CurveEntity(
         CoreEntityData(earth_interface_tag, earth_interface_name, earth_interface_mesh_size),
-        get_space_material(workspace, earth_layer_idx)  # Earth material
+        get_earth_model_material(workspace, earth_layer_idx)  # Earth material
     )
 
     # Create a transition region between the cables and the surrounding earth
     # TODO: Transition regions should use the specific earth layer properties
     # Issue URL: https://github.com/Electa-Git/LineCableModels.jl/issues/6
-    cable_system = workspace.cable_system
+    cable_system = workspace.problem_def.system
     all_cables = collect(1:length(cable_system.cables))
-    (cx, cy, bounding_radius, characteristic_len) = _get_system_centroid(cable_system, all_cables)
+    (cx, cy, bounding_radius, characteristic_len) = get_system_centroid(cable_system, all_cables)
     n_regions = 3  # number of regions
     r_min = bounding_radius + 1e-3
     r_max = bounding_radius + abs(cy) / 2
     transition_radii = collect(LinRange(r_min, r_max, n_regions))
-    mesh_size_min = earth_interface_mesh_size / 100 #characteristic_len / workspace.problem_def.elements_per_length_insulator
+    mesh_size_min = earth_interface_mesh_size / 100 #characteristic_len / workspace.formulation.elements_per_length_insulator
     mesh_size_max = earth_interface_mesh_size
     transition_mesh = collect(LinRange(mesh_size_min, mesh_size_max, n_regions))
-    _, _, earth_transition_markers = _draw_transition_region(cx, cy, transition_radii, transition_mesh, num_points_circumference)
+    _, _, earth_transition_markers = draw_transition_region(cx, cy, transition_radii, transition_mesh, num_points_circumference)
 
     # Register transition regions in the workspace
     for k in 1:n_regions
@@ -240,13 +240,13 @@ function _make_space_geometry(workspace::FEMWorkspace)
         workspace.unassigned_entities[earth_transition_markers[k]] = earth_transition_region
 
         # Optional logging
-        _log(workspace, 2, "Created transition region $k with radius $(transition_radii[k]) m")
+        @debug "Created transition region $k with radius $(transition_radii[k]) m"
     end
 
-    _log(workspace, 1, "Transition regions created")
+    @info "Transition regions created"
 
     # Add interface to the workspace
     workspace.unassigned_entities[earth_interface_marker] = earth_interface_entity
-    _log(workspace, 1, "Earth interfaces created")
+    @info "Earth interfaces created"
 
 end

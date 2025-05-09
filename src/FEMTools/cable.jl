@@ -22,21 +22,21 @@ Create the cable geometry for all cables in the system.
 $(FUNCTIONNAME)(workspace)
 ```
 """
-function _make_cable_geometry(workspace::FEMWorkspace)
-    _log(workspace, 1, "Creating cable geometry...")
+function make_cable_geometry(workspace::FEMWorkspace)
+    @info "Creating cable geometry..."
 
     # Get the cable system
-    cable_system = workspace.cable_system
+    cable_system = workspace.problem_def.system
 
     # Process each cable in the system
-    for (cable_idx, cabledef) in enumerate(cable_system.cables)
-        _log(workspace, 1, "Processing cable $(cable_idx) at position ($(cabledef.horz), $(cabledef.vert))")
+    for (cable_idx, cable_position) in enumerate(cable_system.cables)
+        @info "Processing cable $(cable_idx) at position ($(cable_position.horz), $(cable_position.vert))"
 
         # Get the cable design
-        cable_design = cabledef.cable
+        cable_design = cable_position.design_data
 
         # Get the phase assignments
-        phase_assignments = cabledef.conn
+        phase_assignments = cable_position.conn
 
         # Process each component in the cable
         for (comp_idx, component) in enumerate(cable_design.components)
@@ -46,15 +46,15 @@ function _make_cable_geometry(workspace::FEMWorkspace)
             # Get the phase assignment for this component
             phase = comp_idx <= length(phase_assignments) ? phase_assignments[comp_idx] : 0
 
-            _log(workspace, 2, "Processing component $(comp_id) (phase $(phase))")
+            @debug "Processing component $(comp_id) (phase $(phase))"
 
             # Process conductor group
             if !isnothing(component.conductor_group)
-                _log(workspace, 2, "Processing conductor group for component $(comp_id)")
+                @debug "Processing conductor group for component $(comp_id)"
 
                 # Process each layer in the conductor group
                 for (layer_idx, layer) in enumerate(component.conductor_group.layers)
-                    _log(workspace, 2, "Processing conductor layer $(layer_idx)")
+                    @debug "Processing conductor layer $(layer_idx)"
 
                     # Create the cable part
                     _make_cablepart!(workspace, layer, cable_idx, comp_idx, comp_id, phase, layer_idx)
@@ -63,11 +63,11 @@ function _make_cable_geometry(workspace::FEMWorkspace)
 
             # Process insulator group
             if !isnothing(component.insulator_group)
-                _log(workspace, 2, "Processing insulator group for component $(comp_id)")
+                @debug "Processing insulator group for component $(comp_id)"
 
                 # Process each layer in the insulator group
                 for (layer_idx, layer) in enumerate(component.insulator_group.layers)
-                    _log(workspace, 2, "Processing insulator layer $(layer_idx)")
+                    @debug "Processing insulator layer $(layer_idx)"
 
                     # Create the cable part
                     _make_cablepart!(workspace, layer, cable_idx, comp_idx, comp_id, phase, layer_idx)
@@ -76,7 +76,7 @@ function _make_cable_geometry(workspace::FEMWorkspace)
         end
     end
 
-    _log(workspace, 1, "Cable geometry created")
+    @info "Cable geometry created"
 end
 
 """
@@ -109,11 +109,11 @@ function _make_cablepart!(workspace::FEMWorkspace, part::AbstractCablePart,
     phase::Int, layer_idx::Int)
 
     # Get the cable definition
-    cabledef = workspace.cable_system.cables[cable_idx]
+    cable_position = workspace.problem_def.system.cables[cable_idx]
 
     # Get the center coordinates
-    x_center = cabledef.horz
-    y_center = cabledef.vert
+    x_center = cable_position.horz
+    y_center = cable_position.vert
 
     # Determine material group directly from part type
     material_group = get_material_group(part)
@@ -147,37 +147,37 @@ function _make_cablepart!(workspace::FEMWorkspace, part::AbstractCablePart,
 
     # Calculate mesh size for this part
     if part isa AbstractConductorPart
-        num_elements = workspace.problem_def.elements_per_length_conductor
+        num_elements = workspace.formulation.elements_per_length_conductor
     elseif part isa Insulator
-        num_elements = workspace.problem_def.elements_per_length_insulator
+        num_elements = workspace.formulation.elements_per_length_insulator
     elseif part isa Semicon
-        num_elements = workspace.problem_def.elements_per_length_semicon
+        num_elements = workspace.formulation.elements_per_length_semicon
     end
 
-    mesh_size_current = calc_mesh_size(radius_in, radius_ext, part.material_props, num_elements, workspace)
+    mesh_size_current = _calc_mesh_size(radius_in, radius_ext, part.material_props, num_elements, workspace)
 
     # Calculate mesh size for the next part
-    num_layers = length(cabledef.cable.components[comp_idx].conductor_group.layers)
-    next_part = layer_idx < num_layers ? cabledef.cable.components[comp_idx].conductor_group.layers[layer_idx+1] : nothing
+    num_layers = length(cable_position.design_data.components[comp_idx].conductor_group.layers)
+    next_part = layer_idx < num_layers ? cable_position.design_data.components[comp_idx].conductor_group.layers[layer_idx+1] : nothing
 
     if !isnothing(next_part)
         next_radius_in = to_nominal(next_part.radius_in)
         next_radius_ext = to_nominal(next_part.radius_ext)
-        mesh_size_next = calc_mesh_size(next_radius_in, next_radius_ext, next_part.material_props, num_elements, workspace)
+        mesh_size_next = _calc_mesh_size(next_radius_in, next_radius_ext, next_part.material_props, num_elements, workspace)
     else
         mesh_size_next = mesh_size_current
     end
 
     mesh_size = min(mesh_size_current, mesh_size_next)
-    num_points_circumference = workspace.problem_def.points_per_circumference
+    num_points_circumference = workspace.formulation.points_per_circumference
 
     # Create annular shape and assign marker
     if radius_in ≈ 0
         # Solid disk
-        _, _, marker = _draw_disk(x_center, y_center, radius_ext, mesh_size, num_points_circumference)
+        _, _, marker = draw_disk(x_center, y_center, radius_ext, mesh_size, num_points_circumference)
     else
         # Annular shape
-        _, _, marker = _draw_annular(x_center, y_center, radius_in, radius_ext, mesh_size, num_points_circumference)
+        _, _, marker = draw_annular(x_center, y_center, radius_in, radius_ext, mesh_size, num_points_circumference)
     end
 
     # Create entity data
@@ -222,11 +222,11 @@ function _make_cablepart!(workspace::FEMWorkspace, part::WireArray,
     phase::Int, layer_idx::Int)
 
     # Get the cable definition
-    cabledef = workspace.cable_system.cables[cable_idx]
+    cable_position = workspace.problem_def.system.cables[cable_idx]
 
     # Get the center coordinates
-    x_center = cabledef.horz
-    y_center = cabledef.vert
+    x_center = cable_position.horz
+    y_center = cable_position.vert
 
     # Determine material group directly from part type
     material_group = get_material_group(part)
@@ -258,23 +258,23 @@ function _make_cablepart!(workspace::FEMWorkspace, part::WireArray,
 
 
     # Calculate mesh size for this part
-    num_elements = workspace.problem_def.elements_per_length_conductor
-    mesh_size_current = calc_mesh_size(radius_in, radius_ext, part.material_props, num_elements, workspace)
+    num_elements = workspace.formulation.elements_per_length_conductor
+    mesh_size_current = _calc_mesh_size(radius_in, radius_ext, part.material_props, num_elements, workspace)
 
     # Calculate mesh size for the next part
-    num_layers = length(cabledef.cable.components[comp_idx].conductor_group.layers)
-    next_part = layer_idx < num_layers ? cabledef.cable.components[comp_idx].conductor_group.layers[layer_idx+1] : nothing
+    num_layers = length(cable_position.design_data.components[comp_idx].conductor_group.layers)
+    next_part = layer_idx < num_layers ? cable_position.design_data.components[comp_idx].conductor_group.layers[layer_idx+1] : nothing
 
     if !isnothing(next_part)
         next_radius_in = to_nominal(next_part.radius_in)
         next_radius_ext = to_nominal(next_part.radius_ext)
-        mesh_size_next = calc_mesh_size(next_radius_in, next_radius_ext, next_part.material_props, num_elements, workspace)
+        mesh_size_next = _calc_mesh_size(next_radius_in, next_radius_ext, next_part.material_props, num_elements, workspace)
     else
         mesh_size_next = mesh_size_current
     end
 
     mesh_size = min(mesh_size_current, mesh_size_next)
-    num_points_circumference = workspace.problem_def.points_per_circumference
+    num_points_circumference = workspace.formulation.points_per_circumference
 
     # Calculate wire positions
     function _calc_wirearray_coords(
@@ -303,7 +303,7 @@ function _make_cablepart!(workspace::FEMWorkspace, part::WireArray,
     # Create wires
     for (wire_idx, (wx, wy)) in enumerate(wire_positions)
 
-        _, _, marker = _draw_disk(wx, wy, radius_wire, mesh_size, num_points_circumference)
+        _, _, marker = draw_disk(wx, wy, radius_wire, mesh_size, num_points_circumference)
 
         # Create wire name
         elementary_name = create_cable_elementary_name(
@@ -330,7 +330,7 @@ function _make_cablepart!(workspace::FEMWorkspace, part::WireArray,
     mesh_size = (radius_ext - radius_in)
     if !(next_part isa WireArray) && !isnothing(next_part)
         # step_angle = 2 * pi / num_wires
-        _add_mesh_points(
+        add_mesh_points(
             radius_in=radius_ext,
             radius_ext=radius_ext,
             theta_0=0,
@@ -346,7 +346,7 @@ function _make_cablepart!(workspace::FEMWorkspace, part::WireArray,
     # --------Then those nasty air gaps
 
     # Air gaps will be determined from the boolean fragmentation operation and do not need to be drawn. Only the markers are needed.
-    markers_air_gap = _get_air_gap_markers(num_wires, radius_wire, radius_in)
+    markers_air_gap = get_air_gap_markers(num_wires, radius_wire, radius_in)
 
     # Adjust air gap markers to cable center
     for marker in markers_air_gap

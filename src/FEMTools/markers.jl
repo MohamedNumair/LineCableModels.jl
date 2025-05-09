@@ -35,7 +35,7 @@ boolean fragmentation operations.
 markers = $(FUNCTIONNAME)(7, 0.002, 0.01)
 ```
 """
-function _get_air_gap_markers(num_wires::Int, radius_wire::Number, radius_in::Number)
+function get_air_gap_markers(num_wires::Int, radius_wire::Number, radius_in::Number)
     markers = Vector{Vector{Float64}}()
 
     lay_radius = radius_in + radius_wire

@@ -41,9 +41,9 @@ Represents the thickness of a cable component.
 
 $(TYPEDFIELDS)
 """
-struct Thickness{T <: Number} <: Number
-	"Numerical value of the thickness \\[m\\]."
-	value::T
+struct Thickness{T<:Number} <: Number
+    "Numerical value of the thickness \\[m\\]."
+    value::T
 end
 
 
@@ -54,9 +54,9 @@ Represents the diameter of a cable component.
 
 $(TYPEDFIELDS)
 """
-struct Diameter{T <: Number} <: Number
-	"Numerical value of the diameter \\[m\\]."
-	value::T
+struct Diameter{T<:Number} <: Number
+    "Numerical value of the diameter \\[m\\]."
+    value::T
 end
 
 """
@@ -97,32 +97,32 @@ Represents an array of wires equally spaced around a circumference of arbitrary 
 $(TYPEDFIELDS)
 """
 struct WireArray <: AbstractConductorPart
-	"Internal radius of the wire array \\[m\\]."
-	radius_in::Number
-	"External radius of the wire array \\[m\\]."
-	radius_ext::Number
-	"Radius of each individual wire \\[m\\]."
-	radius_wire::Number
-	"Number of wires in the array \\[dimensionless\\]."
-	num_wires::Int
-	"Ratio defining the lay length of the wires (twisting factor) \\[dimensionless\\]."
-	lay_ratio::Number
-	"Mean diameter of the wire array \\[m\\]."
-	mean_diameter::Number
-	"Pitch length of the wire array \\[m\\]."
-	pitch_length::Number
-	"Twisting direction of the strands (1 = unilay, -1 = contralay) \\[dimensionless\\]."
-	lay_direction::Int
-	"Material object representing the physical properties of the wire material."
-	material_props::Material
-	"Temperature at which the properties are evaluated \\[°C\\]."
-	temperature::Number
-	"Cross-sectional area of all wires in the array \\[m²\\]."
-	cross_section::Number
-	"Electrical resistance per wire in the array \\[Ω/m\\]."
-	resistance::Number
-	"Geometric mean radius of the wire array \\[m\\]."
-	gmr::Number
+    "Internal radius of the wire array \\[m\\]."
+    radius_in::Number
+    "External radius of the wire array \\[m\\]."
+    radius_ext::Number
+    "Radius of each individual wire \\[m\\]."
+    radius_wire::Number
+    "Number of wires in the array \\[dimensionless\\]."
+    num_wires::Int
+    "Ratio defining the lay length of the wires (twisting factor) \\[dimensionless\\]."
+    lay_ratio::Number
+    "Mean diameter of the wire array \\[m\\]."
+    mean_diameter::Number
+    "Pitch length of the wire array \\[m\\]."
+    pitch_length::Number
+    "Twisting direction of the strands (1 = unilay, -1 = contralay) \\[dimensionless\\]."
+    lay_direction::Int
+    "Material object representing the physical properties of the wire material."
+    material_props::Material
+    "Temperature at which the properties are evaluated \\[°C\\]."
+    temperature::Number
+    "Cross-sectional area of all wires in the array \\[m²\\]."
+    cross_section::Number
+    "Electrical resistance per wire in the array \\[Ω/m\\]."
+    resistance::Number
+    "Geometric mean radius of the wire array \\[m\\]."
+    gmr::Number
 end
 
 """
@@ -133,32 +133,32 @@ Represents a flat conductive strip with defined geometric and material propertie
 $(TYPEDFIELDS)
 """
 struct Strip <: AbstractConductorPart
-	"Internal radius of the strip \\[m\\]."
-	radius_in::Number
-	"External radius of the strip \\[m\\]."
-	radius_ext::Number
-	"Thickness of the strip \\[m\\]."
-	thickness::Number
-	"Width of the strip \\[m\\]."
-	width::Number
-	"Ratio defining the lay length of the strip (twisting factor) \\[dimensionless\\]."
-	lay_ratio::Number
-	"Mean diameter of the strip's helical path \\[m\\]."
-	mean_diameter::Number
-	"Pitch length of the strip's helical path \\[m\\]."
-	pitch_length::Number
-	"Twisting direction of the strip (1 = unilay, -1 = contralay) \\[dimensionless\\]."
-	lay_direction::Int
-	"Material properties of the strip."
-	material_props::Material
-	"Temperature at which the properties are evaluated \\[°C\\]."
-	temperature::Number
-	"Cross-sectional area of the strip \\[m²\\]."
-	cross_section::Number
-	"Electrical resistance of the strip \\[Ω/m\\]."
-	resistance::Number
-	"Geometric mean radius of the strip \\[m\\]."
-	gmr::Number
+    "Internal radius of the strip \\[m\\]."
+    radius_in::Number
+    "External radius of the strip \\[m\\]."
+    radius_ext::Number
+    "Thickness of the strip \\[m\\]."
+    thickness::Number
+    "Width of the strip \\[m\\]."
+    width::Number
+    "Ratio defining the lay length of the strip (twisting factor) \\[dimensionless\\]."
+    lay_ratio::Number
+    "Mean diameter of the strip's helical path \\[m\\]."
+    mean_diameter::Number
+    "Pitch length of the strip's helical path \\[m\\]."
+    pitch_length::Number
+    "Twisting direction of the strip (1 = unilay, -1 = contralay) \\[dimensionless\\]."
+    lay_direction::Int
+    "Material properties of the strip."
+    material_props::Material
+    "Temperature at which the properties are evaluated \\[°C\\]."
+    temperature::Number
+    "Cross-sectional area of the strip \\[m²\\]."
+    cross_section::Number
+    "Electrical resistance of the strip \\[Ω/m\\]."
+    resistance::Number
+    "Geometric mean radius of the strip \\[m\\]."
+    gmr::Number
 end
 
 """
@@ -169,20 +169,20 @@ Represents a tubular or solid (`radius_in=0`) conductor with geometric and mater
 $(TYPEDFIELDS)
 """
 struct Tubular <: AbstractConductorPart
-	"Internal radius of the tubular conductor \\[m\\]."
-	radius_in::Number
-	"External radius of the tubular conductor \\[m\\]."
-	radius_ext::Number
-	"A [`Material`](@ref) object representing the physical properties of the conductor material."
-	material_props::Material
-	"Temperature at which the properties are evaluated \\[°C\\]."
-	temperature::Number
-	"Cross-sectional area of the tubular conductor \\[m²\\]."
-	cross_section::Number
-	"Electrical resistance (DC) of the tubular conductor \\[Ω/m\\]."
-	resistance::Number
-	"Geometric mean radius of the tubular conductor \\[m\\]."
-	gmr::Number
+    "Internal radius of the tubular conductor \\[m\\]."
+    radius_in::Number
+    "External radius of the tubular conductor \\[m\\]."
+    radius_ext::Number
+    "A [`Material`](@ref) object representing the physical properties of the conductor material."
+    material_props::Material
+    "Temperature at which the properties are evaluated \\[°C\\]."
+    temperature::Number
+    "Cross-sectional area of the tubular conductor \\[m²\\]."
+    cross_section::Number
+    "Electrical resistance (DC) of the tubular conductor \\[Ω/m\\]."
+    resistance::Number
+    "Geometric mean radius of the tubular conductor \\[m\\]."
+    gmr::Number
 end
 
 """
@@ -193,24 +193,24 @@ Represents a semiconducting layer with defined geometric, material, and electric
 $(TYPEDFIELDS)
 """
 mutable struct Semicon <: AbstractInsulatorPart
-	"Internal radius of the semiconducting layer \\[m\\]."
-	radius_in::Number
-	"External radius of the semiconducting layer \\[m\\]."
-	radius_ext::Number
-	"Material properties of the semiconductor."
-	material_props::Material
-	"Operating temperature of the semiconductor \\[°C\\]."
-	temperature::Number
-	"Cross-sectional area of the semiconducting layer \\[m²\\]."
-	cross_section::Number
-	"Electrical resistance of the semiconducting layer \\[Ω/m\\]."
-	resistance::Number
-	"Geometric mean radius of the semiconducting layer \\[m\\]."
-	gmr::Number
-	"Shunt capacitance per unit length of the semiconducting layer \\[F/m\\]."
-	shunt_capacitance::Number
-	"Shunt conductance per unit length of the semiconducting layer \\[S·m\\]."
-	shunt_conductance::Number
+    "Internal radius of the semiconducting layer \\[m\\]."
+    radius_in::Number
+    "External radius of the semiconducting layer \\[m\\]."
+    radius_ext::Number
+    "Material properties of the semiconductor."
+    material_props::Material
+    "Operating temperature of the semiconductor \\[°C\\]."
+    temperature::Number
+    "Cross-sectional area of the semiconducting layer \\[m²\\]."
+    cross_section::Number
+    "Electrical resistance of the semiconducting layer \\[Ω/m\\]."
+    resistance::Number
+    "Geometric mean radius of the semiconducting layer \\[m\\]."
+    gmr::Number
+    "Shunt capacitance per unit length of the semiconducting layer \\[F/m\\]."
+    shunt_capacitance::Number
+    "Shunt conductance per unit length of the semiconducting layer \\[S·m\\]."
+    shunt_conductance::Number
 end
 
 """
@@ -221,24 +221,24 @@ Represents an insulating layer with defined geometric, material, and electrical 
 $(TYPEDFIELDS)
 """
 mutable struct Insulator <: AbstractInsulatorPart
-	"Internal radius of the insulating layer \\[m\\]."
-	radius_in::Number
-	"External radius of the insulating layer \\[m\\]."
-	radius_ext::Number
-	"Material properties of the insulator."
-	material_props::Material
-	"Operating temperature of the insulator \\[°C\\]."
-	temperature::Number
-	"Cross-sectional area of the insulating layer \\[m²\\]."
-	cross_section::Number
-	"Electrical resistance of the insulating layer \\[Ω/m\\]."
-	resistance::Number
-	"Geometric mean radius of the insulator \\[m\\]."
-	gmr::Number
-	"Shunt capacitance per unit length of the insulating layer \\[F/m\\]."
-	shunt_capacitance::Number
-	"Shunt conductance per unit length of the insulating layer \\[S·m\\]."
-	shunt_conductance::Number
+    "Internal radius of the insulating layer \\[m\\]."
+    radius_in::Number
+    "External radius of the insulating layer \\[m\\]."
+    radius_ext::Number
+    "Material properties of the insulator."
+    material_props::Material
+    "Operating temperature of the insulator \\[°C\\]."
+    temperature::Number
+    "Cross-sectional area of the insulating layer \\[m²\\]."
+    cross_section::Number
+    "Electrical resistance of the insulating layer \\[Ω/m\\]."
+    resistance::Number
+    "Geometric mean radius of the insulator \\[m\\]."
+    gmr::Number
+    "Shunt capacitance per unit length of the insulating layer \\[F/m\\]."
+    shunt_capacitance::Number
+    "Shunt conductance per unit length of the insulating layer \\[S·m\\]."
+    shunt_conductance::Number
 end
 
 """
@@ -256,72 +256,72 @@ properties that represent the composite behavior of the entire assembly.
 $(TYPEDFIELDS)
 """
 mutable struct ConductorGroup <: AbstractConductorPart
-	"Inner radius of the conductor group \\[m\\]."
-	radius_in::Number
-	"Outer radius of the conductor group \\[m\\]."
-	radius_ext::Number
-	"Cross-sectional area of the entire conductor group \\[m²\\]."
-	cross_section::Number
-	"Number of individual wires in the conductor group \\[dimensionless\\]."
-	num_wires::Number
-	"Number of turns per meter of each wire strand \\[1/m\\]."
-	num_turns::Number
-	"DC resistance of the conductor group \\[Ω\\]."
-	resistance::Number
-	"Temperature coefficient of resistance \\[1/°C\\]."
-	alpha::Number
-	"Geometric mean radius of the conductor group \\[m\\]."
-	gmr::Number
-	"Vector of conductor layer components."
-	layers::Vector{AbstractConductorPart}
+    "Inner radius of the conductor group \\[m\\]."
+    radius_in::Number
+    "Outer radius of the conductor group \\[m\\]."
+    radius_ext::Number
+    "Cross-sectional area of the entire conductor group \\[m²\\]."
+    cross_section::Number
+    "Number of individual wires in the conductor group \\[dimensionless\\]."
+    num_wires::Number
+    "Number of turns per meter of each wire strand \\[1/m\\]."
+    num_turns::Number
+    "DC resistance of the conductor group \\[Ω\\]."
+    resistance::Number
+    "Temperature coefficient of resistance \\[1/°C\\]."
+    alpha::Number
+    "Geometric mean radius of the conductor group \\[m\\]."
+    gmr::Number
+    "Vector of conductor layer components."
+    layers::Vector{AbstractConductorPart}
 
-	@doc """
-	$(TYPEDSIGNATURES)
+    @doc """
+    $(TYPEDSIGNATURES)
 
-	Constructs a [`ConductorGroup`](@ref) instance initializing with the central conductor part.
+    Constructs a [`ConductorGroup`](@ref) instance initializing with the central conductor part.
 
-	# Arguments
+    # Arguments
 
-	- `central_conductor`: An [`AbstractConductorPart`](@ref) object located at the center of the conductor group.
+    - `central_conductor`: An [`AbstractConductorPart`](@ref) object located at the center of the conductor group.
 
-	# Returns
+    # Returns
 
-	- A [`ConductorGroup`](@ref) object initialized with geometric and electrical properties derived from the central conductor.
+    - A [`ConductorGroup`](@ref) object initialized with geometric and electrical properties derived from the central conductor.
 
-	# Examples
+    # Examples
 
-	```julia
-	material_props = Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393)
-	central_strip = Strip(0.01, 0.002, 0.05, 10, material_props)
-	conductor_group = $(FUNCTIONNAME)(central_strip)
-	println(conductor_group.layers)      # Output: [central_strip]
-	println(conductor_group.resistance)  # Output: Resistance in \\[Ω\\]
-	```
-	"""
-	function ConductorGroup(central_conductor::AbstractConductorPart)
-		num_wires = 0
-		num_turns = 0.0
+    ```julia
+    material_props = Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393)
+    central_strip = Strip(0.01, 0.002, 0.05, 10, material_props)
+    conductor_group = $(FUNCTIONNAME)(central_strip)
+    println(conductor_group.layers)      # Output: [central_strip]
+    println(conductor_group.resistance)  # Output: Resistance in \\[Ω\\]
+    ```
+    """
+    function ConductorGroup(central_conductor::AbstractConductorPart)
+        num_wires = 0
+        num_turns = 0.0
 
-		if central_conductor isa WireArray || central_conductor isa Strip
-			num_wires = central_conductor isa WireArray ? central_conductor.num_wires : 1
-			num_turns =
-				central_conductor.pitch_length > 0 ?
-				1 / central_conductor.pitch_length : 0
-		end
+        if central_conductor isa WireArray || central_conductor isa Strip
+            num_wires = central_conductor isa WireArray ? central_conductor.num_wires : 1
+            num_turns =
+                central_conductor.pitch_length > 0 ?
+                1 / central_conductor.pitch_length : 0
+        end
 
-		# Initialize object
-		return new(
-			central_conductor.radius_in,
-			central_conductor.radius_ext,
-			central_conductor.cross_section,
-			num_wires,
-			num_turns,
-			central_conductor.resistance,
-			central_conductor.material_props.alpha,
-			central_conductor.gmr,
-			[central_conductor],
-		)
-	end
+        # Initialize object
+        return new(
+            central_conductor.radius_in,
+            central_conductor.radius_ext,
+            central_conductor.cross_section,
+            num_wires,
+            num_turns,
+            central_conductor.resistance,
+            central_conductor.material_props.alpha,
+            central_conductor.gmr,
+            [central_conductor],
+        )
+    end
 end
 
 """
@@ -337,53 +337,53 @@ properties that represent the composite behavior of the entire assembly, stored 
 $(TYPEDFIELDS)
 """
 mutable struct InsulatorGroup <: AbstractInsulatorPart
-	"Inner radius of the insulator group \\[m\\]."
-	radius_in::Number
-	"Outer radius of the insulator group \\[m\\]."
-	radius_ext::Number
-	"Cross-sectional area of the entire insulator group \\[m²\\]."
-	cross_section::Number
-	"Shunt capacitance per unit length of the insulator group \\[F/m\\]."
-	shunt_capacitance::Number
-	"Shunt conductance per unit length of the insulator group \\[S·m\\]."
-	shunt_conductance::Number
-	"Vector of insulator layer components."
-	layers::Vector{AbstractInsulatorPart}
+    "Inner radius of the insulator group \\[m\\]."
+    radius_in::Number
+    "Outer radius of the insulator group \\[m\\]."
+    radius_ext::Number
+    "Cross-sectional area of the entire insulator group \\[m²\\]."
+    cross_section::Number
+    "Shunt capacitance per unit length of the insulator group \\[F/m\\]."
+    shunt_capacitance::Number
+    "Shunt conductance per unit length of the insulator group \\[S·m\\]."
+    shunt_conductance::Number
+    "Vector of insulator layer components."
+    layers::Vector{AbstractInsulatorPart}
 
-	@doc """
-	$(TYPEDSIGNATURES)
+    @doc """
+    $(TYPEDSIGNATURES)
 
-	Constructs an [`InsulatorGroup`](@ref) instance initializing with the initial insulator part.
+    Constructs an [`InsulatorGroup`](@ref) instance initializing with the initial insulator part.
 
-	# Arguments
+    # Arguments
 
-	- `initial_insulator`: An [`AbstractInsulatorPart`](@ref) object located at the innermost position of the insulator group.
+    - `initial_insulator`: An [`AbstractInsulatorPart`](@ref) object located at the innermost position of the insulator group.
 
-	# Returns
+    # Returns
 
-	- An [`InsulatorGroup`](@ref) object initialized with geometric and electrical properties derived from the initial insulator.
+    - An [`InsulatorGroup`](@ref) object initialized with geometric and electrical properties derived from the initial insulator.
 
-	# Examples
+    # Examples
 
-	```julia
-	material_props = Material(1e10, 3.0, 1.0, 20.0, 0.0)
-	initial_insulator = Insulator(0.01, 0.015, material_props)
-	insulator_group = $(FUNCTIONNAME)(initial_insulator)
-	println(insulator_group.layers)           # Output: [initial_insulator]
-	println(insulator_group.shunt_capacitance) # Output: Capacitance in [F/m]
-	```
-	"""
-	function InsulatorGroup(initial_insulator::AbstractInsulatorPart)
-		# Initialize object
-		return new(
-			initial_insulator.radius_in,
-			initial_insulator.radius_ext,
-			initial_insulator.cross_section,
-			initial_insulator.shunt_capacitance,
-			initial_insulator.shunt_conductance,
-			[initial_insulator],
-		)
-	end
+    ```julia
+    material_props = Material(1e10, 3.0, 1.0, 20.0, 0.0)
+    initial_insulator = Insulator(0.01, 0.015, material_props)
+    insulator_group = $(FUNCTIONNAME)(initial_insulator)
+    println(insulator_group.layers)           # Output: [initial_insulator]
+    println(insulator_group.shunt_capacitance) # Output: Capacitance in [F/m]
+    ```
+    """
+    function InsulatorGroup(initial_insulator::AbstractInsulatorPart)
+        # Initialize object
+        return new(
+            initial_insulator.radius_in,
+            initial_insulator.radius_ext,
+            initial_insulator.cross_section,
+            initial_insulator.shunt_capacitance,
+            initial_insulator.shunt_conductance,
+            [initial_insulator],
+        )
+    end
 end
 
 """
@@ -431,59 +431,59 @@ $(FUNCTIONNAME)(conductor, WireArray, 0.02, 0.002, 7, 15, material_props, temper
 - [`calc_equivalent_alpha`](@ref)
 """
 function addto_conductorgroup!(
-	group::ConductorGroup,
-	part_type::Type{T},  # The type of conductor part (WireArray, Strip, Tubular)
-	args...;  # Arguments specific to the part type
-	kwargs...,
-) where T <: AbstractConductorPart
-	# Infer default properties
-	radius_in = get(kwargs, :radius_in, group.radius_ext)
+    group::ConductorGroup,
+    part_type::Type{T},  # The type of conductor part (WireArray, Strip, Tubular)
+    args...;  # Arguments specific to the part type
+    kwargs...,
+) where {T<:AbstractConductorPart}
+    # Infer default properties
+    radius_in = get(kwargs, :radius_in, group.radius_ext)
 
-	# Create a new named tuple with default temperature
-	default_kwargs = (temperature = group.layers[1].temperature,)
+    # Create a new named tuple with default temperature
+    default_kwargs = (temperature=group.layers[1].temperature,)
 
-	# Create a merged kwargs dictionary
-	merged_kwargs = Dict{Symbol, Any}()
+    # Create a merged kwargs dictionary
+    merged_kwargs = Dict{Symbol,Any}()
 
-	# Add defaults first
-	for (key, value) in pairs(default_kwargs)
-		merged_kwargs[key] = value
-	end
+    # Add defaults first
+    for (key, value) in pairs(default_kwargs)
+        merged_kwargs[key] = value
+    end
 
-	# Then override with user-provided values
-	for (key, value) in kwargs
-		merged_kwargs[key] = value
-	end
+    # Then override with user-provided values
+    for (key, value) in kwargs
+        merged_kwargs[key] = value
+    end
 
-	# Create the new part
-	new_part = T(radius_in, args...; merged_kwargs...)
+    # Create the new part
+    new_part = T(radius_in, args...; merged_kwargs...)
 
-	# Update the Conductor with the new part
-	group.gmr = calc_equivalent_gmr(group, new_part)
-	group.alpha = calc_equivalent_alpha(
-		group.alpha,
-		group.resistance,
-		new_part.material_props.alpha,
-		new_part.resistance,
-	)
+    # Update the Conductor with the new part
+    group.gmr = calc_equivalent_gmr(group, new_part)
+    group.alpha = calc_equivalent_alpha(
+        group.alpha,
+        group.resistance,
+        new_part.material_props.alpha,
+        new_part.resistance,
+    )
 
-	group.resistance = calc_parallel_equivalent(group.resistance, new_part.resistance)
-	group.radius_ext += (new_part.radius_ext - new_part.radius_in)
-	group.cross_section += new_part.cross_section
+    group.resistance = calc_parallel_equivalent(group.resistance, new_part.resistance)
+    group.radius_ext += (new_part.radius_ext - new_part.radius_in)
+    group.cross_section += new_part.cross_section
 
-	# For WireArray, update the number of wires and turns
-	if new_part isa WireArray || new_part isa Strip
-		cum_num_wires = group.num_wires
-		cum_num_turns = group.num_turns
-		new_wires = new_part isa WireArray ? new_part.num_wires : 1
-		new_turns = new_part.pitch_length > 0 ? 1 / new_part.pitch_length : 0
-		group.num_wires += new_wires
-		group.num_turns =
-			(cum_num_wires * cum_num_turns + new_wires * new_turns) / (group.num_wires)
-	end
+    # For WireArray, update the number of wires and turns
+    if new_part isa WireArray || new_part isa Strip
+        cum_num_wires = group.num_wires
+        cum_num_turns = group.num_turns
+        new_wires = new_part isa WireArray ? new_part.num_wires : 1
+        new_turns = new_part.pitch_length > 0 ? 1 / new_part.pitch_length : 0
+        group.num_wires += new_wires
+        group.num_turns =
+            (cum_num_wires * cum_num_turns + new_wires * new_turns) / (group.num_wires)
+    end
 
-	push!(group.layers, new_part)
-	group
+    push!(group.layers, new_part)
+    group
 end
 
 """
@@ -529,50 +529,50 @@ $(FUNCTIONNAME)(insulator_group, Semicon, 0.015, 0.018, material_props)
 - [`calc_equivalent_alpha`](@ref) # This should be removed
 """
 function addto_insulatorgroup!(
-	group::InsulatorGroup,
-	part_type::Type{T},  # The type of insulator part (Insulator, Semicon)
-	args...;  # Arguments specific to the part type
-	f::Number = f₀,  # Add the f parameter with default value f₀
-	kwargs...,
-) where T <: AbstractInsulatorPart
-	# Infer default properties
-	radius_in = get(kwargs, :radius_in, group.radius_ext)
+    group::InsulatorGroup,
+    part_type::Type{T},  # The type of insulator part (Insulator, Semicon)
+    args...;  # Arguments specific to the part type
+    f::Number=f₀,  # Add the f parameter with default value f₀
+    kwargs...,
+) where {T<:AbstractInsulatorPart}
+    # Infer default properties
+    radius_in = get(kwargs, :radius_in, group.radius_ext)
 
-	# Create a new named tuple with default temperature
-	default_kwargs = (temperature = group.layers[1].temperature,)
+    # Create a new named tuple with default temperature
+    default_kwargs = (temperature=group.layers[1].temperature,)
 
-	# Create a merged kwargs dictionary
-	merged_kwargs = Dict{Symbol, Any}()
+    # Create a merged kwargs dictionary
+    merged_kwargs = Dict{Symbol,Any}()
 
-	# Add defaults first
-	for (key, value) in pairs(default_kwargs)
-		merged_kwargs[key] = value
-	end
+    # Add defaults first
+    for (key, value) in pairs(default_kwargs)
+        merged_kwargs[key] = value
+    end
 
-	# Then override with user-provided values
-	for (key, value) in kwargs
-		merged_kwargs[key] = value
-	end
+    # Then override with user-provided values
+    for (key, value) in kwargs
+        merged_kwargs[key] = value
+    end
 
-	# Create the new part
-	new_part = T(radius_in, args...; merged_kwargs...)
+    # Create the new part
+    new_part = T(radius_in, args...; merged_kwargs...)
 
 
-	# For admittances (parallel combination)
-	ω = 2 * π * f
-	Y_group = Complex(group.shunt_conductance, ω * group.shunt_capacitance)
-	Y_newpart = Complex(new_part.shunt_conductance, ω * new_part.shunt_capacitance)
-	Y_equiv = calc_parallel_equivalent(Y_group, Y_newpart)
-	group.shunt_capacitance = imag(Y_equiv) / ω
-	group.shunt_conductance = real(Y_equiv)
+    # For admittances (parallel combination)
+    ω = 2 * π * f
+    Y_group = Complex(group.shunt_conductance, ω * group.shunt_capacitance)
+    Y_newpart = Complex(new_part.shunt_conductance, ω * new_part.shunt_capacitance)
+    Y_equiv = calc_parallel_equivalent(Y_group, Y_newpart)
+    group.shunt_capacitance = imag(Y_equiv) / ω
+    group.shunt_conductance = real(Y_equiv)
 
-	# Update geometric properties
-	group.radius_ext += (new_part.radius_ext - new_part.radius_in)
-	group.cross_section += new_part.cross_section
+    # Update geometric properties
+    group.radius_ext += (new_part.radius_ext - new_part.radius_in)
+    group.cross_section += new_part.cross_section
 
-	# Add to layers
-	push!(group.layers, new_part)
-	group
+    # Add to layers
+    push!(group.layers, new_part)
+    group
 end
 
 """
@@ -590,106 +590,106 @@ $(TYPEDFIELDS)
 	In applications, the [`CableComponent`](@ref) type is mapped to the main cable structures described in manufacturer datasheets, e.g., core, sheath, armor and jacket.
 """
 mutable struct CableComponent
-	"Cable component identification (e.g. core/sheath/armor)."
-	id::String
-	"The conductor group containing all conductive parts."
-	conductor_group::ConductorGroup
-	"Effective properties of the equivalent coaxial conductor."
-	conductor_props::Material
-	"The insulator group containing all insulating parts."
-	insulator_group::InsulatorGroup
-	"Effective properties of the equivalent coaxial insulator."
-	insulator_props::Material
+    "Cable component identification (e.g. core/sheath/armor)."
+    id::String
+    "The conductor group containing all conductive parts."
+    conductor_group::ConductorGroup
+    "Effective properties of the equivalent coaxial conductor."
+    conductor_props::Material
+    "The insulator group containing all insulating parts."
+    insulator_group::InsulatorGroup
+    "Effective properties of the equivalent coaxial insulator."
+    insulator_props::Material
 
-	@doc """
-	$(TYPEDSIGNATURES)
+    @doc """
+    $(TYPEDSIGNATURES)
 
-	Initializes a [`CableComponent`](@ref) object based on its constituent conductor and insulator groups. The constructor performs the following sequence of steps:
+    Initializes a [`CableComponent`](@ref) object based on its constituent conductor and insulator groups. The constructor performs the following sequence of steps:
 
-	1.  Validate that the conductor and insulator groups have matching radii at their interface.
-	2.  Obtain the lumped-parameter values (R, L, C, G) from the conductor and insulator groups, which are computed within their respective constructors.
-	3.  Calculate the correction factors and equivalent electromagnetic properties of the conductor and insulator groups:
+    1.  Validate that the conductor and insulator groups have matching radii at their interface.
+    2.  Obtain the lumped-parameter values (R, L, C, G) from the conductor and insulator groups, which are computed within their respective constructors.
+    3.  Calculate the correction factors and equivalent electromagnetic properties of the conductor and insulator groups:
 
 
-	| Quantity | Symbol | Function |
-	|----------|--------|----------|
-	| Resistivity (conductor) | ``\\rho_{con}`` | [`calc_equivalent_rho`](@ref) |
-	| Permeability (conductor) | ``\\mu_{con}`` | [`calc_equivalent_mu`](@ref) |
-	| Resistivity (insulator) | ``\\rho_{ins}`` | [`calc_sigma_lossfact`](@ref) |
-	| Permittivity (insulation) | ``\\varepsilon_{ins}`` | [`calc_equivalent_eps`](@ref) |
-	| Permeability (insulation) | ``\\mu_{ins}`` | [`calc_solenoid_correction`](@ref) |
+    | Quantity | Symbol | Function |
+    |----------|--------|----------|
+    | Resistivity (conductor) | ``\\rho_{con}`` | [`calc_equivalent_rho`](@ref) |
+    | Permeability (conductor) | ``\\mu_{con}`` | [`calc_equivalent_mu`](@ref) |
+    | Resistivity (insulator) | ``\\rho_{ins}`` | [`calc_sigma_lossfact`](@ref) |
+    | Permittivity (insulation) | ``\\varepsilon_{ins}`` | [`calc_equivalent_eps`](@ref) |
+    | Permeability (insulation) | ``\\mu_{ins}`` | [`calc_solenoid_correction`](@ref) |
 
-	# Arguments
+    # Arguments
 
-	- `id`: Cable component identification (e.g. core/sheath/armor).
-	- `conductor_group`: The conductor group containing all conductive parts.
-	- `insulator_group`: The insulator group containing all insulating parts.
+    - `id`: Cable component identification (e.g. core/sheath/armor).
+    - `conductor_group`: The conductor group containing all conductive parts.
+    - `insulator_group`: The insulator group containing all insulating parts.
 
-	# Returns
+    # Returns
 
-	- A [`CableComponent`](@ref) instance with calculated equivalent properties.
+    - A [`CableComponent`](@ref) instance with calculated equivalent properties.
 
-	# Examples
+    # Examples
 
-	```julia
-	conductor_group = ConductorGroup(...)
-	insulator_group = InsulatorGroup(...)
-	cable = $(FUNCTIONNAME)("component_id", conductor_group, insulator_group)  # Create cable component with base parameters @ 50 Hz
-	```
+    ```julia
+    conductor_group = ConductorGroup(...)
+    insulator_group = InsulatorGroup(...)
+    cable = $(FUNCTIONNAME)("component_id", conductor_group, insulator_group)  # Create cable component with base parameters @ 50 Hz
+    ```
 
-	# See also
+    # See also
 
-	- [`calc_equivalent_rho`](@ref)
-	- [`calc_equivalent_mu`](@ref)
-	- [`calc_equivalent_eps`](@ref)
-	- [`calc_sigma_lossfact`](@ref)
-	- [`calc_solenoid_correction`](@ref)
-	"""
-	function CableComponent(
-		id::String,
-		conductor_group::ConductorGroup,
-		insulator_group::InsulatorGroup)
-		# Validate the geometry
-		if conductor_group.radius_ext != insulator_group.radius_in
-			error("Conductor outer radius must match insulator inner radius.")
-		end
+    - [`calc_equivalent_rho`](@ref)
+    - [`calc_equivalent_mu`](@ref)
+    - [`calc_equivalent_eps`](@ref)
+    - [`calc_sigma_lossfact`](@ref)
+    - [`calc_solenoid_correction`](@ref)
+    """
+    function CableComponent(
+        id::String,
+        conductor_group::ConductorGroup,
+        insulator_group::InsulatorGroup)
+        # Validate the geometry
+        if conductor_group.radius_ext != insulator_group.radius_in
+            error("Conductor outer radius must match insulator inner radius.")
+        end
 
-		# Use pre-calculated values from the groups
-		radius_in_con = conductor_group.radius_in
-		radius_ext_con = conductor_group.radius_ext
-		radius_ext_ins = insulator_group.radius_ext
+        # Use pre-calculated values from the groups
+        radius_in_con = conductor_group.radius_in
+        radius_ext_con = conductor_group.radius_ext
+        radius_ext_ins = insulator_group.radius_ext
 
-		# Equivalent conductor properties
-		rho_con =
-			calc_equivalent_rho(conductor_group.resistance, radius_ext_con, radius_in_con)
-		mu_con = calc_equivalent_mu(conductor_group.gmr, radius_ext_con, radius_in_con)
-		alpha_con = conductor_group.alpha
-		conductor_props =
-			Material(rho_con, 0.0, mu_con, conductor_group.layers[1].temperature, alpha_con)
+        # Equivalent conductor properties
+        rho_con =
+            calc_equivalent_rho(conductor_group.resistance, radius_ext_con, radius_in_con)
+        mu_con = calc_equivalent_mu(conductor_group.gmr, radius_ext_con, radius_in_con)
+        alpha_con = conductor_group.alpha
+        conductor_props =
+            Material(rho_con, 0.0, mu_con, conductor_group.layers[1].temperature, alpha_con)
 
-		# Insulator properties
-		C_eq = insulator_group.shunt_capacitance
-		G_eq = insulator_group.shunt_conductance
-		eps_ins = calc_equivalent_eps(C_eq, radius_ext_ins, radius_ext_con)
-		rho_ins = 1 / calc_sigma_lossfact(G_eq, radius_ext_con, radius_ext_ins)
-		correction_mu_ins = calc_solenoid_correction(
-			conductor_group.num_turns,
-			radius_ext_con,
-			radius_ext_ins,
-		)
-		mu_ins = correction_mu_ins
-		insulator_props =
-			Material(rho_ins, eps_ins, mu_ins, insulator_group.layers[1].temperature, 0.0)
+        # Insulator properties
+        C_eq = insulator_group.shunt_capacitance
+        G_eq = insulator_group.shunt_conductance
+        eps_ins = calc_equivalent_eps(C_eq, radius_ext_ins, radius_ext_con)
+        rho_ins = 1 / calc_sigma_lossfact(G_eq, radius_ext_con, radius_ext_ins)
+        correction_mu_ins = calc_solenoid_correction(
+            conductor_group.num_turns,
+            radius_ext_con,
+            radius_ext_ins,
+        )
+        mu_ins = correction_mu_ins
+        insulator_props =
+            Material(rho_ins, eps_ins, mu_ins, insulator_group.layers[1].temperature, 0.0)
 
-		# Initialize object
-		return new(
-			id,
-			conductor_group,
-			conductor_props,
-			insulator_group,
-			insulator_props,
-		)
-	end
+        # Initialize object
+        return new(
+            id,
+            conductor_group,
+            conductor_props,
+            insulator_group,
+            insulator_props,
+        )
+    end
 end
 
 """
@@ -708,86 +708,86 @@ Defines the display representation of a [`CableComponent`](@ref) object for REPL
 - Nothing. Modifies `io` by writing text representation of the object.
 """
 function Base.show(io::IO, ::MIME"text/plain", component::CableComponent)
-	# Calculate total number of parts across both groups
-	total_parts =
-		length(component.conductor_group.layers) + length(component.insulator_group.layers)
+    # Calculate total number of parts across both groups
+    total_parts =
+        length(component.conductor_group.layers) + length(component.insulator_group.layers)
 
-	# Print header
-	println(io, "$(total_parts)-element CableComponent \"$(component.id)\":")
+    # Print header
+    println(io, "$(total_parts)-element CableComponent \"$(component.id)\":")
 
-	# Display conductor group parts in a tree structure
-	print(io, "├─ $(length(component.conductor_group.layers))-element ConductorGroup: [")
-	_print_fields(
-		io,
-		component.conductor_group,
-		[:radius_in, :radius_ext, :cross_section, :resistance, :gmr],
-	)
-	println(io, "]")
-	print(io, "│  ", "├─", " Effective properties: [")
-	_print_fields(io, component.conductor_props, [:rho, :eps_r, :mu_r, :alpha])
-	println(io, "]")
+    # Display conductor group parts in a tree structure
+    print(io, "├─ $(length(component.conductor_group.layers))-element ConductorGroup: [")
+    _print_fields(
+        io,
+        component.conductor_group,
+        [:radius_in, :radius_ext, :cross_section, :resistance, :gmr],
+    )
+    println(io, "]")
+    print(io, "│  ", "├─", " Effective properties: [")
+    _print_fields(io, component.conductor_props, [:rho, :eps_r, :mu_r, :alpha])
+    println(io, "]")
 
-	for (i, part) in enumerate(component.conductor_group.layers)
+    for (i, part) in enumerate(component.conductor_group.layers)
 
-		prefix = i == length(component.conductor_group.layers) ? "└───" : "├───"
+        prefix = i == length(component.conductor_group.layers) ? "└───" : "├───"
 
-		# Print part information with proper indentation
-		print(io, "│  ", prefix, " $(nameof(typeof(part))): [")
+        # Print part information with proper indentation
+        print(io, "│  ", prefix, " $(nameof(typeof(part))): [")
 
-		# Print each field with proper formatting
-		_print_fields(
-			io,
-			part,
-			[:radius_in, :radius_ext, :cross_section, :resistance, :gmr],
-		)
+        # Print each field with proper formatting
+        _print_fields(
+            io,
+            part,
+            [:radius_in, :radius_ext, :cross_section, :resistance, :gmr],
+        )
 
-		println(io, "]")
-	end
+        println(io, "]")
+    end
 
-	# Display insulator group parts
-	if !isempty(component.insulator_group.layers)
-		print(
-			io,
-			"└─ $(length(component.insulator_group.layers))-element InsulatorGroup: [",
-		)
-		_print_fields(
-			io,
-			component.insulator_group,
-			[
-				:radius_in,
-				:radius_ext,
-				:cross_section,
-				:shunt_capacitance,
-				:shunt_conductance,
-			],
-		)
-		println(io, "]")
-		print(io, "   ", "├─", " Effective properties: [")
-		_print_fields(io, component.insulator_props, [:rho, :eps_r, :mu_r, :alpha])
-		println(io, "]")
-		for (i, part) in enumerate(component.insulator_group.layers)
-			# Determine prefix based on whether it's the last part
-			prefix = i == length(component.insulator_group.layers) ? "└───" : "├───"
+    # Display insulator group parts
+    if !isempty(component.insulator_group.layers)
+        print(
+            io,
+            "└─ $(length(component.insulator_group.layers))-element InsulatorGroup: [",
+        )
+        _print_fields(
+            io,
+            component.insulator_group,
+            [
+                :radius_in,
+                :radius_ext,
+                :cross_section,
+                :shunt_capacitance,
+                :shunt_conductance,
+            ],
+        )
+        println(io, "]")
+        print(io, "   ", "├─", " Effective properties: [")
+        _print_fields(io, component.insulator_props, [:rho, :eps_r, :mu_r, :alpha])
+        println(io, "]")
+        for (i, part) in enumerate(component.insulator_group.layers)
+            # Determine prefix based on whether it's the last part
+            prefix = i == length(component.insulator_group.layers) ? "└───" : "├───"
 
-			# Print part information with proper indentation
-			print(io, "   ", prefix, " $(nameof(typeof(part))): [")
+            # Print part information with proper indentation
+            print(io, "   ", prefix, " $(nameof(typeof(part))): [")
 
-			# Print each field with proper formatting
-			_print_fields(
-				io,
-				part,
-				[
-					:radius_in,
-					:radius_ext,
-					:cross_section,
-					:shunt_capacitance,
-					:shunt_conductance,
-				],
-			)
+            # Print each field with proper formatting
+            _print_fields(
+                io,
+                part,
+                [
+                    :radius_in,
+                    :radius_ext,
+                    :cross_section,
+                    :shunt_capacitance,
+                    :shunt_conductance,
+                ],
+            )
 
-			println(io, "]")
-		end
-	end
+            println(io, "]")
+        end
+    end
 end
 
 # Submodule `BaseParams`
@@ -824,13 +824,13 @@ This function serves as a high-level interface to the radius resolution system. 
 - [`Thickness`](@ref)
 - [`AbstractCablePart`](@ref)
 """
-function _resolve_radius(param_in, param_ext, object_type = Any)
-	# Convert inputs to normalized form (numbers)
-	normalized_in = _parse_inputs_radius(param_in, object_type)
-	normalized_ext = _parse_inputs_radius(param_ext, object_type)
+function _resolve_radius(param_in, param_ext, object_type=Any)
+    # Convert inputs to normalized form (numbers)
+    normalized_in = _parse_inputs_radius(param_in, object_type)
+    normalized_ext = _parse_inputs_radius(param_ext, object_type)
 
-	# Call the specialized implementation with normalized values
-	return _do_resolve_radius(normalized_in, normalized_ext, object_type)
+    # Call the specialized implementation with normalized values
+    return _do_resolve_radius(normalized_in, normalized_ext, object_type)
 end
 
 """
@@ -871,18 +871,18 @@ _parse_inputs_radius(x::Number, object_type::Type{T}) where {T} = x
 _parse_inputs_radius(d::Diameter, object_type::Type{T}) where {T} = d.value / 2
 _parse_inputs_radius(p::Thickness, object_type::Type{T}) where {T} = p
 _parse_inputs_radius(x, object_type::Type{T}) where {T} =
-	_parse_input_radius(x)
+    _parse_input_radius(x)
 
 function _parse_inputs_radius(p::AbstractCablePart, object_type::Type{T}) where {T}
 
-	# Get the current outermost radius
-	radius_in = getfield(p, :radius_ext)
+    # Get the current outermost radius
+    radius_in = getfield(p, :radius_ext)
 
-	# Check if we need to preserve uncertainty
-	existing_obj = typeof(p)
+    # Check if we need to preserve uncertainty
+    existing_obj = typeof(p)
 
-	# Keep or strip uncertainty based on type match
-	return (existing_obj == object_type) ? radius_in : strip_uncertainty(radius_in)
+    # Keep or strip uncertainty based on type match
+    return (existing_obj == object_type) ? radius_in : strip_uncertainty(radius_in)
 end
 
 """
@@ -921,17 +921,17 @@ inner, outer, thickness = $(FUNCTIONNAME)(0.01, Thickness(0.005), ...)
 function _do_resolve_radius end
 
 function _do_resolve_radius(radius_in::Number, radius_ext::Number, ::Type{T}) where {T}
-	return radius_in, radius_ext, radius_ext - radius_in  # Return inner, outer, thickness
+    return radius_in, radius_ext, radius_ext - radius_in  # Return inner, outer, thickness
 end
 
 function _do_resolve_radius(radius_in::Number, thickness::Thickness, ::Type{T}) where {T}
-	radius_ext = radius_in + thickness.value
-	return radius_in, radius_ext, thickness.value
+    radius_ext = radius_in + thickness.value
+    return radius_in, radius_ext, thickness.value
 end
 
 function _do_resolve_radius(radius_in::Number, radius_wire::Number, ::Type{WireArray})
-	thickness = 2 * radius_wire
-	return radius_in, radius_in + thickness, thickness
+    thickness = 2 * radius_wire
+    return radius_in, radius_in + thickness, thickness
 end
 
 """
@@ -971,59 +971,59 @@ println(wire_array.resistance)     # Outputs resistance in Ω/m
 - [`calc_helical_params`](@ref)
 """
 function WireArray(
-	radius_in::Union{Number, <:AbstractCablePart},
-	radius_wire::Union{Number, Diameter},
-	num_wires::Int,
-	lay_ratio::Number,
-	material_props::Material;
-	temperature::Number = T₀,
-	lay_direction::Int = 1,
+    radius_in::Union{Number,<:AbstractCablePart},
+    radius_wire::Union{Number,Diameter},
+    num_wires::Int,
+    lay_ratio::Number,
+    material_props::Material;
+    temperature::Number=T₀,
+    lay_direction::Int=1,
 )
 
-	radius_in, radius_ext, diameter =
-		_resolve_radius(radius_in, radius_wire, WireArray)
-	radius_wire = diameter / 2
-	rho = material_props.rho
-	T0 = material_props.T0
-	alpha = material_props.alpha
-	radius_ext = num_wires == 1 ? diameter / 2 : radius_in + diameter
+    radius_in, radius_ext, diameter =
+        _resolve_radius(radius_in, radius_wire, WireArray)
+    radius_wire = diameter / 2
+    rho = material_props.rho
+    T0 = material_props.T0
+    alpha = material_props.alpha
+    radius_ext = num_wires == 1 ? diameter / 2 : radius_in + diameter
 
-	mean_diameter, pitch_length, overlength = calc_helical_params(
-		radius_in,
-		radius_ext,
-		lay_ratio,
-	)
+    mean_diameter, pitch_length, overlength = calc_helical_params(
+        radius_in,
+        radius_ext,
+        lay_ratio,
+    )
 
-	cross_section = num_wires * (π * (diameter / 2)^2)
+    cross_section = num_wires * (π * (diameter / 2)^2)
 
-	R_wire =
-		calc_tubular_resistance(0, diameter / 2, rho, alpha, T0, temperature) *
-		overlength
-	R_all_wires = R_wire / num_wires
+    R_wire =
+        calc_tubular_resistance(0, diameter / 2, rho, alpha, T0, temperature) *
+        overlength
+    R_all_wires = R_wire / num_wires
 
-	gmr = calc_wirearray_gmr(
-		radius_in + (diameter / 2),
-		num_wires,
-		diameter / 2,
-		material_props.mu_r,
-	)
+    gmr = calc_wirearray_gmr(
+        radius_in + (diameter / 2),
+        num_wires,
+        diameter / 2,
+        material_props.mu_r,
+    )
 
-	# Initialize object
-	return WireArray(
-		radius_in,
-		radius_ext,
-		diameter / 2,
-		num_wires,
-		lay_ratio,
-		mean_diameter,
-		pitch_length,
-		lay_direction,
-		material_props,
-		temperature,
-		cross_section,
-		R_all_wires,
-		gmr,
-	)
+    # Initialize object
+    return WireArray(
+        radius_in,
+        radius_ext,
+        diameter / 2,
+        num_wires,
+        lay_ratio,
+        mean_diameter,
+        pitch_length,
+        lay_direction,
+        material_props,
+        temperature,
+        cross_section,
+        R_all_wires,
+        gmr,
+    )
 end
 
 """
@@ -1063,51 +1063,51 @@ println(strip.resistance)    # Output: Resistance value [Ω/m]
 - [`calc_helical_params`](@ref)
 """
 function Strip(
-	radius_in::Union{Number, <:AbstractCablePart},
-	radius_ext::Union{Number, Thickness},
-	width::Number,
-	lay_ratio::Number,
-	material_props::Material;
-	temperature::Number = T₀,
-	lay_direction::Int = 1,
+    radius_in::Union{Number,<:AbstractCablePart},
+    radius_ext::Union{Number,Thickness},
+    width::Number,
+    lay_ratio::Number,
+    material_props::Material;
+    temperature::Number=T₀,
+    lay_direction::Int=1,
 )
 
-	radius_in, radius_ext, thickness =
-		_resolve_radius(radius_in, radius_ext, Strip)
-	rho = material_props.rho
-	T0 = material_props.T0
-	alpha = material_props.alpha
+    radius_in, radius_ext, thickness =
+        _resolve_radius(radius_in, radius_ext, Strip)
+    rho = material_props.rho
+    T0 = material_props.T0
+    alpha = material_props.alpha
 
-	mean_diameter, pitch_length, overlength = calc_helical_params(
-		radius_in,
-		radius_ext,
-		lay_ratio,
-	)
+    mean_diameter, pitch_length, overlength = calc_helical_params(
+        radius_in,
+        radius_ext,
+        lay_ratio,
+    )
 
-	cross_section = thickness * width
+    cross_section = thickness * width
 
-	R_strip =
-		calc_strip_resistance(thickness, width, rho, alpha, T0, temperature) *
-		overlength
+    R_strip =
+        calc_strip_resistance(thickness, width, rho, alpha, T0, temperature) *
+        overlength
 
-	gmr = calc_tubular_gmr(radius_ext, radius_in, material_props.mu_r)
+    gmr = calc_tubular_gmr(radius_ext, radius_in, material_props.mu_r)
 
-	# Initialize object
-	return Strip(
-		radius_in,
-		radius_ext,
-		thickness,
-		width,
-		lay_ratio,
-		mean_diameter,
-		pitch_length,
-		lay_direction,
-		material_props,
-		temperature,
-		cross_section,
-		R_strip,
-		gmr,
-	)
+    # Initialize object
+    return Strip(
+        radius_in,
+        radius_ext,
+        thickness,
+        width,
+        lay_ratio,
+        mean_diameter,
+        pitch_length,
+        lay_direction,
+        material_props,
+        temperature,
+        cross_section,
+        R_strip,
+        gmr,
+    )
 end
 
 """
@@ -1142,35 +1142,35 @@ println(tubular.resistance)    # Output: Resistance value [Ω/m]
 - [`calc_tubular_gmr`](@ref)
 """
 function Tubular(
-	radius_in::Union{Number, <:AbstractCablePart},
-	radius_ext::Union{Number, Thickness},
-	material_props::Material;
-	temperature::Number = T₀,
+    radius_in::Union{Number,<:AbstractCablePart},
+    radius_ext::Union{Number,Thickness},
+    material_props::Material;
+    temperature::Number=T₀,
 )
 
-	radius_in, radius_ext, thickness =
-		_resolve_radius(radius_in, radius_ext, Tubular)
+    radius_in, radius_ext, thickness =
+        _resolve_radius(radius_in, radius_ext, Tubular)
 
-	rho = material_props.rho
-	T0 = material_props.T0
-	alpha = material_props.alpha
+    rho = material_props.rho
+    T0 = material_props.T0
+    alpha = material_props.alpha
 
-	cross_section = π * (radius_ext^2 - radius_in^2)
+    cross_section = π * (radius_ext^2 - radius_in^2)
 
-	R0 = calc_tubular_resistance(radius_in, radius_ext, rho, alpha, T0, temperature)
+    R0 = calc_tubular_resistance(radius_in, radius_ext, rho, alpha, T0, temperature)
 
-	gmr = calc_tubular_gmr(radius_ext, radius_in, material_props.mu_r)
+    gmr = calc_tubular_gmr(radius_ext, radius_in, material_props.mu_r)
 
-	# Initialize object
-	return Tubular(
-		radius_in,
-		radius_ext,
-		material_props,
-		temperature,
-		cross_section,
-		R0,
-		gmr,
-	)
+    # Initialize object
+    return Tubular(
+        radius_in,
+        radius_ext,
+        material_props,
+        temperature,
+        cross_section,
+        R0,
+        gmr,
+    )
 end
 
 """
@@ -1202,40 +1202,40 @@ println(semicon_layer.shunt_conductance)  # Expected output: Conductance in [S·
 ```
 """
 function Semicon(
-	radius_in::Union{Number, <:AbstractCablePart},
-	radius_ext::Union{Number, Thickness},
-	material_props::Material;
-	temperature::Number = T₀,
+    radius_in::Union{Number,<:AbstractCablePart},
+    radius_ext::Union{Number,Thickness},
+    material_props::Material;
+    temperature::Number=T₀,
 )
 
-	rho = material_props.rho
-	T0 = material_props.T0
-	alpha = material_props.alpha
-	epsr_r = material_props.eps_r
+    rho = material_props.rho
+    T0 = material_props.T0
+    alpha = material_props.alpha
+    epsr_r = material_props.eps_r
 
-	radius_in, radius_ext, thickness =
-		_resolve_radius(radius_in, radius_ext, Semicon)
+    radius_in, radius_ext, thickness =
+        _resolve_radius(radius_in, radius_ext, Semicon)
 
-	cross_section = π * (radius_ext^2 - radius_in^2)
+    cross_section = π * (radius_ext^2 - radius_in^2)
 
-	resistance =
-		calc_tubular_resistance(radius_in, radius_ext, rho, alpha, T0, temperature)
-	gmr = calc_tubular_gmr(radius_ext, radius_in, material_props.mu_r)
-	shunt_capacitance = calc_shunt_capacitance(radius_in, radius_ext, epsr_r)
-	shunt_conductance = calc_shunt_conductance(radius_in, radius_ext, rho)
+    resistance =
+        calc_tubular_resistance(radius_in, radius_ext, rho, alpha, T0, temperature)
+    gmr = calc_tubular_gmr(radius_ext, radius_in, material_props.mu_r)
+    shunt_capacitance = calc_shunt_capacitance(radius_in, radius_ext, epsr_r)
+    shunt_conductance = calc_shunt_conductance(radius_in, radius_ext, rho)
 
-	# Initialize object
-	return Semicon(
-		radius_in,
-		radius_ext,
-		material_props,
-		temperature,
-		cross_section,
-		resistance,
-		gmr,
-		shunt_capacitance,
-		shunt_conductance,
-	)
+    # Initialize object
+    return Semicon(
+        radius_in,
+        radius_ext,
+        material_props,
+        temperature,
+        cross_section,
+        resistance,
+        gmr,
+        shunt_capacitance,
+        shunt_conductance,
+    )
 end
 
 """
@@ -1262,39 +1262,39 @@ insulator_layer = $(FUNCTIONNAME)(0.01, 0.015, material_props, temperature=25)
 ```
 """
 function Insulator(
-	radius_in::Union{Number, <:AbstractCablePart},
-	radius_ext::Union{Number, Thickness},
-	material_props::Material;
-	temperature::Number = T₀,
+    radius_in::Union{Number,<:AbstractCablePart},
+    radius_ext::Union{Number,Thickness},
+    material_props::Material;
+    temperature::Number=T₀,
 )
 
-	radius_in, radius_ext, thickness =
-		_resolve_radius(radius_in, radius_ext, Insulator)
-	rho = material_props.rho
-	T0 = material_props.T0
-	alpha = material_props.alpha
-	epsr_r = material_props.eps_r
+    radius_in, radius_ext, thickness =
+        _resolve_radius(radius_in, radius_ext, Insulator)
+    rho = material_props.rho
+    T0 = material_props.T0
+    alpha = material_props.alpha
+    epsr_r = material_props.eps_r
 
-	cross_section = π * (radius_ext^2 - radius_in^2)
+    cross_section = π * (radius_ext^2 - radius_in^2)
 
-	resistance =
-		calc_tubular_resistance(radius_in, radius_ext, rho, alpha, T0, temperature)
-	gmr = calc_tubular_gmr(radius_ext, radius_in, material_props.mu_r)
-	shunt_capacitance = calc_shunt_capacitance(radius_in, radius_ext, epsr_r)
-	shunt_conductance = calc_shunt_conductance(radius_in, radius_ext, rho)
+    resistance =
+        calc_tubular_resistance(radius_in, radius_ext, rho, alpha, T0, temperature)
+    gmr = calc_tubular_gmr(radius_ext, radius_in, material_props.mu_r)
+    shunt_capacitance = calc_shunt_capacitance(radius_in, radius_ext, epsr_r)
+    shunt_conductance = calc_shunt_conductance(radius_in, radius_ext, rho)
 
-	# Initialize object
-	return Insulator(
-		radius_in,
-		radius_ext,
-		material_props,
-		temperature,
-		cross_section,
-		resistance,
-		gmr,
-		shunt_capacitance,
-		shunt_conductance,
-	)
+    # Initialize object
+    return Insulator(
+        radius_in,
+        radius_ext,
+        material_props,
+        temperature,
+        cross_section,
+        resistance,
+        gmr,
+        shunt_capacitance,
+        shunt_conductance,
+    )
 end
 
 """
@@ -1339,111 +1339,111 @@ println(color) # Expected output: RGBA(0.9, 0.9, 0.9, 1.0)
 ```
 """
 function _get_material_color(
-	material_props;
-	rho_weight = 1.0, #0.8,
-	epsr_weight = 0.1,
-	mur_weight = 0.1,
+    material_props;
+    rho_weight=1.0, #0.8,
+    epsr_weight=0.1,
+    mur_weight=0.1,
 )
 
-	# Auxiliar function to combine colors
-	function _overlay_colors(colors::Vector{<:RGBA})
-		# Handle edge cases
-		if length(colors) == 0
-			return RGBA(0, 0, 0, 0)
-		elseif length(colors) == 1
-			return colors[1]
-		end
+    # Auxiliar function to combine colors
+    function _overlay_colors(colors::Vector{<:RGBA})
+        # Handle edge cases
+        if length(colors) == 0
+            return RGBA(0, 0, 0, 0)
+        elseif length(colors) == 1
+            return colors[1]
+        end
 
-		# Initialize with the first color
-		r, g, b, a = red(colors[1]), green(colors[1]), blue(colors[1]), alpha(colors[1])
+        # Initialize with the first color
+        r, g, b, a = red(colors[1]), green(colors[1]), blue(colors[1]), alpha(colors[1])
 
-		# Single-pass overlay for the remaining colors
-		for i in 2:length(colors)
-			r2, g2, b2, a2 =
-				red(colors[i]), green(colors[i]), blue(colors[i]), alpha(colors[i])
-			a_new = a2 + a * (1 - a2)
+        # Single-pass overlay for the remaining colors
+        for i in 2:length(colors)
+            r2, g2, b2, a2 =
+                red(colors[i]), green(colors[i]), blue(colors[i]), alpha(colors[i])
+            a_new = a2 + a * (1 - a2)
 
-			if a_new == 0
-				r, g, b, a = 0, 0, 0, 0
-			else
-				r = (r2 * a2 + r * a * (1 - a2)) / a_new
-				g = (g2 * a2 + g * a * (1 - a2)) / a_new
-				b = (b2 * a2 + b * a * (1 - a2)) / a_new
-				a = a_new
-			end
-		end
+            if a_new == 0
+                r, g, b, a = 0, 0, 0, 0
+            else
+                r = (r2 * a2 + r * a * (1 - a2)) / a_new
+                g = (g2 * a2 + g * a * (1 - a2)) / a_new
+                b = (b2 * a2 + b * a * (1 - a2)) / a_new
+                a = a_new
+            end
+        end
 
-		return RGBA(r, g, b, a)
-	end
+        return RGBA(r, g, b, a)
+    end
 
-	# Fixed normalization bounds
-	epsr_min, epsr_max = 1.0, 1000.0  # Adjusted permittivity range for semiconductors
-	mur_min, mur_max = 1.0, 300.0  # Relative permeability range
-	rho_base = 1.72e-8
+    # Fixed normalization bounds
+    epsr_min, epsr_max = 1.0, 1000.0  # Adjusted permittivity range for semiconductors
+    mur_min, mur_max = 1.0, 300.0  # Relative permeability range
+    rho_base = 1.72e-8
 
-	# Extract nominal values for uncertain measurements
-	rho = to_nominal(material_props.rho)
-	epsr_r = to_nominal(material_props.eps_r)
-	mu_r = to_nominal(material_props.mu_r)
+    # Extract nominal values for uncertain measurements
+    rho = to_nominal(material_props.rho)
+    epsr_r = to_nominal(material_props.eps_r)
+    mu_r = to_nominal(material_props.mu_r)
 
-	# Handle air/void
-	if isinf(rho)
-		return RGBA(1.0, 1.0, 1.0, 1.0)  # Transparent white
-	end
+    # Handle air/void
+    if isinf(rho)
+        return RGBA(1.0, 1.0, 1.0, 1.0)  # Transparent white
+    end
 
-	# Normalize epsr and mur
-	epsr_norm = (epsr_r - epsr_min) / (epsr_max - epsr_min)
-	mur_norm = (mu_r - mur_min) / (mur_max - mur_min)
+    # Normalize epsr and mur
+    epsr_norm = (epsr_r - epsr_min) / (epsr_max - epsr_min)
+    mur_norm = (mu_r - mur_min) / (mur_max - mur_min)
 
-	# Define color gradients based on resistivity
-	if rho <= 5 * rho_base
-		# Conductors: Bright metallic white → Darker metallic gray (logarithmic scaling)
-		rho_norm = log10(rho / rho_base) / log10(5)  # Normalize based on `5 * rho_base`
+    # Define color gradients based on resistivity
+    if rho <= 5 * rho_base
+        # Conductors: Bright metallic white → Darker metallic gray (logarithmic scaling)
+        rho_norm = log10(rho / rho_base) / log10(5)  # Normalize based on `5 * rho_base`
 
-		rho_color = get(cgrad([
-				RGB(0.9, 0.9, 0.9),  # Almost white
-				RGB(0.6, 0.6, 0.6),  # Light gray
-				RGB(0.4, 0.4, 0.4)  # Dark gray
-			]), clamp(rho_norm, 0.0, 1.0))
+        rho_color = get(cgrad([
+                RGB(0.9, 0.9, 0.9),  # Almost white
+                RGB(0.6, 0.6, 0.6),  # Light gray
+                RGB(0.4, 0.4, 0.4)  # Dark gray
+            ]), clamp(rho_norm, 0.0, 1.0))
 
-	elseif rho <= 10000
-		# Poor conductors/semiconductors: Bronze → Gold → Reddish-brown → Dark orange → Greenish-brown
-		rho_norm = (rho - 10e-8) / (10000 - 10e-8)
-		rho_color = get(
-			cgrad([
-				RGB(0.8, 0.5, 0.2),  # Metallic bronze
-				RGB(1.0, 0.85, 0.4),  # Metallic gold
-				RGB(0.8, 0.4, 0.2),  # Reddish-brown
-				RGB(0.8, 0.3, 0.1),  # Dark orange
-				RGB(0.6, 0.4, 0.3),   # Greenish-brown
-			]), rho_norm)
+    elseif rho <= 10000
+        # Poor conductors/semiconductors: Bronze → Gold → Reddish-brown → Dark orange → Greenish-brown
+        rho_norm = (rho - 10e-8) / (10000 - 10e-8)
+        rho_color = get(
+            cgrad([
+                RGB(0.8, 0.5, 0.2),  # Metallic bronze
+                RGB(1.0, 0.85, 0.4),  # Metallic gold
+                RGB(0.8, 0.4, 0.2),  # Reddish-brown
+                RGB(0.8, 0.3, 0.1),  # Dark orange
+                RGB(0.6, 0.4, 0.3),   # Greenish-brown
+            ]), rho_norm)
 
-	else
-		# Insulators: Greenish-brown → Black
-		rho_norm = (rho - 10000) / (1e5 - 10000)
-		rho_color = get(cgrad([RGB(0.6, 0.4, 0.3), :black]), clamp(rho_norm, 0.0, 1.0))
-	end
+    else
+        # Insulators: Greenish-brown → Black
+        rho_norm = (rho - 10000) / (1e5 - 10000)
+        rho_color = get(cgrad([RGB(0.6, 0.4, 0.3), :black]), clamp(rho_norm, 0.0, 1.0))
+    end
 
-	# Normalize epsr and mur values to [0, 1]
-	epsr_norm = clamp(epsr_norm, 0.0, 1.0)
-	mur_norm = clamp(mur_norm, 0.0, 1.0)
+    # Normalize epsr and mur values to [0, 1]
+    epsr_norm = clamp(epsr_norm, 0.0, 1.0)
+    mur_norm = clamp(mur_norm, 0.0, 1.0)
 
-	# Create color gradients for epsr and mur
-	epsr_color = get(cgrad([:gray, RGB(1.0, 0.9, 0.7), :orange]), epsr_norm)  # Custom amber
-	mur_color = get(
-		cgrad([:silver, :gray, RGB(0.9, 0.8, 1.0), :purple, RGB(0.3, 0.1, 0.6)]),
-		mur_norm,
-	)  # Custom purple
+    # Create color gradients for epsr and mur
+    epsr_color = get(cgrad([:gray, RGB(1.0, 0.9, 0.7), :orange]), epsr_norm)  # Custom amber
+    mur_color = get(
+        cgrad([:silver, :gray, RGB(0.9, 0.8, 1.0), :purple, RGB(0.3, 0.1, 0.6)]),
+        mur_norm,
+    )  # Custom purple
 
-	# Apply weights to each property
-	rho_color_w = Colors.RGBA(rho_color.r, rho_color.g, rho_color.b, rho_weight)
-	epsr_color_w = Colors.RGBA(epsr_color.r, epsr_color.g, epsr_color.b, epsr_weight)
-	mur_color_w = Colors.RGBA(mur_color.r, mur_color.g, mur_color.b, mur_weight)
+    # Apply weights to each property
+    rho_color_w = Colors.RGBA(rho_color.r, rho_color.g, rho_color.b, rho_weight)
+    epsr_color_w = Colors.RGBA(epsr_color.r, epsr_color.g, epsr_color.b, epsr_weight)
+    mur_color_w = Colors.RGBA(mur_color.r, mur_color.g, mur_color.b, mur_weight)
 
-	# Combine weighted colors
-	final_color = _overlay_colors([rho_color_w, epsr_color_w, mur_color_w])
+    # Combine weighted colors
+    final_color = _overlay_colors([rho_color_w, epsr_color_w, mur_color_w])
 
-	return final_color
+    return final_color
 end
 
 """
@@ -1454,79 +1454,79 @@ Stores the nominal electrical and geometric parameters for a cable design, with 
 $(TYPEDFIELDS)
 """
 struct NominalData
-	"Cable designation as per DIN VDE 0271/0276."
-	designation_code::Union{Nothing, String}
-	"Rated phase-to-earth voltage \\[kV\\]."
-	U0::Union{Nothing, Number}
-	"Rated phase-to-phase voltage \\[kV\\]."
-	"Cross-sectional area of the conductor \\[mm²\\]."
-	U::Union{Nothing, Number}
-	conductor_cross_section::Union{Nothing, Number}
-	"Cross-sectional area of the screen \\[mm²\\]."
-	screen_cross_section::Union{Nothing, Number}
-	"Cross-sectional area of the armor \\[mm²\\]."
-	armor_cross_section::Union{Nothing, Number}
-	"Base (DC) resistance of the cable core \\[Ω/km\\]."
-	resistance::Union{Nothing, Number}
-	"Capacitance of the main insulation \\[μF/km\\]."
-	capacitance::Union{Nothing, Number}
-	"Inductance of the cable (trifoil formation) \\[mH/km\\]."
-	inductance::Union{Nothing, Number}
+    "Cable designation as per DIN VDE 0271/0276."
+    designation_code::Union{Nothing,String}
+    "Rated phase-to-earth voltage \\[kV\\]."
+    U0::Union{Nothing,Number}
+    "Rated phase-to-phase voltage \\[kV\\]."
+    "Cross-sectional area of the conductor \\[mm²\\]."
+    U::Union{Nothing,Number}
+    conductor_cross_section::Union{Nothing,Number}
+    "Cross-sectional area of the screen \\[mm²\\]."
+    screen_cross_section::Union{Nothing,Number}
+    "Cross-sectional area of the armor \\[mm²\\]."
+    armor_cross_section::Union{Nothing,Number}
+    "Base (DC) resistance of the cable core \\[Ω/km\\]."
+    resistance::Union{Nothing,Number}
+    "Capacitance of the main insulation \\[μF/km\\]."
+    capacitance::Union{Nothing,Number}
+    "Inductance of the cable (trifoil formation) \\[mH/km\\]."
+    inductance::Union{Nothing,Number}
 
-	@doc """
-	$(TYPEDSIGNATURES)
+    @doc """
+    $(TYPEDSIGNATURES)
 
-	Initializes a [`NominalData`](@ref) object with optional default values.
+    Initializes a [`NominalData`](@ref) object with optional default values.
 
-	# Arguments
-	- `designation_code`: Cable designation (default: `nothing`).
-	- `U0`: Phase-to-earth voltage rating \\[kV\\] (default: `nothing`).
-	- `U`: Phase-to-phase voltage rating \\[kV\\] (default: `nothing`).
-	- `conductor_cross_section`: Conductor cross-section \\[mm²\\] (default: `nothing`).
-	- `screen_cross_section`: Screen cross-section \\[mm²\\] (default: `nothing`).
-	- `armor_cross_section`: Armor cross-section \\[mm²\\] (default: `nothing`).
-	- `resistance`: Cable resistance \\[Ω/km\\] (default: `nothing`).
-	- `capacitance`: Cable capacitance \\[μF/km\\] (default: `nothing`).
-	- `inductance`: Cable inductance (trifoil) \\[mH/km\\] (default: `nothing`).
+    # Arguments
+    - `designation_code`: Cable designation (default: `nothing`).
+    - `U0`: Phase-to-earth voltage rating \\[kV\\] (default: `nothing`).
+    - `U`: Phase-to-phase voltage rating \\[kV\\] (default: `nothing`).
+    - `conductor_cross_section`: Conductor cross-section \\[mm²\\] (default: `nothing`).
+    - `screen_cross_section`: Screen cross-section \\[mm²\\] (default: `nothing`).
+    - `armor_cross_section`: Armor cross-section \\[mm²\\] (default: `nothing`).
+    - `resistance`: Cable resistance \\[Ω/km\\] (default: `nothing`).
+    - `capacitance`: Cable capacitance \\[μF/km\\] (default: `nothing`).
+    - `inductance`: Cable inductance (trifoil) \\[mH/km\\] (default: `nothing`).
 
-	# Returns
-	An instance of [`NominalData`](@ref) with the specified nominal properties.
+    # Returns
+    An instance of [`NominalData`](@ref) with the specified nominal properties.
 
-	# Examples
-	```julia
-	nominal_data = $(FUNCTIONNAME)(
-		conductor_cross_section=1000,
-		resistance=0.0291,
-		capacitance=0.39,
-	)
-	println(nominal_data.conductor_cross_section)
-	println(nominal_data.resistance)
-	println(nominal_data.capacitance)
-	```
-	"""
-	function NominalData(;
-		designation_code::Union{Nothing, String} = nothing,
-		U0::Union{Nothing, Number} = nothing,
-		U::Union{Nothing, Number} = nothing,
-		conductor_cross_section::Union{Nothing, Number} = nothing,
-		screen_cross_section::Union{Nothing, Number} = nothing,
-		armor_cross_section::Union{Nothing, Number} = nothing,
-		resistance::Union{Nothing, Number} = nothing,
-		capacitance::Union{Nothing, Number} = nothing,
-		inductance::Union{Nothing, Number} = nothing,
-	)
-		return new(
-			designation_code,
-			U0,
-			U,
-			conductor_cross_section,
-			screen_cross_section,
-			armor_cross_section,
-			resistance,
-			capacitance,
-			inductance,
-		)
-	end
+    # Examples
+    ```julia
+    nominal_data = $(FUNCTIONNAME)(
+    	conductor_cross_section=1000,
+    	resistance=0.0291,
+    	capacitance=0.39,
+    )
+    println(nominal_data.conductor_cross_section)
+    println(nominal_data.resistance)
+    println(nominal_data.capacitance)
+    ```
+    """
+    function NominalData(;
+        designation_code::Union{Nothing,String}=nothing,
+        U0::Union{Nothing,Number}=nothing,
+        U::Union{Nothing,Number}=nothing,
+        conductor_cross_section::Union{Nothing,Number}=nothing,
+        screen_cross_section::Union{Nothing,Number}=nothing,
+        armor_cross_section::Union{Nothing,Number}=nothing,
+        resistance::Union{Nothing,Number}=nothing,
+        capacitance::Union{Nothing,Number}=nothing,
+        inductance::Union{Nothing,Number}=nothing,
+    )
+        return new(
+            designation_code,
+            U0,
+            U,
+            conductor_cross_section,
+            screen_cross_section,
+            armor_cross_section,
+            resistance,
+            capacitance,
+            inductance,
+        )
+    end
 end
 
 """
@@ -1537,50 +1537,50 @@ Represents the design of a cable, including its unique identifier, nominal data,
 $(TYPEDFIELDS)
 """
 mutable struct CableDesign
-	"Unique identifier for the cable design."
-	cable_id::String
-	"Informative reference data."
-	nominal_data::NominalData
-	"Vector of cable components."
-	components::Vector{CableComponent}
+    "Unique identifier for the cable design."
+    cable_id::String
+    "Informative reference data."
+    nominal_data::NominalData
+    "Vector of cable components."
+    components::Vector{CableComponent}
 
-	@doc """
-	$(TYPEDSIGNATURES)
+    @doc """
+    $(TYPEDSIGNATURES)
 
-	Constructs a [`CableDesign`](@ref) instance.
+    Constructs a [`CableDesign`](@ref) instance.
 
-	# Arguments
+    # Arguments
 
-	- `cable_id`: Unique identifier for the cable design.
-	- `component`: Initial [`CableComponent`](@ref) for the design.
-	- `nominal_data`: Reference data for the cable design. Default: `NominalData()`.
+    - `cable_id`: Unique identifier for the cable design.
+    - `component`: Initial [`CableComponent`](@ref) for the design.
+    - `nominal_data`: Reference data for the cable design. Default: `NominalData()`.
 
-	# Returns
+    # Returns
 
-	- A [`CableDesign`](@ref) object with the specified properties.
+    - A [`CableDesign`](@ref) object with the specified properties.
 
-	# Examples
+    # Examples
 
-	```julia
-	conductor_group = ConductorGroup(central_conductor)
-	insulator_group = InsulatorGroup(main_insulator)
-	component = CableComponent(conductor_group, insulator_group)
-	design = $(FUNCTIONNAME)("example", component)
-	```
+    ```julia
+    conductor_group = ConductorGroup(central_conductor)
+    insulator_group = InsulatorGroup(main_insulator)
+    component = CableComponent(conductor_group, insulator_group)
+    design = $(FUNCTIONNAME)("example", component)
+    ```
 
-	# See also
+    # See also
 
-	- [`CableComponent`](@ref)
-	- [`ConductorGroup`](@ref)
-	- [`InsulatorGroup`](@ref)
-	"""
-	function CableDesign(
-		cable_id::String,
-		component::CableComponent;
-		nominal_data::NominalData = NominalData(),
-	)
-		return new(cable_id, nominal_data, [component])
-	end
+    - [`CableComponent`](@ref)
+    - [`ConductorGroup`](@ref)
+    - [`InsulatorGroup`](@ref)
+    """
+    function CableDesign(
+        cable_id::String,
+        component::CableComponent;
+        nominal_data::NominalData=NominalData(),
+    )
+        return new(cable_id, nominal_data, [component])
+    end
 end
 
 """
@@ -1609,14 +1609,14 @@ design = $(FUNCTIONNAME)("example", conductor_group, insulator_group)
 ```
 """
 function CableDesign(
-	cable_id::String,
-	conductor_group::ConductorGroup,
-	insulator_group::InsulatorGroup;
-	component_id::String = "component1",
-	nominal_data::NominalData = NominalData(),
+    cable_id::String,
+    conductor_group::ConductorGroup,
+    insulator_group::InsulatorGroup;
+    component_id::String="component1",
+    nominal_data::NominalData=NominalData(),
 )
-	component = CableComponent(component_id, conductor_group, insulator_group)
-	return CableDesign(cable_id, nominal_data, [component])
+    component = CableComponent(component_id, conductor_group, insulator_group)
+    return CableDesign(cable_id, nominal_data, [component])
 end
 
 """
@@ -1635,99 +1635,99 @@ Defines the display representation of a [`CableDesign`](@ref) object for REPL or
 - Nothing. Modifies `io` by writing text representation of the object.
 """
 function Base.show(io::IO, ::MIME"text/plain", design::CableDesign)
-	# Print header with cable ID and count of components
-	print(io, "$(length(design.components))-element CableDesign \"$(design.cable_id)\"")
+    # Print header with cable ID and count of components
+    print(io, "$(length(design.components))-element CableDesign \"$(design.cable_id)\"")
 
-	# Add nominal values if available
-	nominal_values = []
-	if design.nominal_data.resistance !== nothing
-		push!(
-			nominal_values,
-			"resistance=$(round(design.nominal_data.resistance, sigdigits=4))",
-		)
-	end
-	if design.nominal_data.inductance !== nothing
-		push!(
-			nominal_values,
-			"inductance=$(round(design.nominal_data.inductance, sigdigits=4))",
-		)
-	end
-	if design.nominal_data.capacitance !== nothing
-		push!(
-			nominal_values,
-			"capacitance=$(round(design.nominal_data.capacitance, sigdigits=4))",
-		)
-	end
+    # Add nominal values if available
+    nominal_values = []
+    if design.nominal_data.resistance !== nothing
+        push!(
+            nominal_values,
+            "resistance=$(round(design.nominal_data.resistance, sigdigits=4))",
+        )
+    end
+    if design.nominal_data.inductance !== nothing
+        push!(
+            nominal_values,
+            "inductance=$(round(design.nominal_data.inductance, sigdigits=4))",
+        )
+    end
+    if design.nominal_data.capacitance !== nothing
+        push!(
+            nominal_values,
+            "capacitance=$(round(design.nominal_data.capacitance, sigdigits=4))",
+        )
+    end
 
-	if !isempty(nominal_values)
-		print(io, ", with nominal values: [", join(nominal_values, ", "), "]")
-	end
-	println(io)
+    if !isempty(nominal_values)
+        print(io, ", with nominal values: [", join(nominal_values, ", "), "]")
+    end
+    println(io)
 
-	# For each component, display its properties in a tree structure
-	for (i, component) in enumerate(design.components)
-		# Determine if this is the last component
-		is_last_component = i == length(design.components)
+    # For each component, display its properties in a tree structure
+    for (i, component) in enumerate(design.components)
+        # Determine if this is the last component
+        is_last_component = i == length(design.components)
 
-		# Determine component prefix and continuation line
-		component_prefix = is_last_component ? "└─" : "├─"
-		continuation_line = is_last_component ? "   " : "│  "
+        # Determine component prefix and continuation line
+        component_prefix = is_last_component ? "└─" : "├─"
+        continuation_line = is_last_component ? "   " : "│  "
 
-		# Print component name and header
-		println(io, component_prefix, " Component \"", component.id, "\":")
+        # Print component name and header
+        println(io, component_prefix, " Component \"", component.id, "\":")
 
-		# Display conductor group with combined properties
-		print(io, continuation_line, "├─ ConductorGroup: [")
+        # Display conductor group with combined properties
+        print(io, continuation_line, "├─ ConductorGroup: [")
 
-		# Combine properties from conductor_group and conductor_props
-		conductor_props = [
-			"radius_in" => component.conductor_group.radius_in,
-			"radius_ext" => component.conductor_group.radius_ext,
-			"rho" => component.conductor_props.rho,
-			"eps_r" => component.conductor_props.eps_r,
-			"mu_r" => component.conductor_props.mu_r,
-			"alpha" => component.conductor_props.alpha,
-		]
+        # Combine properties from conductor_group and conductor_props
+        conductor_props = [
+            "radius_in" => component.conductor_group.radius_in,
+            "radius_ext" => component.conductor_group.radius_ext,
+            "rho" => component.conductor_props.rho,
+            "eps_r" => component.conductor_props.eps_r,
+            "mu_r" => component.conductor_props.mu_r,
+            "alpha" => component.conductor_props.alpha,
+        ]
 
-		# Display combined conductor properties
-		displayed_fields = 0
-		for (field, value) in conductor_props
-			if !(value isa Number && isnan(value))
-				if displayed_fields > 0
-					print(io, ", ")
-				end
-				print(io, "$field=$(round(value, sigdigits=4))")
-				displayed_fields += 1
-			end
-		end
-		println(io, "]")
+        # Display combined conductor properties
+        displayed_fields = 0
+        for (field, value) in conductor_props
+            if !(value isa Number && isnan(value))
+                if displayed_fields > 0
+                    print(io, ", ")
+                end
+                print(io, "$field=$(round(value, sigdigits=4))")
+                displayed_fields += 1
+            end
+        end
+        println(io, "]")
 
-		# Display insulator group with combined properties
-		print(io, continuation_line, "└─ InsulatorGroup: [")
+        # Display insulator group with combined properties
+        print(io, continuation_line, "└─ InsulatorGroup: [")
 
-		# Combine properties from insulator_group and insulator_props
-		insulator_props = [
-			"radius_in" => component.insulator_group.radius_in,
-			"radius_ext" => component.insulator_group.radius_ext,
-			"rho" => component.insulator_props.rho,
-			"eps_r" => component.insulator_props.eps_r,
-			"mu_r" => component.insulator_props.mu_r,
-			"alpha" => component.insulator_props.alpha,
-		]
+        # Combine properties from insulator_group and insulator_props
+        insulator_props = [
+            "radius_in" => component.insulator_group.radius_in,
+            "radius_ext" => component.insulator_group.radius_ext,
+            "rho" => component.insulator_props.rho,
+            "eps_r" => component.insulator_props.eps_r,
+            "mu_r" => component.insulator_props.mu_r,
+            "alpha" => component.insulator_props.alpha,
+        ]
 
-		# Display combined insulator properties
-		displayed_fields = 0
-		for (field, value) in insulator_props
-			if !(value isa Number && isnan(value))
-				if displayed_fields > 0
-					print(io, ", ")
-				end
-				print(io, "$field=$(round(value, sigdigits=4))")
-				displayed_fields += 1
-			end
-		end
-		println(io, "]")
-	end
+        # Display combined insulator properties
+        displayed_fields = 0
+        for (field, value) in insulator_props
+            if !(value isa Number && isnan(value))
+                if displayed_fields > 0
+                    print(io, ", ")
+                end
+                print(io, "$field=$(round(value, sigdigits=4))")
+                displayed_fields += 1
+            end
+        end
+        println(io, "]")
+    end
 end
 
 """
@@ -1763,21 +1763,21 @@ $(FUNCTIONNAME)(design, component)
 - [`CableComponent`](@ref)
 """
 function addto_cabledesign!(
-	design::CableDesign,
-	component::CableComponent,
+    design::CableDesign,
+    component::CableComponent,
 )
-	# Check for existing component with same ID
-	existing_idx = findfirst(comp -> comp.id == component.id, design.components)
+    # Check for existing component with same ID
+    existing_idx = findfirst(comp -> comp.id == component.id, design.components)
 
-	if !isnothing(existing_idx)
-		@warn "Component with ID '$(component.id)' already exists in the CableDesign and will be overwritten."
-		design.components[existing_idx] = component
-	else
-		# Add new component to the vector
-		push!(design.components, component)
-	end
+    if !isnothing(existing_idx)
+        @warn "Component with ID '$(component.id)' already exists in the CableDesign and will be overwritten."
+        design.components[existing_idx] = component
+    else
+        # Add new component to the vector
+        push!(design.components, component)
+    end
 
-	return design
+    return design
 end
 
 """
@@ -1810,16 +1810,16 @@ $(FUNCTIONNAME)(design, "shield", conductor_group, insulator_group)
 - [`CableComponent`](@ref)
 """
 function addto_cabledesign!(
-	design::CableDesign,
-	component_id::String,
-	conductor_group::ConductorGroup,
-	insulator_group::InsulatorGroup,
+    design::CableDesign,
+    component_id::String,
+    conductor_group::ConductorGroup,
+    insulator_group::InsulatorGroup,
 )
-	# Create new component
-	component = CableComponent(component_id, conductor_group, insulator_group)
+    # Create new component
+    component = CableComponent(component_id, conductor_group, insulator_group)
 
-	# Call the main function
-	return addto_cabledesign!(design, component)
+    # Call the main function
+    return addto_cabledesign!(design, component)
 end
 
 """
@@ -1831,11 +1831,11 @@ Extracts and displays data from a [`CableDesign`](@ref).
 
 - `design`: A [`CableDesign`](@ref) object to extract data from.
 - `format`: Symbol indicating the level of detail:
-  - `:core`: Basic RLC parameters with nominal value comparison (default).
+  - `:baseparams`: Basic RLC parameters with nominal value comparison (default).
   - `:components`: Component-level equivalent properties.
   - `:detailed`: Individual cable part properties with layer-by-layer breakdown.
-- `S`: Separation distance between cables \\[m\\] (only used for `:core` format). Default: outermost cable diameter.
-- `rho_e`: Resistivity of the earth \\[Ω·m\\] (only used for `:core` format). Default: 100.
+- `S`: Separation distance between cables \\[m\\] (only used for `:baseparams` format). Default: outermost cable diameter.
+- `rho_e`: Resistivity of the earth \\[Ω·m\\] (only used for `:baseparams` format). Default: 100.
 
 # Returns
 
@@ -1845,7 +1845,7 @@ Extracts and displays data from a [`CableDesign`](@ref).
 
 ```julia
 # Get basic RLC parameters
-data = cabledesign_todf(design)  # Default is :core format
+data = cabledesign_todf(design)  # Default is :baseparams format
 
 # Get component-level data
 comp_data = cabledesign_todf(design, :components)
@@ -1854,7 +1854,7 @@ comp_data = cabledesign_todf(design, :components)
 detailed_data = cabledesign_todf(design, :detailed)
 
 # Specify earth parameters for core calculations
-core_data = cabledesign_todf(design, :core, S=0.5, rho_e=150)
+core_data = cabledesign_todf(design, :baseparams, S=0.5, rho_e=150)
 ```
 
 # See also
@@ -1865,202 +1865,202 @@ core_data = cabledesign_todf(design, :core, S=0.5, rho_e=150)
 - [`calc_shunt_capacitance`](@ref)
 """
 function cabledesign_todf(
-	design::CableDesign,
-	format::Symbol = :core;
-	S::Union{Nothing, Number} = nothing,
-	rho_e::Number = 100,
+    design::CableDesign,
+    format::Symbol=:baseparams;
+    S::Union{Nothing,Number}=nothing,
+    rho_e::Number=100,
 )
-	if format == :core
-		# Core parameters calculation
-		# Get components from the vector
-		if length(design.components) < 2
-			error("Core format requires at least two components (core and shield)")
-		end
+    if format == :baseparams
+        # Core parameters calculation
+        # Get components from the vector
+        if length(design.components) < 2
+            error("Core format requires at least two components (core and shield)")
+        end
 
-		cable_core = design.components[1]
-		cable_shield = design.components[2]
-		cable_outer = design.components[end]
+        cable_core = design.components[1]
+        cable_shield = design.components[2]
+        cable_outer = design.components[end]
 
-		# Determine separation distance if not provided
-		S =
-			S === nothing ?
-			(
-				# Check if we need to use insulator or conductor radius
-				isnan(cable_outer.insulator_group.radius_ext) ?
-				2 * cable_outer.conductor_group.radius_ext :
-				2 * cable_outer.insulator_group.radius_ext
-			) : S
+        # Determine separation distance if not provided
+        S =
+            S === nothing ?
+            (
+                # Check if we need to use insulator or conductor radius
+                isnan(cable_outer.insulator_group.radius_ext) ?
+                2 * cable_outer.conductor_group.radius_ext :
+                2 * cable_outer.insulator_group.radius_ext
+            ) : S
 
-		# Compute R, L, and C using given formulas - mapped to new data structure
-		# Cable core resistance
-		R =
-			calc_tubular_resistance(
-				cable_core.conductor_group.radius_in,
-				cable_core.conductor_group.radius_ext,
-				cable_core.conductor_props.rho,
-				0, 20, 20,
-			) * 1e3
+        # Compute R, L, and C using given formulas - mapped to new data structure
+        # Cable core resistance
+        R =
+            calc_tubular_resistance(
+                cable_core.conductor_group.radius_in,
+                cable_core.conductor_group.radius_ext,
+                cable_core.conductor_props.rho,
+                0, 20, 20,
+            ) * 1e3
 
-		# Inductance calculation
-		L =
-			calc_inductance_trifoil(
-				cable_core.conductor_group.radius_in,
-				cable_core.conductor_group.radius_ext,
-				cable_core.conductor_props.rho,
-				cable_core.conductor_props.mu_r,
-				cable_shield.conductor_group.radius_in,
-				cable_shield.conductor_group.radius_ext,
-				cable_shield.conductor_props.rho,
-				cable_shield.conductor_props.mu_r,
-				S,
-				rho_e = rho_e,
-			) * 1e6
+        # Inductance calculation
+        L =
+            calc_inductance_trifoil(
+                cable_core.conductor_group.radius_in,
+                cable_core.conductor_group.radius_ext,
+                cable_core.conductor_props.rho,
+                cable_core.conductor_props.mu_r,
+                cable_shield.conductor_group.radius_in,
+                cable_shield.conductor_group.radius_ext,
+                cable_shield.conductor_props.rho,
+                cable_shield.conductor_props.mu_r,
+                S,
+                rho_e=rho_e,
+            ) * 1e6
 
-		# Capacitance calculation
-		C =
-			calc_shunt_capacitance(
-				cable_core.conductor_group.radius_ext,
-				cable_core.insulator_group.radius_ext,
-				cable_core.insulator_props.eps_r,
-			) * 1e6 * 1e3
+        # Capacitance calculation
+        C =
+            calc_shunt_capacitance(
+                cable_core.conductor_group.radius_ext,
+                cable_core.insulator_group.radius_ext,
+                cable_core.insulator_props.eps_r,
+            ) * 1e6 * 1e3
 
-		# Prepare nominal values from CableDesign
-		nominals = [
-			design.nominal_data.resistance,
-			design.nominal_data.inductance,
-			design.nominal_data.capacitance,
-		]
+        # Prepare nominal values from CableDesign
+        nominals = [
+            design.nominal_data.resistance,
+            design.nominal_data.inductance,
+            design.nominal_data.capacitance,
+        ]
 
-		# Calculate differences
-		diffs = [
-			abs(design.nominal_data.resistance - R) / design.nominal_data.resistance * 100,
-			abs(design.nominal_data.inductance - L) / design.nominal_data.inductance * 100,
-			abs(design.nominal_data.capacitance - C) / design.nominal_data.capacitance *
-			100,
-		]
+        # Calculate differences
+        diffs = [
+            abs(design.nominal_data.resistance - R) / design.nominal_data.resistance * 100,
+            abs(design.nominal_data.inductance - L) / design.nominal_data.inductance * 100,
+            abs(design.nominal_data.capacitance - C) / design.nominal_data.capacitance *
+            100,
+        ]
 
-		# Check if we have measurement objects (with uncertainty)
-		has_error_bounds = !(isnan(to_lower(R)) || isnan(to_upper(R)))
+        # Check if we have measurement objects (with uncertainty)
+        has_error_bounds = !(isnan(to_lower(R)) || isnan(to_upper(R)))
 
-		# Compute the comparison DataFrame
-		data = DataFrame(
-			parameter = ["R [Ω/km]", "L [mH/km]", "C [μF/km]"],
-			computed = [R, L, C],
-			nominal = nominals,
-			percent_diff = diffs,
-		)
+        # Compute the comparison DataFrame
+        data = DataFrame(
+            parameter=["R [Ω/km]", "L [mH/km]", "C [μF/km]"],
+            computed=[R, L, C],
+            nominal=nominals,
+            percent_diff=diffs,
+        )
 
-		# Add error bound columns only if measurements are present
-		if has_error_bounds
-			data[!, "lower"] = [to_lower(R), to_lower(L), to_lower(C)]
-			data[!, "upper"] = [to_upper(R), to_upper(L), to_upper(C)]
+        # Add error bound columns only if measurements are present
+        if has_error_bounds
+            data[!, "lower"] = [to_lower(R), to_lower(L), to_lower(C)]
+            data[!, "upper"] = [to_upper(R), to_upper(L), to_upper(C)]
 
-			# Add compliance column (requires bounds)
-			data[!, "in_range?"] = [
-				(data.nominal[i] >= data.lower[i] && data.nominal[i] <= data.upper[i])
-				for i in 1:nrow(data)
-			]
-		end
+            # Add compliance column (requires bounds)
+            data[!, "in_range?"] = [
+                (data.nominal[i] >= data.lower[i] && data.nominal[i] <= data.upper[i])
+                for i in 1:nrow(data)
+            ]
+        end
 
-	elseif format == :components
-		# Component-level properties 
-		properties = [
-			:radius_in_con,
-			:radius_ext_con,
-			:rho_con,
-			:alpha_con,
-			:mu_con,
-			:radius_ext_ins,
-			:eps_ins,
-			:mu_ins,
-			:loss_factor_ins,
-		]
+    elseif format == :components
+        # Component-level properties 
+        properties = [
+            :radius_in_con,
+            :radius_ext_con,
+            :rho_con,
+            :alpha_con,
+            :mu_con,
+            :radius_ext_ins,
+            :eps_ins,
+            :mu_ins,
+            :loss_factor_ins,
+        ]
 
-		# Initialize the DataFrame
-		data = DataFrame(property = properties)
+        # Initialize the DataFrame
+        data = DataFrame(property=properties)
 
-		# Process each component - now using vector 
-		for component in design.components
-			# Use component ID as column name
-			col = component.id
+        # Process each component - now using vector 
+        for component in design.components
+            # Use component ID as column name
+            col = component.id
 
-			# For each component, we need to map new structure to old column names
-			# Calculate loss factor from resistivity
-			ω = 2 * π * f₀  # Using default frequency
-			C_eq = component.insulator_group.shunt_capacitance
-			G_eq = component.insulator_group.shunt_conductance
-			loss_factor = G_eq / (ω * C_eq)
+            # For each component, we need to map new structure to old column names
+            # Calculate loss factor from resistivity
+            ω = 2 * π * f₀  # Using default frequency
+            C_eq = component.insulator_group.shunt_capacitance
+            G_eq = component.insulator_group.shunt_conductance
+            loss_factor = G_eq / (ω * C_eq)
 
-			# Collect values for each property - mapping from new structure to old property names
-			new_col = [
-				component.conductor_group.radius_in,               # radius_in_con
-				component.conductor_group.radius_ext,              # radius_ext_con
-				component.conductor_props.rho,                     # rho_con
-				component.conductor_props.alpha,                   # alpha_con
-				component.conductor_props.mu_r,                    # mu_con
-				component.insulator_group.radius_ext,              # radius_ext_ins
-				component.insulator_props.eps_r,                   # eps_ins
-				component.insulator_props.mu_r,                    # mu_ins
-				loss_factor,                                       # loss_factor_ins
-			]
+            # Collect values for each property - mapping from new structure to old property names
+            new_col = [
+                component.conductor_group.radius_in,               # radius_in_con
+                component.conductor_group.radius_ext,              # radius_ext_con
+                component.conductor_props.rho,                     # rho_con
+                component.conductor_props.alpha,                   # alpha_con
+                component.conductor_props.mu_r,                    # mu_con
+                component.insulator_group.radius_ext,              # radius_ext_ins
+                component.insulator_props.eps_r,                   # eps_ins
+                component.insulator_props.mu_r,                    # mu_ins
+                loss_factor,                                       # loss_factor_ins
+            ]
 
-			# Add to DataFrame
-			data[!, col] = new_col
-		end
+            # Add to DataFrame
+            data[!, col] = new_col
+        end
 
-	elseif format == :detailed
-		# Detailed part-by-part breakdown
-		properties = [
-			"type",
-			"radius_in",
-			"radius_ext",
-			"diam_in",
-			"diam_ext",
-			"thickness",
-			"cross_section",
-			"num_wires",
-			"resistance",
-			"alpha",
-			"gmr",
-			"gmr/radius",
-			"shunt_capacitance",
-			"shunt_conductance",
-		]
+    elseif format == :detailed
+        # Detailed part-by-part breakdown
+        properties = [
+            "type",
+            "radius_in",
+            "radius_ext",
+            "diam_in",
+            "diam_ext",
+            "thickness",
+            "cross_section",
+            "num_wires",
+            "resistance",
+            "alpha",
+            "gmr",
+            "gmr/radius",
+            "shunt_capacitance",
+            "shunt_conductance",
+        ]
 
-		# Initialize the DataFrame
-		data = DataFrame(property = properties)
+        # Initialize the DataFrame
+        data = DataFrame(property=properties)
 
-		# Process each component
-		for component in design.components
-			# Handle conductor group layers
-			for (i, part) in enumerate(component.conductor_group.layers)
-				# Column name with component ID and layer number
-				col = lowercase(component.id) * ", cond. layer " * string(i)
+        # Process each component
+        for component in design.components
+            # Handle conductor group layers
+            for (i, part) in enumerate(component.conductor_group.layers)
+                # Column name with component ID and layer number
+                col = lowercase(component.id) * ", cond. layer " * string(i)
 
-				# Collect values for each property
-				new_col = _extract_part_properties(part, properties)
+                # Collect values for each property
+                new_col = _extract_part_properties(part, properties)
 
-				# Add to DataFrame
-				data[!, col] = new_col
-			end
+                # Add to DataFrame
+                data[!, col] = new_col
+            end
 
-			# Handle insulator group layers
-			for (i, part) in enumerate(component.insulator_group.layers)
-				# Column name with component ID and layer number
-				col = lowercase(component.id) * ", ins. layer " * string(i)
+            # Handle insulator group layers
+            for (i, part) in enumerate(component.insulator_group.layers)
+                # Column name with component ID and layer number
+                col = lowercase(component.id) * ", ins. layer " * string(i)
 
-				# Collect values for each property
-				new_col = _extract_part_properties(part, properties)
+                # Collect values for each property
+                new_col = _extract_part_properties(part, properties)
 
-				# Add to DataFrame
-				data[!, col] = new_col
-			end
-		end
-	else
-		error("Unsupported format: $format. Use :core, :components, or :detailed")
-	end
+                # Add to DataFrame
+                data[!, col] = new_col
+            end
+        end
+    else
+        error("Unsupported format: $format. Use :baseparams, :components, or :detailed")
+    end
 
-	return data
+    return data
 end
 
 """
@@ -2105,46 +2105,46 @@ println(extracted_properties)
 ```
 """
 function _extract_part_properties(part, properties)
-	return [
-		lowercase(string(typeof(part))),  # type
-		hasfield(typeof(part), :radius_in) ?
-		getfield(part, :radius_in) : missing,
-		hasfield(typeof(part), :radius_ext) ?
-		getfield(part, :radius_ext) : missing,
-		hasfield(typeof(part), :radius_in) ?
-		2 * getfield(part, :radius_in) : missing,
-		hasfield(typeof(part), :radius_ext) ?
-		2 * getfield(part, :radius_ext) : missing,
-		hasfield(typeof(part), :radius_ext) &&
-		hasfield(typeof(part), :radius_in) ?
-		(getfield(part, :radius_ext) - getfield(part, :radius_in)) :
-		missing,
-		hasfield(typeof(part), :cross_section) ?
-		getfield(part, :cross_section) : missing,
-		hasfield(typeof(part), :num_wires) ?
-		getfield(part, :num_wires) : missing,
-		hasfield(typeof(part), :resistance) ?
-		getfield(part, :resistance) : missing,
-		hasfield(typeof(part), :alpha) ||
-		(
-			hasfield(typeof(part), :material_props) &&
-			hasfield(typeof(getfield(part, :material_props)), :alpha)
-		) ?
-		(
-			hasfield(typeof(part), :alpha) ?
-			getfield(part, :alpha) :
-			getfield(getfield(part, :material_props), :alpha)
-		) : missing,
-		hasfield(typeof(part), :gmr) ?
-		getfield(part, :gmr) : missing,
-		hasfield(typeof(part), :gmr) &&
-		hasfield(typeof(part), :radius_ext) ?
-		(getfield(part, :gmr) / getfield(part, :radius_ext)) : missing,
-		hasfield(typeof(part), :shunt_capacitance) ?
-		getfield(part, :shunt_capacitance) : missing,
-		hasfield(typeof(part), :shunt_conductance) ?
-		getfield(part, :shunt_conductance) : missing,
-	]
+    return [
+        lowercase(string(typeof(part))),  # type
+        hasfield(typeof(part), :radius_in) ?
+        getfield(part, :radius_in) : missing,
+        hasfield(typeof(part), :radius_ext) ?
+        getfield(part, :radius_ext) : missing,
+        hasfield(typeof(part), :radius_in) ?
+        2 * getfield(part, :radius_in) : missing,
+        hasfield(typeof(part), :radius_ext) ?
+        2 * getfield(part, :radius_ext) : missing,
+        hasfield(typeof(part), :radius_ext) &&
+        hasfield(typeof(part), :radius_in) ?
+        (getfield(part, :radius_ext) - getfield(part, :radius_in)) :
+        missing,
+        hasfield(typeof(part), :cross_section) ?
+        getfield(part, :cross_section) : missing,
+        hasfield(typeof(part), :num_wires) ?
+        getfield(part, :num_wires) : missing,
+        hasfield(typeof(part), :resistance) ?
+        getfield(part, :resistance) : missing,
+        hasfield(typeof(part), :alpha) ||
+        (
+            hasfield(typeof(part), :material_props) &&
+            hasfield(typeof(getfield(part, :material_props)), :alpha)
+        ) ?
+        (
+            hasfield(typeof(part), :alpha) ?
+            getfield(part, :alpha) :
+            getfield(getfield(part, :material_props), :alpha)
+        ) : missing,
+        hasfield(typeof(part), :gmr) ?
+        getfield(part, :gmr) : missing,
+        hasfield(typeof(part), :gmr) &&
+        hasfield(typeof(part), :radius_ext) ?
+        (getfield(part, :gmr) / getfield(part, :radius_ext)) : missing,
+        hasfield(typeof(part), :shunt_capacitance) ?
+        getfield(part, :shunt_capacitance) : missing,
+        hasfield(typeof(part), :shunt_conductance) ?
+        getfield(part, :shunt_conductance) : missing,
+    ]
 end
 
 """
@@ -2188,138 +2188,138 @@ cable_plot = $(FUNCTIONNAME)(design)  # Cable cross-section is displayed
 - [`Semicon`](@ref)
 """
 function preview_cabledesign(
-	design::CableDesign;
-	x_offset = 0.0,
-	y_offset = 0.0,
-	plt = nothing,
-	display_plot = true,
-	display_legend = true,
-	backend = nothing,
-	sz = (800, 600),
+    design::CableDesign;
+    x_offset=0.0,
+    y_offset=0.0,
+    plt=nothing,
+    display_plot=true,
+    display_legend=true,
+    backend=nothing,
+    sz=(800, 600),
 )
-	if isnothing(plt)
-		# Choose appropriate backend based on environment
-		_resolve_backend(backend)
-		plt = plot(size = sz,
-			aspect_ratio = :equal,
-			legend = (0.875, 1.0),
-			title = "Cable design preview",
-			xlabel = "y [m]",
-			ylabel = "z [m]")
-	end
+    if isnothing(plt)
+        # Choose appropriate backend based on environment
+        _resolve_backend(backend)
+        plt = plot(size=sz,
+            aspect_ratio=:equal,
+            legend=(0.875, 1.0),
+            title="Cable design preview",
+            xlabel="y [m]",
+            ylabel="z [m]")
+    end
 
-	# Helper function to plot a layer
-	function _plot_layer!(layer, label; x0 = 0.0, y0 = 0.0)
-		if layer isa WireArray
-			radius_wire = to_nominal(layer.radius_wire)
-			num_wires = layer.num_wires
+    # Helper function to plot a layer
+    function _plot_layer!(layer, label; x0=0.0, y0=0.0)
+        if layer isa WireArray
+            radius_wire = to_nominal(layer.radius_wire)
+            num_wires = layer.num_wires
 
-			lay_radius = num_wires == 1 ? 0 : to_nominal(layer.radius_in)
-			material_props = layer.material_props
-			color = _get_material_color(material_props)
+            lay_radius = num_wires == 1 ? 0 : to_nominal(layer.radius_in)
+            material_props = layer.material_props
+            color = _get_material_color(material_props)
 
-			# Use the existing calc_wirearray_coords function to get wire centers
-			wire_coords = calc_wirearray_coords(
-				num_wires,
-				radius_wire,
-				to_nominal(lay_radius),
-				C = (x0, y0),
-			)
+            # Use the existing calc_wirearray_coords function to get wire centers
+            wire_coords = calc_wirearray_coords(
+                num_wires,
+                radius_wire,
+                to_nominal(lay_radius),
+                C=(x0, y0),
+            )
 
-			# Plot each wire in the layer
-			for (i, (x, y)) in enumerate(wire_coords)
-				plot!(
-					plt,
-					Shape(
-						x .+ radius_wire * cos.(0:0.01:2π),
-						y .+ radius_wire * sin.(0:0.01:2π),
-					),
-					linecolor = :black,
-					color = color,
-					label = (i == 1 && display_legend) ? label : "",  # Only add label for first wire
-				)
-			end
+            # Plot each wire in the layer
+            for (i, (x, y)) in enumerate(wire_coords)
+                plot!(
+                    plt,
+                    Shape(
+                        x .+ radius_wire * cos.(0:0.01:2π),
+                        y .+ radius_wire * sin.(0:0.01:2π),
+                    ),
+                    linecolor=:black,
+                    color=color,
+                    label=(i == 1 && display_legend) ? label : "",  # Only add label for first wire
+                )
+            end
 
-		elseif layer isa Strip || layer isa Tubular || layer isa Semicon ||
-			   layer isa Insulator
-			radius_in = to_nominal(layer.radius_in)
-			radius_ext = to_nominal(layer.radius_ext)
-			material_props = layer.material_props
-			color = _get_material_color(material_props)
+        elseif layer isa Strip || layer isa Tubular || layer isa Semicon ||
+               layer isa Insulator
+            radius_in = to_nominal(layer.radius_in)
+            radius_ext = to_nominal(layer.radius_ext)
+            material_props = layer.material_props
+            color = _get_material_color(material_props)
 
-			arcshape(θ1, θ2, rin, rext, x0 = 0.0, y0 = 0.0, N = 100) = begin
-				# Outer circle coordinates
-				outer_coords = Plots.partialcircle(θ1, θ2, N, rext)
-				x_outer = first.(outer_coords) .+ x0
-				y_outer = last.(outer_coords) .+ y0
+            arcshape(θ1, θ2, rin, rext, x0=0.0, y0=0.0, N=100) = begin
+                # Outer circle coordinates
+                outer_coords = Plots.partialcircle(θ1, θ2, N, rext)
+                x_outer = first.(outer_coords) .+ x0
+                y_outer = last.(outer_coords) .+ y0
 
-				# Inner circle coordinates (reversed to close the shape properly)
-				inner_coords = Plots.partialcircle(θ1, θ2, N, rin)
-				x_inner = reverse(first.(inner_coords)) .+ x0
-				y_inner = reverse(last.(inner_coords)) .+ y0
+                # Inner circle coordinates (reversed to close the shape properly)
+                inner_coords = Plots.partialcircle(θ1, θ2, N, rin)
+                x_inner = reverse(first.(inner_coords)) .+ x0
+                y_inner = reverse(last.(inner_coords)) .+ y0
 
-				Shape(vcat(x_outer, x_inner), vcat(y_outer, y_inner))
-			end
+                Shape(vcat(x_outer, x_inner), vcat(y_outer, y_inner))
+            end
 
-			shape = arcshape(0, 2π + 0.01, radius_in, radius_ext, x0, y0)
-			plot!(
-				plt,
-				shape,
-				linecolor = color,
-				color = color,
-				label = display_legend ? label : "",
-			)
-		end
-	end
+            shape = arcshape(0, 2π + 0.01, radius_in, radius_ext, x0, y0)
+            plot!(
+                plt,
+                shape,
+                linecolor=color,
+                color=color,
+                label=display_legend ? label : "",
+            )
+        end
+    end
 
-	# Iterate over all CableComponents in the design
-	for component in design.components
-		# Process conductor group layers
-		for layer in component.conductor_group.layers
-			# Check if layer is a compound structure
-			if layer isa ConductorGroup
-				# Special handling for nested conductor groups
-				first_layer = true
-				for sublayer in layer.layers
-					_plot_layer!(
-						sublayer,
-						first_layer ? lowercase(string(typeof(layer))) : "",
-						x0 = x_offset,
-						y0 = y_offset,
-					)
-					first_layer = false
-				end
-			else
-				# Plot standard conductor layer
-				_plot_layer!(
-					layer,
-					lowercase(string(typeof(layer))),
-					x0 = x_offset,
-					y0 = y_offset,
-				)
-			end
-		end
+    # Iterate over all CableComponents in the design
+    for component in design.components
+        # Process conductor group layers
+        for layer in component.conductor_group.layers
+            # Check if layer is a compound structure
+            if layer isa ConductorGroup
+                # Special handling for nested conductor groups
+                first_layer = true
+                for sublayer in layer.layers
+                    _plot_layer!(
+                        sublayer,
+                        first_layer ? lowercase(string(typeof(layer))) : "",
+                        x0=x_offset,
+                        y0=y_offset,
+                    )
+                    first_layer = false
+                end
+            else
+                # Plot standard conductor layer
+                _plot_layer!(
+                    layer,
+                    lowercase(string(typeof(layer))),
+                    x0=x_offset,
+                    y0=y_offset,
+                )
+            end
+        end
 
-		# Process insulator group layers
-		for layer in component.insulator_group.layers
-			_plot_layer!(
-				layer,
-				lowercase(string(typeof(layer))),
-				x0 = x_offset,
-				y0 = y_offset,
-			)
-		end
-	end
+        # Process insulator group layers
+        for layer in component.insulator_group.layers
+            _plot_layer!(
+                layer,
+                lowercase(string(typeof(layer))),
+                x0=x_offset,
+                y0=y_offset,
+            )
+        end
+    end
 
-	if display_plot
-		if _is_headless()
-			DisplayAs.Text(DisplayAs.PNG(plt))
-		else
-			display(plt)
-		end
-	end
+    if display_plot
+        if _is_headless()
+            DisplayAs.Text(DisplayAs.PNG(plt))
+        else
+            display(plt)
+        end
+    end
 
-	return plt
+    return plt
 end
 
 """
@@ -2330,42 +2330,42 @@ Represents a library of cable designs stored as a dictionary.
 $(TYPEDFIELDS)
 """
 mutable struct CablesLibrary
-	"Dictionary mapping cable IDs to the respective CableDesign objects."
-	cable_designs::Dict{String, CableDesign}
+    "Dictionary mapping cable IDs to the respective CableDesign objects."
+    cable_designs::Dict{String,CableDesign}
 
-	@doc """
-	$(TYPEDSIGNATURES)
+    @doc """
+    $(TYPEDSIGNATURES)
 
-	Constructs an empty [`CablesLibrary`](@ref) instance.
+    Constructs an empty [`CablesLibrary`](@ref) instance.
 
-	# Arguments
+    # Arguments
 
-	- None.
+    - None.
 
-	# Returns
+    # Returns
 
-	- A [`CablesLibrary`](@ref) object with an empty dictionary of cable designs.
+    - A [`CablesLibrary`](@ref) object with an empty dictionary of cable designs.
 
-	# Examples
+    # Examples
 
-	```julia
-	# Create a new, empty library
-	library = $(FUNCTIONNAME)()
-	```
+    ```julia
+    # Create a new, empty library
+    library = $(FUNCTIONNAME)()
+    ```
 
-	# See also
+    # See also
 
-	- [`CableDesign`](@ref)
-	- [`store_cableslibrary!`](@ref)
-	- [`remove_cableslibrary!`](@ref)
-	- [`LineCableModels.ImportExport.save_cableslibrary`](@ref)
-	- [`list_cableslibrary`](@ref)
-	"""
-	function CablesLibrary()::CablesLibrary
-		library = new(Dict{String, CableDesign}())
-		println("Initializing empty cables database...")
-		return library
-	end
+    - [`CableDesign`](@ref)
+    - [`store_cableslibrary!`](@ref)
+    - [`remove_cableslibrary!`](@ref)
+    - [`LineCableModels.ImportExport.save_cableslibrary`](@ref)
+    - [`list_cableslibrary`](@ref)
+    """
+    function CablesLibrary()::CablesLibrary
+        library = new(Dict{String,CableDesign}())
+        println("Initializing empty cables database...")
+        return library
+    end
 end
 
 """
@@ -2394,9 +2394,9 @@ println(library.cable_designs) # Prints the updated dictionary containing the ne
 - [`remove_cableslibrary!`](@ref)
 """
 function store_cableslibrary!(library::CablesLibrary, design::CableDesign)
-	library.cable_designs[design.cable_id] = design
-	println("Cable design with ID `$(design.cable_id)` added to the library.")
-	library
+    library.cable_designs[design.cable_id] = design
+    println("Cable design with ID `$(design.cable_id)` added to the library.")
+    library
 end
 
 """
@@ -2431,12 +2431,12 @@ haskey(library.cable_designs, "example")  # Returns false
 - [`store_cableslibrary!`](@ref)
 """
 function remove_cableslibrary!(library::CablesLibrary, cable_id::String)
-	if haskey(library.cable_designs, cable_id)
-		delete!(library.cable_designs, cable_id)
-		println("Cable design with ID `$cable_id` removed from the library.")
-	else
-		println("Cable design with ID `$cable_id` not found in the library.")
-	end
+    if haskey(library.cable_designs, cable_id)
+        delete!(library.cable_designs, cable_id)
+        println("Cable design with ID `$cable_id` removed from the library.")
+    else
+        println("Cable design with ID `$cable_id` not found in the library.")
+    end
 end
 
 """
@@ -2477,16 +2477,16 @@ println(missing_design === nothing)  # Prints true
 - [`remove_cableslibrary!`](@ref)
 """
 function get_cabledesign(
-	library::CablesLibrary,
-	cable_id::String,
-)::Union{Nothing, CableDesign}
-	if haskey(library.cable_designs, cable_id)
-		println("Cable design with ID `$cable_id` loaded from the library.")
-		return library.cable_designs[cable_id]
-	else
-		println("Cable design with ID `$cable_id` not found.")
-		return nothing
-	end
+    library::CablesLibrary,
+    cable_id::String,
+)::Union{Nothing,CableDesign}
+    if haskey(library.cable_designs, cable_id)
+        println("Cable design with ID `$cable_id` loaded from the library.")
+        return library.cable_designs[cable_id]
+    else
+        println("Cable design with ID `$cable_id` not found.")
+        return nothing
+    end
 end
 
 """
@@ -2526,187 +2526,176 @@ first(df, 5)  # Show the first 5 rows of the DataFrame
 - [`store_cableslibrary!`](@ref)
 """
 function list_cableslibrary(library::CablesLibrary)
-	ids = keys(library.cable_designs)
-	nominal_data = [string(design.nominal_data) for design in values(library.cable_designs)]
-	components = [
-		join([comp.id for comp in design.components], ", ") for
-		design in values(library.cable_designs)
-	]
-	df = DataFrame(
-		cable_id = collect(ids),
-		nominal_data = nominal_data,
-		components = components,
-	)
-	return (df)
+    ids = keys(library.cable_designs)
+    nominal_data = [string(design.nominal_data) for design in values(library.cable_designs)]
+    components = [
+        join([comp.id for comp in design.components], ", ") for
+        design in values(library.cable_designs)
+    ]
+    df = DataFrame(
+        cable_id=collect(ids),
+        nominal_data=nominal_data,
+        components=components,
+    )
+    return (df)
 end
 
 """
 $(TYPEDEF)
 
-Represents a physically defined cable within a system, with position and phase mapping.
+Represents a physically defined cable with position and phase mapping within a system.
 
 $(TYPEDFIELDS)
 """
-struct CableDef
-	"The [`CableDesign`](@ref) object assigned to this cable definition."
-	cable::CableDesign
-	"Horizontal coordinate \\[m\\]."
-	horz::Number
-	"Vertical coordinate \\[m\\]."
-	vert::Number
-	"Phase mapping vector (aligned with cable.components)."
-	conn::Vector{Int}
+struct CablePosition
+    "The [`CableDesign`](@ref) object assigned to this cable position."
+    design_data::CableDesign
+    "Horizontal coordinate \\[m\\]."
+    horz::Number
+    "Vertical coordinate \\[m\\]."
+    vert::Number
+    "Phase mapping vector (aligned with design_data.components)."
+    conn::Vector{Int}
 
-	@doc """
-	$(TYPEDSIGNATURES)
+    @doc """
+    $(TYPEDSIGNATURES)
 
-	Constructs a [`CableDef`](@ref) instance with specified cable design, coordinates, and phase mapping.
+    Constructs a [`CablePosition`](@ref) instance with specified cable design, coordinates, and phase mapping.
 
-	# Arguments
+    # Arguments
 
-	- `cable`: A [`CableDesign`](@ref) object defining the cable structure.
-	- `horz`: Horizontal coordinate \\[m\\].
-	- `vert`: Vertical coordinate \\[m\\].
-	- `conn`: A dictionary mapping component names to phase indices, or `nothing` for default mapping.
+    - `cable`: A [`CableDesign`](@ref) object defining the cable structure.
+    - `horz`: Horizontal coordinate \\[m\\].
+    - `vert`: Vertical coordinate \\[m\\].
+    - `conn`: A dictionary mapping component names to phase indices, or `nothing` for default mapping.
 
-	# Returns
+    # Returns
 
-	- A [`CableDef`](@ref) object with the assigned cable design, coordinates, and phase mapping.
+    - A [`CablePosition`](@ref) object with the assigned cable design, coordinates, and phase mapping.
 
-	#=
-	!!! note "Phase mapping"
-		 The `conn` argument is a `Dict` that maps the cable components to their respective phases. The values (1, 2, 3) represent the phase numbers (A, B, C) in a three-phase system. Components mapped to phase 0 will be Kron-eliminated (grounded). Components set to the same phase will be bundled into an equivalent phase.
-	=#
+    #=
+    !!! note "Phase mapping"
+         The `conn` argument is a `Dict` that maps the cable components to their respective phases. The values (1, 2, 3) represent the phase numbers (A, B, C) in a three-phase system. Components mapped to phase 0 will be Kron-eliminated (grounded). Components set to the same phase will be bundled into an equivalent phase.
+    =#
 
-	# Examples
+    # Examples
 
-	```julia
-	cable_design = CableDesign("example", nominal_data, components_dict)
-	xa, ya = 0.0, -1.0  # Coordinates in meters
+    ```julia
+    cable_design = CableDesign("example", nominal_data, components_dict)
+    xa, ya = 0.0, -1.0  # Coordinates in meters
 
-	# With explicit phase mapping
-	cabledef1 = $(FUNCTIONNAME)(cable_design, xa, ya, Dict("core" => 1))
+    # With explicit phase mapping
+    cablepos1 = $(FUNCTIONNAME)(cable_design, xa, ya, Dict("core" => 1))
 
-	# With default phase mapping (first component to phase 1, others to 0)
-	default_cabledef = $(FUNCTIONNAME)(cable_design, xa, ya)
-	```
+    # With default phase mapping (first component to phase 1, others to 0)
+    default_cablepos = $(FUNCTIONNAME)(cable_design, xa, ya)
+    ```
 
-	# See also
+    # See also
 
-	- [`CableDesign`](@ref)
-	"""
-	function CableDef(
-		cable::CableDesign,
-		horz::Number,
-		vert::Number,
-		conn::Union{Dict{String, Int}, Nothing} = nothing,
-	)
-		components = [comp.id for comp in cable.components]
-		if isnothing(conn)
-			conn_vector = [i == 1 ? 1 : 0 for i in 1:length(components)]  # Default: First component gets phase 1
-		else
-			conn_vector = [get(conn, name, 0) for name in components]  # Ensure correct mapping order
-		end
-		return new(cable, horz, vert, conn_vector)
-	end
+    - [`CableDesign`](@ref)
+    """
+    function CablePosition(
+        cable::CableDesign,
+        horz::Number,
+        vert::Number,
+        conn::Union{Dict{String,Int},Nothing}=nothing,
+    )
+        components = [comp.id for comp in cable.components]
+        if isnothing(conn)
+            conn_vector = [i == 1 ? 1 : 0 for i in 1:length(components)]  # Default: First component gets phase 1
+        else
+            conn_vector = [get(conn, name, 0) for name in components]  # Ensure correct mapping order
+        end
+        return new(cable, horz, vert, conn_vector)
+    end
 end
 
 """
 $(TYPEDEF)
 
-Represents a cable system configuration, defining the structure, earth resistivity, operating temperature, and phase assignments.
+Represents a cable system configuration, defining the physical structure, cables, and their positions.
 
 $(TYPEDFIELDS)
 """
 mutable struct LineCableSystem
-	"Unique identifier for the system."
-	case_id::String
-	"Operating temperature \\[°C\\]."
-	T::Number
-	"Earth properties model."
-	earth_props::EarthModel
-	"Length of the cable system \\[m\\]."
-	line_length::Number
-	"Number of cables in the system."
-	num_cables::Int
-	"Number of actual phases in the system."
-	num_phases::Int
-	"Cross-section cable definition."
-	cables::Vector{CableDef}
+    "Unique identifier for the system."
+    system_id::String
+    "Length of the cable system \\[m\\]."
+    line_length::Number
+    "Number of cables in the system."
+    num_cables::Int
+    "Number of actual phases in the system."
+    num_phases::Int
+    "Cross-section cable positions."
+    cables::Vector{CablePosition}
 
-	@doc """
-	$(TYPEDSIGNATURES)
+    @doc """
+    $(TYPEDSIGNATURES)
 
-	Constructs a [`LineCableSystem`](@ref) with an initial cable definition and system parameters.
+    Constructs a [`LineCableSystem`](@ref) with an initial cable position and system parameters.
 
-	# Arguments
+    # Arguments
 
-	- `case_id`: Identifier for the cable system.
-	- `T`: Operating temperature \\[°C\\].
-	- `earth_props`: Instance of [`EarthModel`](@ref) defining the earth properties.
-	- `line_length`: Length of the cable system \\[m\\].
-	- `cable`: Initial [`CableDef`](@ref) object defining a cable position and phase mapping.
+    - `system_id`: Identifier for the cable system.
+    - `line_length`: Length of the cable system \\[m\\].
+    - `cable`: Initial [`CablePosition`](@ref) object defining a cable position and phase mapping.
 
-	# Returns
+    # Returns
 
-	- A [`LineCableSystem`](@ref) object initialized with a single cable definition.
+    - A [`LineCableSystem`](@ref) object initialized with a single cable position.
 
-	# Examples
+    # Examples
 
-	```julia
-	earth_params = EarthModel(10.0 .^ range(0, stop=6, length=10), 100, 10, 1)
-	cable_design = CableDesign("example", nominal_data, components_dict)
-	cabledef1 = CableDef(cable_design, 0.0, 0.0, Dict("core" => 1))
+    ```julia
+    cable_design = CableDesign("example", nominal_data, components_dict)
+    cablepos1 = CablePosition(cable_design, 0.0, 0.0, Dict("core" => 1))
 
-	cable_system = $(FUNCTIONNAME)("test_case_1", 20.0, earth_params, 1000.0, cabledef1)
-	println(cable_system.num_phases)  # Prints number of unique phase assignments
-	```
+    cable_system = $(FUNCTIONNAME)("test_case_1", 1000.0, cablepos1)
+    println(cable_system.num_phases)  # Prints number of unique phase assignments
+    ```
 
-	# See also
+    # See also
 
-	- [`CableDef`](@ref)
-	- [`EarthModel`](@ref)
-	- [`CableDesign`](@ref)
-	"""
-	function LineCableSystem(
-		case_id::String,
-		T::Number,
-		earth_props::EarthModel,
-		line_length::Number,
-		cable::CableDef,
-	)
-		# Initialize with the first cable definition
-		num_cables = 1
+    - [`CablePosition`](@ref)
+    - [`CableDesign`](@ref)
+    """
+    function LineCableSystem(
+        system_id::String,
+        line_length::Number,
+        cable::CablePosition,
+    )
+        # Initialize with the first cable definition
+        num_cables = 1
 
-		# Count unique nonzero phases from the first cable
-		assigned_phases = unique(cable.conn)
-		num_phases = count(x -> x > 0, assigned_phases)
+        # Count unique nonzero phases from the first cable
+        assigned_phases = unique(cable.conn)
+        num_phases = count(x -> x > 0, assigned_phases)
 
-		return new(case_id, T, earth_props, line_length, num_cables, num_phases, [cable])
-	end
+        return new(system_id, line_length, num_cables, num_phases, [cable])
+    end
 end
 
 """
 $(TYPEDSIGNATURES)
 
-Adds a new cable definition to an existing [`LineCableSystem`](@ref), updating its phase mapping and cable count.
+Adds a new cable position to an existing [`LineCableSystem`](@ref), updating its phase mapping and cable count.
 
 # Arguments
 
 - `system`: Instance of [`LineCableSystem`](@ref) to which the cable will be added.
-- `cable`: Instance of [`CableDesign`](@ref) defining the cable characteristics and position.
+- `cable`: A [`CableDesign`](@ref) object defining the cable structure.
 - `horz`: Horizontal coordinate \\[m\\].
 - `vert`: Vertical coordinate \\[m\\].
 - `conn`: Dictionary mapping component names to phase indices, or `nothing` for automatic assignment.
 
 # Returns
 
-- Nothing. Modifies `system` in place by adding a new [`CableDef`](@ref) and updating `num_cables` and `num_phases`.
+- The modified [`LineCableSystem`](@ref) object with the new cable added.
 
 # Examples
 
 ```julia
-earth_params = EarthModel(...)
 cable_design = CableDesign("example", nominal_data, components_dict)
 
 # Define coordinates for two cables
@@ -2714,8 +2703,8 @@ xa, ya = 0.0, -1.0
 xb, yb = 1.0, -2.0
 
 # Create initial system with one cable
-cabledef1 = CableDef(cable_design, xa, ya, Dict("core" => 1))
-cable_system = LineCableSystem("test_case_1", 20.0, earth_params, 1000.0, cabledef1)
+cablepos1 = CablePosition(cable_design, xa, ya, Dict("core" => 1))
+cable_system = LineCableSystem("test_case_1", 1000.0, cablepos1)
 
 # Add second cable to system
 $(FUNCTIONNAME)(cable_system, cable_design, xb, yb, Dict("core" => 2))
@@ -2726,48 +2715,49 @@ println(cable_system.num_cables)  # Prints: 2
 # See also
 
 - [`LineCableSystem`](@ref)
-- [`CableDef`](@ref)
+- [`CablePosition`](@ref)
 - [`CableDesign`](@ref)
 """
 function addto_linecablesystem!(
-	system::LineCableSystem,
-	cable::CableDesign,
-	horz::Number,
-	vert::Number,
-	conn::Union{Dict{String, Int}, Nothing} = nothing,
+    system::LineCableSystem,
+    cable::CableDesign,
+    horz::Number,
+    vert::Number,
+    conn::Union{Dict{String,Int},Nothing}=nothing,
 )
-	max_phase =
-		isempty(system.cables) ? 0 : maximum(maximum.(getfield.(system.cables, :conn)))
+    max_phase =
+        isempty(system.cables) ? 0 : maximum(maximum.(getfield.(system.cables, :conn)))
 
-	component_names = [comp.id for comp in cable.components]  # Get component IDs from vector
+    component_names = [comp.id for comp in cable.components]  # Get component IDs from vector
 
-	new_conn = if isnothing(conn)
-		Dict(name => (i == 1 ? max_phase + 1 : 0) for (i, name) in enumerate(component_names))
-	else
-		Dict(name => get(conn, name, 0) for name in component_names)  # Ensures correct mapping order
-	end
+    new_conn = if isnothing(conn)
+        Dict(name => (i == 1 ? max_phase + 1 : 0) for (i, name) in enumerate(component_names))
+    else
+        Dict(name => get(conn, name, 0) for name in component_names)  # Ensures correct mapping order
+    end
 
-	push!(system.cables, CableDef(cable, horz, vert, new_conn))
+    push!(system.cables, CablePosition(cable, horz, vert, new_conn))
 
-	# Update num_cables
-	system.num_cables += 1
+    # Update num_cables
+    system.num_cables += 1
 
-	# Update num_phases by counting unique nonzero phases
-	assigned_phases = unique(vcat(values.(getfield.(system.cables, :conn))...))
-	system.num_phases = count(x -> x > 0, assigned_phases)
-	system
+    # Update num_phases by counting unique nonzero phases
+    assigned_phases = unique(vcat([cable_pos.conn for cable_pos in system.cables]...))
+    system.num_phases = count(x -> x > 0, assigned_phases)
+    system
 end
 
 """
 $(TYPEDSIGNATURES)
 
-Displays the cross-section of a cable system, including earth layers and cables.
+Displays the cross-section of a cable system.
 
 # Arguments
 
-- `system`: A [`LineCableSystem`](@ref) object containing the cable arrangement and earth properties.
+- `system`: A [`LineCableSystem`](@ref) object containing the cable arrangement.
+- `earth_model`: Optional [`EarthModel`](@ref) to display earth layers.
 - `zoom_factor`: A scaling factor for adjusting the x-axis limits \\[dimensionless\\].
-- `backend`: Optional plotting backend to use. If not specified, the function will choose a suitable backend based on the environment (e.g., GR for headless, PlotlyJS for interactive).
+- `backend`: Optional plotting backend to use.
 - `sz`: Optional plot dimensions (width, height). Default: (800, 600).
 
 # Returns
@@ -2777,99 +2767,100 @@ Displays the cross-section of a cable system, including earth layers and cables.
 # Examples
 
 ```julia
-system = LineCableSystem("test_system", 20.0, earth_model, 1000.0, cable_def)
-$(FUNCTIONNAME)(system, zoom_factor=0.5)
+system = LineCableSystem("test_system", 1000.0, cable_pos)
+earth_params = EarthModel(f, 100.0, 10.0, 1.0)
+$(FUNCTIONNAME)(system, earth_model=earth_params, zoom_factor=0.5)
 ```
 
 # See also
 
 - [`LineCableSystem`](@ref)
 - [`EarthModel`](@ref)
-- [`CableDef`](@ref)
+- [`CablePosition`](@ref)
 """
 function preview_linecablesystem(
-	system::LineCableSystem;
-	zoom_factor = 0.25,
-	backend = nothing,
-	sz = (800, 600),
+    system::LineCableSystem;
+    earth_model=nothing,
+    zoom_factor=0.25,
+    backend=nothing,
+    sz=(800, 600),
 )
+    _resolve_backend(backend)
+    plt = plot(size=sz,
+        aspect_ratio=:equal,
+        legend=(0.8, 0.9),
+        title="Cable system cross-section",
+        xlabel="y [m]",
+        ylabel="z [m]")
 
-	_resolve_backend(backend)
-	plt = plot(size = sz,
-		aspect_ratio = :equal,
-		legend = (0.8, 0.9),
-		title = "Cable system cross-section",
-		xlabel = "y [m]",
-		ylabel = "z [m]")
+    # Plot the air/earth interface at y=0
+    hline!(
+        plt,
+        [0],
+        linestyle=:solid,
+        linecolor=:black,
+        linewidth=1.25,
+        label="Air/earth interface",
+    )
 
-	# Plot the air/earth interface at y=0
-	hline!(
-		plt,
-		[0],
-		linestyle = :solid,
-		linecolor = :black,
-		linewidth = 1.25,
-		label = "Air/earth interface",
-	)
+    # Determine explicit wide horizontal range for earth layer plotting
+    x_positions = [to_nominal(cable.horz) for cable in system.cables]
+    max_span = maximum(abs, x_positions) + 5  # extend 5 m beyond farthest cable position
+    x_limits = [-max_span, max_span]
 
-	# Determine explicit wide horizontal range for earth layer plotting
-	x_positions = [to_nominal(cable.horz) for cable in system.cables]
-	max_span = maximum(abs, x_positions) + 5  # extend 5 m beyond farthest cable position
-	x_limits = [-max_span, max_span]
+    # Plot earth layers if provided and vertical_layers == false
+    if !isnothing(earth_model) && !earth_model.vertical_layers
+        layer_colors = [:burlywood, :sienna, :peru, :tan, :goldenrod, :chocolate]
+        cumulative_depth = 0.0
+        for (i, layer) in enumerate(earth_model.layers[2:end])
+            # Skip bottommost infinite layer
+            if isinf(layer.t)
+                break
+            end
 
-	# Plot earth layers if vertical_layers == false
-	if !system.earth_props.vertical_layers
-		layer_colors = [:burlywood, :sienna, :peru, :tan, :goldenrod, :chocolate]
-		cumulative_depth = 0.0
-		for (i, layer) in enumerate(system.earth_props.layers[2:end])
-			# Skip bottommost infinite layer
-			if isinf(layer.t)
-				break
-			end
+            # Compute the depth of the current interface
+            cumulative_depth -= layer.t
+            hline!(
+                plt,
+                [cumulative_depth],
+                linestyle=:solid,
+                linecolor=layer_colors[mod1(i, length(layer_colors))],
+                linewidth=1.25,
+                label="Earth layer $i",
+            )
 
-			# Compute the depth of the current interface
-			cumulative_depth -= layer.t
-			hline!(
-				plt,
-				[cumulative_depth],
-				linestyle = :solid,
-				linecolor = layer_colors[mod1(i, length(layer_colors))],
-				linewidth = 1.25,
-				label = "Earth layer $i",
-			)
+            # Fill the area for current earth layer
+            y_coords = [cumulative_depth + layer.t, cumulative_depth]
+            plot!(plt, [x_limits[1], x_limits[2], x_limits[2], x_limits[1]],
+                [y_coords[1], y_coords[1], y_coords[2], y_coords[2]],
+                seriestype=:shape, color=layer_colors[mod1(i, length(layer_colors))],
+                alpha=0.25, linecolor=:transparent,
+                label="")
+        end
+    end
 
-			# Fill the area for current earth layer
-			y_coords = [cumulative_depth + layer.t, cumulative_depth]
-			plot!(plt, [x_limits[1], x_limits[2], x_limits[2], x_limits[1]],
-				[y_coords[1], y_coords[1], y_coords[2], y_coords[2]],
-				seriestype = :shape, color = layer_colors[mod1(i, length(layer_colors))],
-				alpha = 0.25, linecolor = :transparent,
-				label = "")
-		end
-	end
+    for cable_position in system.cables
+        x_offset = to_nominal(cable_position.horz)
+        y_offset = to_nominal(cable_position.vert)
+        preview_cabledesign(
+            cable_position.design_data;  # Changed from cable_position.design_data
+            x_offset,
+            y_offset,
+            plt,
+            display_plot=false,
+            display_legend=false,
+        )
+    end
 
-	for cabledef in system.cables
-		x_offset = to_nominal(cabledef.horz)
-		y_offset = to_nominal(cabledef.vert)
-		preview_cabledesign(
-			cabledef.cable;
-			x_offset,
-			y_offset,
-			plt,
-			display_plot = false,
-			display_legend = false,
-		)
-	end
+    plot!(plt, xlim=(x_limits[1], x_limits[2]) .* zoom_factor)
 
-	plot!(plt, xlim = (x_limits[1], x_limits[2]) .* zoom_factor)
+    if _is_headless()
+        DisplayAs.Text(DisplayAs.PNG(plt))
+    else
+        display(plt)
+    end
 
-	if _is_headless()
-		DisplayAs.Text(DisplayAs.PNG(plt))
-	else
-		display(plt)
-	end
-
-	return plt
+    return plt
 end
 
 """
@@ -2900,22 +2891,22 @@ println((xc, yc))  # Coordinates of bottom-right cable
 ```
 """
 function trifoil_formation(xc, yc, r_ext)
-	# Horizontal distance between centers of adjacent circles (equal to twice the radius of each circle)
-	d = 2 * r_ext
-	# Vertical distance from top circle center to the line between bottom two circles
-	h = sqrt(3) * r_ext
+    # Horizontal distance between centers of adjacent circles (equal to twice the radius of each circle)
+    d = 2 * r_ext
+    # Vertical distance from top circle center to the line between bottom two circles
+    h = sqrt(3) * r_ext
 
-	# Calculate the top circle coordinates (centered directly above the midpoint of the bottom two circles)
-	xa = xc
-	ya = yc + h / 2
+    # Calculate the top circle coordinates (centered directly above the midpoint of the bottom two circles)
+    xa = xc
+    ya = yc + h / 2
 
-	# Calculate the coordinates of the bottom two circles
-	xb = xc - d / 2
-	yb = yc - h / 2
-	xc = xc + d / 2
-	yc = yc - h / 2
+    # Calculate the coordinates of the bottom two circles
+    xb = xc - d / 2
+    yb = yc - h / 2
+    xc = xc + d / 2
+    yc = yc - h / 2
 
-	return xa, ya, xb, yb, xc, yc
+    return xa, ya, xb, yb, xc, yc
 end
 
 """
@@ -2950,20 +2941,20 @@ println((xc, yc))  # Third conductor coordinates
 xa, ya, xb, yb, xc, yc = $(FUNCTIONNAME)(0.0, 0.0, 0.1, vertical=true)
 ```
 """
-function flat_formation(xc, yc, s; vertical = false)
-	if vertical
-		# Layout is vertical; adjust only y-coordinates
-		xa, ya = xc, yc
-		xb, yb = xc, yc - s
-		xc, yc = xc, yc - 2s
-	else
-		# Layout is horizontal; adjust only x-coordinates
-		xa, ya = xc, yc
-		xb, yb = xc + s, yc
-		xc, yc = xc + 2s, yc
-	end
+function flat_formation(xc, yc, s; vertical=false)
+    if vertical
+        # Layout is vertical; adjust only y-coordinates
+        xa, ya = xc, yc
+        xb, yb = xc, yc - s
+        xc, yc = xc, yc - 2s
+    else
+        # Layout is horizontal; adjust only x-coordinates
+        xa, ya = xc, yc
+        xb, yb = xc + s, yc
+        xc, yc = xc + 2s, yc
+    end
 
-	return xa, ya, xb, yb, xc, yc
+    return xa, ya, xb, yb, xc, yc
 end
 
 """
@@ -2998,34 +2989,33 @@ println(df)
 # See also
 
 - [`LineCableSystem`](@ref)
-- [`CableDef`](@ref)
+- [`CablePosition`](@ref)
 """
 function linecablesystem_todf(system::LineCableSystem)
-	cable_ids = String[]
-	horz_coords = Number[]
-	vert_coords = Number[]
-	mappings = String[]
+    cable_ids = String[]
+    horz_coords = Number[]
+    vert_coords = Number[]
+    mappings = String[]
 
-	for cabledef in system.cables
-		# Correct access here:
-		push!(cable_ids, cabledef.cable.cable_id)
-		push!(horz_coords, cabledef.horz)
-		push!(vert_coords, cabledef.vert)
+    for cable_position in system.cables
+        push!(cable_ids, cable_position.design_data.cable_id)
+        push!(horz_coords, cable_position.horz)
+        push!(vert_coords, cable_position.vert)
 
-		component_names = [comp.id for comp in cabledef.cable.components]
-		mapping_str = join(
-			["$(name): $(phase)" for (name, phase) in zip(component_names, cabledef.conn)],
-			", ",
-		)
-		push!(mappings, mapping_str)
-	end
+        component_names = [comp.id for comp in cable_position.design_data.components]
+        mapping_str = join(
+            ["$(name): $(phase)" for (name, phase) in zip(component_names, cable_position.conn)],
+            ", ",
+        )
+        push!(mappings, mapping_str)
+    end
 
-	return DataFrame(
-		cable_id = cable_ids,
-		horz = horz_coords,
-		vert = vert_coords,
-		phase_mapping = mappings,
-	)
+    return DataFrame(
+        cable_id=cable_ids,
+        horz=horz_coords,
+        vert=vert_coords,
+        phase_mapping=mappings,
+    )
 end
 
 """
@@ -3043,46 +3033,46 @@ Defines the display representation of a [`ConductorGroup`](@ref) or [`InsulatorG
 
 - Nothing. Modifies `io` by writing text representation of the object.
 """
-function Base.show(io::IO, ::MIME"text/plain", group::Union{ConductorGroup, InsulatorGroup})
+function Base.show(io::IO, ::MIME"text/plain", group::Union{ConductorGroup,InsulatorGroup})
 
-	print(io, "$(length(group.layers))-element $(nameof(typeof(group))): [")
-	_print_fields(
-		io,
-		group,
-		[
-			:radius_in,
-			:radius_ext,
-			:cross_section,
-			:resistance,
-			:gmr,
-			:shunt_capacitance,
-			:shunt_conductance,
-		],
-	)
-	println(io, "]")
+    print(io, "$(length(group.layers))-element $(nameof(typeof(group))): [")
+    _print_fields(
+        io,
+        group,
+        [
+            :radius_in,
+            :radius_ext,
+            :cross_section,
+            :resistance,
+            :gmr,
+            :shunt_capacitance,
+            :shunt_conductance,
+        ],
+    )
+    println(io, "]")
 
-	# Tree-like layer representation
+    # Tree-like layer representation
 
-	for (i, layer) in enumerate(group.layers)
-		# Determine prefix based on whether it's the last layer
-		prefix = i == length(group.layers) ? "└─" : "├─"
-		# Print layer information with only selected fields
-		print(io, prefix, "$(nameof(typeof(layer))): [")
-		_print_fields(
-			io,
-			layer,
-			[
-				:radius_in,
-				:radius_ext,
-				:cross_section,
-				:resistance,
-				:gmr,
-				:shunt_capacitance,
-				:shunt_conductance,
-			],
-		)
-		println(io, "]")
-	end
+    for (i, layer) in enumerate(group.layers)
+        # Determine prefix based on whether it's the last layer
+        prefix = i == length(group.layers) ? "└─" : "├─"
+        # Print layer information with only selected fields
+        print(io, prefix, "$(nameof(typeof(layer))): [")
+        _print_fields(
+            io,
+            layer,
+            [
+                :radius_in,
+                :radius_ext,
+                :cross_section,
+                :resistance,
+                :gmr,
+                :shunt_capacitance,
+                :shunt_conductance,
+            ],
+        )
+        println(io, "]")
+    end
 end
 
 """
@@ -3100,85 +3090,85 @@ Defines the display representation of an [`AbstractCablePart`](@ref) object for 
 
 - Nothing. Modifies `io` by writing text representation of the object.
 """
-function Base.show(io::IO, ::MIME"text/plain", part::T) where {T <: AbstractCablePart}
-	# Start output with type name
-	print(io, "$(nameof(T)): [")
+function Base.show(io::IO, ::MIME"text/plain", part::T) where {T<:AbstractCablePart}
+    # Start output with type name
+    print(io, "$(nameof(T)): [")
 
-	# Use _print_fields to display all relevant fields
-	_print_fields(
-		io,
-		part,
-		[
-			:radius_in,
-			:radius_ext,
-			:cross_section,
-			:resistance,
-			:gmr,
-			:shunt_capacitance,
-			:shunt_conductance,
-		],
-	)
+    # Use _print_fields to display all relevant fields
+    _print_fields(
+        io,
+        part,
+        [
+            :radius_in,
+            :radius_ext,
+            :cross_section,
+            :resistance,
+            :gmr,
+            :shunt_capacitance,
+            :shunt_conductance,
+        ],
+    )
 
-	println(io, "]")
+    println(io, "]")
 
-	# Display material properties if available
-	if hasproperty(part, :material_props)
-		print(io, "└─ Material properties: [")
-		_print_fields(
-			io,
-			part.material_props,
-			[:rho, :eps_r, :mu_r, :alpha],
-		)
-		println(io, "]")
-	end
+    # Display material properties if available
+    if hasproperty(part, :material_props)
+        print(io, "└─ Material properties: [")
+        _print_fields(
+            io,
+            part.material_props,
+            [:rho, :eps_r, :mu_r, :alpha],
+        )
+        println(io, "]")
+    end
 end
 
 function Base.show(io::IO, ::MIME"text/plain", system::LineCableSystem)
-	# Print top level info
-	println(
-		io,
-		"LineCableSystem \"$(system.case_id)\": [T=$(system.T), line_length=$(system.line_length), num_cables=$(system.num_cables), num_phases=$(system.num_phases)]",
-	)
+    # Print top level info
+    println(
+        io,
+        "LineCableSystem \"$(system.system_id)\": [line_length=$(system.line_length), num_cables=$(system.num_cables), num_phases=$(system.num_phases)]",
+    )
 
-	# Print earth model summary
-	# Get model type summary
-	model_type = system.earth_props.num_layers == 2 ? "homogeneous" : "multilayer"
-	orientation = system.earth_props.vertical_layers ? "vertical" : "horizontal"
-	layer_word = (system.earth_props.num_layers - 1) == 1 ? "layer" : "layers"
+    # # Print earth model summary
+    # # Get model type summary
+    # model_type = system.earth_props.num_layers == 2 ? "homogeneous" : "multilayer"
+    # orientation = system.earth_props.vertical_layers ? "vertical" : "horizontal"
+    # layer_word = (system.earth_props.num_layers - 1) == 1 ? "layer" : "layers"
 
-	# Format earth model info
-	earth_model_summary = "EarthModel: $(system.earth_props.num_layers-1) $(orientation) $(model_type) $(layer_word)"
+    # # Format earth model info
+    # earth_model_summary = "EarthModel: $(system.earth_props.num_layers-1) $(orientation) $(model_type) $(layer_word)"
 
-	# Add formulation info if available
-	if !isnothing(system.earth_props.FDformulation)
-		formulation_tag =
-			EarthProps._get_earth_formulation_tag(system.earth_props.FDformulation)
-		earth_model_summary *= ", $(formulation_tag)"
-	end
+    # Add formulation info if available
+    # if !isnothing(system.earth_props.FDformulation)
+    #     formulation_tag =
+    #         EarthProps._get_earth_formulation_tag(system.earth_props.FDformulation)
+    #     earth_model_summary *= ", $(formulation_tag)"
+    # end
 
-	println(io, "├─ $(earth_model_summary)")
+    # println(io, "├─ $(earth_model_summary)")
 
-	# Print cable definitions
-	println(io, "└─ $(length(system.cables))-element CableDef:")
+    # Print cable definitions
+    println(io, "└─ $(length(system.cables))-element CablePosition:")
 
-	# Display each cable definition
-	for (i, cabledef) in enumerate(system.cables)
-		# Cable prefix
-		prefix = i == length(system.cables) ? "   └─" : "   ├─"
+    # Display each cable definition
+    for (i, cable_position) in enumerate(system.cables)
+        # Cable prefix
+        prefix = i == length(system.cables) ? "   └─" : "   ├─"
 
-		# Format connections as a string
-		components = [comp.id for comp in cabledef.cable.components]
-		conn_str = join(
-			["$(comp)→$(phase)" for (comp, phase) in zip(components, cabledef.conn)],
-			", ",
-		)
+        # Format connections as a string
+        components = [comp.id for comp in cable_position.design_data.components]
+        conn_str = join(
+            ["$(comp)→$(phase)" for (comp, phase) in zip(components, cable_position.conn)],
+            ", ",
+        )
 
-		# Print cable info
-		println(
-			io,
-			"$(prefix) CableDesign \"$(cabledef.cable.cable_id)\": [horz=$(round(cabledef.horz, sigdigits=4)), vert=$(round(cabledef.vert, sigdigits=4)), conn=($(conn_str))]",
-		)
-	end
+        # Print cable info
+        println(
+            io,
+            "$(prefix) CableDesign \"$(cable_position.design_data.cable_id)\": [horz=$(round(cable_position.horz, sigdigits=4)), vert=$(round(cable_position.vert, sigdigits=4)), conn=($(conn_str))]",
+        )
+    end
 end
 
 """
@@ -3206,17 +3196,17 @@ choose_proper_backend()           # Auto-selects based on environment
 choose_proper_backend(pyplot)     # Explicitly use PyPlot backend
 ```
 """
-function _resolve_backend(backend = nothing)
-	if isnothing(backend) # Check if running in a headless environment 
-		if _is_headless() # Use GR for CI/headless environments
-			ENV["GKSwstype"] = "100"
-			gr()
-		else # Use PlotlyJS for interactive use 
-			plotlyjs()
-		end
-	else # Use the specified backend if provided 
-		backend()
-	end
+function _resolve_backend(backend=nothing)
+    if isnothing(backend) # Check if running in a headless environment 
+        if _is_headless() # Use GR for CI/headless environments
+            ENV["GKSwstype"] = "100"
+            gr()
+        else # Use PlotlyJS for interactive use 
+            plotlyjs()
+        end
+    else # Use the specified backend if provided 
+        backend()
+    end
 end
 
 """
@@ -3242,7 +3232,7 @@ end
 ```
 """
 function _is_headless()
-	return haskey(ENV, "CI") || !haskey(ENV, "DISPLAY")
+    return haskey(ENV, "CI") || !haskey(ENV, "DISPLAY")
 end
 
 
@@ -3261,29 +3251,29 @@ Print the specified fields of an object in a compact format.
 
 - Number of fields that were actually displayed.
 """
-function _print_fields(io::IO, obj, fields_to_show::Vector{Symbol}; sigdigits::Int = 4)
-	displayed_fields = 0
-	for field in fields_to_show
-		if hasproperty(obj, field)
-			value = getfield(obj, field)
-			# Skip NaN values
-			if value isa Number && isnan(value)
-				continue
-			end
-			# Add comma if not the first item
-			if displayed_fields > 0
-				print(io, ", ")
-			end
-			# Format numbers with rounding
-			if value isa Number
-				print(io, "$field=$(round(value, sigdigits=sigdigits))")
-			else
-				print(io, "$field=$value")
-			end
-			displayed_fields += 1
-		end
-	end
-	return displayed_fields
+function _print_fields(io::IO, obj, fields_to_show::Vector{Symbol}; sigdigits::Int=4)
+    displayed_fields = 0
+    for field in fields_to_show
+        if hasproperty(obj, field)
+            value = getfield(obj, field)
+            # Skip NaN values
+            if value isa Number && isnan(value)
+                continue
+            end
+            # Add comma if not the first item
+            if displayed_fields > 0
+                print(io, ", ")
+            end
+            # Format numbers with rounding
+            if value isa Number
+                print(io, "$field=$(round(value, sigdigits=sigdigits))")
+            else
+                print(io, "$field=$value")
+            end
+            displayed_fields += 1
+        end
+    end
+    return displayed_fields
 end
 
 @reexport using .BaseParams

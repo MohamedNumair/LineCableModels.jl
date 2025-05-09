@@ -45,3 +45,6 @@ showcase
 papers
 sprint
 */fem_output
+.github/*.md
+.github/instructions
+.github/prompts

@@ -344,7 +344,7 @@ In this section, the cable design is examined and the calculated parameters are 
 =#
 
 # Compare with datasheet information (R, L, C values):
-core_df = cabledesign_todf(cable_design, :core)
+core_df = cabledesign_todf(cable_design, :baseparams)
 
 # Obtain the equivalent electromagnetic properties of the cable:
 components_df = cabledesign_todf(cable_design, :components)
@@ -402,8 +402,8 @@ y0 = -1
 xa, ya, xb, yb, xc, yc = trifoil_formation(x0, y0, 0.035)
 
 # Initialize the `LineCableSystem` with the first cable (phase A):
-cabledef = CableDef(cable_design, xa, ya, Dict("core" => 1, "sheath" => 0, "jacket" => 0))
-cable_system = LineCableSystem("tutorial", 20.0, earth_params, 1000.0, cabledef)
+cablepos = CablePosition(cable_design, xa, ya, Dict("core" => 1, "sheath" => 0, "jacket" => 0))
+cable_system = LineCableSystem("tutorial", 1000.0, cablepos)
 
 # Add remaining cables (phases B and C):
 addto_linecablesystem!(cable_system, cable_design, xb, yb,
@@ -438,8 +438,8 @@ The final step showcases how to export the model for electromagnetic transient s
 =#
 
 # Export to PSCAD input file:
-output_file = joinpath(@__DIR__, "$(cable_system.case_id)_export.pscx")
-export_file = export_pscad_lcp(cable_system, file_name=output_file);
+output_file = joinpath(@__DIR__, "$(cable_system.system_id)_export.pscx")
+export_file = export_pscad_lcp(cable_system, earth_params, file_name=output_file);
 
 #=
 ## Conclusion

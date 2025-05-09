@@ -3,10 +3,6 @@ Mesh generation functions for the FEMTools.jl module.
 These functions handle the configuration and generation of the mesh.
 """
 
-# function register_mesh_size!(workspace::FEMWorkspace, physical_group_tag::Int, mesh_size::Number)
-#     workspace.mesh_size_map[physical_group_tag] = mesh_size
-# end
-
 """
 $(TYPEDSIGNATURES)
 
@@ -69,88 +65,85 @@ end
 # mesh_size = $(FUNCTIONNAME)(cable_part, workspace)
 # ```
 # """
-function calc_mesh_size(part::AbstractCablePart, workspace::FEMWorkspace)
+function _calc_mesh_size(part::AbstractCablePart, workspace::FEMWorkspace)
     # Extract material properties
-    material = part.material_props
-    rho = to_nominal(material.rho)
-    mu_r = to_nominal(material.mu_r)
-    eps_r = to_nominal(material.eps_r)
+    # material = part.material_props
+    # rho = to_nominal(material.rho)
+    # mu_r = to_nominal(material.mu_r)
+    # eps_r = to_nominal(material.eps_r)
 
     # Extract geometric properties
     radius_in = to_nominal(part.radius_in)
     radius_ext = to_nominal(part.radius_ext)
     thickness = radius_ext - radius_in
 
-    # Extract problem_def parameters
-    problem_def = workspace.problem_def
-    freq = workspace.frequency
+    # Extract formulation parameters
+    formulation = workspace.formulation
 
     # Calculate skin depth & wavelength
-    skin_depth = calc_skin_depth(rho, mu_r, freq)
-    wavelength = 1 / sqrt(ε₀ * eps_r * μ₀ * mu_r) / freq
+    # freq = workspace.frequency
+    # skin_depth = calc_skin_depth(rho, mu_r, freq)
+    # wavelength = 1 / sqrt(ε₀ * eps_r * μ₀ * mu_r) / freq
 
     # Calculate mesh size based on part type and properties
     scale_length = thickness
-    arc_length = 2 * π * radius_ext
     if part isa WireArray
         # For wire arrays, consider the wire radius
         scale_length = to_nominal(part.radius_wire) * 2
-        num_elements = problem_def.elements_per_length_conductor
+        num_elements = formulation.elements_per_length_conductor
     elseif part isa AbstractConductorPart
-        num_elements = problem_def.elements_per_length_conductor
+        num_elements = formulation.elements_per_length_conductor
     elseif part isa Insulator
-        num_elements = problem_def.elements_per_length_insulator
+        num_elements = formulation.elements_per_length_insulator
     elseif part isa Semicon
-        num_elements = problem_def.elements_per_length_semicon
+        num_elements = formulation.elements_per_length_semicon
     end
 
-    skin_based_size = skin_depth / num_elements
-    wavelength_based_size = wavelength / num_elements
-    geometry_based_size = scale_length / num_elements
-    arc_length_based_size = arc_length / num_elements
+    # skin_based_size = skin_depth / num_elements
+    # wavelength_based_size = wavelength / num_elements
     # mesh_size = min(skin_based_size, wavelength_based_size, geometry_based_size, arc_length_based_size)
 
-    mesh_size = min(geometry_based_size, arc_length_based_size)
-
     # Apply bounds from configuration
-    mesh_size = max(mesh_size, problem_def.mesh_size_min)
-    mesh_size = min(mesh_size, problem_def.mesh_size_max)
+    mesh_size = scale_length / num_elements
+    mesh_size = max(mesh_size, formulation.mesh_size_min)
+    mesh_size = min(mesh_size, formulation.mesh_size_max)
 
     return mesh_size
 end
 
-function calc_mesh_size(radius_in::Number, radius_ext::Number, material::Material, num_elements::Int, workspace::FEMWorkspace)
+function _calc_mesh_size(radius_in::Number, radius_ext::Number, material::Material, num_elements::Int, workspace::FEMWorkspace)
     # Extract material properties
-    rho = to_nominal(material.rho)
-    mu_r = to_nominal(material.mu_r)
-    eps_r = to_nominal(material.eps_r)
+    # rho = to_nominal(material.rho)
+    # mu_r = to_nominal(material.mu_r)
+    # eps_r = to_nominal(material.eps_r)
 
     # Extract geometric properties
     thickness = radius_ext - radius_in
 
     # Extract problem_def parameters
-    problem_def = workspace.problem_def
-    freq = workspace.frequency
+    formulation = workspace.formulation
+
 
     # Calculate skin depth & wavelength
-    skin_depth = calc_skin_depth(rho, mu_r, freq)
-    wavelength = 1 / sqrt(ε₀ * eps_r * μ₀ * mu_r) / freq
+    # freq = workspace.frequency
+    # skin_depth = calc_skin_depth(rho, mu_r, freq)
+    # wavelength = 1 / sqrt(ε₀ * eps_r * μ₀ * mu_r) / freq
 
     # Calculate mesh size based on part type and properties
-    scale_length = thickness
-    arc_length = 2 * π * radius_ext
+    # scale_length = thickness
+    # arc_length = 2 * π * radius_ext
 
-    skin_based_size = skin_depth / num_elements
-    wavelength_based_size = wavelength / num_elements
-    geometry_based_size = scale_length / num_elements
-    arc_length_based_size = arc_length / num_elements
+    # skin_based_size = skin_depth / num_elements
+    # wavelength_based_size = wavelength / num_elements
+    # geometry_based_size = scale_length / num_elements
+    # arc_length_based_size = arc_length / num_elements
     # @show mesh_size = min(skin_based_size, wavelength_based_size, geometry_based_size, arc_length_based_size)
 
-    mesh_size = min(geometry_based_size, arc_length_based_size)
+    mesh_size = thickness / num_elements
 
     # Apply bounds from configuration
-    mesh_size = max(mesh_size, problem_def.mesh_size_min)
-    mesh_size = min(mesh_size, problem_def.mesh_size_max)
+    mesh_size = max(mesh_size, formulation.mesh_size_min)
+    mesh_size = min(mesh_size, formulation.mesh_size_max)
 
     return mesh_size
 end
@@ -174,12 +167,12 @@ Configure mesh sizes for all entities in the model.
 $(FUNCTIONNAME)(workspace)
 ```
 """
-function _config_mesh_sizes(workspace::FEMWorkspace)
+function config_mesh_options(workspace::FEMWorkspace)
 
     gmsh.option.setNumber("General.InitialModule", 2)
 
     # Set mesh algorithm
-    gmsh.option.setNumber("Mesh.Algorithm", workspace.problem_def.mesh_algorithm)
+    gmsh.option.setNumber("Mesh.Algorithm", workspace.formulation.mesh_algorithm)
 
     # Set mesh optimization parameters
     gmsh.option.setNumber("Mesh.Optimize", 0)
@@ -187,17 +180,17 @@ function _config_mesh_sizes(workspace::FEMWorkspace)
 
     # Set mesh globals
     gmsh.option.setNumber("Mesh.SaveAll", 1)  # Mesh all regions
-    gmsh.option.setNumber("Mesh.MeshSizeMin", workspace.problem_def.mesh_size_min)
-    gmsh.option.setNumber("Mesh.MeshSizeMax", workspace.problem_def.mesh_size_max)
+    gmsh.option.setNumber("Mesh.MeshSizeMin", workspace.formulation.mesh_size_min)
+    gmsh.option.setNumber("Mesh.MeshSizeMax", workspace.formulation.mesh_size_max)
     gmsh.option.setNumber("Mesh.MeshSizeFromPoints", 1)
     gmsh.option.setNumber("Mesh.MeshSizeFromParametricPoints", 0)
 
     gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 1)
-    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", workspace.problem_def.points_per_circumference)
+    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", workspace.formulation.points_per_circumference)
 
 
-    _log(workspace, 2, "Mesh algorithm: $(workspace.problem_def.mesh_algorithm)")
-    _log(workspace, 2, "Mesh size range: [$(workspace.problem_def.mesh_size_min), $(workspace.problem_def.mesh_size_max)]")
+    @debug "Mesh algorithm: $(workspace.formulation.mesh_algorithm)"
+    @debug "Mesh size range: [$(workspace.formulation.mesh_size_min), $(workspace.formulation.mesh_size_max)]"
 end
 
 """
@@ -219,8 +212,7 @@ Generate the mesh.
 $(FUNCTIONNAME)(workspace)
 ```
 """
-function _mesh_generate(workspace::FEMWorkspace)
-    _log(workspace, 1, "Generating mesh...")
+function _do_make_mesh(workspace::FEMWorkspace)
     # Generate 2D mesh
     gmsh.model.mesh.generate(2)
 
@@ -231,8 +223,8 @@ function _mesh_generate(workspace::FEMWorkspace)
     num_nodes = length(nodes[1])
     num_elements = sum(length.(elements[2]))
 
-    _log(workspace, 1, "Mesh generation completed")
-    _log(workspace, 1, "Created mesh with $(num_nodes) nodes and $(num_elements) elements")
+    @info "Mesh generation completed"
+    @info "Created mesh with $(num_nodes) nodes and $(num_elements) elements"
 end
 
 """
@@ -243,7 +235,7 @@ Initialize a Gmsh model with appropriate settings.
 # Arguments
 
 - `case_id`: Identifier for the model.
-- `problem_def`: The [`FEMProblemDefinition`](@ref) containing mesh parameters.
+- `problem_def`: The [`FEMFormulation`](@ref) containing mesh parameters.
 - `solver`: The [`FEMSolver`](@ref) containing visualization parameters.
 
 # Returns
@@ -256,28 +248,17 @@ Initialize a Gmsh model with appropriate settings.
 $(FUNCTIONNAME)("test_case", problem_def, solver)
 ```
 """
-function _initialize_gmsh(case_id::String, problem_def::FEMProblemDefinition, solver::FEMSolver)
+function initialize_gmsh(workspace::FEMWorkspace)
     # Create a new model
-    gmsh.model.add(case_id)
+    system_id = workspace.problem_def.system.system_id
+    gmsh.model.add(system_id)
 
     # Module launched on startup (0: automatic, 1: geometry, 2: mesh, 3: solver, 4: post-processing)
     gmsh.option.setNumber("General.InitialModule", 0)
-    gmsh.option.setString("General.DefaultFileName", case_id * ".geo")
+    gmsh.option.setString("General.DefaultFileName", system_id * ".geo")
 
-    # Set a full onelab db
-    # gmsh.onelab.set("""
-    # { "onelab":{
-    #     "creator":"LineCableModels.jl",
-    #     "parameters":[
-    #         { "type":"number", "name":"Materials", "values":[1], "attributes":{"Closed":"1", "ReadOnly":"1"} }
-    #     ] }
-    # }
-    # """)
-
-    # Set general visualization options
-    gmsh.option.setNumber("Geometry.Points", 1)  # Show points
-    gmsh.option.setNumber("Geometry.Curves", 1)  # Show curves
-    gmsh.option.setNumber("Geometry.SurfaceLabels", 0)  # Show surface labels
+    # Define verbosity level
+    gmsh.option.setNumber("General.Verbosity", workspace.opts.verbosity)
 
     # Set OCC model healing options
     gmsh.option.setNumber("Geometry.AutoCoherence", 1)
@@ -288,6 +269,56 @@ function _initialize_gmsh(case_id::String, problem_def::FEMProblemDefinition, so
     gmsh.option.setNumber("Geometry.OCCMakeSolids", 1)
 
     # Log settings based on verbosity
-    _log(solver, 2, "Initialized Gmsh model: $case_id")
+    @info "Initialized Gmsh model: $system_id"
 
+end
+
+function make_mesh(workspace::FEMWorkspace)
+
+    # Initialize Gmsh model and set parameters
+    initialize_gmsh(workspace)
+
+    # Create geometry
+    @info "Creating domain boundaries..."
+    make_space_geometry(workspace)
+
+    @info "Creating cable geometry..."
+    make_cable_geometry(workspace)
+
+    # Synchronize the model
+    gmsh.model.occ.synchronize()
+
+    # Boolean operations
+    @info "Performing boolean operations..."
+    process_fragments(workspace)
+
+    # Entity identification and entity assignment
+    @info "Identifying entities after fragmentation..."
+    identify_by_marker(workspace)
+
+    # Physical group assignment
+    @info "Assigning physical groups..."
+    assign_physical_groups(workspace)
+
+    # Mesh sizing
+    @info "Setting up physics-based mesh sizing..."
+    config_mesh_options(workspace)
+
+    # Preview pre-meshing configuration if requested
+    if workspace.opts.preview_geo
+        @info "Launching geometry preview before meshing..."
+        preview_mesh(workspace)
+    end
+
+    # Mesh generation
+    @info "Generating mesh..."
+    _do_make_mesh(workspace)
+
+    # Save mesh
+    @info "Saving mesh to file: $(workspace.paths[:mesh_file])"
+    gmsh.write(workspace.paths[:mesh_file])
+
+    # Save geometry
+    @info "Saving geometry to file: $(workspace.paths[:geo_file])"
+    gmsh.write(workspace.paths[:geo_file])
 end

@@ -29,7 +29,7 @@ function preview_mesh(workspace::FEMWorkspace)
     try
         # Try to get version - this will throw if Gmsh is not initialized
         gmsh.option.getNumber("General.Terminal")
-        _log(workspace, 2, "Gmsh already initialized")
+        @debug "Gmsh already initialized"
         gmsh_already_initialized = true
     catch
         gmsh_already_initialized = false
@@ -38,11 +38,12 @@ function preview_mesh(workspace::FEMWorkspace)
     # Initialize Gmsh if needed
     if !gmsh_already_initialized
         gmsh.initialize()
-        _log(workspace, 2, "Initialized Gmsh for mesh preview")
+        @debug "Initialized Gmsh for mesh preview"
     end
 
     try
         # Set visualization options
+        gmsh.option.setNumber("Geometry.SurfaceLabels", 0)  # Show surface labels
         gmsh.option.setNumber("Geometry.PointNumbers", 0)
         gmsh.option.setNumber("Geometry.CurveNumbers", 0)
         gmsh.option.setNumber("Geometry.SurfaceNumbers", 0)
@@ -57,15 +58,15 @@ function preview_mesh(workspace::FEMWorkspace)
         # Initialize FLTK GUI
         gmsh.fltk.initialize()
 
-        _log(workspace, 1, "Launching Gmsh GUI for mesh preview")
-        _log(workspace, 1, "Close the Gmsh window to continue...")
+        @info "Launching Gmsh GUI for mesh preview"
+        @info "Close the Gmsh window to continue..."
 
         # Define event check function
         function check_for_event()
             action = gmsh.onelab.getString("ONELAB/Action")
             if length(action) > 0 && action[1] == "check"
                 gmsh.onelab.setString("ONELAB/Action", [""])
-                _log(workspace, 2, "UI interaction detected")
+                @debug "UI interaction detected"
                 gmsh.graphics.draw()
             end
             return true
@@ -76,10 +77,10 @@ function preview_mesh(workspace::FEMWorkspace)
             gmsh.fltk.wait()
         end
 
-        _log(workspace, 1, "Mesh preview closed")
+        @info "Mesh preview closed"
 
     catch e
-        _log(workspace, 0, "Error during mesh preview: $e")
+        @warn "Error during mesh preview: $e"
     end
 end
 
@@ -112,7 +113,7 @@ function preview_results(workspace::FEMWorkspace, result_file::String="")
 
     # Check if the file exists
     if !isfile(result_file)
-        _log(workspace, 0, "Result file not found: $result_file")
+        @warn "Result file not found: $result_file"
         return
     end
 
@@ -132,18 +133,18 @@ function preview_results(workspace::FEMWorkspace, result_file::String="")
         # Initialize FLTK GUI
         gmsh.fltk.initialize()
 
-        _log(workspace, 1, "Launching Gmsh GUI for result preview")
-        _log(workspace, 1, "Close the Gmsh window to continue...")
+        @info "Launching Gmsh GUI for result preview"
+        @info "Close the Gmsh window to continue..."
 
         # Wait for user to close the window
         while gmsh.fltk.isAvailable() == 1
             gmsh.fltk.wait()
         end
 
-        _log(workspace, 1, "Result preview closed")
+        @info "Result preview closed"
 
     catch e
-        _log(workspace, 0, "Error during result preview: $e")
+        @warn "Error during result preview: $e"
     finally
         gmsh.finalize()
     end
@@ -184,7 +185,7 @@ function save_mesh_image(workspace::FEMWorkspace, output_file::String)
     # Initialize Gmsh if needed
     if !gmsh_already_initialized
         gmsh.initialize()
-        _log(workspace, 2, "Initialized Gmsh for saving mesh image")
+        @debug "Initialized Gmsh for saving mesh image"
     end
 
     try
@@ -216,11 +217,11 @@ function save_mesh_image(workspace::FEMWorkspace, output_file::String)
         # Save screenshot
         gmsh.write(output_file)
 
-        _log(workspace, 1, "Saved mesh image to: $output_file")
+        @info "Saved mesh image to: $output_file"
 
         return true
     catch e
-        _log(workspace, 0, "Error saving mesh image: $e")
+        @warn "Error saving mesh image: $e"
         return false
     end
 end

@@ -108,34 +108,34 @@ end
 # end
 
 
-function get_space_material(workspace::FEMWorkspace, layer_idx::Int)
+function get_earth_model_material(workspace::FEMWorkspace, layer_idx::Int)
 
-    earth_model = workspace.cable_system.earth_props
-    num_layers = workspace.cable_system.earth_props.num_layers
+    earth_props = workspace.problem_def.earth_props
+    num_layers = earth_props.num_layers
 
     if layer_idx <= num_layers
 
         # Create a material with the earth properties
-        rho = earth_model.layers[layer_idx].base_rho_g  # Layer 1 is air, Layer 2 is first earth layer
-        eps_r = earth_model.layers[layer_idx].base_epsr_g
-        mu_r = earth_model.layers[layer_idx].base_mur_g
+        rho = earth_props.layers[layer_idx].base_rho_g  # Layer 1 is air, Layer 2 is first earth layer
+        eps_r = earth_props.layers[layer_idx].base_epsr_g
+        mu_r = earth_props.layers[layer_idx].base_mur_g
 
         return Material(rho, eps_r, mu_r, 20.0, 0.0)
     else
         # Default to bottom earth layer if layer_idx is out of bounds
 
         # Create a material with the earth properties
-        rho = earth_model.layers[end].base_rho_g  # Layer 1 is air, Layer 2 is first earth layer
-        eps_r = earth_model.layers[end].base_epsr_g
-        mu_r = earth_model.layers[end].base_mur_g
+        rho = earth_props.layers[end].base_rho_g  # Layer 1 is air, Layer 2 is first earth layer
+        eps_r = earth_props.layers[end].base_epsr_g
+        mu_r = earth_props.layers[end].base_mur_g
 
         return Material(rho, eps_r, mu_r, 20.0, 0.0)
     end
 end
 
 function get_air_material(workspace::FEMWorkspace)
-    if !isnothing(workspace.problem_def.materials_db)
-        air_material = get_material(workspace.problem_def.materials_db, "air")
+    if !isnothing(workspace.formulation.materials_db)
+        air_material = get_material(workspace.formulation.materials_db, "air")
         if isnothing(air_material)
             @warn("Air material not found in database. Overriding with default properties.")
             air_material = Material(Inf, 1.0, 1.0, 20.0, 0.0)

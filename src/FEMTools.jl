@@ -5,7 +5,7 @@ The [`FEMTools`](@ref) module provides functionality for generating geometric me
 
 # Overview
 
-- Defines core types [`FEMProblemDefinition`](@ref), [`FEMSolver`](@ref), and [`FEMWorkspace`](@ref) for managing simulation parameters and state.
+- Defines core types [`FEMFormulation`](@ref), [`FEMOptions`](@ref), and [`FEMWorkspace`](@ref) for managing simulation parameters and state.
 - Implements a physical tag encoding system (CCOGYYYYY scheme for cable components, EPFXXXXX for domain regions).
 - Provides primitive drawing functions for geometric elements.
 - Creates a two-phase workflow: creation → fragmentation → identification.
@@ -34,15 +34,22 @@ using Printf
 using Dates
 using Measurements
 using Colors
+using Logging
+using Logging: AbstractLogger, LogLevel, Info, global_logger
+using LoggingExtras: TeeLogger, FileLogger
+
+# GetDP.jl
+using GetDP
+using GetDP: Problem
 
 # Export public API
-export FEMProblemDefinition
-export FEMSolver
-export run_fem_model, preview_mesh, preview_results
-export encode_cable_tag, decode_cable_tag
-
+export LineParametersProblem
+export FEMFormulation, FEMOptions
+export compute!
+export FEMElectrodynamics, FEMDarwin
 
 # Main types and implementations
+include("ProblemDefs.jl")
 
 """
 $(TYPEDEF)
@@ -50,42 +57,6 @@ $(TYPEDEF)
 Abstract type for entity data to be stored within the FEMWorkspace.
 """
 abstract type AbstractEntityData end
-
-"""
-$(TYPEDEF)
-
-Abstract base type for all problem definitions in the FEM simulation framework.
-Problem definitions include physics-related parameters of the simulation, domain 
-characteristics, meshing parameters, and analysis types.
-
-Concrete implementations should specify the complete set of physics parameters 
-needed to define a mathematical model for a simulation.
-"""
-abstract type AbstractProblemDefinition end
-
-"""
-$(TYPEDEF)
-
-Abstract base type for solver methods in the FEM simulation framework.
-Solver methods define execution-related parameters such as mesh generation options,
-solver configuration, and post-processing settings.
-
-Concrete implementations should define how the solution process is controlled,
-including file handling, previewing options, and external tool integration.
-"""
-abstract type AbstractSolverMethod end
-
-"""
-$(TYPEDEF)
-
-Abstract base type for workspace containers in the FEM simulation framework.
-Workspace containers maintain the complete state of a simulation, including 
-intermediate data structures, identification mappings, and results.
-
-Concrete implementations should provide state tracking for all phases of the 
-simulation process from geometry creation through results analysis.
-"""
-abstract type AbstractWorkspace end
 
 """
 $(TYPEDEF)
@@ -190,6 +161,69 @@ function FEMEntity(tag::Integer, data::T) where {T<:AbstractEntityData}
     return FEMEntity{T}(Int32(tag), data)
 end
 
+mutable struct FEMDarwin <: AbstractImpedanceFormulation
+    problem::GetDP.Problem
+    resolution_name::String
+
+    function FEMDarwin()
+        # darwin = new(GetDP.Problem, "Darwin")
+        # create_darwin_problem(darwin.problem, darwin.resolution_name)
+        return new(GetDP.Problem(), "Darwin")
+    end
+
+end
+
+mutable struct FEMElectrodynamics <: AbstractAdmittanceFormulation
+    problem::GetDP.Problem
+    resolution_name::String
+    # sources::Int64  # New field for linecablesystem
+    function FEMElectrodynamics()
+        # electro = new(problem, "Electrodynamics", num_sources)
+        # create_electrodynamic_problem(electro.problem, num_sources, electro.resolution_name)
+
+        return new(GetDP.Problem(), "Electrodynamics")
+    end
+end
+
+
+function _run_solver(workspace)
+    """
+            Verbosity Levels in GetDP
+            Level	Output Description
+            0	     Silent (no output)
+            1	     Errors only
+            2	     Errors + warnings
+            3	     Errors + warnings + basic info
+            4	     Detailed debugging
+            5	     Full internal tracing
+    """
+    mesh_file = workspace.paths[:mesh_file]
+    pro_file_path = workspace.paths[:pro_file]
+    all_problemns = build_getdp_problem(workspace)
+
+    write_multiple_problems(all_problemns, pro_file_path)
+
+    # Set up paths
+    getdp_exe_path = workspace.opts.getdp_executable
+
+    # Write all problems to files
+    @info "Running opts..."
+    for formulation in workspace.formulation.analysis_type
+        # Run solver for each formulation
+        solve_cmd = "$getdp_exe_path $pro_file_path -msh $mesh_file -solve $(formulation.resolution_name) -v$(workspace.opts.verbosity == 0 ? 2 : 3)"
+
+        @info "Solving... (Resolution = $(formulation.resolution_name))"
+
+        try
+            gmsh.onelab.run("GetDP", solve_cmd)
+            @info "Solve successful!"
+            # gmsh.fltk.run()
+        catch e
+            println("Solve failed: ", e)
+        end
+    end
+end
+
 """
 $(TYPEDEF)
 
@@ -198,11 +232,11 @@ This contains the physics-related parameters of the simulation.
 
 $(TYPEDFIELDS)
 """
-struct FEMProblemDefinition <: AbstractProblemDefinition
-    "Domain radius for the simulation \\[m\\]."
+struct FEMFormulation <: AbstractFormulation
+    "Radius of the physical domain \\[m\\]."
     domain_radius::Float64
-    "Flag to correct for twisting effects \\[dimensionless\\]."
-    correct_twisting::Bool
+    "Outermost radius to apply the infinity transform \\[m\\]."
+    domain_radius_inf::Float64
     "Elements per characteristic length for conductors \\[dimensionless\\]."
     elements_per_length_conductor::Int
     "Elements per characteristic length for insulators \\[dimensionless\\]."
@@ -214,7 +248,7 @@ struct FEMProblemDefinition <: AbstractProblemDefinition
     "Points per circumference length (2π radians) \\[dimensionless\\]."
     points_per_circumference::Int
     "Analysis types to perform \\[dimensionless\\]."
-    analysis_type::Vector{Int}
+    analysis_type::Tuple{AbstractImpedanceFormulation,AbstractAdmittanceFormulation}
 
     "Minimum mesh size \\[m\\]."
     mesh_size_min::Float64
@@ -231,17 +265,16 @@ struct FEMProblemDefinition <: AbstractProblemDefinition
     """
     $(TYPEDSIGNATURES)
 
-    Constructs a [`FEMProblemDefinition`](@ref) instance with default values.
+    Constructs a [`FEMFormulation`](@ref) instance with default values.
 
     # Arguments
 
     - `domain_radius`: Domain radius for the simulation \\[m\\]. Default: 5.0.
-    - `correct_twisting`: Flag to correct for twisting effects \\[dimensionless\\]. Default: true.
     - `elements_per_length_conductor`: Elements per scale length for conductors \\[dimensionless\\]. Default: 3.0.
     - `elements_per_length_insulator`: Elements per scale length for insulators \\[dimensionless\\]. Default: 2.0.
     - `elements_per_length_semicon`: Elements per scale length for semiconductors \\[dimensionless\\]. Default: 4.0.
     - `elements_per_length_interfaces`: Elements per scale length for interfaces \\[dimensionless\\]. Default: 0.1.
-    - `analysis_type`: Analysis types to perform \\[dimensionless\\]. Default: [0, 1].
+    - `analysis_type`: 
     - `mesh_size_min`: Minimum mesh size \\[m\\]. Default: 1e-4.
     - `mesh_size_max`: Maximum mesh size \\[m\\]. Default: 1.0.
     - `mesh_size_default`: Default mesh size \\[m\\]. Default: `domain_radius/10`.
@@ -250,41 +283,44 @@ struct FEMProblemDefinition <: AbstractProblemDefinition
 
     # Returns
 
-    - A [`FEMProblemDefinition`](@ref) instance with the specified parameters.
+    - A [`FEMFormulation`](@ref) instance with the specified parameters.
 
     # Examples
 
     ```julia
     # Create a problem definition with default parameters
-    problem_def = $(FUNCTIONNAME)()
+    formulation = $(FUNCTIONNAME)()
 
     # Create a problem definition with custom parameters
-    problem_def = $(FUNCTIONNAME)(
+    formulation = $(FUNCTIONNAME)(
         domain_radius=10.0,
         elements_per_length_conductor=5.0,
         mesh_algorithm=2
     )
     ```
     """
-    function FEMProblemDefinition(;
+    function FEMFormulation(;
         domain_radius::Float64=5.0,
-        correct_twisting::Bool=true,
+        domain_radius_inf::Float64=6.25,
         elements_per_length_conductor::Int=3,
         elements_per_length_insulator::Int=2,
         elements_per_length_semicon::Int=4,
         elements_per_length_interfaces::Int=3,
         points_per_circumference::Int=16,
-        analysis_type::Vector{Int}=[0, 1],
+        analysis_type::Tuple{AbstractImpedanceFormulation,AbstractAdmittanceFormulation}=(FEMDarwin(), FEMElectrodynamics()),
         mesh_size_min::Float64=1e-4,
         mesh_size_max::Float64=1.0,
         mesh_size_default::Float64=domain_radius / 10,
-        mesh_algorithm::Int=6,
+        mesh_algorithm::Int=5,
         materials_db::MaterialsLibrary=MaterialsLibrary()
     )
         return new(
-            domain_radius, correct_twisting,
+            domain_radius, domain_radius_inf,
             elements_per_length_conductor, elements_per_length_insulator,
-            elements_per_length_semicon, elements_per_length_interfaces, points_per_circumference, analysis_type, mesh_size_min, mesh_size_max, mesh_size_default, mesh_algorithm, materials_db
+            elements_per_length_semicon, elements_per_length_interfaces,
+            points_per_circumference, analysis_type,
+            mesh_size_min, mesh_size_max, mesh_size_default,
+            mesh_algorithm, materials_db
         )
     end
 end
@@ -297,7 +333,7 @@ This contains the execution-related parameters.
 
 $(TYPEDFIELDS)
 """
-struct FEMSolver <: AbstractSolverMethod
+struct FEMOptions <: FormulationOptions
     "Flag to force remeshing \\[dimensionless\\]."
     force_remesh::Bool
     "Flag to run the solver \\[dimensionless\\]."
@@ -322,11 +358,13 @@ struct FEMSolver <: AbstractSolverMethod
     getdp_executable::String
     "Verbosity level \\[dimensionless\\]."
     verbosity::Int
+    "Path to the log file."
+    logfile::Union{String,Nothing}
 
     """
     $(TYPEDSIGNATURES)
 
-    Constructs a [`FEMSolver`](@ref) instance with default values.
+    Constructs a [`FEMOptions`](@ref) instance with default values.
 
     # Arguments
 
@@ -344,7 +382,7 @@ struct FEMSolver <: AbstractSolverMethod
 
     # Returns
 
-    - A [`FEMSolver`](@ref) instance with the specified parameters.
+    - A [`FEMOptions`](@ref) instance with the specified parameters.
 
     # Examples
 
@@ -360,7 +398,7 @@ struct FEMSolver <: AbstractSolverMethod
     )
     ```
     """
-    function FEMSolver(;
+    function FEMOptions(;
         force_remesh::Bool=false,
         run_solver::Bool=true,
         overwrite_results::Bool=false,
@@ -371,7 +409,8 @@ struct FEMSolver <: AbstractSolverMethod
         base_path::String="./fem_output",
         gmsh_executable::Union{String,Nothing}=nothing,
         getdp_executable::Union{String,Nothing}=nothing,
-        verbosity::Int=1
+        verbosity::Int=0,
+        logfile::Union{String,Nothing}=nothing
     )
         # Get executables from environment if not provided
         if isnothing(gmsh_executable)
@@ -390,10 +429,12 @@ struct FEMSolver <: AbstractSolverMethod
             error("GetDP executable not found at path: $getdp_executable")
         end
 
+        setup_fem_logging(verbosity, logfile)
+
         return new(
             force_remesh, run_solver, overwrite_results,
             run_postprocessing, preview_mesh, preview_geo, plot_results,
-            base_path, gmsh_executable, getdp_executable, verbosity
+            base_path, gmsh_executable, getdp_executable, verbosity, logfile
         )
     end
 end
@@ -407,14 +448,12 @@ This is the main container that maintains all state during the simulation proces
 $(TYPEDFIELDS)
 """
 mutable struct FEMWorkspace
-    "Cable system being simulated."
-    cable_system::LineCableSystem
-    "Problem definition parameters."
-    problem_def::FEMProblemDefinition
-    "Solver parameters."
-    solver::FEMSolver
-    "Simulation frequency \\[Hz\\]."
-    frequency::Float64
+    "Line parameters problem definition."
+    problem_def::LineParametersProblem
+    "Formulation parameters."
+    formulation::FEMFormulation
+    "Computation options."
+    opts::FEMOptions
 
     "Path information."
     paths::Dict{Symbol,String}
@@ -433,8 +472,6 @@ mutable struct FEMWorkspace
     material_registry::Dict{String,Int}
     "Container for unique physical groups."
     physical_groups::Dict{Int,Material}
-    "Results storage."
-    results::Dict{String,Any}
 
     """
     $(TYPEDSIGNATURES)
@@ -444,7 +481,7 @@ mutable struct FEMWorkspace
     # Arguments
 
     - `cable_system`: Cable system being simulated.
-    - `problem_def`: Problem definition parameters.
+    - `formulation`: Problem definition parameters.
     - `solver`: Solver parameters.
     - `frequency`: Simulation frequency \\[Hz\\]. Default: 50.0.
 
@@ -456,17 +493,14 @@ mutable struct FEMWorkspace
 
     ```julia
     # Create a workspace
-    workspace = $(FUNCTIONNAME)(cable_system, problem_def, solver)
+    workspace = $(FUNCTIONNAME)(cable_system, formulation, solver)
     ```
     """
-    function FEMWorkspace(cable_system::LineCableSystem,
-        problem_def::FEMProblemDefinition,
-        solver::FEMSolver;
-        frequency::Float64=50.0)
+    function FEMWorkspace(problem::LineParametersProblem, formulation::FEMFormulation, opts::FEMOptions)
 
         # Initialize empty workspace
         workspace = new(
-            cable_system, problem_def, solver, frequency,
+            problem, formulation, opts,
             Dict{Symbol,String}(), # Path information.
             Vector{FEMEntity{<:AbstractEntityData}}(), #conductors
             Vector{FEMEntity{<:AbstractEntityData}}(), #insulators
@@ -475,14 +509,30 @@ mutable struct FEMWorkspace
             Dict{Vector{Float64},AbstractEntityData}(), #unassigned_entities
             Dict{String,Int}(),  # Initialize empty material registry
             Dict{Int,Material}(), # Maps physical group tags to materials
-            Dict{String,Any}()
         )
 
         # Set up paths
-        workspace.paths = _setup_paths(solver, cable_system)
+        workspace.paths = setup_paths(problem.system, opts)
+        cleanup_files(workspace.paths, opts)
 
         return workspace
     end
+end
+
+function set_problem!(problem::GetDP.Problem, workspace::FEMWorkspace, ::Val{:baseparams})::Vector{<:AbstractFEMFormulation}
+    darwin_prob = deepcopy(problem)
+    electr_prob = deepcopy(problem)
+
+    # Darwin
+    darwin_obj = FEMDarwin(darwin_prob)
+
+    # Electrodynamics
+    num_sources = length(workspace.problem_def.system.cables)
+    electro_obj = FEMElectrodynamics(electr_prob, num_sources)
+
+    make_file!(darwin_obj.problem)
+    make_file!(electro_obj.problem)
+    return [darwin_obj, electro_obj]
 end
 
 """
@@ -493,7 +543,7 @@ Main function to run the FEM simulation workflow for a cable system.
 # Arguments
 
 - `cable_system`: Cable system to simulate.
-- `problem_def`: Problem definition parameters.
+- `formulation`: Problem definition parameters.
 - `solver`: Solver parameters.
 - `frequency`: Simulation frequency \\[Hz\\]. Default: 50.0.
 
@@ -505,143 +555,98 @@ Main function to run the FEM simulation workflow for a cable system.
 
 ```julia
 # Run a FEM simulation
-workspace = $(FUNCTIONNAME)(cable_system, problem_def, solver)
+workspace = $(FUNCTIONNAME)(cable_system, formulation, solver)
 ```
 """
-function run_fem_model(cable_system::LineCableSystem,
-    problem_def::FEMProblemDefinition,
-    solver::FEMSolver;
-    frequency::Float64=50.0, workspace::Union{FEMWorkspace,Nothing}=nothing)
+function compute!(problem::LineParametersProblem,
+    formulation::FEMFormulation,
+    opts::FEMOptions; workspace::Union{FEMWorkspace,Nothing}=nothing)
 
     # Create and initialize workspace
     if isnothing(workspace) || !isa(workspace, FEMWorkspace)
-        workspace = FEMWorkspace(cable_system, problem_def, solver, frequency=frequency)
+        workspace = FEMWorkspace(problem, formulation, opts)
+        is_empty_workspace = true
     end
-    # workspace = FEMWorkspace(cable_system, problem_def, solver, frequency=frequency)
 
     # Log start
-    _log(workspace, 1, "Starting FEM simulation for cable system: $(cable_system.case_id)")
-    _log(workspace, 1, "Configuration: domain_radius=$(problem_def.domain_radius) m, mesh_algorithm=$(problem_def.mesh_algorithm)")
-
-    # Clean up files based on configuration
-    _cleanup_files(workspace.paths, solver)
+    @info "Starting FEM simulation for cable system: $(problem.system.system_id)"
 
     # Check if mesh file exists
-    mesh_file = workspace.paths[:mesh_file]
-    mesh_exists = isfile(mesh_file)
+    mesh_exists = isfile(workspace.paths[:mesh_file])
 
     # Determine if we need to run meshing
-    run_mesh = solver.force_remesh || !mesh_exists
+    run_mesh = opts.force_remesh || !mesh_exists || is_empty_workspace
 
     # Determine if we need to run solver
     solver_output_exists = false
-    if solver.run_solver && !isempty(workspace.paths[:results_dir])
+    if opts.run_solver && !isempty(workspace.paths[:results_dir])
         # Check for presence of result files
         result_files = readdir(workspace.paths[:results_dir])
         solver_output_exists = !isempty(result_files)
     end
-    run_solver = solver.run_solver && (!solver_output_exists || solver.overwrite_results)
+    run_solver = opts.run_solver && (!solver_output_exists || opts.overwrite_results)
 
     # Determine if we need to run post-processing
-    run_postproc = solver.run_postprocessing && run_solver
+    run_postproc = opts.run_postprocessing && run_solver
 
     try
         # Initialize Gmsh for meshing phase
         if run_mesh
             gmsh.initialize()
 
-            _log(workspace, 1, "Running meshing phase...")
-
-            # Initialize Gmsh model and set parameters
-            _initialize_gmsh(cable_system.case_id, problem_def, solver)
-
-            # Create geometry
-            _log(workspace, 1, "Creating domain boundaries...")
-            _make_space_geometry(workspace)
-
-            _log(workspace, 1, "Creating cable geometry...")
-            _make_cable_geometry(workspace)
-
-            # Synchronize the model
-            gmsh.model.occ.synchronize()
-
-            # Boolean operations
-            _log(workspace, 1, "Performing boolean operations...")
-            _process_fragments(workspace)
-
-            # Entity identification and entity assignment
-            _log(workspace, 1, "Identifying entities after fragmentation...")
-            _identify_by_marker(workspace)
-
-            # Physical group assignment
-            _log(workspace, 1, "Assigning physical groups...")
-            _assign_physical_groups(workspace)
-
-            # Mesh sizing
-            _log(workspace, 1, "Setting up physics-based mesh sizing...")
-            _config_mesh_sizes(workspace)
-
-            # Preview pre-meshing configuration if requested
-            if solver.preview_geo
-                _log(workspace, 1, "Launching geometry preview before meshing...")
-                preview_mesh(workspace)
-            end
-
-            # PHASE 6: Mesh generation
-            _log(workspace, 1, "Generating mesh...")
-            _mesh_generate(workspace)
-
-            # Save mesh
-            _log(workspace, 1, "Saving mesh to file: $(mesh_file)")
-            gmsh.write(mesh_file)
-
-            # Save geometry
-            _log(workspace, 1, "Saving geometry to file: $(workspace.paths[:geo_file])")
-            gmsh.write(workspace.paths[:geo_file])
-
-            # # Save ONELAB parameters
-            # _log(workspace, 1, "Saving ONELAB parameters to file: $(workspace.paths[:onelab_file])")
-            # onelab_data = gmsh.onelab.get("")
-            # open(workspace.paths[:onelab_file], "w") do io
-            #     write(io, onelab_data)
-            # end
+            @info "Building mesh..."
+            make_mesh(workspace)
 
             # Preview mesh if requested
-            if solver.preview_mesh
-                _log(workspace, 1, "Launching mesh preview...")
+            if opts.preview_mesh
+                @info "Launching mesh preview..."
                 preview_mesh(workspace)
             end
 
-            _log(workspace, 1, "Meshing completed.")
+            @info "Meshing completed."
         else
-            _log(workspace, 1, "Skipping meshing phase (mesh already exists).")
+            @info "Skipping meshing phase (mesh already exists)."
         end
 
-        # Run solver if needed
+        # Run solver if requested and/or needed
         if run_solver
-            _log(workspace, 1, "Running solver phase...")
-            # To be implemented
-            # _run_solver(workspace)
-            _log(workspace, 1, "Solver completed.")
+            # @info "Running GetDP opts..."
+            # fem_objs = make_getdp_problem(workspace, frequency)
+            # for obj in fem_objs
+            #     obj.problem.filename = workspace.paths[:pro_file]
+            #     write_file!(obj.problem)
+            #     solve_cmd = "$(workspace.opts.getdp_executable) $(workspace.paths[:pro_file]) -msh $(workspace.paths[:mesh_file]) -solve $(obj.resolution_name) -v$(workspace.opts.verbosity == 0 ? 2 : 3)"
+
+            #     @info "Solving... (Resolution = $(obj.resolution_name))"
+
+            #     try
+            #         gmsh.onelab.run("GetDP", solve_cmd)
+            #         @info "Solve successful!"
+            #         # gmsh.fltk.run()
+            #     catch e
+            #         println("Solve failed: ", e)
+            #     end
+            # end
+            # @info "Solver completed."
         else
-            _log(workspace, 1, "Skipping solver phase.")
+            @info "Skipping solver run."
         end
 
         # Run post-processing if needed
         if run_postproc
-            _log(workspace, 1, "Running post-processing phase...")
+            @info "Running post-processing phase..."
             # To be implemented
             # _run_postprocessing(workspace)
-            _log(workspace, 1, "Post-processing completed.")
+            @info "Post-processing completed."
         else
-            _log(workspace, 1, "Skipping post-processing phase.")
+            @info "Skipping post-processing phase."
         end
 
     catch e
-        _log(workspace, 0, "Error in FEM simulation: $e")
+        @warn "Error in FEM simulation: $e"
 
         # Print stack trace for debugging
-        if solver.verbosity >= 2
+        if opts.verbosity >= 2
             for (exc, bt) in Base.catch_stack()
                 showerror(stderr, exc, bt)
                 println(stderr)
@@ -655,9 +660,9 @@ function run_fem_model(cable_system::LineCableSystem,
         if @isdefined(gmsh) && isdefined(gmsh, :finalize)
             try
                 gmsh.finalize()
-                _log(workspace, 1, "Gmsh finalized.")
+                @info "Gmsh finalized."
             catch fin_err
-                _log(workspace, 0, "Warning: Error during Gmsh finalization: $fin_err")
+                @warn "Warning: Error during Gmsh finalization: $fin_err"
             end
         end
     end
@@ -676,5 +681,6 @@ include("FEMTools/utilities.jl")       # Various utilities
 include("FEMTools/visualization.jl")   # Visualization functions
 include("FEMTools/space.jl")           # Domain creation functions
 include("FEMTools/cable.jl")           # Cable geometry creation functions
+include("FEMTools/solver.jl")          # Solver functions
 
 end # module FEMTools
