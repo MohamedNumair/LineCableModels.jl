@@ -243,6 +243,7 @@ function make_space_geometry(workspace::FEMWorkspace)
     mesh_size_max = earth_interface_mesh_size
     transition_mesh = collect(LinRange(mesh_size_min, mesh_size_max, n_regions))
     # TODO: Transition regions should be parametric and specified by the user in the formulation
+    # Issue URL: https://github.com/Electa-Git/LineCableModels.jl/issues/7
     _, _, earth_transition_markers = draw_transition_region(cx, cy, transition_radii, transition_mesh, num_points_circumference)
 
     # Register transition regions in the workspace
