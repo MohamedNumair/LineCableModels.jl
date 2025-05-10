@@ -40,11 +40,11 @@ function make_space_geometry(workspace::FEMWorkspace)
     # Create inner domain disk
     num_points_circumference = formulation.points_per_circumference
     @debug "Creating inner domain disk with radius $(domain_radius) m"
-    _, _, air_region_marker = draw_disk(x_center, y_center, domain_radius, mesh_size_domain, num_points_circumference)
+    _, _, air_region_marker, domain_boundary_markers = draw_disk(x_center, y_center, domain_radius, mesh_size_domain, num_points_circumference)
 
     # Create outer domain annular region
     @debug "Creating outer domain annular region with radius $(domain_radius_inf) m"
-    _, _, air_infshell_marker = draw_annular(x_center, y_center, domain_radius, domain_radius_inf, mesh_size_inf, num_points_circumference)
+    _, _, air_infshell_marker, domain_infty_markers = draw_annular(x_center, y_center, domain_radius, domain_radius_inf, mesh_size_inf, num_points_circumference)
 
     # Get earth model from workspace
     earth_props = workspace.problem_def.earth_props
@@ -153,11 +153,25 @@ function make_space_geometry(workspace::FEMWorkspace)
         earth_material
     )
 
-    # Add surfaces to the workspace
+    # Add curves to the workspace
     workspace.unassigned_entities[air_boundary_marker] = air_boundary_entity
     workspace.unassigned_entities[air_infty_marker] = air_infty_entity
     workspace.unassigned_entities[earth_boundary_marker] = earth_boundary_entity
     workspace.unassigned_entities[earth_infty_marker] = earth_infty_entity
+
+    @debug "Domain boundary markers:"
+    for point_marker in domain_boundary_markers
+        target_entity = point_marker[2] > 0 ? air_boundary_entity : earth_boundary_entity
+        workspace.unassigned_entities[point_marker] = target_entity
+        @debug "  Point $point_marker: ($(point_marker[1]), $(point_marker[2]), $(point_marker[3]))"
+    end
+
+    @debug "Domain -> infinity markers:"
+    for point_marker in domain_infty_markers
+        target_entity = point_marker[2] > 0 ? air_infty_entity : earth_infty_entity
+        workspace.unassigned_entities[point_marker] = target_entity
+        @debug "  Point $point_marker: ($(point_marker[1]), $(point_marker[2]), $(point_marker[3]))"
+    end
 
     # Add physical groups to the workspace
     register_physical_group!(workspace, air_region_tag, air_material)
@@ -202,7 +216,7 @@ function make_space_geometry(workspace::FEMWorkspace)
     num_elements = formulation.elements_per_length_interfaces
     earth_interface_mesh_size = _calc_mesh_size(0, domain_radius, earth_material, num_elements, workspace)
 
-    _, _, earth_interface_marker = draw_line(-domain_radius_inf, 0.0, domain_radius_inf, 0.0, earth_interface_mesh_size, round(Int, domain_radius))
+    _, _, earth_interface_markers = draw_line(-domain_radius_inf, 0.0, domain_radius_inf, 0.0, earth_interface_mesh_size, round(Int, domain_radius))
 
     # Create physical tag for the earth interface
     interface_idx = 1  # Earth interface index
@@ -228,6 +242,7 @@ function make_space_geometry(workspace::FEMWorkspace)
     mesh_size_min = earth_interface_mesh_size / 100 #characteristic_len / workspace.formulation.elements_per_length_insulator
     mesh_size_max = earth_interface_mesh_size
     transition_mesh = collect(LinRange(mesh_size_min, mesh_size_max, n_regions))
+    # TODO: Transition regions should be parametric and specified by the user in the formulation
     _, _, earth_transition_markers = draw_transition_region(cx, cy, transition_radii, transition_mesh, num_points_circumference)
 
     # Register transition regions in the workspace
@@ -246,7 +261,14 @@ function make_space_geometry(workspace::FEMWorkspace)
     @info "Transition regions created"
 
     # Add interface to the workspace
-    workspace.unassigned_entities[earth_interface_marker] = earth_interface_entity
+    @debug "Domain -> infinity markers:"
+    for point_marker in earth_interface_markers
+        workspace.unassigned_entities[point_marker] = earth_interface_entity
+        @debug "  Point $point_marker: ($(point_marker[1]), $(point_marker[2]), $(point_marker[3]))"
+    end
+
+
+
     @info "Earth interfaces created"
 
 end

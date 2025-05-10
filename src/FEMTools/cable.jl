@@ -174,10 +174,10 @@ function _make_cablepart!(workspace::FEMWorkspace, part::AbstractCablePart,
     # Create annular shape and assign marker
     if radius_in ≈ 0
         # Solid disk
-        _, _, marker = draw_disk(x_center, y_center, radius_ext, mesh_size, num_points_circumference)
+        _, _, marker, _ = draw_disk(x_center, y_center, radius_ext, mesh_size, num_points_circumference)
     else
         # Annular shape
-        _, _, marker = draw_annular(x_center, y_center, radius_in, radius_ext, mesh_size, num_points_circumference)
+        _, _, marker, _ = draw_annular(x_center, y_center, radius_in, radius_ext, mesh_size, num_points_circumference)
     end
 
     # Create entity data
@@ -303,7 +303,7 @@ function _make_cablepart!(workspace::FEMWorkspace, part::WireArray,
     # Create wires
     for (wire_idx, (wx, wy)) in enumerate(wire_positions)
 
-        _, _, marker = draw_disk(wx, wy, radius_wire, mesh_size, num_points_circumference)
+        _, _, marker, _ = draw_disk(wx, wy, radius_wire, mesh_size, num_points_circumference)
 
         # Create wire name
         elementary_name = create_cable_elementary_name(

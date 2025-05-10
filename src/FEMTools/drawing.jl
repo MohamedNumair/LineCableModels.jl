@@ -169,10 +169,23 @@ function draw_line(x1::Number, y1::Number, x2::Number, y2::Number, mesh_size::Nu
 
     tag = gmsh.model.occ.add_line(mesh_points[1], mesh_points[end])
 
+    # Add midpoint markers between each pair of mesh points
+    segment_markers = Vector{Vector{Float64}}()
+    push!(segment_markers, marker)
 
+    if length(mesh_points) >= 2
+        # Iterate through adjacent pairs of mesh points
+        for i in 1:(num_points-1)
+            t = (i - 0.5) / (num_points - 1)  # Parametric coordinate (0.5 between points)
+            mid_x = x1 + t * (x2 - x1)
+            mid_y = y1 + t * (y2 - y1)
+            # Create marker at midpoint
+            mid_marker = [mid_x, mid_y, 0.0]
+            push!(segment_markers, mid_marker)
+        end
+    end
 
-
-    return tag, mesh_points, marker
+    return tag, mesh_points, segment_markers
 end
 
 """
@@ -211,13 +224,35 @@ function draw_disk(x::Number, y::Number, radius::Number, mesh_size::Number, num_
         theta_offset=0 #pi / 15
     )
 
-    # marker = [x, y + (radius / 2), 0.0]
+
     marker = [x, y + 0.99 * radius, 0.0] # A very small offset inwards the circle
     marker_tag = gmsh.model.occ.add_point(marker[1], marker[2], marker[3], mesh_size)
     gmsh.model.set_entity_name(0, marker_tag, "marker_$(round(mesh_size, sigdigits=6))")
 
+    # Add midpoint markers between each pair of mesh points
+    arc_markers = Vector{Vector{Float64}}()
 
-    return tag, mesh_points, marker
+    if num_points >= 2
+        # Calculate the angular step between mesh points
+        theta_step = 2 * pi / num_points
+
+        # Add a midpoint marker for each arc segment
+        for i in 1:num_points
+            # Calculate midpoint theta (angle)
+            theta_mid = (i - 0.5) * theta_step
+
+            # Calculate midpoint coordinates
+            mid_x = x + radius * cos(theta_mid)
+            mid_y = y + radius * sin(theta_mid)
+
+            # Create marker at the midpoint
+            mid_marker = [mid_x, mid_y, 0.0]
+
+            push!(arc_markers, mid_marker)
+        end
+    end
+
+    return tag, mesh_points, marker, arc_markers
 end
 
 
@@ -284,12 +319,34 @@ function draw_annular(x::Number, y::Number, radius_in::Number, radius_ext::Numbe
         )
     end
 
-    # marker = [x, y + ((radius_in + radius_ext) / 2), 0.0]
     marker = [x, y + (radius_in + 0.99 * (radius_ext - radius_in)), 0.0]
     marker_tag = gmsh.model.occ.add_point(marker[1], marker[2], marker[3], mesh_size)
     gmsh.model.set_entity_name(0, marker_tag, "marker_$(round(mesh_size, sigdigits=6))")
 
-    return tag, mesh_points, marker
+    # Add midpoint markers between each pair of mesh points
+    arc_markers = Vector{Vector{Float64}}()
+
+    if num_points >= 2
+        # Calculate the angular step between mesh points
+        theta_step = 2 * pi / num_points
+
+        # Add a midpoint marker for each arc segment
+        for i in 1:num_points
+            # Calculate midpoint theta (angle)
+            theta_mid = (i - 0.5) * theta_step
+
+            # Calculate midpoint coordinates
+            mid_x = x + radius_ext * cos(theta_mid)
+            mid_y = y + radius_ext * sin(theta_mid)
+
+            # Create marker at the midpoint
+            mid_marker = [mid_x, mid_y, 0.0]
+
+            push!(arc_markers, mid_marker)
+        end
+    end
+
+    return tag, mesh_points, marker, arc_markers
 end
 
 

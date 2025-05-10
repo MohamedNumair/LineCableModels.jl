@@ -32,9 +32,9 @@ this operation.
 function process_fragments(workspace::FEMWorkspace)
 
     # Get all entities
-    surfaces = gmsh.model.getEntities(2)
-    curves = gmsh.model.getEntities(1)
-    points = gmsh.model.getEntities(0)
+    surfaces = gmsh.model.get_entities(2)
+    curves = gmsh.model.get_entities(1)
+    points = gmsh.model.get_entities(0)
 
     @debug "Initial counts: $(length(surfaces)) surfaces, $(length(curves)) curves, $(length(points)) points"
 
@@ -46,8 +46,8 @@ function process_fragments(workspace::FEMWorkspace)
     end
 
     # Get updated entities after first fragmentation
-    updated_curves = gmsh.model.getEntities(1)
-    updated_points = gmsh.model.getEntities(0)
+    updated_curves = gmsh.model.get_entities(1)
+    updated_points = gmsh.model.get_entities(0)
 
     @debug "After fragmenting points onto curves: $(length(updated_curves)) curves, $(length(updated_points)) points"
 
@@ -64,9 +64,9 @@ function process_fragments(workspace::FEMWorkspace)
     gmsh.model.occ.synchronize()
 
     # Final counts
-    final_surfaces = gmsh.model.getEntities(2)
-    final_curves = gmsh.model.getEntities(1)
-    final_points = gmsh.model.getEntities(0)
+    final_surfaces = gmsh.model.get_entities(2)
+    final_curves = gmsh.model.get_entities(1)
+    final_points = gmsh.model.get_entities(0)
 
     @info "Boolean fragmentation completed"
     @debug "Before: $(length(surfaces)) surfaces, $(length(curves)) curves, $(length(points)) points"
@@ -78,7 +78,7 @@ end
 function identify_by_marker(workspace::FEMWorkspace)
 
     # Get all surfaces after fragmentation
-    all_surfaces = gmsh.model.getEntities(2)
+    all_surfaces = gmsh.model.get_entities(2)
 
     # Track statistics
     total_entities = length(workspace.unassigned_entities)
@@ -96,7 +96,7 @@ function identify_by_marker(workspace::FEMWorkspace)
         for (dim, tag) in all_surfaces
             if !(entity_data isa CurveEntity)
                 # Check if marker is inside this surface
-                if gmsh.model.isInside(dim, tag, marker) == 1
+                if gmsh.model.is_inside(dim, tag, marker) == 1
                     # Found match - create FEMEntity and add to appropriate container
                     fem_entity = FEMEntity(tag, entity_data)
 
@@ -121,7 +121,7 @@ function identify_by_marker(workspace::FEMWorkspace)
     end
 
     # Get all remaining curves after fragmentation
-    all_curves = gmsh.model.getEntities(1)
+    all_curves = gmsh.model.get_entities(1)
 
     # Update keys to avoid modifying dict during iteration
     markers = collect(keys(workspace.unassigned_entities))
@@ -134,7 +134,7 @@ function identify_by_marker(workspace::FEMWorkspace)
 
         for (dim, tag) in all_curves
             # Check if marker is inside this curve
-            if gmsh.model.isInside(dim, tag, marker) == 1
+            if gmsh.model.is_inside(dim, tag, marker) == 1
                 # Found match - create FEMEntity and add to appropriate container
                 fem_entity = FEMEntity(tag, entity_data)
 
