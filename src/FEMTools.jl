@@ -166,8 +166,6 @@ mutable struct FEMDarwin <: AbstractImpedanceFormulation
     resolution_name::String
 
     function FEMDarwin()
-        # darwin = new(GetDP.Problem, "Darwin")
-        # create_darwin_problem(darwin.problem, darwin.resolution_name)
         return new(GetDP.Problem(), "Darwin")
     end
 
@@ -595,7 +593,7 @@ function compute!(problem::LineParametersProblem,
             gmsh.initialize()
 
             @info "Building mesh..."
-            make_mesh(workspace)
+            make_mesh!(workspace)
 
             # Preview mesh if requested
             if opts.preview_mesh
@@ -610,36 +608,39 @@ function compute!(problem::LineParametersProblem,
 
         # Run solver if requested and/or needed
         if run_solver
-            # @info "Running GetDP opts..."
-            # fem_objs = make_getdp_problem(workspace, frequency)
-            # for obj in fem_objs
-            #     obj.problem.filename = workspace.paths[:pro_file]
-            #     write_file!(obj.problem)
-            #     solve_cmd = "$(workspace.opts.getdp_executable) $(workspace.paths[:pro_file]) -msh $(workspace.paths[:mesh_file]) -solve $(obj.resolution_name) -v$(workspace.opts.verbosity == 0 ? 2 : 3)"
+            @info "Running GetDP solver..."
+            for (i, frequency) in enumerate(problem.frequencies)
+                @info "Solving for frequency $i: $frequency Hz"
+                for fem_formulation in formulation.analysis_type
+                    @debug "Processing formulation: $(fem_formulation.resolution_name)"
+                    make_fem_problem!(fem_formulation, frequency, workspace)
+                    solve_cmd = "$(opts.getdp_executable) $(fem_formulation.problem.filename) -msh $(workspace.paths[:mesh_file]) -solve $(fem_formulation.resolution_name) -v$(opts.verbosity == 0 ? 2 : 3)"
 
-            #     @info "Solving... (Resolution = $(obj.resolution_name))"
+                    @info "Solving... (Resolution = $(fem_formulation.resolution_name))"
 
-            #     try
-            #         gmsh.onelab.run("GetDP", solve_cmd)
-            #         @info "Solve successful!"
-            #         # gmsh.fltk.run()
-            #     catch e
-            #         println("Solve failed: ", e)
-            #     end
-            # end
-            # @info "Solver completed."
+                    try
+                        gmsh.onelab.run("GetDP", solve_cmd)
+                        @info "Solve successful!"
+                        # gmsh.fltk.run()
+                    catch e
+                        println("Solve failed: ", e)
+                    end
+
+                end
+            end
+            @info "All solver runs completed."
         else
             @info "Skipping solver run."
         end
 
         # Run post-processing if needed
         if run_postproc
-            @info "Running post-processing phase..."
+            @info "Running post-processing..."
             # To be implemented
             # _run_postprocessing(workspace)
             @info "Post-processing completed."
         else
-            @info "Skipping post-processing phase."
+            @info "Skipping post-processing."
         end
 
     catch e
@@ -662,7 +663,7 @@ function compute!(problem::LineParametersProblem,
                 gmsh.finalize()
                 @info "Gmsh finalized."
             catch fin_err
-                @warn "Warning: Error during Gmsh finalization: $fin_err"
+                @warn "Error during Gmsh finalization: $fin_err"
             end
         end
     end
@@ -673,7 +674,6 @@ end
 # Include auxiliary files
 include("FEMTools/encoding.jl")        # Tag encoding schemes
 include("FEMTools/drawing.jl")         # Primitive drawing functions
-include("FEMTools/markers.jl")         # Entity marker generation
 include("FEMTools/identification.jl")  # Entity identification
 include("FEMTools/meshing.jl")         # Mesh generation
 include("FEMTools/materials.jl")       # Material handling

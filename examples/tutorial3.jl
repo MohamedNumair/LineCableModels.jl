@@ -63,17 +63,17 @@ formulation = FEMFormulation(
 
 # Define runtime FEMOptions 
 opts = FEMOptions(
-    force_remesh=true,  # Force remeshing
+    force_remesh=false,  # Force remeshing
     run_solver=true,
     overwrite_results=true,
-    preview_geo=true,  # Preview geometry
+    preview_geo=false,  # Preview geometry
     preview_mesh=false,  # Preview the mesh
     base_path=joinpath(@__DIR__, "fem_output"),
-    verbosity=2,  # Verbose output
+    verbosity=0,  # Verbose output
     getdp_executable=joinpath("/home/amartins/Applications/onelab-Linux64", "getdp"), # Path to GetDP executable
 )
 
 # Run the FEM model
-@time _ = compute!(problem, formulation, opts)
+@time workspace = compute!(problem, formulation, opts)
 
 println("FEM model run completed.")

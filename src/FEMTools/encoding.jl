@@ -468,37 +468,3 @@ function _create_boundary_physical_name(workspace::FEMWorkspace, tag::Int)
 
     return base_str
 end
-
-# function create_space_elementary_name(layer_idx::Int)
-#     if layer_idx < 1
-#         error("Layer index must be at least 1")
-#     end
-
-#     medium_type = layer_idx == 1 ? "air" : "earth"
-#     return "layer_$(layer_idx)_$(medium_type)"
-# end
-
-# function create_interface_elementary_name(layer_idx::Int)
-#     if layer_idx < 1
-#         error("Layer index must be at least 1")
-#     end
-
-#     if layer_idx == 1
-#         return "interface_air_earth"
-#     else
-#         return "interface_earth_layers_$(layer_idx)_$(layer_idx+1)"
-#     end
-# end
-
-# function create_boundary_elementary_name(layer_idx::Int, is_infshell::Bool)
-#     boundary_type = is_infshell ? "boundary_infinity" : "boundary_domain"
-#     medium_type = (layer_idx == 1) ? "air" : "earth"
-
-#     return "$(boundary_type)_$(medium_type)"
-# end
-
-# function create_infshell_elementary_name(layer_idx::Int)
-#     medium_type = layer_idx == 1 ? "air" : "earth"
-#     return "layer_$(layer_idx)_$(medium_type)_infshell"
-# end
-

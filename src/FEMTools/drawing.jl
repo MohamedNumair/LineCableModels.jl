@@ -112,7 +112,7 @@ point_tag = $(FUNCTIONNAME)(0.0, 0.0, 0.0, 0.01)
 ```
 """
 function draw_point(x::Number, y::Number, z::Number)
-    return gmsh.model.occ.addPoint(x, y, z)
+    return gmsh.model.occ.add_point(x, y, z)
 end
 
 """
@@ -380,7 +380,7 @@ function draw_rectangle(x::Number, y::Number, width::Number, height::Number)
     y2 = y + height / 2
 
     # Create rectangle
-    return gmsh.model.occ.addRectangle(x1, y1, 0.0, width, height)
+    return gmsh.model.occ.add_rectangle(x1, y1, 0.0, width, height)
 end
 
 """
@@ -408,11 +408,11 @@ arc_tag = $(FUNCTIONNAME)(1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.01)
 ```
 """
 function draw_arc(x1::Number, y1::Number, x2::Number, y2::Number, xc::Number, yc::Number)
-    p1 = gmsh.model.occ.addPoint(x1, y1, 0.0)
-    p2 = gmsh.model.occ.addPoint(x2, y2, 0.0)
-    pc = gmsh.model.occ.addPoint(xc, yc, 0.0)
+    p1 = gmsh.model.occ.add_point(x1, y1, 0.0)
+    p2 = gmsh.model.occ.add_point(x2, y2, 0.0)
+    pc = gmsh.model.occ.add_point(xc, yc, 0.0)
 
-    return gmsh.model.occ.addCircleArc(p1, pc, p2)
+    return gmsh.model.occ.add_circle_arc(p1, pc, p2)
 end
 
 """
@@ -437,7 +437,7 @@ circle_tag = $(FUNCTIONNAME)(0.0, 0.0, 0.5, 0.01)
 ```
 """
 function draw_circle(x::Number, y::Number, radius::Number)
-    return gmsh.model.occ.addCircle(x, y, 0.0, radius)
+    return gmsh.model.occ.add_circle(x, y, 0.0, radius)
 end
 
 """
@@ -464,21 +464,21 @@ function draw_polygon(vertices::Vector{<:Tuple{<:Number,<:Number}})
     # Create points
     points = Vector{Int}()
     for (x, y) in vertices
-        push!(points, gmsh.model.occ.addPoint(x, y, 0.0))
+        push!(points, gmsh.model.occ.add_point(x, y, 0.0))
     end
 
     # Create lines
     lines = Vector{Int}()
     for i in 1:length(points)
         next_i = i % length(points) + 1
-        push!(lines, gmsh.model.occ.addLine(points[i], points[next_i]))
+        push!(lines, gmsh.model.occ.add_line(points[i], points[next_i]))
     end
 
     # Create curve loop
-    curve_loop = gmsh.model.occ.addCurveLoop(lines)
+    curve_loop = gmsh.model.occ.add_curve_loop(lines)
 
     # Create surface
-    return gmsh.model.occ.addPlaneSurface([curve_loop])
+    return gmsh.model.occ.add_plane_surface([curve_loop])
 end
 
 function draw_transition_region(x::Number, y::Number, radii::Vector{<:Number}, mesh_sizes::Vector{<:Number}, num_points::Number)
@@ -602,20 +602,11 @@ function get_system_centroid(cable_system::LineCableSystem, cable_idx::Vector{<:
         if !isempty(cable_position.design_data.components)
             last_component = cable_position.design_data.components[end]
 
-            # Determine the outermost radius from conductor and insulator groups
-            # conductor_radius = last_component.conductor_group.radius_ext
-            # insulator_radius = last_component.insulator_group.radius_ext
             outer_radius = last_component.insulator_group.radius_ext
 
             insulator_radius_in = last_component.insulator_group.layers[end].radius_in
             last_layer_thickness = outer_radius - insulator_radius_in
 
-            # # Take the larger radius that's not NaN
-            # outer_radius = if !isnan(insulator_radius)
-            #     insulator_radius
-            # else
-            #     conductor_radius
-            # end
 
             # Add cable radius to get distance to edge
             total_distance = distance_to_center + outer_radius
@@ -626,3 +617,51 @@ function get_system_centroid(cable_system::LineCableSystem, cable_idx::Vector{<:
 
     return (centroid_x, centroid_y, max_distance, characteristic_len)
 end
+
+
+"""
+$(TYPEDSIGNATURES)
+
+Calculate the coordinates of air gaps in a wire array.
+
+# Arguments
+
+- `num_wires`: Number of wires in the array \\[dimensionless\\].
+- `radius_wire`: Radius of each wire \\[m\\].
+- `radius_in`: Inner radius of the wire array \\[m\\].
+
+# Returns
+
+- Vector of marker positions (3D coordinates) for air gaps \\[m\\].
+
+# Notes
+
+This function calculates positions for markers that are guaranteed to be in the air gaps
+between wires in a wire array. These markers are used to identify the air regions after
+boolean fragmentation operations.
+
+# Examples
+
+```julia
+markers = $(FUNCTIONNAME)(7, 0.002, 0.01)
+```
+"""
+function get_air_gap_markers(num_wires::Int, radius_wire::Number, radius_in::Number)
+    markers = Vector{Vector{Float64}}()
+
+    lay_radius = radius_in + radius_wire
+
+    num_angular_markers = num_wires == 1 ? 6 : num_wires
+    # For multiple wires, place markers between adjacent wires
+    angle_step = 2π / num_angular_markers
+    for i in 0:num_angular_markers-1
+        angle = i * angle_step + (angle_step / 2)  # Midway between wires
+        r = lay_radius + (radius_wire / 2)  # Slightly outward
+        x = r * cos(angle)
+        y = r * sin(angle)
+        push!(markers, [x, y, 0.0])
+    end
+    return markers
+end
+
+

@@ -91,8 +91,8 @@ function setup_paths(cable_system::LineCableSystem, opts::FEMOptions)
     # Define key file paths
     mesh_file = joinpath(case_dir, "$(case_id).msh")
     geo_file = joinpath(case_dir, "$(case_id).geo_unrolled")
-    onelab_file = joinpath(case_dir, "$(case_id)_onelab.json")
-    pro_file = joinpath(case_dir, "$(case_id).pro")
+    impedance_file = joinpath(case_dir, "$(case_id)_impedance.pro")
+    admittance_file = joinpath(case_dir, "$(case_id)_admittance.pro")
     data_file = joinpath(case_dir, "$(case_id)_data.geo")
 
     # Return compiled dictionary of paths
@@ -102,8 +102,8 @@ function setup_paths(cable_system::LineCableSystem, opts::FEMOptions)
         :results_dir => results_dir,
         :mesh_file => mesh_file,
         :geo_file => geo_file,
-        :onelab_file => onelab_file,
-        :pro_file => pro_file,
+        :impedance_file => impedance_file,
+        :admittance_file => admittance_file,
         :data_file => data_file
     )
 
@@ -143,11 +143,6 @@ function cleanup_files(paths::Dict{Symbol,String}, opts::FEMOptions)
         if isfile(paths[:geo_file])
             rm(paths[:geo_file], force=true)
             @info "Removed existing geometry file: $(paths[:geo_file])"
-        end
-
-        if isfile(paths[:onelab_file])
-            rm(paths[:onelab_file], force=true)
-            @info "Removed existing ONELAB file: $(paths[:onelab_file])"
         end
     end
 

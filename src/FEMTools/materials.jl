@@ -83,30 +83,6 @@ function hash_material_properties(material::Material)
     return "rho=$(rho_str)_epsr=$(eps_str)_mu=$(mu_str)"
 end
 
-# """
-# $(TYPEDSIGNATURES)
-
-# Get a material from a materials library by name.
-
-# # Arguments
-
-# - `library`: The [`MaterialsLibrary`](@ref) to search in.
-# - `name`: The name of the material to find.
-
-# # Returns
-
-# - The [`Material`](@ref) object if found, or `nothing` if not found.
-
-# # Examples
-
-# ```julia
-# material = $(FUNCTIONNAME)(materials_db, "copper")
-# ```
-# """
-# function get_material(library::MaterialsLibrary, name::String)
-#     return get(library.materials, name, nothing)
-# end
-
 
 function get_earth_model_material(workspace::FEMWorkspace, layer_idx::Int)
 
@@ -143,28 +119,3 @@ function get_air_material(workspace::FEMWorkspace)
     end
     return air_material
 end
-
-# """
-# $(TYPEDSIGNATURES)
-
-# Register a material in the workspace.
-
-# # Arguments
-
-# - `workspace`: The [`FEMWorkspace`](@ref) to register the material in.
-# - `physical_group_tag`: The physical tag to associate with the material \\[dimensionless\\].
-# - `material`: The [`Material`](@ref) object to register.
-
-# # Returns
-
-# - Nothing. Updates the material_map in the workspace.
-
-# # Examples
-
-# ```julia
-# $(FUNCTIONNAME)(workspace, 101210001, material)
-# ```
-# """
-# function register_material!(workspace::FEMWorkspace, physical_group_tag::Int, material::Material)
-#     workspace.material_map[physical_group_tag] = material
-# end

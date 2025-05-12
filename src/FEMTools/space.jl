@@ -179,6 +179,10 @@ function make_space_geometry(workspace::FEMWorkspace)
     register_physical_group!(workspace, air_infshell_tag, air_material)
     register_physical_group!(workspace, earth_infshell_tag, earth_material)
 
+    # Physical groups for Dirichlet boundary
+    register_physical_group!(workspace, air_infty_tag, air_material)
+    register_physical_group!(workspace, earth_infty_tag, earth_material)
+
     # Create domain surfaces
     air_region_entity = SurfaceEntity(
         CoreEntityData(air_region_tag, air_region_name, mesh_size_default),

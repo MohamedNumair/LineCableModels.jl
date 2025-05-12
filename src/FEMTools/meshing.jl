@@ -45,32 +45,7 @@ function calc_skin_depth(rho::Number, mu_r::Number, freq::Number)
     return sqrt(rho / (π * freq * mu_0 * mu_r))
 end
 
-# """
-# $(TYPEDSIGNATURES)
-
-# Calculate appropriate mesh size for a cable part based on its physical properties.
-
-# # Arguments
-
-# - `part`: The cable part to calculate mesh size for.
-# - `workspace`: The [`FEMWorkspace`](@ref) containing problem_def parameters.
-
-# # Returns
-
-# - Mesh size \\[m\\].
-
-# # Examples
-
-# ```julia
-# mesh_size = $(FUNCTIONNAME)(cable_part, workspace)
-# ```
-# """
 function _calc_mesh_size(part::AbstractCablePart, workspace::FEMWorkspace)
-    # Extract material properties
-    # material = part.material_props
-    # rho = to_nominal(material.rho)
-    # mu_r = to_nominal(material.mu_r)
-    # eps_r = to_nominal(material.eps_r)
 
     # Extract geometric properties
     radius_in = to_nominal(part.radius_in)
@@ -79,11 +54,6 @@ function _calc_mesh_size(part::AbstractCablePart, workspace::FEMWorkspace)
 
     # Extract formulation parameters
     formulation = workspace.formulation
-
-    # Calculate skin depth & wavelength
-    # freq = workspace.frequency
-    # skin_depth = calc_skin_depth(rho, mu_r, freq)
-    # wavelength = 1 / sqrt(ε₀ * eps_r * μ₀ * mu_r) / freq
 
     # Calculate mesh size based on part type and properties
     scale_length = thickness
@@ -99,10 +69,6 @@ function _calc_mesh_size(part::AbstractCablePart, workspace::FEMWorkspace)
         num_elements = formulation.elements_per_length_semicon
     end
 
-    # skin_based_size = skin_depth / num_elements
-    # wavelength_based_size = wavelength / num_elements
-    # mesh_size = min(skin_based_size, wavelength_based_size, geometry_based_size, arc_length_based_size)
-
     # Apply bounds from configuration
     mesh_size = scale_length / num_elements
     mesh_size = max(mesh_size, formulation.mesh_size_min)
@@ -112,33 +78,11 @@ function _calc_mesh_size(part::AbstractCablePart, workspace::FEMWorkspace)
 end
 
 function _calc_mesh_size(radius_in::Number, radius_ext::Number, material::Material, num_elements::Int, workspace::FEMWorkspace)
-    # Extract material properties
-    # rho = to_nominal(material.rho)
-    # mu_r = to_nominal(material.mu_r)
-    # eps_r = to_nominal(material.eps_r)
-
     # Extract geometric properties
     thickness = radius_ext - radius_in
 
     # Extract problem_def parameters
     formulation = workspace.formulation
-
-
-    # Calculate skin depth & wavelength
-    # freq = workspace.frequency
-    # skin_depth = calc_skin_depth(rho, mu_r, freq)
-    # wavelength = 1 / sqrt(ε₀ * eps_r * μ₀ * mu_r) / freq
-
-    # Calculate mesh size based on part type and properties
-    # scale_length = thickness
-    # arc_length = 2 * π * radius_ext
-
-    # skin_based_size = skin_depth / num_elements
-    # wavelength_based_size = wavelength / num_elements
-    # geometry_based_size = scale_length / num_elements
-    # arc_length_based_size = arc_length / num_elements
-    # @show mesh_size = min(skin_based_size, wavelength_based_size, geometry_based_size, arc_length_based_size)
-
     mesh_size = thickness / num_elements
 
     # Apply bounds from configuration
@@ -273,7 +217,7 @@ function initialize_gmsh(workspace::FEMWorkspace)
 
 end
 
-function make_mesh(workspace::FEMWorkspace)
+function make_mesh!(workspace::FEMWorkspace)
 
     # Initialize Gmsh model and set parameters
     initialize_gmsh(workspace)
