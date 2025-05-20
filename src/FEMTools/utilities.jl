@@ -62,7 +62,7 @@ Set up directory structure and file paths for a FEM simulation.
 paths = $(FUNCTIONNAME)(solver, cable_system)
 ```
 """
-function setup_paths(cable_system::LineCableSystem, opts::FEMOptions)
+function setup_paths(cable_system::LineCableSystem, formulation::FEMFormulation, opts::FEMOptions)
     # Create base output directory if it doesn't exist
     if !isdir(opts.base_path)
         mkpath(opts.base_path)
@@ -82,18 +82,30 @@ function setup_paths(cable_system::LineCableSystem, opts::FEMOptions)
     # Create results directory path
     results_dir = joinpath(case_dir, "results")
 
-    # Create results directory if needed
-    if opts.run_solver && !isdir(results_dir)
-        mkpath(results_dir)
-        @info "Created results directory: $(results_dir)"
-    end
-
     # Define key file paths
     mesh_file = joinpath(case_dir, "$(case_id).msh")
     geo_file = joinpath(case_dir, "$(case_id).geo_unrolled")
-    impedance_file = joinpath(case_dir, "$(case_id)_impedance.pro")
-    admittance_file = joinpath(case_dir, "$(case_id)_admittance.pro")
-    data_file = joinpath(case_dir, "$(case_id)_data.geo")
+    # data_file = joinpath(case_dir, "$(case_id)_data.geo")
+
+    impedance_res = lowercase(formulation.analysis_type[1].resolution_name)
+    impedance_file = joinpath(case_dir, "$(case_id)_$(impedance_res).pro")
+    impedances_dir = joinpath(results_dir, impedance_res)
+
+    admittance_res = lowercase(formulation.analysis_type[2].resolution_name)
+    admittance_file = joinpath(case_dir, "$(case_id)_$(admittance_res).pro")
+    admittance_dir = joinpath(results_dir, admittance_res)
+
+    # Create results directory if needed
+    if opts.run_solver && !isdir(results_dir)
+        mkpath(results_dir)
+        @info "Created main results directory: $(results_dir)"
+
+        mkpath(impedances_dir)
+        @info "Created formulation results directory: $(impedances_dir)"
+
+        mkpath(admittance_dir)
+        @info "Created formulation results directory: $(admittance_dir)"
+    end
 
     # Return compiled dictionary of paths
     paths = Dict{Symbol,String}(
@@ -104,7 +116,7 @@ function setup_paths(cable_system::LineCableSystem, opts::FEMOptions)
         :geo_file => geo_file,
         :impedance_file => impedance_file,
         :admittance_file => admittance_file,
-        :data_file => data_file
+        # :data_file => data_file
     )
 
     @debug "Paths configured: $(join(["$(k): $(v)" for (k,v) in paths], ", "))"
@@ -160,3 +172,69 @@ function cleanup_files(paths::Dict{Symbol,String}, opts::FEMOptions)
     end
 end
 
+function read_results_file(fem_formulation::AbstractImpedanceFormulation, frequency::Float64, workspace::FEMWorkspace; files=["R.dat", "L.dat"])
+
+    results_path = joinpath(workspace.paths[:results_dir], lowercase(fem_formulation.resolution_name))
+
+    # Helper function to read values from either R.dat or L.dat
+    function read_values(filepath::String)
+        isfile(filepath) || Base.error("File not found: $filepath")
+        line = readline(filepath)
+        # Parse all numbers and take every other value starting from index 2
+        values = parse.(Float64, split(line))[2:2:end]
+        n = length(values)
+        # Create and fill matrix
+        matrix = zeros(Float64, n, n)
+        for i in 1:n
+            matrix[i, i] = values[i]
+        end
+        return matrix
+    end
+
+    # Read both files
+    R = read_values(joinpath(results_path, files[1]))
+    L = read_values(joinpath(results_path, files[2]))
+
+    # Calculate complex impedance matrix
+    Z = R + im * 2π * frequency * L
+
+    return Z
+end
+
+function read_results_file(fem_formulation::AbstractAdmittanceFormulation, frequency::Float64, workspace::FEMWorkspace; files=["C.dat"])
+    results_path = joinpath(workspace.paths[:results_dir], lowercase(fem_formulation.resolution_name))
+
+    # Helper function to read values from either R.dat or L.dat
+    function read_values(filepath::String)
+        isfile(filepath) || Base.error("File not found: $filepath")
+        line = readline(filepath)
+        # Parse all numbers and take every other value starting from index 2
+        values = parse.(Float64, split(line))[2:2:end]
+        n = length(values)
+
+        # Get system size from the workspace
+        n_phases = workspace.problem_def.system.num_phases
+
+        # Create output matrix
+        matrix = zeros(Float64, n_phases, n_phases)
+
+        if n == 1
+            # If only one value, replicate it on the main diagonal
+            fill!(view(matrix, diagind(matrix)), values[1])
+        else
+            # Otherwise fill diagonal with provided values
+            for i in 1:n
+                matrix[i, i] = values[i]
+            end
+        end
+        return matrix
+    end
+
+    # Read capacitance file
+    C = read_values(joinpath(results_path, files[1]))
+
+    # Calculate complex admittance matrix
+    Y = im * 2π * frequency * C
+
+    return Y
+end

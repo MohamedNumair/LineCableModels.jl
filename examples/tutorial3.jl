@@ -36,11 +36,12 @@ addto_linecablesystem!(
 display(cable_system)
 
 # Define a LineParametersProblem with the cable system and earth model
+f = 50.0
 problem = LineParametersProblem(
     cable_system,
     temperature=20.0,  # Operating temperature
     earth_props=earth_params,
-    frequencies=[50.0],  # Frequency for the analysis
+    frequencies=[f],  # Frequency for the analysis
 )
 
 # Create a FEMFormulation with custom mesh definitions
@@ -69,11 +70,15 @@ opts = FEMOptions(
     preview_geo=false,  # Preview geometry
     preview_mesh=false,  # Preview the mesh
     base_path=joinpath(@__DIR__, "fem_output"),
-    verbosity=0,  # Verbose output
+    verbosity=3,  # Verbose output
     getdp_executable=joinpath("/home/amartins/Applications/onelab-Linux64", "getdp"), # Path to GetDP executable
 )
 
 # Run the FEM model
-@time workspace = compute!(problem, formulation, opts)
+@time workspace, line_params = compute!(problem, formulation, opts)
+
+println("R = $(round(real(line_params.Z[1,1,1])*1000, sigdigits=4)) Ω/km")
+println("L = $(round(imag(line_params.Z[1,1,1])/(2π*f)*1e6, sigdigits=4)) mH/km")
+println("C = $(round(imag(line_params.Y[1,1,1])/(2π*f)*1e9, sigdigits=4)) nF/km")
 
 println("FEM model run completed.")

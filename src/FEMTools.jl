@@ -33,6 +33,7 @@ using Gmsh
 using Printf
 using Dates
 using Measurements
+using LinearAlgebra
 using Colors
 using Logging
 using Logging: AbstractLogger, LogLevel, Info, global_logger
@@ -174,11 +175,8 @@ end
 mutable struct FEMElectrodynamics <: AbstractAdmittanceFormulation
     problem::GetDP.Problem
     resolution_name::String
-    # sources::Int64  # New field for linecablesystem
-    function FEMElectrodynamics()
-        # electro = new(problem, "Electrodynamics", num_sources)
-        # create_electrodynamic_problem(electro.problem, num_sources, electro.resolution_name)
 
+    function FEMElectrodynamics()
         return new(GetDP.Problem(), "Electrodynamics")
     end
 end
@@ -332,20 +330,22 @@ This contains the execution-related parameters.
 $(TYPEDFIELDS)
 """
 struct FEMOptions <: FormulationOptions
-    "Flag to force remeshing \\[dimensionless\\]."
+    "Flag to force remeshing."
     force_remesh::Bool
-    "Flag to run the solver \\[dimensionless\\]."
+    "Flag to run the solver."
     run_solver::Bool
-    "Flag to overwrite existing results \\[dimensionless\\]."
+    "Flag to overwrite existing results."
     overwrite_results::Bool
+    "Flag to remove or keep all files for each frequency run."
+    cleanup_files::Bool
 
-    "Flag to run postprocessing \\[dimensionless\\]."
+    "Flag to run postprocessing."
     run_postprocessing::Bool
-    "Flag to preview the mesh \\[dimensionless\\]."
+    "Flag to preview the mesh."
     preview_mesh::Bool
-    "Flag to preview the geometry \\[dimensionless\\]."
+    "Flag to preview the geometry."
     preview_geo::Bool
-    "Flag to plot results \\[dimensionless\\]."
+    "Flag to plot results."
     plot_results::Bool
 
     "Base path for output files."
@@ -354,7 +354,7 @@ struct FEMOptions <: FormulationOptions
     gmsh_executable::String
     "Path to GetDP executable."
     getdp_executable::String
-    "Verbosity level \\[dimensionless\\]."
+    "Verbosity level."
     verbosity::Int
     "Path to the log file."
     logfile::Union{String,Nothing}
@@ -400,6 +400,7 @@ struct FEMOptions <: FormulationOptions
         force_remesh::Bool=false,
         run_solver::Bool=true,
         overwrite_results::Bool=false,
+        cleanup_files::Bool=false,
         run_postprocessing::Bool=true,
         preview_mesh::Bool=false,
         preview_geo::Bool=false,
@@ -430,7 +431,7 @@ struct FEMOptions <: FormulationOptions
         setup_fem_logging(verbosity, logfile)
 
         return new(
-            force_remesh, run_solver, overwrite_results,
+            force_remesh, run_solver, overwrite_results, cleanup_files,
             run_postprocessing, preview_mesh, preview_geo, plot_results,
             base_path, gmsh_executable, getdp_executable, verbosity, logfile
         )
@@ -510,28 +511,13 @@ mutable struct FEMWorkspace
         )
 
         # Set up paths
-        workspace.paths = setup_paths(problem.system, opts)
+        workspace.paths = setup_paths(problem.system, formulation, opts)
         cleanup_files(workspace.paths, opts)
 
         return workspace
     end
 end
 
-function set_problem!(problem::GetDP.Problem, workspace::FEMWorkspace, ::Val{:baseparams})::Vector{<:AbstractFEMFormulation}
-    darwin_prob = deepcopy(problem)
-    electr_prob = deepcopy(problem)
-
-    # Darwin
-    darwin_obj = FEMDarwin(darwin_prob)
-
-    # Electrodynamics
-    num_sources = length(workspace.problem_def.system.cables)
-    electro_obj = FEMElectrodynamics(electr_prob, num_sources)
-
-    make_file!(darwin_obj.problem)
-    make_file!(electro_obj.problem)
-    return [darwin_obj, electro_obj]
-end
 
 """
 $(TYPEDSIGNATURES)
@@ -587,6 +573,8 @@ function compute!(problem::LineParametersProblem,
     # Determine if we need to run post-processing
     run_postproc = opts.run_postprocessing && run_solver
 
+    line_params = nothing
+
     try
         # Initialize Gmsh for meshing phase
         if run_mesh
@@ -609,38 +597,79 @@ function compute!(problem::LineParametersProblem,
         # Run solver if requested and/or needed
         if run_solver
             @info "Running GetDP solver..."
+
+            # Get dimensions for preallocation
+            n_phases = problem.system.num_phases
+            n_frequencies = length(problem.frequencies)
+
+            # Preallocate 3D arrays for Z and Y matrices
+            Z = zeros(ComplexF64, n_phases, n_phases, n_frequencies)
+            Y = zeros(ComplexF64, n_phases, n_phases, n_frequencies)
+
             for (i, frequency) in enumerate(problem.frequencies)
                 @info "Solving for frequency $i: $frequency Hz"
-                for fem_formulation in formulation.analysis_type
-                    @debug "Processing formulation: $(fem_formulation.resolution_name)"
-                    make_fem_problem!(fem_formulation, frequency, workspace)
-                    solve_cmd = "$(opts.getdp_executable) $(fem_formulation.problem.filename) -msh $(workspace.paths[:mesh_file]) -solve $(fem_formulation.resolution_name) -v$(opts.verbosity == 0 ? 2 : 3)"
+                try
+                    for fem_formulation in formulation.analysis_type
+                        @debug "Processing formulation: $(fem_formulation.resolution_name)"
+                        make_fem_problem!(fem_formulation, frequency, workspace)
 
-                    @info "Solving... (Resolution = $(fem_formulation.resolution_name))"
+                        solve_cmd = "$(opts.getdp_executable) $(fem_formulation.problem.filename) -msh $(workspace.paths[:mesh_file]) -solve $(fem_formulation.resolution_name) -v$(opts.verbosity == 0 ? 2 : 3)"
 
-                    try
-                        gmsh.onelab.run("GetDP", solve_cmd)
-                        @info "Solve successful!"
-                        # gmsh.fltk.run()
-                    catch e
-                        println("Solve failed: ", e)
+                        @info "Solving... (Resolution = $(fem_formulation.resolution_name))"
+                        try
+                            gmsh.onelab.run("GetDP", solve_cmd)
+                            @info "Solve successful!"
+                        catch e
+                            println("Solve failed: ", e)
+                        end
                     end
+                    # Read results and store in 3D arrays
+                    Z[:, :, i] = read_results_file(formulation.analysis_type[1], frequency, workspace)
+                    Y[:, :, i] = read_results_file(formulation.analysis_type[2], frequency, workspace)
+                catch e
+                    @error "Failed to compute matrices for frequency $frequency Hz" exception = e
+                    rethrow(e)
+                end
 
+                if !opts.cleanup_files
+                    try
+                        # Create frequency-specific results directory
+                        freq_dir = joinpath(workspace.paths[:case_dir], "results_f=$(round(frequency, sigdigits=4))")
+                        mkpath(freq_dir)
+
+                        # Move selected files from case_dir
+                        for ext in [".res", ".pre"]
+                            # Move all files with extension from case_dir
+                            case_files = filter(f -> endswith(f, ext),
+                                readdir(workspace.paths[:case_dir], join=true))
+                            for f in case_files
+                                mv(f, joinpath(freq_dir, basename(f)), force=true)
+                            end
+                        end
+
+                        # Move all files from results_dir
+                        if isdir(workspace.paths[:results_dir])
+                            result_files = readdir(workspace.paths[:results_dir], join=true)
+                            if !isempty(result_files)
+                                mv.(result_files,
+                                    joinpath.(freq_dir, basename.(result_files)),
+                                    force=true)
+                            end
+                        end
+
+                    catch e
+                        @error "Failed to store results for frequency $frequency Hz" exception = e
+                        rethrow(e)
+                    end
                 end
             end
+
+            # Create LineParameters object with computed matrices
+            line_params = LineParameters(Z, Y)
+
             @info "All solver runs completed."
         else
             @info "Skipping solver run."
-        end
-
-        # Run post-processing if needed
-        if run_postproc
-            @info "Running post-processing..."
-            # To be implemented
-            # _run_postprocessing(workspace)
-            @info "Post-processing completed."
-        else
-            @info "Skipping post-processing."
         end
 
     catch e
@@ -668,7 +697,7 @@ function compute!(problem::LineParametersProblem,
         end
     end
 
-    return workspace
+    return workspace, line_params
 end
 
 # Include auxiliary files

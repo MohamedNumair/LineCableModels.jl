@@ -9,7 +9,7 @@ function make_fem_problem!(fem_formulation::Union{AbstractImpedanceFormulation,A
     define_constraint!(fem_formulation.problem, fem_formulation, workspace)
     define_resolution!(fem_formulation.problem, fem_formulation, workspace)
 
-    make_file!(fem_formulation.problem)
+    make_problem!(fem_formulation.problem)
     fem_formulation.problem.filename = fem_formulation isa AbstractImpedanceFormulation ? workspace.paths[:impedance_file] : workspace.paths[:admittance_file]
     write_file(fem_formulation.problem)
 end
@@ -159,6 +159,7 @@ function define_domain_groups!(problem::GetDP.Problem, fem_formulation::Union{Ab
         add!(group, "Domain_Ele", ["Cables"], "Region")
 
         add!(group, "Sur_Dirichlet_Ele", boundary_reg, "Region")
+        # add!(group, "Sur_Dirichlet_Ele", Int[], "Region")
     else
         # Add standard magnetodynamics domains
         domain_configs = [
@@ -283,13 +284,14 @@ function define_resolution!(problem::GetDP.Problem, formulation::FEMElectrodynam
     problem.formulation = formulation
 
     # Resolution section
+    output_dir = joinpath(workspace.paths[:results_dir], lowercase(resolution_name))
     resolution = Resolution()
     add!(resolution, resolution_name, "Sys_Ele",
         NameOfFormulation="Electrodynamics_v",
         Type="Complex",
         Frequency="Freq",
         Operation=[
-            "CreateDir[\"$(joinpath("results", resolution_name))\"]",
+            "CreateDir[\"$(output_dir)\"]",
             "Generate[Sys_Ele]",
             "Solve[Sys_Ele]",
             "SaveSolution[Sys_Ele]",
@@ -345,19 +347,19 @@ function define_resolution!(problem::GetDP.Problem, formulation::FEMElectrodynam
     # PostOperation section
     postoperation = PostOperation()
     add_comment!(postoperation, "Electric")
-    add_raw_code!(postoperation, "po0 = \"{01Capacitance/\";")
+    add_raw_code!(postoperation, "po0 = \"{01Pul-capacitance/\";")
 
     # Ele_Maps
     po1 = add!(postoperation, "Ele_Maps", "EleDyn_v")
     op1 = add_operation!(po1)
-    add_operation!(op1, "Print[ v, OnElementsOf Domain_Ele, File \"$(joinpath("results", resolution_name))/v.pos\" ];")
-    add_operation!(op1, "Print[ em, OnElementsOf Cables, Name \"|E| [V/m]\", File \"$(joinpath("results", resolution_name))/em.pos\" ];")
-    add_operation!(op1, "Print[ dm, OnElementsOf Cables, Name \"|D| [A/m²]\", File \"$(joinpath("results", resolution_name))/dm.pos\" ];")
-    add_operation!(op1, "Print[ e, OnElementsOf Cables, Name \"E [V/m]\", File \"$(joinpath("results", resolution_name))/e.pos\" ];")
+    add_operation!(op1, "Print[ v, OnElementsOf Domain_Ele, File \"$(output_dir)/v.pos\" ];")
+    add_operation!(op1, "Print[ em, OnElementsOf Cables, Name \"|E| [V/m]\", File \"$(output_dir)/em.pos\" ];")
+    add_operation!(op1, "Print[ dm, OnElementsOf Cables, Name \"|D| [A/m²]\", File \"$(output_dir)/dm.pos\" ];")
+    add_operation!(op1, "Print[ e, OnElementsOf Cables, Name \"E [V/m]\", File \"$(output_dir)/e.pos\" ];")
     # add_operation!(op1, "Call Change_post_options;")
-    add_operation!(op1, "Print[ ElectricEnergy[Domain_Ele], OnGlobal, Format Table, StoreInVariable \$We, SendToServer StrCat[po0,\"0Electric energy\"], File \"$(joinpath("results", resolution_name))/energy.dat\" ];")
-    add_operation!(op1, "Print[ V0, OnRegion Ind_1, Format Table, StoreInVariable \$voltage, SendToServer StrCat[po0,\"0U1\"], Units \"V\", File \"$(joinpath("results", resolution_name))/U.dat\" ];")
-    add_operation!(op1, "Print[ C_from_Energy, OnRegion DomainDummy, Format Table, StoreInVariable \$C1, SendToServer StrCat[po0,\"1Cpha\"], Units \"F/m\", File \"$(joinpath("results", resolution_name))/C.dat\" ];")
+    add_operation!(op1, "Print[ ElectricEnergy[Cable_1], OnGlobal, Format Table, StoreInVariable \$We, SendToServer StrCat[po0,\"0Electric energy\"], File \"$(output_dir)/energy.dat\" ];")
+    add_operation!(op1, "Print[ V0[Ind_1], OnRegion Ind_1, Format Table, StoreInVariable \$voltage, SendToServer StrCat[po0,\"0U\"], Units \"V\", File \"$(output_dir)/U.dat\" ];")
+    add_operation!(op1, "Print[ C_from_Energy, OnRegion DomainDummy, Format Table, StoreInVariable \$C1, SendToServer StrCat[po0,\"1C\"], Units \"F/m\", File \"$(output_dir)/C.dat\" ];")
 
     problem.postoperation = postoperation
 
@@ -439,11 +441,12 @@ function define_resolution!(problem::GetDP.Problem, formulation::FEMDarwin, work
     resolution = Resolution()
 
     # Add a resolution
+    output_dir = joinpath(workspace.paths[:results_dir], lowercase(resolution_name))
     add!(resolution, resolution_name, "Sys_Mag",
         NameOfFormulation="Darwin_a_2D",
         Type="Complex", Frequency="Freq",
         Operation=[
-            "CreateDir[\"$(joinpath("results", resolution_name))\"]",
+            "CreateDir[\"$(output_dir)\"]",
             "InitSolution[Sys_Mag]",
             "Generate[Sys_Mag]",
             "Solve[Sys_Mag]",
@@ -545,30 +548,30 @@ function define_resolution!(problem::GetDP.Problem, formulation::FEMDarwin, work
     # Add operations for maps
     op1 = add_operation!(po1)  # Creates a POBase_ for po1
 
-    add_operation!(op1, "Print[ az, OnElementsOf Domain_Mag, //Smoothing 1\n        Name \"flux lines: Az [T m]\", File \"$(joinpath("results", resolution_name))/az.pos\" ];")
-    add_operation!(op1, "Echo[Str[\"View[PostProcessing.NbViews-1].RangeType = 3;\", // per timestep\n    \"View[PostProcessing.NbViews-1].NbIso = 25;\",\n    \"View[PostProcessing.NbViews-1].IntervalsType = 1;\" // isolines\n    ], File \"$(joinpath("results", resolution_name))/maps.opt\"];")
-    add_operation!(op1, "Print[ b, OnElementsOf Domain_Mag, //Smoothing 1,\n        Name \"B [T]\", File \"$(joinpath("results", resolution_name))/b.pos\" ];")
-    add_operation!(op1, "Echo[Str[\"View[PostProcessing.NbViews-1].RangeType = 3;\", // per timestep\n    \"View[PostProcessing.NbViews-1].IntervalsType = 2;\"\n    ], File \"$(joinpath("results", resolution_name))/maps.opt\"];")
-    add_operation!(op1, "Print[ bm, OnElementsOf Domain_Mag,\n        Name \"|B| [T]\", File \"$(joinpath("results", resolution_name))/bm.pos\" ];")
-    add_operation!(op1, "Echo[Str[\"View[PostProcessing.NbViews-1].RangeType = 3;\", // per timestep\n    \"View[PostProcessing.NbViews-1].ShowTime = 0;\",\n    \"View[PostProcessing.NbViews-1].IntervalsType = 2;\"\n    ], File \"$(joinpath("results", resolution_name))/maps.opt\"];")
-    add_operation!(op1, "Print[ jz, OnElementsOf Region[{DomainC_Mag, DomainS_Mag}],\n        Name \"jz [A/m^2] Conducting domain\", File \"$(joinpath("results", resolution_name))/jz_inds.pos\" ];")
-    add_operation!(op1, "Echo[Str[\"View[PostProcessing.NbViews-1].RangeType = 3;\", // per timestep\n    \"View[PostProcessing.NbViews-1].IntervalsType = 2;\"\n    ], File \"$(joinpath("results", resolution_name))/maps.opt\"];")
-    add_operation!(op1, "Print[ rhoj2, OnElementsOf Region[{DomainC_Mag, DomainS_Mag}],\n        Name \"Power density\", File \"$(joinpath("results", resolution_name))/rhoj2.pos\" ];")
-    add_operation!(op1, "Echo[Str[\"View[PostProcessing.NbViews-1].RangeType = 3;\", // per timestep\n    \"View[PostProcessing.NbViews-1].ShowTime = 0;\",\n    \"View[PostProcessing.NbViews-1].IntervalsType = 2;\"\n    ], File \"$(joinpath("results", resolution_name))/maps.opt\"];")
-    add_operation!(op1, "Print[ jm, OnElementsOf DomainC_Mag,\n        Name \"|j| [A/m^2] Conducting domain\", File \"$(joinpath("results", resolution_name))/jm.pos\" ];")
-    add_operation!(op1, "Echo[Str[\"View[PostProcessing.NbViews-1].RangeType = 3;\", // per timestep\n    \"View[PostProcessing.NbViews-1].ShowTime = 0;\",\n    \"View[PostProcessing.NbViews-1].IntervalsType = 2;\"\n    ], File \"$(joinpath("results", resolution_name))/maps.opt\"];")
-    add_operation!(op1, "Print[ dm, OnElementsOf DomainC_Mag,\n        Name \"|D| [A/m²]\", File \"$(joinpath("results", resolution_name))/dm.pos\" ];")
-    add_operation!(op1, "Echo[Str[\"View[PostProcessing.NbViews-1].RangeType = 3;\", // per timestep\n    \"View[PostProcessing.NbViews-1].ShowTime = 0;\",\n    \"View[PostProcessing.NbViews-1].IntervalsType = 2;\"\n    ], File \"$(joinpath("results", resolution_name))/maps.opt\"];")
+    add_operation!(op1, "Print[ az, OnElementsOf Domain_Mag, //Smoothing 1\n        Name \"flux lines: Az [T m]\", File \"$(output_dir)/az.pos\" ];")
+    add_operation!(op1, "Echo[Str[\"View[PostProcessing.NbViews-1].RangeType = 3;\", // per timestep\n    \"View[PostProcessing.NbViews-1].NbIso = 25;\",\n    \"View[PostProcessing.NbViews-1].IntervalsType = 1;\" // isolines\n    ], File \"$(output_dir)/maps.opt\"];")
+    add_operation!(op1, "Print[ b, OnElementsOf Domain_Mag, //Smoothing 1,\n        Name \"B [T]\", File \"$(output_dir)/b.pos\" ];")
+    add_operation!(op1, "Echo[Str[\"View[PostProcessing.NbViews-1].RangeType = 3;\", // per timestep\n    \"View[PostProcessing.NbViews-1].IntervalsType = 2;\"\n    ], File \"$(output_dir)/maps.opt\"];")
+    add_operation!(op1, "Print[ bm, OnElementsOf Domain_Mag,\n        Name \"|B| [T]\", File \"$(output_dir)/bm.pos\" ];")
+    add_operation!(op1, "Echo[Str[\"View[PostProcessing.NbViews-1].RangeType = 3;\", // per timestep\n    \"View[PostProcessing.NbViews-1].ShowTime = 0;\",\n    \"View[PostProcessing.NbViews-1].IntervalsType = 2;\"\n    ], File \"$(output_dir)/maps.opt\"];")
+    add_operation!(op1, "Print[ jz, OnElementsOf Region[{DomainC_Mag, DomainS_Mag}],\n        Name \"jz [A/m^2] Conducting domain\", File \"$(output_dir)/jz_inds.pos\" ];")
+    add_operation!(op1, "Echo[Str[\"View[PostProcessing.NbViews-1].RangeType = 3;\", // per timestep\n    \"View[PostProcessing.NbViews-1].IntervalsType = 2;\"\n    ], File \"$(output_dir)/maps.opt\"];")
+    add_operation!(op1, "Print[ rhoj2, OnElementsOf Region[{DomainC_Mag, DomainS_Mag}],\n        Name \"Power density\", File \"$(output_dir)/rhoj2.pos\" ];")
+    add_operation!(op1, "Echo[Str[\"View[PostProcessing.NbViews-1].RangeType = 3;\", // per timestep\n    \"View[PostProcessing.NbViews-1].ShowTime = 0;\",\n    \"View[PostProcessing.NbViews-1].IntervalsType = 2;\"\n    ], File \"$(output_dir)/maps.opt\"];")
+    add_operation!(op1, "Print[ jm, OnElementsOf DomainC_Mag,\n        Name \"|j| [A/m^2] Conducting domain\", File \"$(output_dir)/jm.pos\" ];")
+    add_operation!(op1, "Echo[Str[\"View[PostProcessing.NbViews-1].RangeType = 3;\", // per timestep\n    \"View[PostProcessing.NbViews-1].ShowTime = 0;\",\n    \"View[PostProcessing.NbViews-1].IntervalsType = 2;\"\n    ], File \"$(output_dir)/maps.opt\"];")
+    add_operation!(op1, "Print[ dm, OnElementsOf DomainC_Mag,\n        Name \"|D| [A/m²]\", File \"$(output_dir)/dm.pos\" ];")
+    add_operation!(op1, "Echo[Str[\"View[PostProcessing.NbViews-1].RangeType = 3;\", // per timestep\n    \"View[PostProcessing.NbViews-1].ShowTime = 0;\",\n    \"View[PostProcessing.NbViews-1].IntervalsType = 2;\"\n    ], File \"$(output_dir)/maps.opt\"];")
 
     add_raw_code!(po1, "po = \"{01Losses/\";")
     add_raw_code!(po1, "po2 = \"{02Pul-parameters/\";")
 
     op2 = add_operation!(po2)  # Creates a POBase_ for po2
-    add_operation!(op2, "Print[ JouleLosses[DomainC_Mag], OnGlobal, Format Table,\n    SendToServer StrCat[po,\"0Total conducting domain\"],\n    Units \"W/m\", File \"$(joinpath("results", resolution_name))/losses_total.dat\" ];")
-    add_operation!(op2, "Print[ JouleLosses[Inds], OnGlobal, Format Table,\n    SendToServer StrCat[po,\"3Source (stranded OR massive)\"],\n    Units \"W/m\", File \"$(joinpath("results", resolution_name))/losses_inds.dat\" ];")
-    add_operation!(op2, "Print[ R, OnRegion Inds, Format Table,\n    SendToServer StrCat[po2,\"0R\"],\n    Units \"Ω\", File \"$(joinpath("results", resolution_name))/Rinds.dat\" ];")
-    add_operation!(op2, "Print[ L, OnRegion Inds, Format Table,\n    SendToServer StrCat[po2,\"1L\"],\n    Units \"H\", File \"$(joinpath("results", resolution_name))/Linds.dat\" ];")
-    add_operation!(op2, "Print[ Zs[DomainC_Mag], OnRegion Inds, Format Table,\n    SendToServer StrCat[po2,\"2re(Zs)\"] {0},\n    Units \"Ω\", File \"$(joinpath("results", resolution_name))/Zsinds_C_Mag.dat\" ];")
+    add_operation!(op2, "Print[ JouleLosses[DomainC_Mag], OnGlobal, Format Table,\n    SendToServer StrCat[po,\"0Total conducting domain\"],\n    Units \"W/m\", File \"$(output_dir)/losses_total.dat\" ];")
+    add_operation!(op2, "Print[ JouleLosses[Inds], OnGlobal, Format Table,\n    SendToServer StrCat[po,\"3Source\"],\n    Units \"W/m\", File \"$(output_dir)/losses_inds.dat\" ];")
+    add_operation!(op2, "Print[ R, OnRegion Inds, Format Table,\n    SendToServer StrCat[po2,\"0R\"],\n    Units \"Ω\", File \"$(output_dir)/R.dat\" ];")
+    add_operation!(op2, "Print[ L, OnRegion Inds, Format Table,\n    SendToServer StrCat[po2,\"1L\"],\n    Units \"H\", File \"$(output_dir)/L.dat\" ];")
+    # add_operation!(op2, "Print[ Zs[DomainC_Mag], OnRegion Inds, Format Table,\n    SendToServer StrCat[po2,\"2re(Zs)\"] {0},\n    Units \"Ω\", File \"$(output_dir)/Zsinds_C_Mag.dat\" ];")
 
     # Add the post-operation to the problem
     problem.postoperation = postoperation
