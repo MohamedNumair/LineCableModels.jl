@@ -77,8 +77,8 @@ opts = FEMOptions(
 # Run the FEM model
 @time workspace, line_params = compute!(problem, formulation, opts)
 
-println("R = $(round(real(line_params.Z[1,1,1])*1000, sigdigits=4)) Ω/km")
+println("\nR = $(round(real(line_params.Z[1,1,1])*1000, sigdigits=4)) Ω/km")
 println("L = $(round(imag(line_params.Z[1,1,1])/(2π*f)*1e6, sigdigits=4)) mH/km")
-println("C = $(round(imag(line_params.Y[1,1,1])/(2π*f)*1e9, sigdigits=4)) nF/km")
+println("C = $(round(imag(line_params.Y[1,1,1])/(2π*f)*1e9, sigdigits=4)) μF/km")
 
-println("FEM model run completed.")
+# @time _, line_params = compute!(problem, formulation, opts, workspace=workspace)

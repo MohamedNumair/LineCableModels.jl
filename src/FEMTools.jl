@@ -46,7 +46,7 @@ using GetDP: Problem
 # Export public API
 export LineParametersProblem
 export FEMFormulation, FEMOptions
-export compute!
+export compute!, run_fem_solver
 export FEMElectrodynamics, FEMDarwin
 
 # Main types and implementations
@@ -512,7 +512,6 @@ mutable struct FEMWorkspace
 
         # Set up paths
         workspace.paths = setup_paths(problem.system, formulation, opts)
-        cleanup_files(workspace.paths, opts)
 
         return workspace
     end
@@ -550,7 +549,11 @@ function compute!(problem::LineParametersProblem,
     if isnothing(workspace) || !isa(workspace, FEMWorkspace)
         workspace = FEMWorkspace(problem, formulation, opts)
         is_empty_workspace = true
+    else
+        is_empty_workspace = false
     end
+
+    cleanup_files(workspace.paths, opts)
 
     # Log start
     @info "Starting FEM simulation for cable system: $(problem.system.system_id)"
@@ -565,21 +568,22 @@ function compute!(problem::LineParametersProblem,
     solver_output_exists = false
     if opts.run_solver && !isempty(workspace.paths[:results_dir])
         # Check for presence of result files
-        result_files = readdir(workspace.paths[:results_dir])
+        result_files = if isdir(workspace.paths[:results_dir])
+            readdir(workspace.paths[:results_dir])
+        else
+            String[]  # Return empty vector if directory doesn't exist
+        end
         solver_output_exists = !isempty(result_files)
     end
     run_solver = opts.run_solver && (!solver_output_exists || opts.overwrite_results)
-
-    # Determine if we need to run post-processing
-    run_postproc = opts.run_postprocessing && run_solver
 
     line_params = nothing
 
     try
         # Initialize Gmsh for meshing phase
-        if run_mesh
-            gmsh.initialize()
+        gmsh.initialize()
 
+        if run_mesh
             @info "Building mesh..."
             make_mesh!(workspace)
 
@@ -613,14 +617,9 @@ function compute!(problem::LineParametersProblem,
                         @debug "Processing formulation: $(fem_formulation.resolution_name)"
                         make_fem_problem!(fem_formulation, frequency, workspace)
 
-                        solve_cmd = "$(opts.getdp_executable) $(fem_formulation.problem.filename) -msh $(workspace.paths[:mesh_file]) -solve $(fem_formulation.resolution_name) -v$(opts.verbosity == 0 ? 2 : 3)"
-
-                        @info "Solving... (Resolution = $(fem_formulation.resolution_name))"
-                        try
-                            gmsh.onelab.run("GetDP", solve_cmd)
-                            @info "Solve successful!"
-                        catch e
-                            println("Solve failed: ", e)
+                        # Invoke FEM solver
+                        if !run_fem_solver(workspace, fem_formulation)
+                            Base.error("Solver failed for $(fem_formulation.resolution_name)")
                         end
                     end
                     # Read results and store in 3D arrays
@@ -633,30 +632,27 @@ function compute!(problem::LineParametersProblem,
 
                 if !opts.cleanup_files
                     try
-                        # Create frequency-specific results directory
-                        freq_dir = joinpath(workspace.paths[:case_dir], "results_f=$(round(frequency, sigdigits=4))")
-                        mkpath(freq_dir)
-
-                        # Move selected files from case_dir
-                        for ext in [".res", ".pre"]
-                            # Move all files with extension from case_dir
-                            case_files = filter(f -> endswith(f, ext),
-                                readdir(workspace.paths[:case_dir], join=true))
-                            for f in case_files
-                                mv(f, joinpath(freq_dir, basename(f)), force=true)
-                            end
-                        end
-
-                        # Move all files from results_dir
+                        # Only attempt rename if results directory exists
                         if isdir(workspace.paths[:results_dir])
-                            result_files = readdir(workspace.paths[:results_dir], join=true)
-                            if !isempty(result_files)
-                                mv.(result_files,
-                                    joinpath.(freq_dir, basename.(result_files)),
-                                    force=true)
-                            end
-                        end
+                            # Construct new directory name with frequency
+                            freq_dir = joinpath(dirname(workspace.paths[:results_dir]),
+                                "results_f=$(round(frequency, sigdigits=6))")
 
+                            # Rename the directory
+                            mv(workspace.paths[:results_dir], freq_dir, force=true)
+
+                            @info "Renamed results directory for f=$frequency Hz"
+
+                            for ext in [".res", ".pre"]
+                                # Move all files with extension from case_dir
+                                case_files = filter(f -> endswith(f, ext),
+                                    readdir(workspace.paths[:case_dir], join=true))
+                                for f in case_files
+                                    mv(f, joinpath(freq_dir, basename(f)), force=true)
+                                end
+                            end
+
+                        end
                     catch e
                         @error "Failed to store results for frequency $frequency Hz" exception = e
                         rethrow(e)

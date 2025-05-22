@@ -95,17 +95,17 @@ function setup_paths(cable_system::LineCableSystem, formulation::FEMFormulation,
     admittance_file = joinpath(case_dir, "$(case_id)_$(admittance_res).pro")
     admittance_dir = joinpath(results_dir, admittance_res)
 
-    # Create results directory if needed
-    if opts.run_solver && !isdir(results_dir)
-        mkpath(results_dir)
-        @info "Created main results directory: $(results_dir)"
+    # # Create results directory if needed
+    # if opts.run_solver && !isdir(results_dir)
+    #     mkpath(results_dir)
+    #     @info "Created main results directory: $(results_dir)"
 
-        mkpath(impedances_dir)
-        @info "Created formulation results directory: $(impedances_dir)"
+    #     mkpath(impedances_dir)
+    #     @info "Created formulation results directory: $(impedances_dir)"
 
-        mkpath(admittance_dir)
-        @info "Created formulation results directory: $(admittance_dir)"
-    end
+    #     mkpath(admittance_dir)
+    #     @info "Created formulation results directory: $(admittance_dir)"
+    # end
 
     # Return compiled dictionary of paths
     paths = Dict{Symbol,String}(
@@ -159,6 +159,16 @@ function cleanup_files(paths::Dict{Symbol,String}, opts::FEMOptions)
     end
 
     if opts.overwrite_results && opts.run_solver
+
+        # Add cleanup for .pro files in case_dir
+        for file in readdir(paths[:case_dir])
+            if endswith(file, ".pro")
+                filepath = joinpath(paths[:case_dir], file)
+                rm(filepath, force=true)
+                @info "Removed existing problem file: $filepath"
+            end
+        end
+
         # If overwriting results and running solver, clear the results directory
         if isdir(paths[:results_dir])
             for file in readdir(paths[:results_dir])

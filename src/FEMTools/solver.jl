@@ -1,6 +1,7 @@
 
 function make_fem_problem!(fem_formulation::Union{AbstractImpedanceFormulation,AbstractAdmittanceFormulation}, frequency::Float64, workspace::FEMWorkspace)
 
+    fem_formulation.problem = GetDP.Problem()
     define_jacobian!(fem_formulation.problem, workspace)
     define_integration!(fem_formulation.problem)
     define_material_props!(fem_formulation.problem, workspace)
@@ -93,9 +94,9 @@ function define_constants!(problem::GetDP.Problem, fem_formulation::Union{Abstra
     add!(func, "Ns", expression="1")
     add!(func, "Sc", expression="SurfaceArea[]")
 
-    if fem_formulation isa AbstractImpedanceFormulation
-        add_raw_code!(func, "DefineFunction[js0];")
-    end
+    # if fem_formulation isa AbstractImpedanceFormulation
+    #     add_raw_code!(func, "DefineFunction[js0];")
+    # end
 
     push!(problem.function_obj, func)
 end
@@ -163,8 +164,8 @@ function define_domain_groups!(problem::GetDP.Problem, fem_formulation::Union{Ab
     else
         # Add standard magnetodynamics domains
         domain_configs = [
-            ("DomainS0_Mag", Int[], "UNUSED"),
-            ("DomainS_Mag", Int[], "UNUSED"),
+            # ("DomainS0_Mag", Int[], "UNUSED"),
+            # ("DomainS_Mag", Int[], "UNUSED"),
             ("DomainC_Mag", Int[], "All conductors"),
             ("DomainCC_Mag", Int[], "All non-conductors"),
             ("DomainCWithI_Mag", Int[], "Sources"),
@@ -230,9 +231,9 @@ function define_constraint!(problem::GetDP.Problem, fem_formulation::Union{Abstr
         mvp = assign!(constraint, "MagneticVectorPotential_2D")
         case!(mvp, "Sur_Dirichlet_Mag", value="0.0")
 
-        # Voltage_2D (placeholder)
-        voltage = assign!(constraint, "Voltage_2D")
-        case!(voltage, "", comment="UNUSED")
+        # # Voltage_2D (placeholder)
+        # voltage = assign!(constraint, "Voltage_2D")
+        # case!(voltage, "", comment="UNUSED")
 
         # Current_2D
         current = assign!(constraint, "Current_2D")
@@ -387,19 +388,19 @@ function define_resolution!(problem::GetDP.Problem, formulation::FEMDarwin, work
         endCondition="EndIf")
 
 
-    fs2 = add!(functionspace, "Hregion_i_2D", nothing, nothing, Type="Vector")
-    add_basis_function!(functionspace, "sr", "ir", "BF_RegionZ"; Support="DomainS_Mag", Entity="DomainS_Mag")
-    add_global_quantity!(functionspace, "Is", "AliasOf"; NameOfCoef="ir")
-    add_global_quantity!(functionspace, "Us", "AssociatedWith"; NameOfCoef="ir")
-    add_constraint!(functionspace, "Us", "Region", "Voltage_2D")
-    add_constraint!(functionspace, "Is", "Region", "Current_2D")
+    # fs2 = add!(functionspace, "Hregion_i_2D", nothing, nothing, Type="Vector")
+    # add_basis_function!(functionspace, "sr", "ir", "BF_RegionZ"; Support="DomainS_Mag", Entity="DomainS_Mag")
+    # add_global_quantity!(functionspace, "Is", "AliasOf"; NameOfCoef="ir")
+    # add_global_quantity!(functionspace, "Us", "AssociatedWith"; NameOfCoef="ir")
+    # add_constraint!(functionspace, "Us", "Region", "Voltage_2D")
+    # add_constraint!(functionspace, "Is", "Region", "Current_2D")
 
 
     fs3 = add!(functionspace, "Hregion_u_Mag_2D", nothing, nothing, Type="Form1P")
     add_basis_function!(functionspace, "sr", "ur", "BF_RegionZ"; Support="DomainC_Mag", Entity="DomainC_Mag")
     add_global_quantity!(functionspace, "U", "AliasOf"; NameOfCoef="ur")
     add_global_quantity!(functionspace, "I", "AssociatedWith"; NameOfCoef="ur")
-    add_constraint!(functionspace, "U", "Region", "Voltage_2D")
+    # add_constraint!(functionspace, "U", "Region", "Voltage_2D")
     add_constraint!(functionspace, "I", "Region", "Current_2D")
 
     problem.functionspace = functionspace
@@ -412,9 +413,9 @@ function define_resolution!(problem::GetDP.Problem, formulation::FEMDarwin, work
     add_quantity!(form, "ur", Type="Local", NameOfSpace="Hregion_u_Mag_2D")
     add_quantity!(form, "I", Type="Global", NameOfSpace="Hregion_u_Mag_2D [I]")
     add_quantity!(form, "U", Type="Global", NameOfSpace="Hregion_u_Mag_2D [U]")
-    add_quantity!(form, "ir", Type="Local", NameOfSpace="Hregion_i_2D")
-    add_quantity!(form, "Us", Type="Global", NameOfSpace="Hregion_i_2D[Us]")
-    add_quantity!(form, "Is", Type="Global", NameOfSpace="Hregion_i_2D[Is]")
+    # add_quantity!(form, "ir", Type="Local", NameOfSpace="Hregion_i_2D")
+    # add_quantity!(form, "Us", Type="Global", NameOfSpace="Hregion_i_2D[Us]")
+    # add_quantity!(form, "Is", Type="Global", NameOfSpace="Hregion_i_2D[Is]")
 
     eq = add_equation!(form)
 
@@ -428,11 +429,11 @@ function define_resolution!(problem::GetDP.Problem, formulation::FEMDarwin, work
     add!(eq, "Galerkin", "DtDtDof [ epsilon[] * Dof{a} , {ur}]", In="DomainC_Mag", Jacobian="Vol", Integration="I1")
     add!(eq, "Galerkin", "DtDof[ epsilon[] * Dof{ur}, {ur} ]", In="DomainC_Mag", Jacobian="Vol", Integration="I1")
     add!(eq, "GlobalTerm", "[ Dof{I} , {U} ]", In="DomainCWithI_Mag")
-    add!(eq, "Galerkin", "[ -js0[] , {a} ]", In="DomainS0_Mag", Jacobian="Vol", Integration="I1", comment=" Either you impose directly the function js0[]...")
-    add!(eq, "Galerkin", "[ -Ns[]/Sc[] * Dof{ir}, {a} ]", In="DomainS_Mag", Jacobian="Vol", Integration="I1", comment=" ...or you use the constraints")
-    add!(eq, "Galerkin", "DtDof [ Ns[]/Sc[] * Dof{a}, {ir} ]", In="DomainS_Mag", Jacobian="Vol", Integration="I1")
-    add!(eq, "Galerkin", "[ Ns[]/Sc[] / sigma[] * Ns[]/Sc[]* Dof{ir} , {ir}]", In="DomainS_Mag", Jacobian="Vol", Integration="I1")
-    add!(eq, "GlobalTerm", "[ Dof{Us}, {Is} ]", In="DomainS_Mag")
+    # add!(eq, "Galerkin", "[ -js0[] , {a} ]", In="DomainS0_Mag", Jacobian="Vol", Integration="I1", comment=" Either you impose directly the function js0[]...")
+    # add!(eq, "Galerkin", "[ -Ns[]/Sc[] * Dof{ir}, {a} ]", In="DomainS_Mag", Jacobian="Vol", Integration="I1", comment=" ...or you use the constraints")
+    # add!(eq, "Galerkin", "DtDof [ Ns[]/Sc[] * Dof{a}, {ir} ]", In="DomainS_Mag", Jacobian="Vol", Integration="I1")
+    # add!(eq, "Galerkin", "[ Ns[]/Sc[] / sigma[] * Ns[]/Sc[]* Dof{ir} , {ir}]", In="DomainS_Mag", Jacobian="Vol", Integration="I1")
+    # add!(eq, "GlobalTerm", "[ Dof{Us}, {Is} ]", In="DomainS_Mag")
 
     # Add the formulation to the problem
     problem.formulation = formulation
@@ -474,18 +475,18 @@ function define_resolution!(problem::GetDP.Problem, formulation::FEMDarwin, work
     # Multi-term entries
     q = add!(pp, "j")
     add!(q, "Term", "-sigma[]*(Dt[{a}]+{ur})"; In="DomainC_Mag", Jacobian="Vol")
-    add!(q, "Term", "js0[]"; In="DomainS0_Mag", Jacobian="Vol")
-    add!(q, "Term", "Ns[]/Sc[]*{ir}"; In="DomainS_Mag", Jacobian="Vol")
+    # add!(q, "Term", "js0[]"; In="DomainS0_Mag", Jacobian="Vol")
+    # add!(q, "Term", "Ns[]/Sc[]*{ir}"; In="DomainS_Mag", Jacobian="Vol")
 
     q = add!(pp, "jz")
     add!(q, "Term", "CompZ[-sigma[]*(Dt[{a}]+{ur})]"; In="DomainC_Mag", Jacobian="Vol")
-    add!(q, "Term", "CompZ[js0[]]"; In="DomainS0_Mag", Jacobian="Vol")
-    add!(q, "Term", "CompZ[Ns[]/Sc[]*{ir}]"; In="DomainS_Mag", Jacobian="Vol")
+    # add!(q, "Term", "CompZ[js0[]]"; In="DomainS0_Mag", Jacobian="Vol")
+    # add!(q, "Term", "CompZ[Ns[]/Sc[]*{ir}]"; In="DomainS_Mag", Jacobian="Vol")
 
     q = add!(pp, "jm")
     add!(q, "Term", "Norm[-sigma[]*(Dt[{a}]+{ur})]"; In="DomainC_Mag", Jacobian="Vol")
-    add!(q, "Term", "Norm[js0[]]"; In="DomainS0_Mag", Jacobian="Vol")
-    add!(q, "Term", "Norm[Ns[]/Sc[]*{ir}]"; In="DomainS_Mag", Jacobian="Vol")
+    # add!(q, "Term", "Norm[js0[]]"; In="DomainS0_Mag", Jacobian="Vol")
+    # add!(q, "Term", "Norm[Ns[]/Sc[]*{ir}]"; In="DomainS_Mag", Jacobian="Vol")
 
     q = add!(pp, "d")
     add!(q, "Term", "epsilon[] * Dt[Dt[{a}]+{ur}]"; In="DomainC_Mag", Jacobian="Vol")
@@ -496,45 +497,45 @@ function define_resolution!(problem::GetDP.Problem, formulation::FEMDarwin, work
 
     q = add!(pp, "rhoj2")
     add!(q, "Term", "0.5*sigma[]*SquNorm[Dt[{a}]+{ur}]"; In="DomainC_Mag", Jacobian="Vol")
-    add!(q, "Term", "0.5/sigma[]*SquNorm[js0[]]"; In="DomainS0_Mag", Jacobian="Vol")
-    add!(q, "Term", "0.5/sigma[]*SquNorm[Ns[]/Sc[]*{ir}]"; In="DomainS_Mag", Jacobian="Vol")
+    # add!(q, "Term", "0.5/sigma[]*SquNorm[js0[]]"; In="DomainS0_Mag", Jacobian="Vol")
+    # add!(q, "Term", "0.5/sigma[]*SquNorm[Ns[]/Sc[]*{ir}]"; In="DomainS_Mag", Jacobian="Vol")
 
     q = add!(pp, "JouleLosses")
     add!(q, "Integral", "0.5*sigma[]*SquNorm[Dt[{a}]]"; In="DomainC_Mag", Jacobian="Vol", Integration="I1")
-    add!(q, "Integral", "0.5/sigma[]*SquNorm[js0[]]"; In="DomainS0_Mag", Jacobian="Vol", Integration="I1")
-    add!(q, "Integral", "0.5/sigma[]*SquNorm[Ns[]/Sc[]*{ir}]"; In="DomainS_Mag", Jacobian="Vol", Integration="I1")
+    # add!(q, "Integral", "0.5/sigma[]*SquNorm[js0[]]"; In="DomainS0_Mag", Jacobian="Vol", Integration="I1")
+    # add!(q, "Integral", "0.5/sigma[]*SquNorm[Ns[]/Sc[]*{ir}]"; In="DomainS_Mag", Jacobian="Vol", Integration="I1")
 
     q = add!(pp, "U")
     add!(q, "Term", "{U}"; In="DomainC_Mag")
-    add!(q, "Term", "{Us}"; In="DomainS_Mag")
+    # add!(q, "Term", "{Us}"; In="DomainS_Mag")
 
     q = add!(pp, "I")
     add!(q, "Term", "{I}"; In="DomainC_Mag")
-    add!(q, "Term", "{Is}"; In="DomainS_Mag")
+    # add!(q, "Term", "{Is}"; In="DomainS_Mag")
 
     q = add!(pp, "S")
     add!(q, "Term", "{U}*Conj[{I}]"; In="DomainC_Mag")
-    add!(q, "Term", "{Us}*Conj[{Is}]"; In="DomainS_Mag")
+    # add!(q, "Term", "{Us}*Conj[{Is}]"; In="DomainS_Mag")
 
     q = add!(pp, "R")
     add!(q, "Term", "-Re[{U}/{I}]"; In="DomainC_Mag")
-    add!(q, "Term", "-Re[{Us}/{Is}]"; In="DomainS_Mag")
+    # add!(q, "Term", "-Re[{Us}/{Is}]"; In="DomainS_Mag")
 
     q = add!(pp, "L")
     add!(q, "Term", "-Im[{U}/{I}]/(2*Pi*Freq)"; In="DomainC_Mag")
-    add!(q, "Term", "-Im[{Us}/{Is}]/(2*Pi*Freq)"; In="DomainS_Mag")
+    # add!(q, "Term", "-Im[{Us}/{Is}]/(2*Pi*Freq)"; In="DomainS_Mag")
 
-    q = add!(pp, "R_per_km")
-    add!(q, "Term", "-Re[{U}/{I}]*1e3"; In="DomainC_Mag")
-    add!(q, "Term", "-Re[{Us}/{Is}]*1e3"; In="DomainS_Mag")
+    # q = add!(pp, "R_per_km")
+    # add!(q, "Term", "-Re[{U}/{I}]*1e3"; In="DomainC_Mag")
+    # add!(q, "Term", "-Re[{Us}/{Is}]*1e3"; In="DomainS_Mag")
 
-    q = add!(pp, "mL_per_km")
-    add!(q, "Term", "-1e6*Im[{U}/{I}]/(2*Pi*Freq)"; In="DomainC_Mag")
-    add!(q, "Term", "-1e6*Im[{Us}/{Is}]/(2*Pi*Freq)"; In="DomainS_Mag")
+    # q = add!(pp, "mL_per_km")
+    # add!(q, "Term", "-1e6*Im[{U}/{I}]/(2*Pi*Freq)"; In="DomainC_Mag")
+    # add!(q, "Term", "-1e6*Im[{Us}/{Is}]/(2*Pi*Freq)"; In="DomainS_Mag")
 
-    q = add!(pp, "Zs")
+    q = add!(pp, "Z")
     add!(q, "Term", "-{U}/{I}"; In="DomainC_Mag")
-    add!(q, "Term", "-{Us}/{Is}"; In="DomainS_Mag")
+    # add!(q, "Term", "-{Us}/{Is}"; In="DomainS_Mag")
 
     problem.postprocessing = postprocessing
 
@@ -554,9 +555,9 @@ function define_resolution!(problem::GetDP.Problem, formulation::FEMDarwin, work
     add_operation!(op1, "Echo[Str[\"View[PostProcessing.NbViews-1].RangeType = 3;\", // per timestep\n    \"View[PostProcessing.NbViews-1].IntervalsType = 2;\"\n    ], File \"$(output_dir)/maps.opt\"];")
     add_operation!(op1, "Print[ bm, OnElementsOf Domain_Mag,\n        Name \"|B| [T]\", File \"$(output_dir)/bm.pos\" ];")
     add_operation!(op1, "Echo[Str[\"View[PostProcessing.NbViews-1].RangeType = 3;\", // per timestep\n    \"View[PostProcessing.NbViews-1].ShowTime = 0;\",\n    \"View[PostProcessing.NbViews-1].IntervalsType = 2;\"\n    ], File \"$(output_dir)/maps.opt\"];")
-    add_operation!(op1, "Print[ jz, OnElementsOf Region[{DomainC_Mag, DomainS_Mag}],\n        Name \"jz [A/m^2] Conducting domain\", File \"$(output_dir)/jz_inds.pos\" ];")
+    add_operation!(op1, "Print[ jz, OnElementsOf Region[{DomainC_Mag}],\n        Name \"jz [A/m^2] Conducting domain\", File \"$(output_dir)/jz_inds.pos\" ];")
     add_operation!(op1, "Echo[Str[\"View[PostProcessing.NbViews-1].RangeType = 3;\", // per timestep\n    \"View[PostProcessing.NbViews-1].IntervalsType = 2;\"\n    ], File \"$(output_dir)/maps.opt\"];")
-    add_operation!(op1, "Print[ rhoj2, OnElementsOf Region[{DomainC_Mag, DomainS_Mag}],\n        Name \"Power density\", File \"$(output_dir)/rhoj2.pos\" ];")
+    add_operation!(op1, "Print[ rhoj2, OnElementsOf Region[{DomainC_Mag}],\n        Name \"Power density\", File \"$(output_dir)/rhoj2.pos\" ];")
     add_operation!(op1, "Echo[Str[\"View[PostProcessing.NbViews-1].RangeType = 3;\", // per timestep\n    \"View[PostProcessing.NbViews-1].ShowTime = 0;\",\n    \"View[PostProcessing.NbViews-1].IntervalsType = 2;\"\n    ], File \"$(output_dir)/maps.opt\"];")
     add_operation!(op1, "Print[ jm, OnElementsOf DomainC_Mag,\n        Name \"|j| [A/m^2] Conducting domain\", File \"$(output_dir)/jm.pos\" ];")
     add_operation!(op1, "Echo[Str[\"View[PostProcessing.NbViews-1].RangeType = 3;\", // per timestep\n    \"View[PostProcessing.NbViews-1].ShowTime = 0;\",\n    \"View[PostProcessing.NbViews-1].IntervalsType = 2;\"\n    ], File \"$(output_dir)/maps.opt\"];")
@@ -571,10 +572,27 @@ function define_resolution!(problem::GetDP.Problem, formulation::FEMDarwin, work
     add_operation!(op2, "Print[ JouleLosses[Inds], OnGlobal, Format Table,\n    SendToServer StrCat[po,\"3Source\"],\n    Units \"W/m\", File \"$(output_dir)/losses_inds.dat\" ];")
     add_operation!(op2, "Print[ R, OnRegion Inds, Format Table,\n    SendToServer StrCat[po2,\"0R\"],\n    Units \"Ω\", File \"$(output_dir)/R.dat\" ];")
     add_operation!(op2, "Print[ L, OnRegion Inds, Format Table,\n    SendToServer StrCat[po2,\"1L\"],\n    Units \"H\", File \"$(output_dir)/L.dat\" ];")
-    # add_operation!(op2, "Print[ Zs[DomainC_Mag], OnRegion Inds, Format Table,\n    SendToServer StrCat[po2,\"2re(Zs)\"] {0},\n    Units \"Ω\", File \"$(output_dir)/Zsinds_C_Mag.dat\" ];")
+    add_operation!(op2, "Print[ Z[DomainC_Mag], OnRegion Inds, Format Table,\n    SendToServer StrCat[po2,\"2re(Z)\"] {0},\n    Units \"Ω\", File \"$(output_dir)/Z.dat\" ];")
 
     # Add the post-operation to the problem
     problem.postoperation = postoperation
 
 end
 
+function run_fem_solver(workspace::FEMWorkspace, fem_formulation::AbstractFormulation)
+    if !(@isdefined(gmsh))
+        gmsh.initialize()
+    end
+    # Construct solver command
+    solve_cmd = "$(workspace.opts.getdp_executable) $(fem_formulation.problem.filename) -msh $(workspace.paths[:mesh_file]) -solve $(fem_formulation.resolution_name) -v$(workspace.opts.verbosity == 0 ? 2 : 3)"
+
+    @info "Solving... (Resolution = $(fem_formulation.resolution_name))"
+    try
+        gmsh.onelab.run("GetDP", solve_cmd)
+        @info "Solve successful!"
+        return true
+    catch e
+        @error "Solve failed" exception = e
+        return false
+    end
+end
