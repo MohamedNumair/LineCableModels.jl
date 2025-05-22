@@ -83,21 +83,26 @@ end
 function define_constants!(problem::GetDP.Problem, fem_formulation::Union{AbstractImpedanceFormulation,AbstractAdmittanceFormulation}, frequency::Float64)
     func = GetDP.Function()
 
-    DEFAULT_CONSTS = [("I", 1.0), ("V0", 1.0), ("Flag_Degree_a", "1"), ("Flag_Degree_v", "1")]
+    # DEFAULT_CONSTS = [("I", 1.0), ("V0", 1.0), ("Flag_Degree_a", "1"), ("Flag_Degree_v", "1")]
 
     # Add constants more concisely (because of course it is so much better to jump one fuckton lines to find the damn parameter rather than making readable code)
-    for (name, value) in [DEFAULT_CONSTS..., ("Freq", frequency)]
-        add_constant!(func, name, value)
-    end
+    # for (name, value) in [DEFAULT_CONSTS..., ("Freq", frequency)]
+    #     add_constant!(func, name, value)
+    # end
 
-    # Add other parameters
-    add!(func, "Ns", expression="1")
-    add!(func, "Sc", expression="SurfaceArea[]")
+    # # Add other parameters
+    # add!(func, "Ns", expression="1")
+    # add!(func, "Sc", expression="SurfaceArea[]")
 
     # if fem_formulation isa AbstractImpedanceFormulation
     #     add_raw_code!(func, "DefineFunction[js0];")
     # end
-
+    add_constant!(func, "Freq", frequency)
+    if fem_formulation isa AbstractImpedanceFormulation
+        add_constant!(func, "I", 1.0)
+    else
+        add_constant!(func, "V0", 1.0)
+    end
     push!(problem.function_obj, func)
 end
 
@@ -231,9 +236,9 @@ function define_constraint!(problem::GetDP.Problem, fem_formulation::Union{Abstr
         mvp = assign!(constraint, "MagneticVectorPotential_2D")
         case!(mvp, "Sur_Dirichlet_Mag", value="0.0")
 
-        # # Voltage_2D (placeholder)
-        # voltage = assign!(constraint, "Voltage_2D")
-        # case!(voltage, "", comment="UNUSED")
+        # Voltage_2D (placeholder)
+        voltage = assign!(constraint, "Voltage_2D")
+        case!(voltage, "")
 
         # Current_2D
         current = assign!(constraint, "Current_2D")
@@ -260,16 +265,16 @@ function define_resolution!(problem::GetDP.Problem, formulation::FEMElectrodynam
     functionspace = FunctionSpace()
     fs1 = add!(functionspace, "Hgrad_v_Ele", nothing, nothing, Type="Form0")
     add_basis_function!(functionspace, "sn", "vn", "BF_Node"; Support="Domain_Ele", Entity="NodesOf[ All ]")
-    add_basis_function!(functionspace, "sn2", "vn2", "BF_Node_2E";
-        Support="Domain_Ele",
-        Entity="EdgesOf[ All ]",
-        condition="If (Flag_Degree_v == 2)",
-        endCondition="EndIf")
+    # add_basis_function!(functionspace, "sn2", "vn2", "BF_Node_2E";
+    #     Support="Domain_Ele",
+    #     Entity="EdgesOf[ All ]",
+    #     condition="If (Flag_Degree_v == 2)",
+    #     endCondition="EndIf")
 
     add_constraint!(functionspace, "vn", "NodesOf", "ElectricScalarPotential")
-    add_constraint!(functionspace, "vn2", "EdgesOf", "ZeroElectricScalarPotential";
-        condition="If (Flag_Degree_v == 2)",
-        endCondition="EndIf")
+    # add_constraint!(functionspace, "vn2", "EdgesOf", "ZeroElectricScalarPotential";
+    #     condition="If (Flag_Degree_v == 2)",
+    #     endCondition="EndIf")
 
     problem.functionspace = functionspace
 
@@ -353,14 +358,14 @@ function define_resolution!(problem::GetDP.Problem, formulation::FEMElectrodynam
     # Ele_Maps
     po1 = add!(postoperation, "Ele_Maps", "EleDyn_v")
     op1 = add_operation!(po1)
-    add_operation!(op1, "Print[ v, OnElementsOf Domain_Ele, File \"$(output_dir)/v.pos\" ];")
-    add_operation!(op1, "Print[ em, OnElementsOf Cables, Name \"|E| [V/m]\", File \"$(output_dir)/em.pos\" ];")
-    add_operation!(op1, "Print[ dm, OnElementsOf Cables, Name \"|D| [A/m²]\", File \"$(output_dir)/dm.pos\" ];")
-    add_operation!(op1, "Print[ e, OnElementsOf Cables, Name \"E [V/m]\", File \"$(output_dir)/e.pos\" ];")
+    add_operation!(op1, "Print[ v, OnElementsOf Domain_Ele, File \"$(joinpath(output_dir,"v.pos"))\" ];")
+    add_operation!(op1, "Print[ em, OnElementsOf Cables, Name \"|E| [V/m]\", File \"$(joinpath(output_dir,"em.pos"))\" ];")
+    add_operation!(op1, "Print[ dm, OnElementsOf Cables, Name \"|D| [A/m²]\", File \"$(joinpath(output_dir,"dm.pos"))\" ];")
+    add_operation!(op1, "Print[ e, OnElementsOf Cables, Name \"E [V/m]\", File \"$(joinpath(output_dir,"e.pos"))\" ];")
     # add_operation!(op1, "Call Change_post_options;")
-    add_operation!(op1, "Print[ ElectricEnergy[Cable_1], OnGlobal, Format Table, StoreInVariable \$We, SendToServer StrCat[po0,\"0Electric energy\"], File \"$(output_dir)/energy.dat\" ];")
-    add_operation!(op1, "Print[ V0[Ind_1], OnRegion Ind_1, Format Table, StoreInVariable \$voltage, SendToServer StrCat[po0,\"0U\"], Units \"V\", File \"$(output_dir)/U.dat\" ];")
-    add_operation!(op1, "Print[ C_from_Energy, OnRegion DomainDummy, Format Table, StoreInVariable \$C1, SendToServer StrCat[po0,\"1C\"], Units \"F/m\", File \"$(output_dir)/C.dat\" ];")
+    add_operation!(op1, "Print[ ElectricEnergy[Cable_1], OnGlobal, Format Table, StoreInVariable \$We, SendToServer StrCat[po0,\"0Electric energy\"], File \"$(joinpath(output_dir,"energy.dat"))\" ];")
+    add_operation!(op1, "Print[ V0[Ind_1], OnRegion Ind_1, Format Table, StoreInVariable \$voltage, SendToServer StrCat[po0,\"0U\"], Units \"V\", File \"$(joinpath(output_dir,"U.dat"))\" ];")
+    add_operation!(op1, "Print[ C_from_Energy, OnRegion DomainDummy, Format Table, StoreInVariable \$C1, SendToServer StrCat[po0,\"1C\"], Units \"F/m\", File \"$(joinpath(output_dir,"C.dat"))\" ];")
 
     problem.postoperation = postoperation
 
@@ -376,16 +381,16 @@ function define_resolution!(problem::GetDP.Problem, formulation::FEMDarwin, work
     # FunctionSpace section
     fs1 = add!(functionspace, "Hcurl_a_Mag_2D", nothing, nothing, Type="Form1P")
     add_basis_function!(functionspace, "se", "ae", "BF_PerpendicularEdge"; Support="Domain_Mag", Entity="NodesOf[ All ]")
-    add_basis_function!(functionspace, "se2", "ae2", "BF_PerpendicularEdge_2E";
-        Support="Domain_Mag",
-        Entity="EdgesOf[ All ]",
-        condition="If (Flag_Degree_a == 2)",
-        endCondition="EndIf")
+    # add_basis_function!(functionspace, "se2", "ae2", "BF_PerpendicularEdge_2E";
+    #     Support="Domain_Mag",
+    #     Entity="EdgesOf[ All ]",
+    #     condition="If (Flag_Degree_a == 2)",
+    #     endCondition="EndIf")
 
     add_constraint!(functionspace, "ae", "NodesOf", "MagneticVectorPotential_2D")
-    add_constraint!(functionspace, "ae2", "EdgesOf", "MagneticVectorPotential_2D";
-        condition="If (Flag_Degree_a == 2)",
-        endCondition="EndIf")
+    # add_constraint!(functionspace, "ae2", "EdgesOf", "MagneticVectorPotential_2D";
+    #     condition="If (Flag_Degree_a == 2)",
+    #     endCondition="EndIf")
 
 
     # fs2 = add!(functionspace, "Hregion_i_2D", nothing, nothing, Type="Vector")
@@ -400,7 +405,7 @@ function define_resolution!(problem::GetDP.Problem, formulation::FEMDarwin, work
     add_basis_function!(functionspace, "sr", "ur", "BF_RegionZ"; Support="DomainC_Mag", Entity="DomainC_Mag")
     add_global_quantity!(functionspace, "U", "AliasOf"; NameOfCoef="ur")
     add_global_quantity!(functionspace, "I", "AssociatedWith"; NameOfCoef="ur")
-    # add_constraint!(functionspace, "U", "Region", "Voltage_2D")
+    add_constraint!(functionspace, "U", "Region", "Voltage_2D")
     add_constraint!(functionspace, "I", "Region", "Current_2D")
 
     problem.functionspace = functionspace
@@ -549,30 +554,23 @@ function define_resolution!(problem::GetDP.Problem, formulation::FEMDarwin, work
     # Add operations for maps
     op1 = add_operation!(po1)  # Creates a POBase_ for po1
 
-    add_operation!(op1, "Print[ az, OnElementsOf Domain_Mag, //Smoothing 1\n        Name \"flux lines: Az [T m]\", File \"$(output_dir)/az.pos\" ];")
-    add_operation!(op1, "Echo[Str[\"View[PostProcessing.NbViews-1].RangeType = 3;\", // per timestep\n    \"View[PostProcessing.NbViews-1].NbIso = 25;\",\n    \"View[PostProcessing.NbViews-1].IntervalsType = 1;\" // isolines\n    ], File \"$(output_dir)/maps.opt\"];")
-    add_operation!(op1, "Print[ b, OnElementsOf Domain_Mag, //Smoothing 1,\n        Name \"B [T]\", File \"$(output_dir)/b.pos\" ];")
-    add_operation!(op1, "Echo[Str[\"View[PostProcessing.NbViews-1].RangeType = 3;\", // per timestep\n    \"View[PostProcessing.NbViews-1].IntervalsType = 2;\"\n    ], File \"$(output_dir)/maps.opt\"];")
-    add_operation!(op1, "Print[ bm, OnElementsOf Domain_Mag,\n        Name \"|B| [T]\", File \"$(output_dir)/bm.pos\" ];")
-    add_operation!(op1, "Echo[Str[\"View[PostProcessing.NbViews-1].RangeType = 3;\", // per timestep\n    \"View[PostProcessing.NbViews-1].ShowTime = 0;\",\n    \"View[PostProcessing.NbViews-1].IntervalsType = 2;\"\n    ], File \"$(output_dir)/maps.opt\"];")
-    add_operation!(op1, "Print[ jz, OnElementsOf Region[{DomainC_Mag}],\n        Name \"jz [A/m^2] Conducting domain\", File \"$(output_dir)/jz_inds.pos\" ];")
-    add_operation!(op1, "Echo[Str[\"View[PostProcessing.NbViews-1].RangeType = 3;\", // per timestep\n    \"View[PostProcessing.NbViews-1].IntervalsType = 2;\"\n    ], File \"$(output_dir)/maps.opt\"];")
-    add_operation!(op1, "Print[ rhoj2, OnElementsOf Region[{DomainC_Mag}],\n        Name \"Power density\", File \"$(output_dir)/rhoj2.pos\" ];")
-    add_operation!(op1, "Echo[Str[\"View[PostProcessing.NbViews-1].RangeType = 3;\", // per timestep\n    \"View[PostProcessing.NbViews-1].ShowTime = 0;\",\n    \"View[PostProcessing.NbViews-1].IntervalsType = 2;\"\n    ], File \"$(output_dir)/maps.opt\"];")
-    add_operation!(op1, "Print[ jm, OnElementsOf DomainC_Mag,\n        Name \"|j| [A/m^2] Conducting domain\", File \"$(output_dir)/jm.pos\" ];")
-    add_operation!(op1, "Echo[Str[\"View[PostProcessing.NbViews-1].RangeType = 3;\", // per timestep\n    \"View[PostProcessing.NbViews-1].ShowTime = 0;\",\n    \"View[PostProcessing.NbViews-1].IntervalsType = 2;\"\n    ], File \"$(output_dir)/maps.opt\"];")
-    add_operation!(op1, "Print[ dm, OnElementsOf DomainC_Mag,\n        Name \"|D| [A/m²]\", File \"$(output_dir)/dm.pos\" ];")
-    add_operation!(op1, "Echo[Str[\"View[PostProcessing.NbViews-1].RangeType = 3;\", // per timestep\n    \"View[PostProcessing.NbViews-1].ShowTime = 0;\",\n    \"View[PostProcessing.NbViews-1].IntervalsType = 2;\"\n    ], File \"$(output_dir)/maps.opt\"];")
+    add_operation!(op1, "Print[ az, OnElementsOf Domain_Mag, //Smoothing 1\n        Name \"flux lines: Az [T m]\", File \"$(joinpath(output_dir,"az.pos"))\" ];")
+    add_operation!(op1, "Print[ b, OnElementsOf Domain_Mag, //Smoothing 1,\n        Name \"B [T]\", File \"$(joinpath(output_dir,"b.pos"))\" ];")
+    add_operation!(op1, "Print[ bm, OnElementsOf Domain_Mag,\n        Name \"|B| [T]\", File \"$(joinpath(output_dir,"bm.pos"))\" ];")
+    add_operation!(op1, "Print[ jz, OnElementsOf Region[{DomainC_Mag}],\n        Name \"jz [A/m^2] Conducting domain\", File \"$(joinpath(output_dir,"jz_inds.pos"))\" ];")
+    add_operation!(op1, "Print[ rhoj2, OnElementsOf Region[{DomainC_Mag}],\n        Name \"Power density\", File \"$(joinpath(output_dir,"rhoj2.pos"))\" ];")
+    add_operation!(op1, "Print[ jm, OnElementsOf DomainC_Mag,\n        Name \"|j| [A/m^2] Conducting domain\", File \"$(joinpath(output_dir,"jm.pos"))\" ];")
+    add_operation!(op1, "Print[ dm, OnElementsOf DomainC_Mag,\n        Name \"|D| [A/m²]\", File \"$(joinpath(output_dir,"dm.pos"))\" ];")
 
     add_raw_code!(po1, "po = \"{01Losses/\";")
     add_raw_code!(po1, "po2 = \"{02Pul-parameters/\";")
 
     op2 = add_operation!(po2)  # Creates a POBase_ for po2
-    add_operation!(op2, "Print[ JouleLosses[DomainC_Mag], OnGlobal, Format Table,\n    SendToServer StrCat[po,\"0Total conducting domain\"],\n    Units \"W/m\", File \"$(output_dir)/losses_total.dat\" ];")
-    add_operation!(op2, "Print[ JouleLosses[Inds], OnGlobal, Format Table,\n    SendToServer StrCat[po,\"3Source\"],\n    Units \"W/m\", File \"$(output_dir)/losses_inds.dat\" ];")
-    add_operation!(op2, "Print[ R, OnRegion Inds, Format Table,\n    SendToServer StrCat[po2,\"0R\"],\n    Units \"Ω\", File \"$(output_dir)/R.dat\" ];")
-    add_operation!(op2, "Print[ L, OnRegion Inds, Format Table,\n    SendToServer StrCat[po2,\"1L\"],\n    Units \"H\", File \"$(output_dir)/L.dat\" ];")
-    add_operation!(op2, "Print[ Z[DomainC_Mag], OnRegion Inds, Format Table,\n    SendToServer StrCat[po2,\"2re(Z)\"] {0},\n    Units \"Ω\", File \"$(output_dir)/Z.dat\" ];")
+    add_operation!(op2, "Print[ JouleLosses[DomainC_Mag], OnGlobal, Format Table,\n    SendToServer StrCat[po,\"0Total conducting domain\"],\n    Units \"W/m\", File \"$(joinpath(output_dir,"losses_total.dat"))\" ];")
+    add_operation!(op2, "Print[ JouleLosses[Inds], OnGlobal, Format Table,\n    SendToServer StrCat[po,\"3Source\"],\n    Units \"W/m\", File \"$(joinpath(output_dir,"losses_inds.dat"))\" ];")
+    add_operation!(op2, "Print[ R, OnRegion Inds, Format Table,\n    SendToServer StrCat[po2,\"0R\"],\n    Units \"Ω\", File \"$(joinpath(output_dir,"R.dat"))\" ];")
+    add_operation!(op2, "Print[ L, OnRegion Inds, Format Table,\n    SendToServer StrCat[po2,\"1L\"],\n    Units \"H\", File \"$(joinpath(output_dir,"L.dat"))\" ];")
+    add_operation!(op2, "Print[ Z[DomainC_Mag], OnRegion Inds, Format Table,\n    SendToServer StrCat[po2,\"2re(Z)\"] {0},\n    Units \"Ω\", File \"$(joinpath(output_dir,"Z.dat"))\" ];")
 
     # Add the post-operation to the problem
     problem.postoperation = postoperation
@@ -580,7 +578,7 @@ function define_resolution!(problem::GetDP.Problem, formulation::FEMDarwin, work
 end
 
 function run_fem_solver(workspace::FEMWorkspace, fem_formulation::AbstractFormulation)
-    if !(@isdefined(gmsh))
+    if gmsh.is_initialized() == 0
         gmsh.initialize()
     end
     # Construct solver command
@@ -592,7 +590,7 @@ function run_fem_solver(workspace::FEMWorkspace, fem_formulation::AbstractFormul
         @info "Solve successful!"
         return true
     catch e
-        @error "Solve failed" exception = e
+        Base.error("Solver failed: $e")
         return false
     end
 end
