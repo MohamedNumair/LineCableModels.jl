@@ -67,6 +67,7 @@ opts = FEMOptions(
     force_remesh=false,  # Force remeshing
     run_solver=true,
     overwrite_results=true,
+    plot_field_maps=false,
     preview_geo=false,  # Preview geometry
     preview_mesh=false,  # Preview the mesh
     base_path=joinpath(@__DIR__, "fem_output"),

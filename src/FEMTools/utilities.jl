@@ -182,69 +182,38 @@ function cleanup_files(paths::Dict{Symbol,String}, opts::FEMOptions)
     end
 end
 
-function read_results_file(fem_formulation::AbstractImpedanceFormulation, frequency::Float64, workspace::FEMWorkspace; files=["R.dat", "L.dat"])
+function read_results_file(fem_formulation::Union{AbstractImpedanceFormulation,AbstractAdmittanceFormulation}, workspace::FEMWorkspace; file::Union{String,Nothing}=nothing)
 
     results_path = joinpath(workspace.paths[:results_dir], lowercase(fem_formulation.resolution_name))
 
-    # Helper function to read values from either R.dat or L.dat
-    function read_values(filepath::String)
-        isfile(filepath) || Base.error("File not found: $filepath")
-        line = readline(filepath)
-        # Parse all numbers and take every other value starting from index 2
-        values = parse.(Float64, split(line))[2:2:end]
-        n = length(values)
-        # Create and fill matrix
-        matrix = zeros(Float64, n, n)
-        for i in 1:n
-            matrix[i, i] = values[i]
-        end
-        return matrix
+    if isnothing(file)
+        file = fem_formulation isa AbstractImpedanceFormulation ? "Z.dat" :
+               fem_formulation isa AbstractAdmittanceFormulation ? "Y.dat" :
+               throw(ArgumentError("Invalid formulation type: $(typeof(fem_formulation))"))
     end
 
-    # Read both files
-    R = read_values(joinpath(results_path, files[1]))
-    L = read_values(joinpath(results_path, files[2]))
+    filepath = joinpath(results_path, file)
 
-    # Calculate complex impedance matrix
-    Z = R + im * 2π * frequency * L
+    isfile(filepath) || Base.error("File not found: $filepath")
 
-    return Z
-end
+    # Read all lines from file
+    lines = readlines(filepath)
+    n_rows = sum([length(c.design_data.components) for c in workspace.problem_def.system.cables])
 
-function read_results_file(fem_formulation::AbstractAdmittanceFormulation, frequency::Float64, workspace::FEMWorkspace; files=["C.dat"])
-    results_path = joinpath(workspace.paths[:results_dir], lowercase(fem_formulation.resolution_name))
+    # Pre-allocate result matrix
+    matrix = zeros(ComplexF64, n_rows, n_rows)
 
-    # Helper function to read values from either R.dat or L.dat
-    function read_values(filepath::String)
-        isfile(filepath) || Base.error("File not found: $filepath")
-        line = readline(filepath)
-        # Parse all numbers and take every other value starting from index 2
-        values = parse.(Float64, split(line))[2:2:end]
-        n = length(values)
+    # Process each line (matrix row)
+    for (i, line) in enumerate(lines)
+        # Parse all numbers, dropping the initial 0
+        values = parse.(Float64, split(line))[2:end]
 
-        # Get system size from the workspace
-        n_phases = workspace.problem_def.system.num_phases
-
-        # Create output matrix
-        matrix = zeros(Float64, n_phases, n_phases)
-
-        if n == 1
-            # If only one value, replicate it on the main diagonal
-            fill!(view(matrix, diagind(matrix)), values[1])
-        else
-            # Otherwise fill diagonal with provided values
-            for i in 1:n
-                matrix[i, i] = values[i]
-            end
+        # Fill matrix row with complex values
+        for j in 1:n_rows
+            idx = 2j - 1  # Index for real part
+            matrix[i, j] = Complex(values[idx], values[idx+1])
         end
-        return matrix
     end
 
-    # Read capacitance file
-    C = read_values(joinpath(results_path, files[1]))
-
-    # Calculate complex admittance matrix
-    Y = im * 2π * frequency * C
-
-    return Y
+    return matrix
 end

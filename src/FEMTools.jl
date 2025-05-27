@@ -182,44 +182,6 @@ mutable struct FEMElectrodynamics <: AbstractAdmittanceFormulation
 end
 
 
-function _run_solver(workspace)
-    """
-            Verbosity Levels in GetDP
-            Level	Output Description
-            0	     Silent (no output)
-            1	     Errors only
-            2	     Errors + warnings
-            3	     Errors + warnings + basic info
-            4	     Detailed debugging
-            5	     Full internal tracing
-    """
-    mesh_file = workspace.paths[:mesh_file]
-    pro_file_path = workspace.paths[:pro_file]
-    all_problemns = build_getdp_problem(workspace)
-
-    write_multiple_problems(all_problemns, pro_file_path)
-
-    # Set up paths
-    getdp_exe_path = workspace.opts.getdp_executable
-
-    # Write all problems to files
-    @info "Running opts..."
-    for formulation in workspace.formulation.analysis_type
-        # Run solver for each formulation
-        solve_cmd = "$getdp_exe_path $pro_file_path -msh $mesh_file -solve $(formulation.resolution_name) -v$(workspace.opts.verbosity == 0 ? 2 : 3)"
-
-        @info "Solving... (Resolution = $(formulation.resolution_name))"
-
-        try
-            gmsh.onelab.run("GetDP", solve_cmd)
-            @info "Solve successful!"
-            # gmsh.fltk.run()
-        catch e
-            println("Solve failed: ", e)
-        end
-    end
-end
-
 """
 $(TYPEDEF)
 
@@ -339,14 +301,12 @@ struct FEMOptions <: FormulationOptions
     "Flag to remove or keep all files for each frequency run."
     cleanup_files::Bool
 
-    "Flag to run postprocessing."
-    run_postprocessing::Bool
     "Flag to preview the mesh."
     preview_mesh::Bool
     "Flag to preview the geometry."
     preview_geo::Bool
-    "Flag to plot results."
-    plot_results::Bool
+    "Flag to plot field maps in postprocessing stage."
+    plot_field_maps::Bool
 
     "Base path for output files."
     base_path::String
@@ -372,7 +332,7 @@ struct FEMOptions <: FormulationOptions
     - `run_postprocessing`: Flag to run postprocessing \\[dimensionless\\]. Default: true.
     - `preview_mesh`: Flag to preview the mesh \\[dimensionless\\]. Default: false.
     - `preview_geo`: Flag to preview the geometry \\[dimensionless\\]. Default: false.
-    - `plot_results`: Flag to plot results \\[dimensionless\\]. Default: true.
+    - `plot_field_maps`: Flag to plot results \\[dimensionless\\]. Default: true.
     - `base_path`: Base path for output files. Default: "./fem_output".
     - `gmsh_executable`: Path to Gmsh executable. Default: from environment.
     - `getdp_executable`: Path to GetDP executable. Default: from environment.
@@ -401,10 +361,9 @@ struct FEMOptions <: FormulationOptions
         run_solver::Bool=true,
         overwrite_results::Bool=false,
         cleanup_files::Bool=false,
-        run_postprocessing::Bool=true,
         preview_mesh::Bool=false,
         preview_geo::Bool=false,
-        plot_results::Bool=true,
+        plot_field_maps::Bool=true,
         base_path::String="./fem_output",
         gmsh_executable::Union{String,Nothing}=nothing,
         getdp_executable::Union{String,Nothing}=nothing,
@@ -432,7 +391,7 @@ struct FEMOptions <: FormulationOptions
 
         return new(
             force_remesh, run_solver, overwrite_results, cleanup_files,
-            run_postprocessing, preview_mesh, preview_geo, plot_results,
+            preview_mesh, preview_geo, plot_field_maps,
             base_path, gmsh_executable, getdp_executable, verbosity, logfile
         )
     end
@@ -603,7 +562,7 @@ function compute!(problem::LineParametersProblem,
             @info "Running GetDP solver..."
 
             # Get dimensions for preallocation
-            n_phases = problem.system.num_phases
+            n_phases = sum([length(c.design_data.components) for c in workspace.problem_def.system.cables])
             n_frequencies = length(problem.frequencies)
 
             # Preallocate 3D arrays for Z and Y matrices
@@ -623,8 +582,9 @@ function compute!(problem::LineParametersProblem,
                         end
                     end
                     # Read results and store in 3D arrays
-                    Z[:, :, i] = read_results_file(formulation.analysis_type[1], frequency, workspace)
-                    Y[:, :, i] = read_results_file(formulation.analysis_type[2], frequency, workspace)
+                    Z[:, :, i] = read_results_file(formulation.analysis_type[1], workspace)
+                    Y[:, :, i] = read_results_file(formulation.analysis_type[2], workspace)
+
                 catch e
                     @error "Failed to compute matrices for frequency $frequency Hz" exception = e
                     rethrow(e)
