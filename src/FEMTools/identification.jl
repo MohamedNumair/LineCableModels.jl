@@ -97,8 +97,8 @@ function identify_by_marker(workspace::FEMWorkspace)
             if !(entity_data isa CurveEntity)
                 # Check if marker is inside this surface
                 if gmsh.model.is_inside(dim, tag, marker) == 1
-                    # Found match - create FEMEntity and add to appropriate container
-                    fem_entity = FEMEntity(tag, entity_data)
+                    # Found match - create GmshObject and add to appropriate container
+                    fem_entity = GmshObject(tag, entity_data)
 
                     # Place in appropriate container
                     if entity_data isa CablePartEntity
@@ -135,8 +135,8 @@ function identify_by_marker(workspace::FEMWorkspace)
         for (dim, tag) in all_curves
             # Check if marker is inside this curve
             if gmsh.model.is_inside(dim, tag, marker) == 1
-                # Found match - create FEMEntity and add to appropriate container
-                fem_entity = FEMEntity(tag, entity_data)
+                # Found match - create GmshObject and add to appropriate container
+                fem_entity = GmshObject(tag, entity_data)
 
                 # Place in appropriate container
                 if entity_data isa CurveEntity

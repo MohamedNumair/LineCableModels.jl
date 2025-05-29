@@ -89,23 +89,9 @@ function setup_paths(cable_system::LineCableSystem, formulation::FEMFormulation,
 
     impedance_res = lowercase(formulation.analysis_type[1].resolution_name)
     impedance_file = joinpath(case_dir, "$(case_id)_$(impedance_res).pro")
-    impedances_dir = joinpath(results_dir, impedance_res)
 
     admittance_res = lowercase(formulation.analysis_type[2].resolution_name)
     admittance_file = joinpath(case_dir, "$(case_id)_$(admittance_res).pro")
-    admittance_dir = joinpath(results_dir, admittance_res)
-
-    # # Create results directory if needed
-    # if opts.run_solver && !isdir(results_dir)
-    #     mkpath(results_dir)
-    #     @info "Created main results directory: $(results_dir)"
-
-    #     mkpath(impedances_dir)
-    #     @info "Created formulation results directory: $(impedances_dir)"
-
-    #     mkpath(admittance_dir)
-    #     @info "Created formulation results directory: $(admittance_dir)"
-    # end
 
     # Return compiled dictionary of paths
     paths = Dict{Symbol,String}(
@@ -116,7 +102,6 @@ function setup_paths(cable_system::LineCableSystem, formulation::FEMFormulation,
         :geo_file => geo_file,
         :impedance_file => impedance_file,
         :admittance_file => admittance_file,
-        # :data_file => data_file
     )
 
     @debug "Paths configured: $(join(["$(k): $(v)" for (k,v) in paths], ", "))"

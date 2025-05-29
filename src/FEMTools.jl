@@ -46,7 +46,7 @@ using GetDP: Problem
 # Export public API
 export LineParametersProblem
 export FEMFormulation, FEMOptions
-export compute!, run_fem_solver
+export compute!, run_fem_solver, preview_results
 export FEMElectrodynamics, FEMDarwin
 
 # Main types and implementations
@@ -124,7 +124,7 @@ Entity container that associates Gmsh entity with metadata.
 
 $(TYPEDFIELDS)
 """
-struct FEMEntity{T<:AbstractEntityData}
+struct GmshObject{T<:AbstractEntityData}
     "Gmsh entity tag (will be defined after boolean fragmentation)."
     tag::Int32
     "Entity-specific data."
@@ -134,7 +134,7 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Constructs a [`FEMEntity`](@ref) instance with automatic type conversion.
+Constructs a [`GmshObject`](@ref) instance with automatic type conversion.
 
 # Arguments
 
@@ -143,7 +143,7 @@ Constructs a [`FEMEntity`](@ref) instance with automatic type conversion.
 
 # Returns
 
-- A [`FEMEntity`](@ref) instance with the specified tag and data.
+- A [`GmshObject`](@ref) instance with the specified tag and data.
 
 # Notes
 
@@ -158,8 +158,8 @@ domain_data = SurfaceEntity(core_data, material)
 entity = $(FUNCTIONNAME)(1, domain_data)
 ```
 """
-function FEMEntity(tag::Integer, data::T) where {T<:AbstractEntityData}
-    return FEMEntity{T}(Int32(tag), data)
+function GmshObject(tag::Integer, data::T) where {T<:AbstractEntityData}
+    return GmshObject{T}(Int32(tag), data)
 end
 
 mutable struct FEMDarwin <: AbstractImpedanceFormulation
@@ -292,108 +292,52 @@ This contains the execution-related parameters.
 $(TYPEDFIELDS)
 """
 struct FEMOptions <: FormulationOptions
-    "Flag to force remeshing."
+    "Build mesh only and preview (no solving)"
+    mesh_only::Bool
+    "Force mesh regeneration even if file exists"
     force_remesh::Bool
-    "Flag to run the solver."
-    run_solver::Bool
-    "Flag to overwrite existing results."
-    overwrite_results::Bool
-    "Flag to remove or keep all files for each frequency run."
-    cleanup_files::Bool
-
-    "Flag to preview the mesh."
-    preview_mesh::Bool
-    "Flag to preview the geometry."
-    preview_geo::Bool
-    "Flag to plot field maps in postprocessing stage."
+    "Skip user confirmation for overwriting results"
+    force_overwrite::Bool
+    "Generate field visualization outputs"
     plot_field_maps::Bool
+    "Archive temporary files after each frequency run"
+    keep_run_files::Bool
 
-    "Base path for output files."
+    "Base path for output files"
     base_path::String
-    "Path to Gmsh executable."
-    gmsh_executable::String
-    "Path to GetDP executable."
+    "Path to GetDP executable"
     getdp_executable::String
-    "Verbosity level."
+    "Verbosity level"
     verbosity::Int
-    "Path to the log file."
+    "Log file path"
     logfile::Union{String,Nothing}
 
-    """
-    $(TYPEDSIGNATURES)
-
-    Constructs a [`FEMOptions`](@ref) instance with default values.
-
-    # Arguments
-
-    - `force_remesh`: Flag to force remeshing \\[dimensionless\\]. Default: false.
-    - `run_solver`: Flag to run the solver \\[dimensionless\\]. Default: true.
-    - `overwrite_results`: Flag to overwrite existing results \\[dimensionless\\]. Default: false.
-    - `run_postprocessing`: Flag to run postprocessing \\[dimensionless\\]. Default: true.
-    - `preview_mesh`: Flag to preview the mesh \\[dimensionless\\]. Default: false.
-    - `preview_geo`: Flag to preview the geometry \\[dimensionless\\]. Default: false.
-    - `plot_field_maps`: Flag to plot results \\[dimensionless\\]. Default: true.
-    - `base_path`: Base path for output files. Default: "./fem_output".
-    - `gmsh_executable`: Path to Gmsh executable. Default: from environment.
-    - `getdp_executable`: Path to GetDP executable. Default: from environment.
-    - `verbosity`: Verbosity level \\[dimensionless\\]. Default: 1.
-
-    # Returns
-
-    - A [`FEMOptions`](@ref) instance with the specified parameters.
-
-    # Examples
-
-    ```julia
-    # Create a solver with default parameters
-    solver = $(FUNCTIONNAME)()
-
-    # Create a solver with custom parameters
-    solver = $(FUNCTIONNAME)(
-        force_remesh=true,
-        preview_mesh=true,
-        verbosity=2
-    )
-    ```
-    """
     function FEMOptions(;
+        mesh_only::Bool=false,
         force_remesh::Bool=false,
-        run_solver::Bool=true,
-        overwrite_results::Bool=false,
-        cleanup_files::Bool=false,
-        preview_mesh::Bool=false,
-        preview_geo::Bool=false,
+        force_overwrite::Bool=false,
         plot_field_maps::Bool=true,
+        keep_run_files::Bool=false,
         base_path::String="./fem_output",
-        gmsh_executable::Union{String,Nothing}=nothing,
         getdp_executable::Union{String,Nothing}=nothing,
         verbosity::Int=0,
         logfile::Union{String,Nothing}=nothing
     )
-        # Get executables from environment if not provided
-        if isnothing(gmsh_executable)
-            gmsh_executable = get(ENV, "GMSH_EXECUTABLE", "")
-        end
-
+        # Validate GetDP executable
         if isnothing(getdp_executable)
             getdp_executable = get(ENV, "GETDP_EXECUTABLE", "")
             if isempty(getdp_executable)
-                error("GetDP executable path is required but not provided and not found in ENV[\"GETDP_EXECUTABLE\"]")
+                Base.error("GetDP executable path required but not found in ENV[\"GETDP_EXECUTABLE\"]")
             end
         end
 
-        # Validate GetDP executable
         if !isfile(getdp_executable)
-            error("GetDP executable not found at path: $getdp_executable")
+            Base.error("GetDP executable not found: $getdp_executable")
         end
 
         setup_fem_logging(verbosity, logfile)
 
-        return new(
-            force_remesh, run_solver, overwrite_results, cleanup_files,
-            preview_mesh, preview_geo, plot_field_maps,
-            base_path, gmsh_executable, getdp_executable, verbosity, logfile
-        )
+        return new(mesh_only, force_remesh, force_overwrite, plot_field_maps, keep_run_files, base_path, getdp_executable, verbosity, logfile)
     end
 end
 
@@ -417,13 +361,13 @@ mutable struct FEMWorkspace
     paths::Dict{Symbol,String}
 
     "Conductor surfaces within cables."
-    conductors::Vector{FEMEntity{<:AbstractEntityData}}
+    conductors::Vector{GmshObject{<:AbstractEntityData}}
     "Insulator surfaces within cables."
-    insulators::Vector{FEMEntity{<:AbstractEntityData}}
+    insulators::Vector{GmshObject{<:AbstractEntityData}}
     "Domain-space physical surfaces (air and earth layers)."
-    space_regions::Vector{FEMEntity{<:AbstractEntityData}}
+    space_regions::Vector{GmshObject{<:AbstractEntityData}}
     "Domain boundary curves."
-    boundaries::Vector{FEMEntity{<:AbstractEntityData}}
+    boundaries::Vector{GmshObject{<:AbstractEntityData}}
     "Container for all pre-fragmentation entities."
     unassigned_entities::Dict{Vector{Float64},AbstractEntityData}
     "Container for all material names used in the model."
@@ -460,10 +404,10 @@ mutable struct FEMWorkspace
         workspace = new(
             problem, formulation, opts,
             Dict{Symbol,String}(), # Path information.
-            Vector{FEMEntity{<:AbstractEntityData}}(), #conductors
-            Vector{FEMEntity{<:AbstractEntityData}}(), #insulators
-            Vector{FEMEntity{<:AbstractEntityData}}(), #space_regions
-            Vector{FEMEntity{<:AbstractEntityData}}(), #boundaries
+            Vector{GmshObject{<:AbstractEntityData}}(), #conductors
+            Vector{GmshObject{<:AbstractEntityData}}(), #insulators
+            Vector{GmshObject{<:AbstractEntityData}}(), #space_regions
+            Vector{GmshObject{<:AbstractEntityData}}(), #boundaries
             Dict{Vector{Float64},AbstractEntityData}(), #unassigned_entities
             Dict{String,Int}(),  # Initialize empty material registry
             Dict{Int,Material}(), # Maps physical group tags to materials
@@ -502,159 +446,361 @@ workspace = $(FUNCTIONNAME)(cable_system, formulation, solver)
 """
 function compute!(problem::LineParametersProblem,
     formulation::FEMFormulation,
-    opts::FEMOptions; workspace::Union{FEMWorkspace,Nothing}=nothing)
+    opts::FEMOptions;
+    workspace::Union{FEMWorkspace,Nothing}=nothing)
 
-    # Create and initialize workspace
-    if isnothing(workspace) || !isa(workspace, FEMWorkspace)
-        workspace = FEMWorkspace(problem, formulation, opts)
-        is_empty_workspace = true
+    # Initialize workspace
+    workspace = init_workspace(problem, formulation, opts, workspace)
+
+    # Meshing phase
+    mesh_needed = !(mesh_exists(workspace, opts))
+    if mesh_needed || opts.mesh_only
+        @info "Building mesh for system: $(problem.system.system_id)"
+        make_mesh!(workspace)
+
+        if opts.mesh_only
+            @info "Mesh-only mode: Opening preview and saving workspace"
+            preview_mesh(workspace)
+            return workspace, nothing
+        end
     else
-        is_empty_workspace = false
+        @info "Using existing mesh"
     end
 
-    cleanup_files(workspace.paths, opts)
+    # Solving phase - always runs unless mesh_only
+    @info "Starting FEM solver"
+    line_params = run_solver!(problem, formulation, workspace)
 
-    # Log start
-    @info "Starting FEM simulation for cable system: $(problem.system.system_id)"
-
-    # Check if mesh file exists
-    mesh_exists = isfile(workspace.paths[:mesh_file])
-
-    # Determine if we need to run meshing
-    run_mesh = opts.force_remesh || !mesh_exists || is_empty_workspace
-
-    # Determine if we need to run solver
-    solver_output_exists = false
-    if opts.run_solver && !isempty(workspace.paths[:results_dir])
-        # Check for presence of result files
-        result_files = if isdir(workspace.paths[:results_dir])
-            readdir(workspace.paths[:results_dir])
-        else
-            String[]  # Return empty vector if directory doesn't exist
-        end
-        solver_output_exists = !isempty(result_files)
-    end
-    run_solver = opts.run_solver && (!solver_output_exists || opts.overwrite_results)
-
-    line_params = nothing
-
-    try
-        # Initialize Gmsh for meshing phase
-        gmsh.initialize()
-
-        if run_mesh
-            @info "Building mesh..."
-            make_mesh!(workspace)
-
-            # Preview mesh if requested
-            if opts.preview_mesh
-                @info "Launching mesh preview..."
-                preview_mesh(workspace)
-            end
-
-            @info "Meshing completed."
-        else
-            @info "Skipping meshing phase (mesh already exists)."
-        end
-
-        # Run solver if requested and/or needed
-        if run_solver
-            @info "Running GetDP solver..."
-
-            # Get dimensions for preallocation
-            n_phases = sum([length(c.design_data.components) for c in workspace.problem_def.system.cables])
-            n_frequencies = length(problem.frequencies)
-
-            # Preallocate 3D arrays for Z and Y matrices
-            Z = zeros(ComplexF64, n_phases, n_phases, n_frequencies)
-            Y = zeros(ComplexF64, n_phases, n_phases, n_frequencies)
-
-            for (i, frequency) in enumerate(problem.frequencies)
-                @info "Solving for frequency $i: $frequency Hz"
-                try
-                    for fem_formulation in formulation.analysis_type
-                        @debug "Processing formulation: $(fem_formulation.resolution_name)"
-                        make_fem_problem!(fem_formulation, frequency, workspace)
-
-                        # Invoke FEM solver
-                        if !run_fem_solver(workspace, fem_formulation)
-                            Base.error("Solver failed for $(fem_formulation.resolution_name)")
-                        end
-                    end
-                    # Read results and store in 3D arrays
-                    Z[:, :, i] = read_results_file(formulation.analysis_type[1], workspace)
-                    Y[:, :, i] = read_results_file(formulation.analysis_type[2], workspace)
-
-                catch e
-                    @error "Failed to compute matrices for frequency $frequency Hz" exception = e
-                    rethrow(e)
-                end
-
-                if !opts.cleanup_files
-                    try
-                        # Only attempt rename if results directory exists
-                        if isdir(workspace.paths[:results_dir])
-                            # Construct new directory name with frequency
-                            freq_dir = joinpath(dirname(workspace.paths[:results_dir]),
-                                "results_f=$(round(frequency, sigdigits=6))")
-
-                            # Rename the directory
-                            mv(workspace.paths[:results_dir], freq_dir, force=true)
-
-                            @info "Renamed results directory for f=$frequency Hz"
-
-                            for ext in [".res", ".pre"]
-                                # Move all files with extension from case_dir
-                                case_files = filter(f -> endswith(f, ext),
-                                    readdir(workspace.paths[:case_dir], join=true))
-                                for f in case_files
-                                    mv(f, joinpath(freq_dir, basename(f)), force=true)
-                                end
-                            end
-
-                        end
-                    catch e
-                        @error "Failed to store results for frequency $frequency Hz" exception = e
-                        rethrow(e)
-                    end
-                end
-            end
-
-            # Create LineParameters object with computed matrices
-            line_params = LineParameters(Z, Y)
-
-            @info "All solver runs completed."
-        else
-            @info "Skipping solver run."
-        end
-
-    catch e
-        @warn "Error in FEM simulation: $e"
-
-        # Print stack trace for debugging
-        if opts.verbosity >= 2
-            for (exc, bt) in Base.catch_stack()
-                showerror(stderr, exc, bt)
-                println(stderr)
-            end
-        end
-
-        # Re-throw the error after cleanup
-        rethrow(e)
-    finally
-        # Finalize Gmsh
-        if @isdefined(gmsh) && isdefined(gmsh, :finalize)
-            try
-                gmsh.finalize()
-                @info "Gmsh finalized."
-            catch fin_err
-                @warn "Error during Gmsh finalization: $fin_err"
-            end
-        end
-    end
-
+    @info "FEM computation completed successfully"
     return workspace, line_params
 end
+
+function init_workspace(problem, formulation, opts, workspace)
+    if isnothing(workspace)
+        @debug "Creating new workspace"
+        workspace = FEMWorkspace(problem, formulation, opts)
+    else
+        @debug "Reusing existing workspace"
+    end
+
+    # Handle existing results - check both current and archived
+    results_dir = workspace.paths[:results_dir]
+    base_dir = dirname(results_dir)
+
+    # Check current results directory
+    current_results_exist = isdir(results_dir) && !isempty(readdir(results_dir))
+
+    # Check for archived frequency results (results_f* pattern)
+    archived_results_exist = false
+    if isdir(base_dir)
+        archived_dirs = filter(d -> startswith(d, "results_f") && isdir(joinpath(base_dir, d)),
+            readdir(base_dir))
+        archived_results_exist = !isempty(archived_dirs)
+    end
+
+    # Handle existing results if any are found
+    if current_results_exist || archived_results_exist
+        if opts.force_overwrite
+            # Remove both current and archived results
+            if current_results_exist
+                rm(results_dir, recursive=true, force=true)
+            end
+            if archived_results_exist
+                for archived_dir in archived_dirs
+                    rm(joinpath(base_dir, archived_dir), recursive=true, force=true)
+                end
+                @debug "Removed $(length(archived_dirs)) archived result directories"
+            end
+        else
+            # Build informative error message
+            error_msg = "Existing results found:\n"
+            if current_results_exist
+                error_msg *= "  - Current results: $results_dir\n"
+            end
+            if archived_results_exist
+                error_msg *= "  - Archived results: $(length(archived_dirs)) frequency directories\n"
+            end
+            error_msg *= "Set force_overwrite=true to automatically delete existing results."
+
+            Base.error(error_msg)
+        end
+    end
+
+    return workspace
+end
+
+function mesh_exists(workspace::FEMWorkspace, opts::FEMOptions)
+    mesh_file = workspace.paths[:mesh_file]
+
+    # Force remesh overrides everything
+    if opts.force_remesh
+        @debug "Force remesh requested"
+        return false
+    end
+
+    # If workspace is empty (no entities), force remesh regardless of file existence
+    if isempty(workspace.conductors) && isempty(workspace.insulators) && isempty(workspace.space_regions) && isempty(workspace.boundaries) && isempty(workspace.physical_groups) && isempty(workspace.material_registry)
+        @warn "Empty workspace detected - forcing remesh"
+        return false
+    end
+
+    # Check if mesh file exists
+    if !isfile(mesh_file)
+        @debug "No existing mesh file found"
+        return false
+    end
+
+    # Mesh exists - can reuse
+    @debug "Existing mesh found and will be reused"
+    return true
+end
+
+function make_mesh!(workspace::FEMWorkspace)
+    try
+        gmsh.initialize()
+        _do_make_mesh!(workspace)
+        @info "Mesh generation completed"
+    catch e
+        @error "Mesh generation failed" exception = e
+        rethrow(e)
+    finally
+        try
+            gmsh.finalize()
+        catch fin_err
+            @warn "Gmsh finalization error" exception = fin_err
+        end
+    end
+end
+
+function run_solver!(problem::LineParametersProblem,
+    formulation::FEMFormulation,
+    workspace::FEMWorkspace)
+
+    # Preallocate result matrices
+    n_phases = sum(length(c.design_data.components) for c in workspace.problem_def.system.cables)
+    n_frequencies = length(problem.frequencies)
+
+    Z = zeros(ComplexF64, n_phases, n_phases, n_frequencies)
+    Y = zeros(ComplexF64, n_phases, n_phases, n_frequencies)
+
+    # Solve for each frequency
+    for (freq_idx, frequency) in enumerate(problem.frequencies)
+        @info "Solving frequency $freq_idx/$n_frequencies: $frequency Hz"
+
+        try
+            _do_run_solver!(frequency, freq_idx, formulation, workspace, Z, Y)
+        catch e
+            @error "Solver failed for frequency $frequency Hz" exception = e
+            rethrow(e)
+        end
+
+        # Archive results if not cleaning up
+        if workspace.opts.keep_run_files
+            archive_frequency_results(workspace, frequency)
+        end
+    end
+
+    return LineParameters(Z, Y)
+end
+
+function _do_run_solver!(frequency::Float64, freq_idx::Int,
+    formulation::FEMFormulation, workspace::FEMWorkspace,
+    Z::Array{ComplexF64,3}, Y::Array{ComplexF64,3})
+
+    # Build and solve both formulations
+    for fem_formulation in formulation.analysis_type
+        @debug "Processing $(fem_formulation.resolution_name) formulation"
+
+        make_fem_problem!(fem_formulation, frequency, workspace)
+
+        if !run_getdp(workspace, fem_formulation)
+            Base.error("$(fem_formulation.resolution_name) solver failed")
+        end
+    end
+
+    # Extract results into preallocated arrays
+    Z[:, :, freq_idx] = read_results_file(formulation.analysis_type[1], workspace)
+    Y[:, :, freq_idx] = read_results_file(formulation.analysis_type[2], workspace)
+end
+
+function archive_frequency_results(workspace::FEMWorkspace, frequency::Float64)
+    try
+        results_dir = workspace.paths[:results_dir]
+        freq_dir = joinpath(dirname(results_dir), "results_f=$(round(frequency, sigdigits=6))")
+
+        if isdir(results_dir)
+            mv(results_dir, freq_dir, force=true)
+            @debug "Archived results for f=$frequency Hz"
+        end
+
+        # Move solver files
+        for ext in [".res", ".pre"]
+            case_files = filter(f -> endswith(f, ext),
+                readdir(workspace.paths[:case_dir], join=true))
+            for f in case_files
+                mv(f, joinpath(freq_dir, basename(f)), force=true)
+            end
+        end
+    catch e
+        @warn "Failed to archive results for frequency $frequency Hz" exception = e
+    end
+end
+
+# function compute!(problem::LineParametersProblem,
+#     formulation::FEMFormulation,
+#     opts::FEMOptions; workspace::Union{FEMWorkspace,Nothing}=nothing)
+
+#     # Create and initialize workspace
+#     if isnothing(workspace) || !isa(workspace, FEMWorkspace)
+#         workspace = FEMWorkspace(problem, formulation, opts)
+#         is_empty_workspace = true
+#     else
+#         is_empty_workspace = false
+#     end
+
+#     cleanup_files(workspace.paths, opts)
+
+#     # Log start
+#     @info "Starting FEM simulation for cable system: $(problem.system.system_id)"
+
+#     # Check if mesh file exists
+#     mesh_exists = isfile(workspace.paths[:mesh_file])
+
+#     # Determine if we need to run meshing
+#     run_mesh = opts.force_remesh || !mesh_exists || is_empty_workspace
+
+#     # Determine if we need to run solver
+#     solver_output_exists = false
+#     if opts.run_solver && !isempty(workspace.paths[:results_dir])
+#         # Check for presence of result files
+#         result_files = if isdir(workspace.paths[:results_dir])
+#             readdir(workspace.paths[:results_dir])
+#         else
+#             String[]  # Return empty vector if directory doesn't exist
+#         end
+#         solver_output_exists = !isempty(result_files)
+#     end
+#     run_solver = opts.run_solver && (!solver_output_exists || opts.overwrite_results)
+
+#     line_params = nothing
+
+#     try
+#         # Initialize Gmsh for meshing phase
+#         gmsh.initialize()
+
+#         if run_mesh
+#             @info "Building mesh..."
+#             make_mesh!(workspace)
+
+#             # Preview mesh if requested
+#             if opts.preview_mesh
+#                 @info "Launching mesh preview..."
+#                 preview_mesh(workspace)
+#             end
+
+#             @info "Meshing completed."
+#         else
+#             @info "Skipping meshing phase (mesh already exists)."
+#         end
+
+#         # Run solver if requested and/or needed
+#         if run_solver
+#             @info "Running GetDP solver..."
+
+#             # Get dimensions for preallocation
+#             n_phases = sum([length(c.design_data.components) for c in workspace.problem_def.system.cables])
+#             n_frequencies = length(problem.frequencies)
+
+#             # Preallocate 3D arrays for Z and Y matrices
+#             Z = zeros(ComplexF64, n_phases, n_phases, n_frequencies)
+#             Y = zeros(ComplexF64, n_phases, n_phases, n_frequencies)
+
+#             for (i, frequency) in enumerate(problem.frequencies)
+#                 @info "Solving for frequency $i: $frequency Hz"
+#                 try
+#                     for fem_formulation in formulation.analysis_type
+#                         @debug "Processing formulation: $(fem_formulation.resolution_name)"
+#                         make_fem_problem!(fem_formulation, frequency, workspace)
+
+#                         # Invoke FEM solver
+#                         if !run_fem_solver(workspace, fem_formulation)
+#                             Base.error("Solver failed for $(fem_formulation.resolution_name)")
+#                         end
+#                     end
+#                     # Read results and store in 3D arrays
+#                     Z[:, :, i] = read_results_file(formulation.analysis_type[1], workspace)
+#                     Y[:, :, i] = read_results_file(formulation.analysis_type[2], workspace)
+
+#                 catch e
+#                     @error "Failed to compute matrices for frequency $frequency Hz" exception = e
+#                     rethrow(e)
+#                 end
+
+#                 if !opts.cleanup_files
+#                     try
+#                         # Only attempt rename if results directory exists
+#                         if isdir(workspace.paths[:results_dir])
+#                             # Construct new directory name with frequency
+#                             freq_dir = joinpath(dirname(workspace.paths[:results_dir]),
+#                                 "results_f=$(round(frequency, sigdigits=6))")
+
+#                             # Rename the directory
+#                             mv(workspace.paths[:results_dir], freq_dir, force=true)
+
+#                             @info "Renamed results directory for f=$frequency Hz"
+
+#                             for ext in [".res", ".pre"]
+#                                 # Move all files with extension from case_dir
+#                                 case_files = filter(f -> endswith(f, ext),
+#                                     readdir(workspace.paths[:case_dir], join=true))
+#                                 for f in case_files
+#                                     mv(f, joinpath(freq_dir, basename(f)), force=true)
+#                                 end
+#                             end
+
+#                         end
+#                     catch e
+#                         @error "Failed to store results for frequency $frequency Hz" exception = e
+#                         rethrow(e)
+#                     end
+#                 end
+#             end
+
+#             # Create LineParameters object with computed matrices
+#             line_params = LineParameters(Z, Y)
+
+#             @info "All solver runs completed."
+#         else
+#             @info "Skipping solver run."
+#         end
+
+#     catch e
+#         @warn "Error in FEM simulation: $e"
+
+#         # Print stack trace for debugging
+#         if opts.verbosity >= 2
+#             for (exc, bt) in Base.catch_stack()
+#                 showerror(stderr, exc, bt)
+#                 println(stderr)
+#             end
+#         end
+
+#         # Re-throw the error after cleanup
+#         rethrow(e)
+#     finally
+#         # Finalize Gmsh
+#         if @isdefined(gmsh) && isdefined(gmsh, :finalize)
+#             try
+#                 gmsh.finalize()
+#                 @info "Gmsh finalized."
+#             catch fin_err
+#                 @warn "Error during Gmsh finalization: $fin_err"
+#             end
+#         end
+#     end
+
+#     return workspace, line_params
+# end
 
 # Include auxiliary files
 include("FEMTools/encoding.jl")        # Tag encoding schemes

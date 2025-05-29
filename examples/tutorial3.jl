@@ -65,12 +65,11 @@ formulation = FEMFormulation(
 # Define runtime FEMOptions 
 opts = FEMOptions(
     force_remesh=false,  # Force remeshing
-    run_solver=true,
-    overwrite_results=true,
+    force_overwrite=true,
     plot_field_maps=false,
-    preview_geo=false,  # Preview geometry
-    preview_mesh=false,  # Preview the mesh
+    mesh_only=false,  # Preview the mesh
     base_path=joinpath(@__DIR__, "fem_output"),
+    keep_run_files=true,  # Archive files after each run
     verbosity=3,  # Verbose output
     getdp_executable=joinpath("/home/amartins/Applications/onelab-Linux64", "getdp"), # Path to GetDP executable
 )

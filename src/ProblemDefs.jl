@@ -37,9 +37,9 @@ abstract type AbstractFormulation end
 abstract type AbstractImpedanceFormulation <: AbstractFormulation end
 abstract type AbstractAdmittanceFormulation <: AbstractFormulation end
 
-abstract type InternalImpedanceFormulation <: AbstractImpedanceFormulation end
-abstract type EarthImpedanceFormulation <: AbstractImpedanceFormulation end
-abstract type EarthAdmittanceFormulation <: AbstractAdmittanceFormulation end
+# abstract type InternalImpedanceFormulation <: AbstractImpedanceFormulation end
+# abstract type EarthImpedanceFormulation <: AbstractImpedanceFormulation end
+# abstract type EarthAdmittanceFormulation <: AbstractAdmittanceFormulation end
 
 """
 $(TYPEDEF)
@@ -83,11 +83,11 @@ struct LineParameters{T<:Union{Complex{Float64},Complex{Measurement{Float64}}}}
 end
 
 # Convenience constructor for single frequency
-function LineParameters(Z::Matrix{T}, Y::Matrix{T}) where {T<:Union{Complex{Float64},Complex{Measurement{Float64}}}}
-    Z3D = reshape(Z, (size(Z, 1), size(Z, 2), 1))
-    Y3D = reshape(Y, (size(Y, 1), size(Y, 2), 1))
-    LineParameters(Z3D, Y3D)
-end
+# function LineParameters(Z::Matrix{T}, Y::Matrix{T}) where {T<:Union{Complex{Float64},Complex{Measurement{Float64}}}}
+#     Z3D = reshape(Z, (size(Z, 1), size(Z, 2), 1))
+#     Y3D = reshape(Y, (size(Y, 1), size(Y, 2), 1))
+#     LineParameters(Z3D, Y3D)
+# end
 
 # Pretty printing with uncertainty information if present
 function Base.show(io::IO, params::LineParameters{T}) where {T}

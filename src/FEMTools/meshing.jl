@@ -113,24 +113,24 @@ $(FUNCTIONNAME)(workspace)
 """
 function config_mesh_options(workspace::FEMWorkspace)
 
-    gmsh.option.setNumber("General.InitialModule", 2)
+    gmsh.option.set_number("General.InitialModule", 2)
 
     # Set mesh algorithm
-    gmsh.option.setNumber("Mesh.Algorithm", workspace.formulation.mesh_algorithm)
+    gmsh.option.set_number("Mesh.Algorithm", workspace.formulation.mesh_algorithm)
 
     # Set mesh optimization parameters
-    gmsh.option.setNumber("Mesh.Optimize", 0)
-    gmsh.option.setNumber("Mesh.OptimizeNetgen", 0)
+    gmsh.option.set_number("Mesh.Optimize", 0)
+    gmsh.option.set_number("Mesh.OptimizeNetgen", 0)
 
     # Set mesh globals
-    gmsh.option.setNumber("Mesh.SaveAll", 1)  # Mesh all regions
-    gmsh.option.setNumber("Mesh.MeshSizeMin", workspace.formulation.mesh_size_min)
-    gmsh.option.setNumber("Mesh.MeshSizeMax", workspace.formulation.mesh_size_max)
-    gmsh.option.setNumber("Mesh.MeshSizeFromPoints", 1)
-    gmsh.option.setNumber("Mesh.MeshSizeFromParametricPoints", 0)
+    gmsh.option.set_number("Mesh.SaveAll", 1)  # Mesh all regions
+    gmsh.option.set_number("Mesh.MeshSizeMin", workspace.formulation.mesh_size_min)
+    gmsh.option.set_number("Mesh.MeshSizeMax", workspace.formulation.mesh_size_max)
+    gmsh.option.set_number("Mesh.MeshSizeFromPoints", 1)
+    gmsh.option.set_number("Mesh.MeshSizeFromParametricPoints", 0)
 
-    gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 1)
-    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", workspace.formulation.points_per_circumference)
+    gmsh.option.set_number("Mesh.MeshSizeExtendFromBoundary", 1)
+    gmsh.option.set_number("Mesh.MeshSizeFromCurvature", workspace.formulation.points_per_circumference)
 
 
     @debug "Mesh algorithm: $(workspace.formulation.mesh_algorithm)"
@@ -156,13 +156,13 @@ Generate the mesh.
 $(FUNCTIONNAME)(workspace)
 ```
 """
-function _do_make_mesh(workspace::FEMWorkspace)
+function generate_mesh(workspace::FEMWorkspace)
     # Generate 2D mesh
     gmsh.model.mesh.generate(2)
 
     # Get mesh statistics
-    nodes = gmsh.model.mesh.getNodes()
-    elements = gmsh.model.mesh.getElements()
+    nodes = gmsh.model.mesh.get_nodes()
+    elements = gmsh.model.mesh.get_elements()
 
     num_nodes = length(nodes[1])
     num_elements = sum(length.(elements[2]))
@@ -198,26 +198,26 @@ function initialize_gmsh(workspace::FEMWorkspace)
     gmsh.model.add(system_id)
 
     # Module launched on startup (0: automatic, 1: geometry, 2: mesh, 3: solver, 4: post-processing)
-    gmsh.option.setNumber("General.InitialModule", 0)
-    gmsh.option.setString("General.DefaultFileName", system_id * ".geo")
+    gmsh.option.set_number("General.InitialModule", 0)
+    gmsh.option.set_string("General.DefaultFileName", system_id * ".geo")
 
     # Define verbosity level
-    gmsh.option.setNumber("General.Verbosity", workspace.opts.verbosity)
+    gmsh.option.set_number("General.Verbosity", workspace.opts.verbosity)
 
     # Set OCC model healing options
-    gmsh.option.setNumber("Geometry.AutoCoherence", 1)
-    gmsh.option.setNumber("Geometry.OCCFixDegenerated", 1)
-    gmsh.option.setNumber("Geometry.OCCFixSmallEdges", 1)
-    gmsh.option.setNumber("Geometry.OCCFixSmallFaces", 1)
-    gmsh.option.setNumber("Geometry.OCCSewFaces", 1)
-    gmsh.option.setNumber("Geometry.OCCMakeSolids", 1)
+    gmsh.option.set_number("Geometry.AutoCoherence", 1)
+    gmsh.option.set_number("Geometry.OCCFixDegenerated", 1)
+    gmsh.option.set_number("Geometry.OCCFixSmallEdges", 1)
+    gmsh.option.set_number("Geometry.OCCFixSmallFaces", 1)
+    gmsh.option.set_number("Geometry.OCCSewFaces", 1)
+    gmsh.option.set_number("Geometry.OCCMakeSolids", 1)
 
     # Log settings based on verbosity
     @info "Initialized Gmsh model: $system_id"
 
 end
 
-function make_mesh!(workspace::FEMWorkspace)
+function _do_make_mesh!(workspace::FEMWorkspace)
 
     # Initialize Gmsh model and set parameters
     initialize_gmsh(workspace)
@@ -245,18 +245,12 @@ function make_mesh!(workspace::FEMWorkspace)
     assign_physical_groups(workspace)
 
     # Mesh sizing
-    @info "Setting up physics-based mesh sizing..."
+    @info "Setting up mesh sizing..."
     config_mesh_options(workspace)
-
-    # Preview pre-meshing configuration if requested
-    if workspace.opts.preview_geo
-        @info "Launching geometry preview before meshing..."
-        preview_mesh(workspace)
-    end
 
     # Mesh generation
     @info "Generating mesh..."
-    _do_make_mesh(workspace)
+    generate_mesh(workspace)
 
     # Save mesh
     @info "Saving mesh to file: $(workspace.paths[:mesh_file])"
