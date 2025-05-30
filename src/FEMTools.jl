@@ -45,7 +45,7 @@ using GetDP: Problem
 
 # Export public API
 export LineParametersProblem
-export FEMFormulation, FEMOptions
+export MeshTransition, FEMFormulation, FEMOptions
 export compute!, run_fem_solver, preview_results
 export FEMElectrodynamics, FEMDarwin
 
@@ -181,6 +181,96 @@ mutable struct FEMElectrodynamics <: AbstractAdmittanceFormulation
     end
 end
 
+"""
+$(TYPEDEF)
+
+Defines a mesh transition region for improved mesh quality in earth/air regions around cable systems.
+
+$(TYPEDFIELDS)
+"""
+struct MeshTransition
+    "Center coordinates (x, y) [m]"
+    center::Tuple{Float64,Float64}
+    "Minimum radius (must be ≥ bounding radius of cables) [m]"
+    r_min::Float64
+    "Maximum radius [m]"
+    r_max::Float64
+    "Minimum mesh size factor at r_min [m]"
+    mesh_factor_min::Float64
+    "Maximum mesh size factor at r_max [m]"
+    mesh_factor_max::Float64
+    "Number of transition regions [dimensionless]"
+    n_regions::Int
+    "Earth layer index (1=air, 2+=earth layers from top to bottom, nothing=auto-detect)"
+    earth_layer::Union{Int,Nothing}
+
+    function MeshTransition(center, r_min, r_max, mesh_factor_min, mesh_factor_max, n_regions, earth_layer)
+        # Basic validation
+        r_min >= 0 || Base.error("r_min must be greater than or equal to 0")
+        r_max > r_min || Base.error("r_max must be greater than r_min")
+        mesh_factor_min > 0 || Base.error("mesh_factor_min must be positive")
+        mesh_factor_max <= 1 || Base.error("mesh_factor_max must be smaller than or equal to 1")
+        mesh_factor_max > mesh_factor_min || Base.error("mesh_factor_max must be > mesh_factor_min")
+        n_regions >= 1 || Base.error("n_regions must be at least 1")
+
+        # Validate earth_layer if provided
+        if !isnothing(earth_layer)
+            earth_layer >= 1 || Base.error("earth_layer must be >= 1 (1=air, 2+=earth layers)")
+        end
+
+        new(center, r_min, r_max, mesh_factor_min, mesh_factor_max, n_regions, earth_layer)
+    end
+end
+
+# Convenience constructor
+function MeshTransition(
+    cable_system::LineCableSystem,
+    cable_indices::Vector{Int};
+    r_min::Float64,
+    r_max::Float64,
+    mesh_factor_min::Float64,
+    mesh_factor_max::Float64,
+    n_regions::Int=3,
+    earth_layer::Union{Int,Nothing}=nothing
+)
+
+    # Validate cable indices
+    all(1 <= idx <= length(cable_system.cables) for idx in cable_indices) ||
+        Base.error("Cable indices out of bounds")
+
+    isempty(cable_indices) && Base.error("Cable indices cannot be empty")
+
+    # Get centroid and bounding radius
+    cx, cy, bounding_radius, _ = get_system_centroid(cable_system, cable_indices)
+
+    # Calculate parameters
+    if r_min < bounding_radius
+        @warn "r_min ($r_min m) is smaller than bounding radius ($bounding_radius m). Adjusting r_min to match."
+        r_min = bounding_radius * 1.05
+    end
+
+    # Auto-detect layer if not specified
+    if isnothing(earth_layer)
+        # Simple detection: y >= 0 is air (layer 1), y < 0 is first earth layer (layer 2)
+        earth_layer = cy >= 0 ? 1 : 2
+        @debug "Auto-detected earth_layer=$earth_layer for transition at ($cx, $cy)"
+    end
+
+    # Validate no surface crossing for underground transitions
+    if earth_layer > 1 && cy + r_max > 0
+        Base.error("Transition region would cross earth surface (y=0). Reduce r_max_factor or specify earth_layer=1 for mixed regions.")
+    end
+
+    return MeshTransition(
+        (cx, cy),
+        r_min,
+        r_max,
+        mesh_factor_min,
+        mesh_factor_max,
+        n_regions,
+        earth_layer
+    )
+end
 
 """
 $(TYPEDEF)
@@ -207,16 +297,16 @@ struct FEMFormulation <: AbstractFormulation
     points_per_circumference::Int
     "Analysis types to perform \\[dimensionless\\]."
     analysis_type::Tuple{AbstractImpedanceFormulation,AbstractAdmittanceFormulation}
-
     "Minimum mesh size \\[m\\]."
     mesh_size_min::Float64
     "Maximum mesh size \\[m\\]."
     mesh_size_max::Float64
     "Default mesh size \\[m\\]."
     mesh_size_default::Float64
+    "Mesh transition regions for improved mesh quality"
+    mesh_transitions::Vector{MeshTransition}
     "Mesh algorithm to use \\[dimensionless\\]."
     mesh_algorithm::Int
-
     "Materials database."
     materials_db::MaterialsLibrary
 
@@ -269,6 +359,7 @@ struct FEMFormulation <: AbstractFormulation
         mesh_size_min::Float64=1e-4,
         mesh_size_max::Float64=1.0,
         mesh_size_default::Float64=domain_radius / 10,
+        mesh_transitions::Vector{MeshTransition}=MeshTransition[],
         mesh_algorithm::Int=5,
         materials_db::MaterialsLibrary=MaterialsLibrary()
     )
@@ -278,7 +369,7 @@ struct FEMFormulation <: AbstractFormulation
             elements_per_length_semicon, elements_per_length_interfaces,
             points_per_circumference, analysis_type,
             mesh_size_min, mesh_size_max, mesh_size_default,
-            mesh_algorithm, materials_db
+            mesh_transitions, mesh_algorithm, materials_db
         )
     end
 end
@@ -457,12 +548,11 @@ function compute!(problem::LineParametersProblem,
     if mesh_needed || opts.mesh_only
         @info "Building mesh for system: $(problem.system.system_id)"
         make_mesh!(workspace)
-
         if opts.mesh_only
-            @info "Mesh-only mode: Opening preview and saving workspace"
-            preview_mesh(workspace)
+            @info "Saving workspace after mesh generation"
             return workspace, nothing
         end
+
     else
         @info "Using existing mesh"
     end
@@ -560,6 +650,12 @@ function make_mesh!(workspace::FEMWorkspace)
         gmsh.initialize()
         _do_make_mesh!(workspace)
         @info "Mesh generation completed"
+
+        if workspace.opts.mesh_only
+            @info "Mesh-only mode: Opening preview"
+            preview_mesh(workspace)
+        end
+
     catch e
         @error "Mesh generation failed" exception = e
         rethrow(e)
@@ -645,162 +741,6 @@ function archive_frequency_results(workspace::FEMWorkspace, frequency::Float64)
         @warn "Failed to archive results for frequency $frequency Hz" exception = e
     end
 end
-
-# function compute!(problem::LineParametersProblem,
-#     formulation::FEMFormulation,
-#     opts::FEMOptions; workspace::Union{FEMWorkspace,Nothing}=nothing)
-
-#     # Create and initialize workspace
-#     if isnothing(workspace) || !isa(workspace, FEMWorkspace)
-#         workspace = FEMWorkspace(problem, formulation, opts)
-#         is_empty_workspace = true
-#     else
-#         is_empty_workspace = false
-#     end
-
-#     cleanup_files(workspace.paths, opts)
-
-#     # Log start
-#     @info "Starting FEM simulation for cable system: $(problem.system.system_id)"
-
-#     # Check if mesh file exists
-#     mesh_exists = isfile(workspace.paths[:mesh_file])
-
-#     # Determine if we need to run meshing
-#     run_mesh = opts.force_remesh || !mesh_exists || is_empty_workspace
-
-#     # Determine if we need to run solver
-#     solver_output_exists = false
-#     if opts.run_solver && !isempty(workspace.paths[:results_dir])
-#         # Check for presence of result files
-#         result_files = if isdir(workspace.paths[:results_dir])
-#             readdir(workspace.paths[:results_dir])
-#         else
-#             String[]  # Return empty vector if directory doesn't exist
-#         end
-#         solver_output_exists = !isempty(result_files)
-#     end
-#     run_solver = opts.run_solver && (!solver_output_exists || opts.overwrite_results)
-
-#     line_params = nothing
-
-#     try
-#         # Initialize Gmsh for meshing phase
-#         gmsh.initialize()
-
-#         if run_mesh
-#             @info "Building mesh..."
-#             make_mesh!(workspace)
-
-#             # Preview mesh if requested
-#             if opts.preview_mesh
-#                 @info "Launching mesh preview..."
-#                 preview_mesh(workspace)
-#             end
-
-#             @info "Meshing completed."
-#         else
-#             @info "Skipping meshing phase (mesh already exists)."
-#         end
-
-#         # Run solver if requested and/or needed
-#         if run_solver
-#             @info "Running GetDP solver..."
-
-#             # Get dimensions for preallocation
-#             n_phases = sum([length(c.design_data.components) for c in workspace.problem_def.system.cables])
-#             n_frequencies = length(problem.frequencies)
-
-#             # Preallocate 3D arrays for Z and Y matrices
-#             Z = zeros(ComplexF64, n_phases, n_phases, n_frequencies)
-#             Y = zeros(ComplexF64, n_phases, n_phases, n_frequencies)
-
-#             for (i, frequency) in enumerate(problem.frequencies)
-#                 @info "Solving for frequency $i: $frequency Hz"
-#                 try
-#                     for fem_formulation in formulation.analysis_type
-#                         @debug "Processing formulation: $(fem_formulation.resolution_name)"
-#                         make_fem_problem!(fem_formulation, frequency, workspace)
-
-#                         # Invoke FEM solver
-#                         if !run_fem_solver(workspace, fem_formulation)
-#                             Base.error("Solver failed for $(fem_formulation.resolution_name)")
-#                         end
-#                     end
-#                     # Read results and store in 3D arrays
-#                     Z[:, :, i] = read_results_file(formulation.analysis_type[1], workspace)
-#                     Y[:, :, i] = read_results_file(formulation.analysis_type[2], workspace)
-
-#                 catch e
-#                     @error "Failed to compute matrices for frequency $frequency Hz" exception = e
-#                     rethrow(e)
-#                 end
-
-#                 if !opts.cleanup_files
-#                     try
-#                         # Only attempt rename if results directory exists
-#                         if isdir(workspace.paths[:results_dir])
-#                             # Construct new directory name with frequency
-#                             freq_dir = joinpath(dirname(workspace.paths[:results_dir]),
-#                                 "results_f=$(round(frequency, sigdigits=6))")
-
-#                             # Rename the directory
-#                             mv(workspace.paths[:results_dir], freq_dir, force=true)
-
-#                             @info "Renamed results directory for f=$frequency Hz"
-
-#                             for ext in [".res", ".pre"]
-#                                 # Move all files with extension from case_dir
-#                                 case_files = filter(f -> endswith(f, ext),
-#                                     readdir(workspace.paths[:case_dir], join=true))
-#                                 for f in case_files
-#                                     mv(f, joinpath(freq_dir, basename(f)), force=true)
-#                                 end
-#                             end
-
-#                         end
-#                     catch e
-#                         @error "Failed to store results for frequency $frequency Hz" exception = e
-#                         rethrow(e)
-#                     end
-#                 end
-#             end
-
-#             # Create LineParameters object with computed matrices
-#             line_params = LineParameters(Z, Y)
-
-#             @info "All solver runs completed."
-#         else
-#             @info "Skipping solver run."
-#         end
-
-#     catch e
-#         @warn "Error in FEM simulation: $e"
-
-#         # Print stack trace for debugging
-#         if opts.verbosity >= 2
-#             for (exc, bt) in Base.catch_stack()
-#                 showerror(stderr, exc, bt)
-#                 println(stderr)
-#             end
-#         end
-
-#         # Re-throw the error after cleanup
-#         rethrow(e)
-#     finally
-#         # Finalize Gmsh
-#         if @isdefined(gmsh) && isdefined(gmsh, :finalize)
-#             try
-#                 gmsh.finalize()
-#                 @info "Gmsh finalized."
-#             catch fin_err
-#                 @warn "Error during Gmsh finalization: $fin_err"
-#             end
-#         end
-#     end
-
-#     return workspace, line_params
-# end
 
 # Include auxiliary files
 include("FEMTools/encoding.jl")        # Tag encoding schemes

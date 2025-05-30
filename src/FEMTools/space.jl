@@ -233,37 +233,77 @@ function make_space_geometry(workspace::FEMWorkspace)
         get_earth_model_material(workspace, earth_layer_idx)  # Earth material
     )
 
-    # Create a transition region between the cables and the surrounding earth
-    # TODO: Transition regions should use the specific earth layer properties
-    # Issue URL: https://github.com/Electa-Git/LineCableModels.jl/issues/6
-    cable_system = workspace.problem_def.system
-    all_cables = collect(1:length(cable_system.cables))
-    (cx, cy, bounding_radius, characteristic_len) = get_system_centroid(cable_system, all_cables)
-    n_regions = 3  # number of regions
-    r_min = bounding_radius + 1e-3
-    r_max = bounding_radius + abs(cy) / 2
-    transition_radii = collect(LinRange(r_min, r_max, n_regions))
-    mesh_size_min = earth_interface_mesh_size / 100 #characteristic_len / workspace.formulation.elements_per_length_insulator
-    mesh_size_max = earth_interface_mesh_size
-    transition_mesh = collect(LinRange(mesh_size_min, mesh_size_max, n_regions))
-    # TODO: Transition regions should be parametric and specified by the user in the formulation
-    # Issue URL: https://github.com/Electa-Git/LineCableModels.jl/issues/7
-    _, _, earth_transition_markers = draw_transition_region(cx, cy, transition_radii, transition_mesh, num_points_circumference)
+    # Create mesh transitions if specified
+    if !isempty(workspace.formulation.mesh_transitions)
+        @info "Creating $(length(workspace.formulation.mesh_transitions)) mesh transition regions"
 
-    # Register transition regions in the workspace
-    for k in 1:n_regions
-        earth_transition_region = SurfaceEntity(
-            CoreEntityData(earth_region_tag, earth_region_name, transition_mesh[k]),
-            earth_material
-        )
-        # Register the surface entity with its corresponding marker
-        workspace.unassigned_entities[earth_transition_markers[k]] = earth_transition_region
+        for (idx, transition) in enumerate(workspace.formulation.mesh_transitions)
+            cx, cy = transition.center
 
-        # Optional logging
-        @debug "Created transition region $k with radius $(transition_radii[k]) m"
+            # Use provided layer or auto-detect
+            layer_idx = if !isnothing(transition.earth_layer)
+                transition.earth_layer
+            else
+                # Fallback auto-detection (should rarely happen due to constructor)
+                cy >= 0 ? 1 : 2
+            end
+
+            # Validate layer index exists in earth model
+            if layer_idx > earth_props.num_layers
+                error("Earth layer $layer_idx does not exist in earth model (max: $(earth_props.num_layers))")
+            end
+
+            # Get material for this earth layer
+            transition_material = get_earth_model_material(workspace, layer_idx)
+            material_id = get_or_register_material_id(workspace, transition_material)
+            material_group = get_material_group(earth_props, layer_idx)
+
+            # Create physical tag for this transition
+            transition_tag = encode_physical_group_tag(
+                2,                # Surface type 2 = physical domain
+                layer_idx,        # Earth layer index
+                0,                # Component 0 (not a cable component)
+                material_group,   # Material group (1=conductor for earth, 2=insulator for air)
+                material_id       # Material ID
+            )
+
+            layer_name = layer_idx == 1 ? "air" : "earth_$(layer_idx-1)"
+            transition_name = "mesh_transition_$(idx)_$(layer_name)"
+
+            # Calculate radii and mesh sizes
+            mesh_size_min = transition.mesh_factor_min * earth_interface_mesh_size
+            mesh_size_max = transition.mesh_factor_max * earth_interface_mesh_size
+
+            transition_radii = collect(LinRange(transition.r_min, transition.r_max, transition.n_regions))
+            transition_mesh = collect(LinRange(mesh_size_min, mesh_size_max, transition.n_regions))
+
+            # Draw the transition regions
+            _, _, transition_markers = draw_transition_region(
+                cx, cy,
+                transition_radii,
+                transition_mesh,
+                num_points_circumference
+            )
+
+            # Register each transition region
+            for k in 1:transition.n_regions
+                transition_region = SurfaceEntity(
+                    CoreEntityData(transition_tag, "$(transition_name)_region_$(k)", transition_mesh[k]),
+                    transition_material
+                )
+                workspace.unassigned_entities[transition_markers[k]] = transition_region
+
+                @debug "Created transition region $k at ($(cx), $(cy)) with radius $(transition_radii[k]) m in layer $layer_idx"
+            end
+
+            # Register physical group
+            register_physical_group!(workspace, transition_tag, transition_material)
+        end
+
+        @info "Mesh transition regions created"
+    else
+        @debug "No mesh transitions specified"
     end
-
-    @info "Transition regions created"
 
     # Add interface to the workspace
     @debug "Domain -> infinity markers:"
@@ -271,8 +311,6 @@ function make_space_geometry(workspace::FEMWorkspace)
         workspace.unassigned_entities[point_marker] = earth_interface_entity
         @debug "  Point $point_marker: ($(point_marker[1]), $(point_marker[2]), $(point_marker[3]))"
     end
-
-
 
     @info "Earth interfaces created"
 

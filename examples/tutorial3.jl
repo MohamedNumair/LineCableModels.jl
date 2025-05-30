@@ -45,6 +45,16 @@ problem = LineParametersProblem(
 )
 
 # Create a FEMFormulation with custom mesh definitions
+mesh_transition = MeshTransition(
+    cable_system,
+    [1, 2, 3],  # All three cables
+    r_min=0.0,
+    r_max=0.5,
+    mesh_factor_min=0.1,
+    mesh_factor_max=1.0,
+    n_regions=3
+)
+
 domain_radius = 5.0
 formulation = FEMFormulation(
     domain_radius=domain_radius,
@@ -57,6 +67,7 @@ formulation = FEMFormulation(
     analysis_type=(FEMDarwin(), FEMElectrodynamics()),
     mesh_size_min=1e-6,
     mesh_size_max=domain_radius / 5,
+    # mesh_transitions=[mesh_transition],
     mesh_size_default=domain_radius / 10,
     mesh_algorithm=5,
     materials_db=materials_db
@@ -77,8 +88,11 @@ opts = FEMOptions(
 # Run the FEM model
 @time workspace, line_params = compute!(problem, formulation, opts)
 
-println("\nR = $(round(real(line_params.Z[1,1,1])*1000, sigdigits=4)) Ω/km")
-println("L = $(round(imag(line_params.Z[1,1,1])/(2π*f)*1e6, sigdigits=4)) mH/km")
-println("C = $(round(imag(line_params.Y[1,1,1])/(2π*f)*1e9, sigdigits=4)) μF/km")
+if !opts.mesh_only
+    println("\nR = $(round(real(line_params.Z[1,1,1])*1000, sigdigits=4)) Ω/km")
+    println("L = $(round(imag(line_params.Z[1,1,1])/(2π*f)*1e6, sigdigits=4)) mH/km")
+    println("C = $(round(imag(line_params.Y[1,1,1])/(2π*f)*1e9, sigdigits=4)) μF/km")
+end
+
 
 # @time _, line_params = compute!(problem, formulation, opts, workspace=workspace)
