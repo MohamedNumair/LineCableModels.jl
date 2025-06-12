@@ -74,7 +74,7 @@ function setup_paths(cable_system::LineCableSystem, formulation::FEMFormulation,
     case_dir = joinpath(opts.base_path, case_id)
 
     # Create case directory if needed
-    if !isdir(case_dir) && (opts.force_remesh || opts.run_solver)
+    if !isdir(case_dir) && (opts.force_remesh || opts.mesh_only)
         mkpath(case_dir)
         @info "Created case directory: $(case_dir)"
     end
