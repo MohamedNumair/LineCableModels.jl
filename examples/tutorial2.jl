@@ -131,18 +131,18 @@ df = DataFrame( # hide
 CableDesign
 ├── CableComponent
 │   ├── conductor_group::ConductorGroup <: AbstractConductorPart
-│   │   ├── layers::Vector{AbstractConductorPart}
-│   │   │   ├── WireArray
-│   │   │   ├── Tubular
-│   │   │   ├── Strip
-│   │   │   └── …
-│   ├── conductor_props::Material
-│   ├── insulator_group::InsulatorGroup <: AbstractInsulatorPart
-│   │   ├── layers::Vector{AbstractInsulatorPart}
-│   │   │   ├── Insulator
-│   │   │   ├── Semicon
-│   │   │   └── …
-│   └── insulator_props::Material
+│   │   ├── conductor_props::Material
+│   │   └── layers::Vector{AbstractConductorPart}
+│   │       ├── WireArray
+│   │       ├── Tubular
+│   │       ├── Strip
+│   │       └── …
+│   └── insulator_group::InsulatorGroup <: AbstractInsulatorPart
+│       ├── insulator_props::Material
+│       └── layers::Vector{AbstractInsulatorPart}
+│           ├── Insulator
+│           ├── Semicon
+│           └── …
 ⋮
 ├── CableComponent
 │   ├── …
@@ -432,7 +432,7 @@ system_df = linecablesystem_todf(cable_system)
 plt4 = preview_linecablesystem(cable_system, zoom_factor=0.15)
 
 #=
-## PSCAD Export
+## PSCAD export
 
 The final step showcases how to export the model for electromagnetic transient simulations in PSCAD.
 =#
