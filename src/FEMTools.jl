@@ -227,7 +227,7 @@ function MeshTransition(
     cable_system::LineCableSystem,
     cable_indices::Vector{Int};
     r_min::Float64,
-    r_max::Float64,
+    r_length::Float64,
     mesh_factor_min::Float64,
     mesh_factor_max::Float64,
     n_regions::Int=3,
@@ -246,8 +246,10 @@ function MeshTransition(
     # Calculate parameters
     if r_min < bounding_radius
         @warn "r_min ($r_min m) is smaller than bounding radius ($bounding_radius m). Adjusting r_min to match."
-        r_min = bounding_radius * 1.05
+        r_min = bounding_radius * 1.01
     end
+
+    r_max = r_min + r_length
 
     # Auto-detect layer if not specified
     if isnothing(earth_layer)
@@ -258,7 +260,7 @@ function MeshTransition(
 
     # Validate no surface crossing for underground transitions
     if earth_layer > 1 && cy + r_max > 0
-        Base.error("Transition region would cross earth surface (y=0). Reduce r_max_factor or specify earth_layer=1 for mixed regions.")
+        Base.error("Transition region would cross earth surface (y=0). Reduce r_length or use separate transition regions.")
     end
 
     return MeshTransition(

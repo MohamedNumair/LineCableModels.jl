@@ -219,8 +219,8 @@ function define_resolution!(problem::GetDP.Problem, formulation::FEMElectrodynam
     # FunctionSpace section
     functionspace = FunctionSpace()
     fs1 = add!(functionspace, "Hgrad_v_Ele", nothing, nothing, Type="Form0")
-    add_basis_function!(functionspace, "sn", "vn", "BF_Node"; Support="Domain_Ele", Entity="NodesOf[ All, Not DomainC ]")
-    add_basis_function!(functionspace, "sf", "vf", "BF_GroupOfNodes"; Support="Domain_Ele", Entity="GroupsOfNodesOf[ DomainC ]")
+    add_basis_function!(functionspace, "sn", "vn", "BF_Node"; Support="Domain_Ele", Entity="NodesOf[ All, Not Conductors ]")
+    add_basis_function!(functionspace, "sf", "vf", "BF_GroupOfNodes"; Support="Domain_Ele", Entity="GroupsOfNodesOf[ Conductors ]")
     add_global_quantity!(functionspace, "U", "AliasOf"; NameOfCoef="vf")
     add_global_quantity!(functionspace, "Q", "AssociatedWith"; NameOfCoef="vf")
     add_constraint!(functionspace, "U", "Region", "ScalarPotential_2D")
@@ -238,13 +238,14 @@ function define_resolution!(problem::GetDP.Problem, formulation::FEMElectrodynam
 
     eq = add_equation!(form)
     add!(eq, "Galerkin", "[ sigma[] * Dof{d v} , {d v} ]", In="Domain_Ele", Jacobian="Vol", Integration="I1")
-    add!(eq, "Galerkin", "DtDof[ epsilon[] * Dof{d v} , {d v} ]", In="Domain_Ele", Jacobian="Vol", Integration="I1")
+    add!(eq, "Galerkin", "DtDof[ epsilon[] * Dof{d v} , {d v} ]", In="DomainCC", Jacobian="Vol", Integration="I1") #CHECKME
     add!(eq, "GlobalTerm", "[ Dof{Q} , {U} ]", In="Conductors")
 
     problem.formulation = formulation
 
     # Resolution section
     output_dir = joinpath("results", lowercase(resolution_name))
+    output_dir = replace(output_dir, "\\" => "/") # for compatibility with Windows paths
     resolution = Resolution()
     add!(resolution, resolution_name, "Sys_Ele",
         NameOfFormulation="Electrodynamics_v",
@@ -366,6 +367,7 @@ function define_resolution!(problem::GetDP.Problem, formulation::FEMDarwin, work
 
     # Add a resolution
     output_dir = joinpath("results", lowercase(resolution_name))
+    output_dir = replace(output_dir, "\\" => "/")     # for compatibility with Windows paths
     add!(resolution, resolution_name, "Sys_Mag",
         NameOfFormulation="Darwin_a_2D",
         Type="Complex", Frequency="Freq",

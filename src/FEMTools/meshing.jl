@@ -159,6 +159,7 @@ $(FUNCTIONNAME)(workspace)
 function generate_mesh(workspace::FEMWorkspace)
     # Generate 2D mesh
     gmsh.model.mesh.generate(2)
+    gmsh.model.mesh.generate(2)
 
     # Get mesh statistics
     nodes = gmsh.model.mesh.get_nodes()

@@ -237,7 +237,6 @@ medium and high voltage cables due to its excellent dielectric properties.
 material = get_material(materials_db, "pe")
 addto_insulatorgroup!(main_insu, Insulator, Thickness(t_ins), material)
 
-
 #=
 ### Outer semiconductor
 
@@ -356,7 +355,7 @@ detailed_df = cabledesign_todf(cable_design, :detailed)
 ## Saving the cable design
 
 !!! note "Cables library"
-	Designs can be saved to a library for future use. The [`CablesLibrary`](@ref) is a container for storing multiple cable designs, allowing for easy access and reuse in different projects.  Lirabry management is performed using the [`list_cableslibrary`](@ref), [`store_cableslibrary!`](@ref), and [`save_cableslibrary`](@ref) functions.
+	Designs can be saved to a library for future use. The [`CablesLibrary`](@ref) is a container for storing multiple cable designs, allowing for easy access and reuse in different projects.  Library management is performed using the [`list_cableslibrary`](@ref), [`store_cableslibrary!`](@ref), and [`save_cableslibrary`](@ref) functions.
 =#
 
 # Store the cable design and inspect the library contents:

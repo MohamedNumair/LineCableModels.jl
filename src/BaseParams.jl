@@ -120,7 +120,7 @@ Calculates the mean diameter, pitch length, and overlength based on cable geomet
 ```math
 \\lambda = \\frac{L_p}{D_e}
 ```
-where ``\\lambda`` is the pitch length, ``D_e`` and ``L_p`` are the dimensions represented in the figure.
+where ``D_e`` and ``L_p`` are the dimensions represented in the figure.
 
 ![](./assets/lay_ratio.svg)
 

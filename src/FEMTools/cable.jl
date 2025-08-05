@@ -252,8 +252,7 @@ function _make_cablepart!(workspace::FEMWorkspace, part::WireArray,
     radius_in = to_nominal(part.radius_in)
     radius_ext = to_nominal(part.radius_ext)
 
-    TOL = 5e-6 # Shrink the radius to avoid overlapping boundaries, this must be greater than Gmsh geometry tolerance
-    radius_wire = to_nominal(part.radius_wire) - TOL
+    radius_wire = to_nominal(part.radius_wire)
     num_wires = part.num_wires
 
 
@@ -301,9 +300,10 @@ function _make_cablepart!(workspace::FEMWorkspace, part::WireArray,
     wire_positions = _calc_wirearray_coords(num_wires, radius_in, radius_ext, C=(x_center, y_center))
 
     # Create wires
+    TOL = 5e-6 # Shrink the radius to avoid overlapping boundaries, this must be greater than Gmsh geometry tolerance
     for (wire_idx, (wx, wy)) in enumerate(wire_positions)
 
-        _, _, marker, _ = draw_disk(wx, wy, radius_wire, mesh_size, num_points_circumference)
+        _, _, marker, _ = draw_disk(wx, wy, radius_wire - TOL, mesh_size, num_points_circumference)
 
         # Create wire name
         elementary_name = create_cable_elementary_name(
