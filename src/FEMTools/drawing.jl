@@ -533,7 +533,7 @@ function draw_transition_region(x::Number, y::Number, radii::Vector{<:Number}, m
     push!(markers, inner_marker)
 
     # Create annular regions for the rest
-    for i in 2:n_regions
+    for i in 2:n_regions-1
         # Cut the inner disk from the outer disk
         annular_obj, _ = gmsh.model.occ.cut([(2, disk_tags[i])], [(2, disk_tags[i-1])])
 

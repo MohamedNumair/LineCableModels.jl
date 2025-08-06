@@ -309,6 +309,8 @@ struct FEMFormulation <: AbstractFormulation
     mesh_transitions::Vector{MeshTransition}
     "Mesh algorithm to use \\[dimensionless\\]."
     mesh_algorithm::Int
+    "Maximum meshing retries and number of recursive subdivisions \\[dimensionless\\]."
+    mesh_max_retries::Int
     "Materials database."
     materials_db::MaterialsLibrary
 
@@ -363,6 +365,7 @@ struct FEMFormulation <: AbstractFormulation
         mesh_size_default::Float64=domain_radius / 10,
         mesh_transitions::Vector{MeshTransition}=MeshTransition[],
         mesh_algorithm::Int=5,
+        mesh_max_retries::Int=20,
         materials_db::MaterialsLibrary=MaterialsLibrary()
     )
         return new(
@@ -371,7 +374,7 @@ struct FEMFormulation <: AbstractFormulation
             elements_per_length_semicon, elements_per_length_interfaces,
             points_per_circumference, analysis_type,
             mesh_size_min, mesh_size_max, mesh_size_default,
-            mesh_transitions, mesh_algorithm, materials_db
+            mesh_transitions, mesh_algorithm, mesh_max_retries, materials_db
         )
     end
 end

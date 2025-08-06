@@ -286,7 +286,7 @@ function make_space_geometry(workspace::FEMWorkspace)
             )
 
             # Register each transition region
-            for k in 1:transition.n_regions
+            for k in 1:transition.n_regions-1
                 transition_region = SurfaceEntity(
                     CoreEntityData(transition_tag, "$(transition_name)_region_$(k)", transition_mesh[k]),
                     transition_material

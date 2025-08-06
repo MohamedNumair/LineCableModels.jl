@@ -117,13 +117,14 @@ function config_mesh_options(workspace::FEMWorkspace)
 
     # Set mesh algorithm
     gmsh.option.set_number("Mesh.Algorithm", workspace.formulation.mesh_algorithm)
-
+    gmsh.option.set_number("Mesh.AlgorithmSwitchOnFailure", 1)
     # Set mesh optimization parameters
     gmsh.option.set_number("Mesh.Optimize", 0)
     gmsh.option.set_number("Mesh.OptimizeNetgen", 0)
 
     # Set mesh globals
     gmsh.option.set_number("Mesh.SaveAll", 1)  # Mesh all regions
+    gmsh.option.set_number("Mesh.MaxRetries", workspace.formulation.mesh_max_retries)
     gmsh.option.set_number("Mesh.MeshSizeMin", workspace.formulation.mesh_size_min)
     gmsh.option.set_number("Mesh.MeshSizeMax", workspace.formulation.mesh_size_max)
     gmsh.option.set_number("Mesh.MeshSizeFromPoints", 1)
@@ -158,7 +159,6 @@ $(FUNCTIONNAME)(workspace)
 """
 function generate_mesh(workspace::FEMWorkspace)
     # Generate 2D mesh
-    gmsh.model.mesh.generate(2)
     gmsh.model.mesh.generate(2)
 
     # Get mesh statistics
