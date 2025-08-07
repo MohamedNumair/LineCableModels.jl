@@ -1,12 +1,12 @@
 #=
-# Example - HVDC 525 kV cable design using FEM
+# Tutorial 3 - Computing line parameters
 
 This case file demonstrates how to model an armored high-voltage single-core power cable 
 using the [`LineCableModels.jl`](@ref) package. The objective is to build a complete representation of a single-core 525 kV cable with a 1600 mm² copper conductor, 1.2 mm tubular lead sheath and 68 x 6 mm galvanized steel armor, based on the design described in [Karmokar2025](@cite).
 =#
 
 #=
-**Document outline**
+**Tutorial outline**
 ```@contents
 Pages = [
 	"tutorial3.md",
@@ -33,7 +33,7 @@ using LineCableModels
 materials_db = MaterialsLibrary(add_defaults=true)
 
 # Include the required materials for this design:
-lead = Material(21.4e-8, 1.0, 1.0, 20.0, 0.00400) # Lead or lead alloy
+lead = Material(21.4e-8, 1.0, 0.999983, 20.0, 0.00400) # Lead or lead alloy
 store_materialslibrary!(materials_db, "lead", lead)
 steel = Material(13.8e-8, 1.0, 300.0, 20.0, 0.00450) # Steel
 store_materialslibrary!(materials_db, "steel", steel)
@@ -54,16 +54,16 @@ The cable is found to have the following configuration:
 num_co_wires = 127 # number of core wires
 num_ar_wires = 68  # number of armor wires
 d_core = 0.0463    # nominal core overall diameter
-d_w = 3.6649e-3     # nominal strand diameter of the core (minimum value to match datasheet)
+d_w = 3.6649e-3    # nominal strand diameter of the core (minimum value to match datasheet)
 t_sc_in = 2e-3     # nominal internal semicon thickness 
 t_ins = 26e-3      # nominal main insulation thickness
 t_sc_out = 1.8e-3  # nominal external semicon thickness
 t_wbt = .3e-3      # nominal thickness of the water blocking tape
 t_sc = 3.3e-3      # nominal lead screen thickness
-t_pe = 3e-3      # nominal PE inner sheath thickness
+t_pe = 3e-3        # nominal PE inner sheath thickness
 t_bed = 3e-3       # nominal thickness of the PP bedding
-d_wa = 5.827e-3        # nominal armor wire diameter
-t_jac = 10e-3       # nominal PP jacket thickness
+d_wa = 5.827e-3    # nominal armor wire diameter
+t_jac = 10e-3      # nominal PP jacket thickness
 
 d_overall = d_core # hide
 layers = [] # hide
@@ -85,7 +85,7 @@ push!(layers, ("PP bedding", t_bed * 1000, d_overall * 1000)) # hide
 d_overall += 2 * d_wa # hide
 push!(layers, ("Stranded wire armor", d_wa * 1000, d_overall * 1000)) # hide
 d_overall += 2 * t_jac # hide
-push!(layers, ("PP jacket", t_jac * 1000, d_overall * 1000)) # hide
+push!(layers, ("PP jacket", t_jac * 1000, d_overall * 1000)); # hide
 
 
 # The cable structure is summarized in a table for better visualization, with dimensions in milimiters:
@@ -149,16 +149,16 @@ addto_insulatorgroup!(main_insu, Semicon, Thickness(t_wbt), material)
 # Group core-related components:
 core_cc = CableComponent("core", core, main_insu)
 
-cable_id = "hvdc_tutorial"
+cable_id = "525kV_1600mm2"
 datasheet_info = NominalData(
-    designation_code="(N)2XH(F)RK",
+    designation_code="(N)2XH(F)RK2Y",
     U0=500.0,                        # Phase (pole)-to-ground voltage [kV]
     U=525.0,                         # Phase (pole)-to-phase (pole) voltage [kV]
-    conductor_cross_section=1600.0, # [mm²]
-    screen_cross_section=1000.0,      # [mm²]
-    resistance=NaN,              # DC resistance [Ω/km]
-    capacitance=NaN,               # Capacitance [μF/km]
-    inductance=NaN,               # Inductance in trifoil [mH/km]
+    conductor_cross_section=1600.0,  # [mm²]
+    screen_cross_section=1000.0,     # [mm²]
+    resistance=NaN,                  # DC resistance [Ω/km]
+    capacitance=NaN,                 # Capacitance [μF/km]
+    inductance=NaN,                  # Inductance in trifoil [mH/km]
 )
 cable_design = CableDesign(cable_id, core_cc, nominal_data=datasheet_info)
 
@@ -228,17 +228,19 @@ display(components_df)
 #=
 ## Saving the cable design
 
-Store the cable design and inspect the library contents:
+Load an existing [`CablesLibrary`](@ref) file or create a new one:
 =#
 
-# 
+
 library = CablesLibrary()
+library_file = joinpath(@__DIR__, "cables_library.json")
+load_cableslibrary!(library, file_name=library_file)
 store_cableslibrary!(library, cable_design)
 list_cableslibrary(library)
 
 # Save to file for later use:
-output_file = joinpath(@__DIR__, "cables_library.json")
-save_cableslibrary(library, file_name=output_file);
+
+save_cableslibrary(library, file_name=library_file);
 
 #=
 ### Defining a cable system
@@ -256,6 +258,7 @@ earth_params = EarthModel(f, 100.0, 10.0, 1.0)  # 100 Ω·m resistivity, εr=10,
 
 # Earth model base (DC) properties:
 earthmodel_df = earthmodel_todf(earth_params)
+display(earthmodel_df)
 
 #=
 ### Underground bipole configuration
@@ -268,7 +271,7 @@ y0 = -1.0
 
 # Initialize the `LineCableSystem` with positive pole:
 cablepos = CablePosition(cable_design, xp, y0, Dict("core" => 1, "sheath" => 0, "armor" => 0))
-cable_system = LineCableSystem("hvdc_tutorial", 1000.0, cablepos)
+cable_system = LineCableSystem("525kV_1600mm2_bipole", 1000.0, cablepos)
 
 # Add remaining cables (phases B and C):
 addto_linecablesystem!(cable_system, cable_design, xn, y0,
@@ -283,6 +286,7 @@ In this section the complete bipole cable system is examined.
 
 # Display system details:
 system_df = linecablesystem_todf(cable_system)
+display(system_df)
 
 # Visualize the cross-section of the three-phase system:
 plt4 = preview_linecablesystem(cable_system, zoom_factor=0.15)
@@ -291,11 +295,12 @@ plt4 = preview_linecablesystem(cable_system, zoom_factor=0.15)
 ## PSCAD export
 
 The final step showcases how to export the model for electromagnetic transient simulations in PSCAD.
+
 =#
 
 # Export to PSCAD input file:
-# output_file = joinpath(@__DIR__, "$(cable_system.system_id)_export.pscx")
-# export_file = export_pscad_lcp(cable_system, earth_params, file_name=output_file);
+output_file = joinpath(@__DIR__, "$(cable_system.system_id)_export.pscx")
+export_file = export_pscad_lcp(cable_system, earth_params, file_name=output_file);
 
 #=
 ## FEM calculations
@@ -335,7 +340,7 @@ formulation = FEMFormulation(
     analysis_type=(FEMDarwin(), FEMElectrodynamics()),
     mesh_size_min=1e-6,
     mesh_size_max=domain_radius / 5,
-    mesh_transitions=[mesh_transition],
+    # mesh_transitions=[mesh_transition],
     mesh_size_default=domain_radius / 10,
     mesh_algorithm=5,
     mesh_max_retries=20,

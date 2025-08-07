@@ -50,7 +50,7 @@ copper_corrected = Material(1.835e-8, 1.0, 0.999994, 20.0, 0.00393) # Copper wit
 store_materialslibrary!(materials_db, "copper_corrected", copper_corrected)
 aluminum_corrected = Material(3.03e-8, 1.0, 0.999994, 20.0, 0.00403) # Aluminum with corrected resistivity from IEC 60287-3-2
 store_materialslibrary!(materials_db, "aluminum_corrected", aluminum_corrected)
-lead = Material(21.4e-8, 1.0, 1.0, 20.0, 0.00400) # Lead or lead alloy
+lead = Material(21.4e-8, 1.0, 0.999983, 20.0, 0.00400) # Lead or lead alloy
 store_materialslibrary!(materials_db, "lead", lead)
 steel = Material(13.8e-8, 1.0, 300.0, 20.0, 0.00450) # Steel
 store_materialslibrary!(materials_db, "steel", steel)
@@ -93,8 +93,8 @@ df_final = list_materialslibrary(materials_db)
 # ##  Saving the materials library to JSON
 output_file = joinpath(@__DIR__, "materials_library.json")
 save_materialslibrary(
-	materials_db,
-	file_name = output_file,
+    materials_db,
+    file_name=output_file,
 );
 
 
@@ -107,8 +107,8 @@ save_materialslibrary(
 # Initialize a new [`MaterialsLibrary`](@ref) and load from the JSON file:
 materials_from_json = MaterialsLibrary()
 load_materialslibrary!(
-	materials_from_json,
-	file_name = output_file,
+    materials_from_json,
+    file_name=output_file,
 )
 # Retrieve a material and display the object:
 copper = get_material(materials_from_json, "copper_corrected")

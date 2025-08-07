@@ -260,7 +260,7 @@ With the core parts properly defined, the [`CableDesign`](@ref) object is initia
 =#
 
 # Define the nominal values and instantiate the `CableDesign` with the `core_cc` component:
-cable_id = "tutorial"
+cable_id = "18kV_1000mm2"
 datasheet_info = NominalData(
     designation_code="NA2XS(FL)2Y",
     U0=18.0,                        # Phase-to-ground voltage [kV]
@@ -402,7 +402,7 @@ xa, ya, xb, yb, xc, yc = trifoil_formation(x0, y0, 0.035)
 
 # Initialize the `LineCableSystem` with the first cable (phase A):
 cablepos = CablePosition(cable_design, xa, ya, Dict("core" => 1, "sheath" => 0, "jacket" => 0))
-cable_system = LineCableSystem("tutorial", 1000.0, cablepos)
+cable_system = LineCableSystem("18kV_1000mm2_trifoil", 1000.0, cablepos)
 
 # Add remaining cables (phases B and C):
 addto_linecablesystem!(cable_system, cable_design, xb, yb,
