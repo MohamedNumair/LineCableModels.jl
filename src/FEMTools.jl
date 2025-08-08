@@ -42,6 +42,7 @@ using LoggingExtras: TeeLogger, FileLogger
 # GetDP.jl
 using GetDP
 using GetDP: Problem
+using GetDP: get_getdp_executable
 
 # Export public API
 export LineParametersProblem
@@ -421,10 +422,7 @@ struct FEMOptions <: FormulationOptions
     )
         # Validate GetDP executable
         if isnothing(getdp_executable)
-            getdp_executable = get(ENV, "GETDP_EXECUTABLE", "")
-            if isempty(getdp_executable)
-                Base.error("GetDP executable path required but not found in ENV[\"GETDP_EXECUTABLE\"]")
-            end
+            getdp_executable = GetDP.get_getdp_executable()
         end
 
         if !isfile(getdp_executable)

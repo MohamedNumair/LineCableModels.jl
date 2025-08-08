@@ -367,7 +367,6 @@ opts = FEMOptions(
     base_path=joinpath(@__DIR__, "fem_output"),
     keep_run_files=true,  # Archive files after each run
     verbosity=2,  # Verbose output
-    getdp_executable=joinpath("/home/amartins/Applications/onelab-Linux64", "getdp"), # Path to GetDP executable
 )
 
 # Run the FEM model
