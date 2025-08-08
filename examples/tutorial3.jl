@@ -317,18 +317,29 @@ problem = LineParametersProblem(
 )
 
 # Create a FEMFormulation with custom mesh definitions
-mesh_transition = MeshTransition(
-    cable_system,
-    [1, 2],  # Both cables
-    r_min=0.0,
-    r_length=0.3,
-    mesh_factor_min=0.1,
-    mesh_factor_max=1.0,
-    n_regions=3
-)
-
 skin_depth_earth = abs(sqrt(earth_params.layers[end].rho_g[1] / (1im * (2 * pi * f[1]) * earth_params.layers[end].mu_g[1])))
 domain_radius = clamp(skin_depth_earth, 5.0, 5000.0)
+
+mesh_transition1 = MeshTransition(
+    cable_system,
+    [1],
+    r_min=0.0,
+    r_length=0.25,
+    mesh_factor_min=0.01 / (domain_radius / 5),
+    mesh_factor_max=0.25 / (domain_radius / 5),
+    n_regions=5
+)
+
+mesh_transition2 = MeshTransition(
+    cable_system,
+    [2],
+    r_min=0.0,
+    r_length=0.25,
+    mesh_factor_min=0.01 / (domain_radius / 5),
+    mesh_factor_max=0.25 / (domain_radius / 5),
+    n_regions=5
+)
+
 formulation = FEMFormulation(
     domain_radius=domain_radius,
     domain_radius_inf=domain_radius * 1.25,
@@ -340,7 +351,7 @@ formulation = FEMFormulation(
     analysis_type=(FEMDarwin(), FEMElectrodynamics()),
     mesh_size_min=1e-6,
     mesh_size_max=domain_radius / 5,
-    # mesh_transitions=[mesh_transition],
+    mesh_transitions=[mesh_transition1, mesh_transition2],
     mesh_size_default=domain_radius / 10,
     mesh_algorithm=5,
     mesh_max_retries=20,
@@ -355,7 +366,7 @@ opts = FEMOptions(
     mesh_only=false,  # Preview the mesh
     base_path=joinpath(@__DIR__, "fem_output"),
     keep_run_files=true,  # Archive files after each run
-    verbosity=3,  # Verbose output
+    verbosity=2,  # Verbose output
     getdp_executable=joinpath("/home/amartins/Applications/onelab-Linux64", "getdp"), # Path to GetDP executable
 )
 

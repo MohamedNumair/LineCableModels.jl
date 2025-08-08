@@ -97,7 +97,6 @@ function identify_by_marker(workspace::FEMWorkspace)
             if !(entity_data isa CurveEntity)
                 # Check if marker is inside this surface
                 if gmsh.model.is_inside(dim, tag, marker) == 1
-                    # Found match - create GmshObject and add to appropriate container
                     fem_entity = GmshObject(tag, entity_data)
 
                     # Place in appropriate container
@@ -177,10 +176,18 @@ function assign_physical_groups(workspace::FEMWorkspace)
             end
 
             # Add this entity to the collection for this physical tag
+            current_physical_group = gmsh.model.get_physical_groups_for_entity(dim, entity.tag)
+            if !isempty(current_physical_group)
+                @debug "Entity $(entity.tag) already has physical group: $(current_physical_group)"
+            end
             push!(entities_by_physical_group_tag[group_key], entity.tag)
 
             if !isempty(elementary_name)
                 # Append the complete name to the shape
+                current_name = gmsh.model.get_entity_name(dim, entity.tag)
+                if !isempty(current_name)
+                    @debug "Entity $(entity.tag) already has elementary name: $(current_name)"
+                end
                 gmsh.model.set_entity_name(dim, entity.tag, elementary_name)
             end
         end

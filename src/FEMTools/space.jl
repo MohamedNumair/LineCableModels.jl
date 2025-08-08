@@ -276,6 +276,7 @@ function make_space_geometry(workspace::FEMWorkspace)
 
             transition_radii = collect(LinRange(transition.r_min, transition.r_max, transition.n_regions))
             transition_mesh = collect(LinRange(mesh_size_min, mesh_size_max, transition.n_regions))
+            @debug "Transition $(idx): radii=$(transition_radii), mesh sizes=$(transition_mesh)"
 
             # Draw the transition regions
             _, _, transition_markers = draw_transition_region(
@@ -286,7 +287,7 @@ function make_space_geometry(workspace::FEMWorkspace)
             )
 
             # Register each transition region
-            for k in 1:transition.n_regions-1
+            for k in 1:transition.n_regions
                 transition_region = SurfaceEntity(
                     CoreEntityData(transition_tag, "$(transition_name)_region_$(k)", transition_mesh[k]),
                     transition_material

@@ -499,6 +499,10 @@ function draw_transition_region(x::Number, y::Number, radii::Vector{<:Number}, m
         mesh_sizes = mesh_sizes[p]
     end
 
+    # Note to future self: the reason why I did this is because in the edge case when the bounding box coincides with the cable outermost radius (i.e. when you want the transition region around 1 single cable and not several), the earth marker ends up inside the cable region, which present me does not need to explain to future me why it's bad.
+
+    rad_buffer = 0.001
+    radii[1] += rad_buffer  # Ensure the innermost radius is slightly larger than zero to avoid ambiguous regions
     tags = Int[]
     all_mesh_points = Int[]
     markers = Vector{Vector{Float64}}()
@@ -507,6 +511,7 @@ function draw_transition_region(x::Number, y::Number, radii::Vector{<:Number}, m
     disk_tags = Int[]
     for i in 1:n_regions
         disk_tag = gmsh.model.occ.add_disk(x, y, 0.0, radii[i], radii[i])
+        gmsh.model.occ.synchronize()
         push!(disk_tags, disk_tag)
     end
 
@@ -526,16 +531,22 @@ function draw_transition_region(x::Number, y::Number, radii::Vector{<:Number}, m
     )
     append!(all_mesh_points, inner_mesh_points)
 
-    # Create marker for innermost disk
-    inner_marker = [x, y, 0.0] # will be placed at the centroid
+    # Create marker at the midpoint between the real radius and the added buffer
+    # Feel free to implement a less dumb way to do this
+    radius_inner_marker = (radii[1] + radii[1] - rad_buffer) / 2
+    inner_marker = [x, y + radius_inner_marker, 0.0]
+
     marker_tag = gmsh.model.occ.add_point(inner_marker[1], inner_marker[2], inner_marker[3], mesh_sizes[1])
     gmsh.model.set_entity_name(0, marker_tag, "marker_$(round(mesh_sizes[1], sigdigits=6))")
     push!(markers, inner_marker)
 
+    # Synchronize the model
+    gmsh.model.occ.synchronize()
+
     # Create annular regions for the rest
-    for i in 2:n_regions-1
+    for i in 2:n_regions
         # Cut the inner disk from the outer disk
-        annular_obj, _ = gmsh.model.occ.cut([(2, disk_tags[i])], [(2, disk_tags[i-1])])
+        annular_obj, _ = gmsh.model.occ.cut([(2, disk_tags[i])], [(2, disk_tags[i-1])], false, false)
 
         # Get the resulting surface tag
         if length(annular_obj) > 0

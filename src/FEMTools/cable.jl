@@ -23,7 +23,6 @@ $(FUNCTIONNAME)(workspace)
 ```
 """
 function make_cable_geometry(workspace::FEMWorkspace)
-    @info "Creating cable geometry..."
 
     # Get the cable system
     cable_system = workspace.problem_def.system

@@ -246,7 +246,7 @@ function MeshTransition(
     # Calculate parameters
     if r_min < bounding_radius
         @warn "r_min ($r_min m) is smaller than bounding radius ($bounding_radius m). Adjusting r_min to match."
-        r_min = bounding_radius * 1.01
+        r_min = bounding_radius
     end
 
     r_max = r_min + r_length
