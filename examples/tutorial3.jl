@@ -271,10 +271,9 @@ cablepos = CablePosition(cable_design, xp, y0,
     Dict("core" => 1, "sheath" => 0, "armor" => 0))
 cable_system = LineCableSystem("525kV_1600mm2_bipole", 1000.0, cablepos)
 
-# Add remaining cables (phases B and C):
+# Add the other pole (negative) to the system:
 addto_linecablesystem!(cable_system, cable_design, xn, y0,
-    Dict("core" => 2, "sheath" => 0, "armor" => 0),
-)
+    Dict("core" => 2, "sheath" => 0, "armor" => 0))
 
 #=
 ### Cable system preview
@@ -316,7 +315,7 @@ problem = LineParametersProblem(
 rho_g = earth_params.layers[end].rho_g[1]
 mu_g = earth_params.layers[end].mu_g[1]
 skin_depth_earth = abs(sqrt(rho_g / (1im * (2 * pi * f[1]) * mu_g)))
-domain_radius = clamp(skin_depth_earth, 5.0, 5000.0)
+domain_radius = clamp(skin_depth_earth, 5.0, 5000.0);
 
 # Define custom mesh transitions around each cable
 mesh_transition1 = MeshTransition(
@@ -326,8 +325,7 @@ mesh_transition1 = MeshTransition(
     r_length=0.25,
     mesh_factor_min=0.01 / (domain_radius / 5),
     mesh_factor_max=0.25 / (domain_radius / 5),
-    n_regions=5
-)
+    n_regions=5)
 
 mesh_transition2 = MeshTransition(
     cable_system,
@@ -336,8 +334,7 @@ mesh_transition2 = MeshTransition(
     r_length=0.25,
     mesh_factor_min=0.01 / (domain_radius / 5),
     mesh_factor_max=0.25 / (domain_radius / 5),
-    n_regions=5
-)
+    n_regions=5);
 
 # Define the FEM formulation with the specified parameters
 formulation = FEMFormulation(
@@ -358,7 +355,7 @@ formulation = FEMFormulation(
     mesh_algorithm=5,
     mesh_max_retries=20,
     materials_db=materials_db
-)
+);
 
 # Define runtime FEMOptions 
 opts = FEMOptions(
@@ -369,10 +366,10 @@ opts = FEMOptions(
     base_path=joinpath(@__DIR__, "fem_output"), # Results directory
     keep_run_files=true,                        # Archive files after each run
     verbosity=0,                                # Verbosity
-)
+);
 
 # Run the FEM model
-@time workspace, line_params = compute!(problem, formulation, opts)
+@time workspace, line_params = compute!(problem, formulation, opts);
 
 # Display primary core results
 if !opts.mesh_only
