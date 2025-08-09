@@ -219,11 +219,9 @@ In this section, the cable design is examined and the calculated parameters are 
 
 # Summarize DC lumped parameters (R, L, C):
 core_df = cabledesign_todf(cable_design, :baseparams)
-display(core_df)
 
 # Obtain the equivalent electromagnetic properties of the cable:
 components_df = cabledesign_todf(cable_design, :components)
-display(components_df)
 
 #=
 ## Saving the cable design
@@ -243,7 +241,7 @@ list_cableslibrary(library)
 save_cableslibrary(library, file_name=library_file);
 
 #=
-### Defining a cable system
+## Defining a cable system
 
 =#
 
@@ -258,7 +256,6 @@ earth_params = EarthModel(f, 100.0, 10.0, 1.0)  # 100 Ω·m resistivity, εr=10,
 
 # Earth model base (DC) properties:
 earthmodel_df = earthmodel_todf(earth_params)
-display(earthmodel_df)
 
 #=
 ### Underground bipole configuration
@@ -267,10 +264,11 @@ display(earthmodel_df)
 
 xp = -0.5
 xn = 0.5
-y0 = -1.0
+y0 = -1.0;
 
 # Initialize the `LineCableSystem` with positive pole:
-cablepos = CablePosition(cable_design, xp, y0, Dict("core" => 1, "sheath" => 0, "armor" => 0))
+cablepos = CablePosition(cable_design, xp, y0,
+    Dict("core" => 1, "sheath" => 0, "armor" => 0))
 cable_system = LineCableSystem("525kV_1600mm2_bipole", 1000.0, cablepos)
 
 # Add remaining cables (phases B and C):
@@ -286,7 +284,6 @@ In this section the complete bipole cable system is examined.
 
 # Display system details:
 system_df = linecablesystem_todf(cable_system)
-display(system_df)
 
 # Visualize the cross-section of the three-phase system:
 plt4 = preview_linecablesystem(cable_system, zoom_factor=0.15)
@@ -294,32 +291,34 @@ plt4 = preview_linecablesystem(cable_system, zoom_factor=0.15)
 #=
 ## PSCAD export
 
-The final step showcases how to export the model for electromagnetic transient simulations in PSCAD.
+This step showcases how to export the model for electromagnetic transient simulations in PSCAD.
 
+Export to PSCAD input file:
 =#
 
-# Export to PSCAD input file:
 output_file = joinpath(@__DIR__, "$(cable_system.system_id)_export.pscx")
 export_file = export_pscad_lcp(cable_system, earth_params, file_name=output_file);
 
 #=
 ## FEM calculations
-
 =#
 
 # Define a LineParametersProblem with the cable system and earth model
-f = 1e-3
+f = 1e-3 # Near DC frequency for the analysis
 problem = LineParametersProblem(
     cable_system,
     temperature=20.0,  # Operating temperature
     earth_props=earth_params,
-    frequencies=[f],  # Frequency for the analysis
+    frequencies=[f],   # Frequency for the analysis
 )
 
 # Create a FEMFormulation with custom mesh definitions
-skin_depth_earth = abs(sqrt(earth_params.layers[end].rho_g[1] / (1im * (2 * pi * f[1]) * earth_params.layers[end].mu_g[1])))
+rho_g = earth_params.layers[end].rho_g[1]
+mu_g = earth_params.layers[end].mu_g[1]
+skin_depth_earth = abs(sqrt(rho_g / (1im * (2 * pi * f[1]) * mu_g)))
 domain_radius = clamp(skin_depth_earth, 5.0, 5000.0)
 
+# Define custom mesh transitions around each cable
 mesh_transition1 = MeshTransition(
     cable_system,
     [1],
@@ -340,6 +339,7 @@ mesh_transition2 = MeshTransition(
     n_regions=5
 )
 
+# Define the FEM formulation with the specified parameters
 formulation = FEMFormulation(
     domain_radius=domain_radius,
     domain_radius_inf=domain_radius * 1.25,
@@ -348,10 +348,12 @@ formulation = FEMFormulation(
     elements_per_length_semicon=1,
     elements_per_length_interfaces=5,
     points_per_circumference=16,
-    analysis_type=(FEMDarwin(), FEMElectrodynamics()),
+    analysis_type=(FEMDarwin(),
+        FEMElectrodynamics()),
     mesh_size_min=1e-6,
     mesh_size_max=domain_radius / 5,
-    mesh_transitions=[mesh_transition1, mesh_transition2],
+    mesh_transitions=[mesh_transition1,
+        mesh_transition2],
     mesh_size_default=domain_radius / 10,
     mesh_algorithm=5,
     mesh_max_retries=20,
@@ -360,18 +362,19 @@ formulation = FEMFormulation(
 
 # Define runtime FEMOptions 
 opts = FEMOptions(
-    force_remesh=true,  # Force remeshing
-    force_overwrite=true,
-    plot_field_maps=false,
-    mesh_only=false,  # Preview the mesh
-    base_path=joinpath(@__DIR__, "fem_output"),
-    keep_run_files=true,  # Archive files after each run
-    verbosity=2,  # Verbose output
+    force_remesh=true,                          # Force remeshing
+    force_overwrite=true,                       # Overwrite existing files
+    plot_field_maps=false,                      # Do not compute/ plot field maps
+    mesh_only=false,                            # Preview the mesh
+    base_path=joinpath(@__DIR__, "fem_output"), # Results directory
+    keep_run_files=true,                        # Archive files after each run
+    verbosity=0,                                # Verbosity
 )
 
 # Run the FEM model
 @time workspace, line_params = compute!(problem, formulation, opts)
 
+# Display primary core results
 if !opts.mesh_only
     println("\nR = $(round(real(line_params.Z[1,1,1])*1000, sigdigits=4)) Ω/km")
     println("L = $(round(imag(line_params.Z[1,1,1])/(2π*f)*1e6, sigdigits=4)) mH/km")
