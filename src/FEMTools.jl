@@ -22,11 +22,13 @@ $(EXPORTS)
 module FEMTools
 
 # Load common dependencies
-include("CommonDeps.jl")
+include("common_deps.jl")
 using ..Utils
 using ..Materials
 using ..EarthProps
 using ..DataModel
+using ..Core
+import ..LineCableModels: FormulationSet
 
 # Module-specific dependencies
 using Gmsh
@@ -45,13 +47,21 @@ using GetDP: Problem
 using GetDP: get_getdp_executable
 
 # Export public API
-export LineParametersProblem
 export MeshTransition, FEMFormulation, FEMOptions
-export compute!, run_fem_solver, preview_results
+export compute!, preview_results
 export FEMElectrodynamics, FEMDarwin
 
-# Main types and implementations
-include("ProblemDefs.jl")
+"""
+$(TYPEDEF)
+
+Abstract base type for workspace containers in the FEM simulation framework.
+Workspace containers maintain the complete state of a simulation, including 
+intermediate data structures, identification mappings, and results.
+
+Concrete implementations should provide state tracking for all phases of the 
+simulation process from geometry creation through results analysis.
+"""
+abstract type AbstractWorkspace end
 
 """
 $(TYPEDEF)
@@ -283,7 +293,7 @@ This contains the physics-related parameters of the simulation.
 
 $(TYPEDFIELDS)
 """
-struct FEMFormulation <: AbstractFormulation
+struct FEMFormulation <: AbstractFormulationSet
     "Radius of the physical domain \\[m\\]."
     domain_radius::Float64
     "Outermost radius to apply the infinity transform \\[m\\]."
@@ -353,6 +363,8 @@ struct FEMFormulation <: AbstractFormulation
     ```
     """
     function FEMFormulation(;
+        impedance::AbstractImpedanceFormulation=FEMDarwin(),
+        admittance::AbstractAdmittanceFormulation=FEMElectrodynamics(),
         domain_radius::Float64=5.0,
         domain_radius_inf::Float64=6.25,
         elements_per_length_conductor::Int=3,
@@ -360,7 +372,6 @@ struct FEMFormulation <: AbstractFormulation
         elements_per_length_semicon::Int=4,
         elements_per_length_interfaces::Int=3,
         points_per_circumference::Int=16,
-        analysis_type::Tuple{AbstractImpedanceFormulation,AbstractAdmittanceFormulation}=(FEMDarwin(), FEMElectrodynamics()),
         mesh_size_min::Float64=1e-4,
         mesh_size_max::Float64=1.0,
         mesh_size_default::Float64=domain_radius / 10,
@@ -373,11 +384,48 @@ struct FEMFormulation <: AbstractFormulation
             domain_radius, domain_radius_inf,
             elements_per_length_conductor, elements_per_length_insulator,
             elements_per_length_semicon, elements_per_length_interfaces,
-            points_per_circumference, analysis_type,
+            points_per_circumference, (impedance, admittance),
             mesh_size_min, mesh_size_max, mesh_size_default,
             mesh_transitions, mesh_algorithm, mesh_max_retries, materials_db
         )
     end
+end
+
+# Wrapper function to create a FEMFormulation
+function FormulationSet(; impedance::AbstractImpedanceFormulation=FEMDarwin(),
+    admittance::AbstractAdmittanceFormulation=FEMElectrodynamics(),
+    domain_radius::Float64,
+    domain_radius_inf::Float64,
+    elements_per_length_conductor::Int,
+    elements_per_length_insulator::Int,
+    elements_per_length_semicon::Int,
+    elements_per_length_interfaces::Int,
+    points_per_circumference::Int,
+    mesh_size_min::Float64,
+    mesh_size_max::Float64,
+    mesh_size_default::Float64,
+    mesh_transitions::Vector{MeshTransition},
+    mesh_algorithm::Int,
+    mesh_max_retries::Int,
+    materials_db::MaterialsLibrary
+)
+    return FEMFormulation(; impedance=impedance,
+        admittance=admittance,
+        domain_radius=domain_radius,
+        domain_radius_inf=domain_radius_inf,
+        elements_per_length_conductor=elements_per_length_conductor,
+        elements_per_length_insulator=elements_per_length_insulator,
+        elements_per_length_semicon=elements_per_length_semicon,
+        elements_per_length_interfaces=elements_per_length_interfaces,
+        points_per_circumference=points_per_circumference,
+        mesh_size_min=mesh_size_min,
+        mesh_size_max=mesh_size_max,
+        mesh_size_default=mesh_size_default,
+        mesh_transitions=mesh_transitions,
+        mesh_algorithm=mesh_algorithm,
+        mesh_max_retries=mesh_max_retries,
+        materials_db=materials_db
+    )
 end
 
 """
@@ -650,7 +698,9 @@ end
 
 function make_mesh!(workspace::FEMWorkspace)
     try
-        gmsh.initialize()
+        if gmsh.is_initialized() == 0
+            gmsh.initialize()
+        end
         _do_make_mesh!(workspace)
         @info "Mesh generation completed"
 

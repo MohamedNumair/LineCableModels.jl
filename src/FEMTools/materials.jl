@@ -87,7 +87,7 @@ end
 function get_earth_model_material(workspace::FEMWorkspace, layer_idx::Int)
 
     earth_props = workspace.problem_def.earth_props
-    num_layers = earth_props.num_layers
+    num_layers = length(earth_props.layers)
 
     if layer_idx <= num_layers
 

@@ -320,10 +320,10 @@ using EzXML
     @test cable_design.components[3].insulator_group.radius_ext ≈
           final_jacket_insu_radius
 
-    println("Checking cabledesign_todf...")
-    @test cabledesign_todf(cable_design, :baseparams) isa DataFrame
-    @test cabledesign_todf(cable_design, :components) isa DataFrame
-    @test cabledesign_todf(cable_design, :detailed) isa DataFrame
+    println("Checking to_df...")
+    @test to_df(cable_design, :baseparams) isa DataFrame
+    @test to_df(cable_design, :components) isa DataFrame
+    @test to_df(cable_design, :detailed) isa DataFrame
 
     println("Validating calculated RLC against nominal values (rtol=6%)...")
 
@@ -414,7 +414,7 @@ using EzXML
 
     # Add remaining equivalent components
     if length(new_components) > 1
-        for i in 2:length(new_components)
+        for i in eachindex(new_components)[2:end]
             addto_cabledesign!(equiv_cable_design, new_components[i])
         end
     end
@@ -692,11 +692,11 @@ using EzXML
 
     println("  Plotting functions executed without errors.")
 
-    println("\nTesting DataFrame generation (*_todf)...")
+    println("\nTesting DataFrame generation...")
 
     # Reuse the fully constructed cable_design
-    println("  Testing cabledesign_todf...")
-    df_core = cabledesign_todf(cable_design, :baseparams)
+    println("  Testing to_df...")
+    df_core = to_df(cable_design, :baseparams)
     @test df_core isa DataFrame
     @test names(df_core) == ["parameter", "computed", "nominal", "percent_diff"] ||
           names(df_core) == [
@@ -710,13 +710,13 @@ using EzXML
     ] # Allow for uncertainty columns
     @test nrow(df_core) == 3
 
-    df_comp = cabledesign_todf(cable_design, :components)
+    df_comp = to_df(cable_design, :components)
     @test df_comp isa DataFrame
     # Expected columns: "property", "core", "sheath", "jacket" (based on tutorial build)
     @test names(df_comp) == ["property", "core", "sheath", "jacket"]
     @test nrow(df_comp) > 5 # Should have several properties
 
-    df_detail = cabledesign_todf(cable_design, :detailed)
+    df_detail = to_df(cable_design, :detailed)
     @test df_detail isa DataFrame
     @test "property" in names(df_detail)
     # Check if columns were generated for layers, e.g., "core, cond. layer 1"
@@ -725,11 +725,11 @@ using EzXML
     @test nrow(df_detail) > 10 # Should have many properties
 
     # Test invalid format
-    @test_throws ErrorException cabledesign_todf(cable_design, :invalid_format)
+    @test_throws ErrorException to_df(cable_design, :invalid_format)
 
-    println("  Testing linecablesystem_todf...")
+    println("  Testing to_df...")
     # Reuse the fully constructed cable_system
-    df_sys = linecablesystem_todf(cable_system)
+    df_sys = to_df(cable_system)
     @test df_sys isa DataFrame
     @test names(df_sys) == ["cable_id", "horz", "vert", "phase_mapping"]
     @test nrow(df_sys) == 3 # Because we added 3 cables

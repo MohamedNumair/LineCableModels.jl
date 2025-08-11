@@ -49,7 +49,8 @@ function make_space_geometry(workspace::FEMWorkspace)
     # Get earth model from workspace
     earth_props = workspace.problem_def.earth_props
     air_layer_idx = 1 # air layer is 1 by default
-    earth_layer_idx = earth_props.num_layers
+    num_earth_layers = length(earth_props.layers) # Number of earth layers
+    earth_layer_idx = num_earth_layers
 
     # Air layer (Layer 1)
     air_material = get_earth_model_material(workspace, air_layer_idx)
@@ -249,8 +250,8 @@ function make_space_geometry(workspace::FEMWorkspace)
             end
 
             # Validate layer index exists in earth model
-            if layer_idx > earth_props.num_layers
-                error("Earth layer $layer_idx does not exist in earth model (max: $(earth_props.num_layers))")
+            if layer_idx > num_earth_layers
+                error("Earth layer $layer_idx does not exist in earth model (max: $(num_earth_layers))")
             end
 
             # Get material for this earth layer

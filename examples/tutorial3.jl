@@ -218,10 +218,10 @@ In this section, the cable design is examined and the calculated parameters are 
 =#
 
 # Summarize DC lumped parameters (R, L, C):
-core_df = cabledesign_todf(cable_design, :baseparams)
+core_df = to_df(cable_design, :baseparams)
 
 # Obtain the equivalent electromagnetic properties of the cable:
-components_df = cabledesign_todf(cable_design, :components)
+components_df = to_df(cable_design, :components)
 
 #=
 ## Saving the cable design
@@ -255,7 +255,7 @@ f = 10.0 .^ range(0, stop=6, length=10)  # Frequency range
 earth_params = EarthModel(f, 100.0, 10.0, 1.0)  # 100 Ω·m resistivity, εr=10, μr=1
 
 # Earth model base (DC) properties:
-earthmodel_df = earthmodel_todf(earth_params)
+earthmodel_df = to_df(earth_params)
 
 #=
 ### Underground bipole configuration
@@ -282,7 +282,7 @@ In this section the complete bipole cable system is examined.
 =#
 
 # Display system details:
-system_df = linecablesystem_todf(cable_system)
+system_df = to_df(cable_system)
 
 # Visualize the cross-section of the three-phase system:
 plt4 = preview_linecablesystem(cable_system, zoom_factor=0.15)
@@ -337,7 +337,9 @@ mesh_transition2 = MeshTransition(
     n_regions=5);
 
 # Define the FEM formulation with the specified parameters
-formulation = FEMFormulation(
+formulation = FormulationSet(
+    impedance=FEMDarwin(),
+    admittance=FEMElectrodynamics(),
     domain_radius=domain_radius,
     domain_radius_inf=domain_radius * 1.25,
     elements_per_length_conductor=1,
@@ -345,8 +347,6 @@ formulation = FEMFormulation(
     elements_per_length_semicon=1,
     elements_per_length_interfaces=5,
     points_per_circumference=16,
-    analysis_type=(FEMDarwin(),
-        FEMElectrodynamics()),
     mesh_size_min=1e-6,
     mesh_size_max=domain_radius / 5,
     mesh_transitions=[mesh_transition1,
@@ -373,7 +373,7 @@ opts = FEMOptions(
 
 # Display primary core results
 if !opts.mesh_only
-    println("\nR = $(round(real(line_params.Z[1,1,1])*1000, sigdigits=4)) Ω/km")
+    println("R = $(round(real(line_params.Z[1,1,1])*1000, sigdigits=4)) Ω/km")
     println("L = $(round(imag(line_params.Z[1,1,1])/(2π*f)*1e6, sigdigits=4)) mH/km")
     println("C = $(round(imag(line_params.Y[1,1,1])/(2π*f)*1e9, sigdigits=4)) μF/km")
 end

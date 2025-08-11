@@ -451,7 +451,18 @@ end
 # 3	     Errors + warnings + basic info
 # 4	     Detailed debugging
 # 5	     Full internal tracing
-function run_getdp(workspace::FEMWorkspace, fem_formulation::AbstractFormulation)
+function map_verbosity_to_getdp(verbosity::Int)
+    if verbosity >= 2       # Debug
+        return 4            # GetDP Debug level
+    elseif verbosity == 1   # Info
+        return 3            # GetDP Info level
+    else                    # Warn
+        return 2            # GetDP Warnings level
+    end
+end
+
+
+function run_getdp(workspace::FEMWorkspace, fem_formulation::AbstractFormulationSet)
     # Initialize Gmsh if not already initialized
     if gmsh.is_initialized() == 0
         gmsh.initialize()
@@ -463,10 +474,13 @@ function run_getdp(workspace::FEMWorkspace, fem_formulation::AbstractFormulation
     # Flag to track if all solves are successful
     all_success = true
 
+    # Map verbosity to GetDP level
+    getdp_verbosity = map_verbosity_to_getdp(workspace.opts.verbosity)
+
     # Loop over each active_ind from 1 to n_phases
     for i in 1:n_phases
         # Construct solver command with -setnumber active_ind i
-        solve_cmd = "$(workspace.opts.getdp_executable) $(fem_formulation.problem.filename) -msh $(workspace.paths[:mesh_file]) -solve $(fem_formulation.resolution_name) -setnumber active_con $i -v$(workspace.opts.verbosity == 0 ? 2 : 3)"
+        solve_cmd = "$(workspace.opts.getdp_executable) $(fem_formulation.problem.filename) -msh $(workspace.paths[:mesh_file]) -solve $(fem_formulation.resolution_name) -setnumber active_con $i -v2 -verbose $(getdp_verbosity)"
 
         # Log the current solve attempt
         @info "Solving for source conductor $i... (Resolution = $(fem_formulation.resolution_name))"
@@ -478,7 +492,7 @@ function run_getdp(workspace::FEMWorkspace, fem_formulation::AbstractFormulation
             if workspace.opts.plot_field_maps
                 @info "Building field maps for source conductor $i... (Resolution = $(fem_formulation.resolution_name))"
 
-                post_cmd = "$(workspace.opts.getdp_executable) $(fem_formulation.problem.filename) -msh $(workspace.paths[:mesh_file]) -pos Field_Maps -setnumber active_con $i -v$(workspace.opts.verbosity == 0 ? 2 : 3)"
+                post_cmd = "$(workspace.opts.getdp_executable) $(fem_formulation.problem.filename) -msh $(workspace.paths[:mesh_file]) -pos Field_Maps -setnumber active_con $i -v2 -verbose $(getdp_verbosity)"
 
                 gmsh.onelab.run("GetDP", post_cmd)
             end

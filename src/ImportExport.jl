@@ -25,7 +25,7 @@ $(EXPORTS)
 module ImportExport
 
 # Load common dependencies
-include("CommonDeps.jl")
+include("common_deps.jl")
 using ..Utils
 using ..Materials
 using ..EarthProps

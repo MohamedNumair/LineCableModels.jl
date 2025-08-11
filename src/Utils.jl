@@ -20,7 +20,7 @@ $(EXPORTS)
 module Utils
 
 # Load common dependencies
-include("CommonDeps.jl")
+include("common_deps.jl")
 
 # Module-specific dependencies
 using Measurements
@@ -64,8 +64,8 @@ $(FUNCTIONNAME)(1.00001, 1.0, atol=1e-4) # Output: true
 $(FUNCTIONNAME)(1.0001, 1.0, atol=1e-5)  # Output: false
 ```
 """
-function equals(x, y; atol = TOL)
-	return isapprox(x, y, atol = atol)
+function equals(x, y; atol=TOL)
+    return isapprox(x, y, atol=atol)
 end
 
 """
@@ -91,7 +91,7 @@ $(FUNCTIONNAME)(5.2 ± 0.3)  # Output: 5.2
 ```
 """
 function to_nominal(x)
-	return x isa Measurement ? Measurements.value(x) : x
+    return x isa Measurement ? Measurements.value(x) : x
 end
 
 """
@@ -118,7 +118,7 @@ result = $(FUNCTIONNAME)(y)  # Output: 10.0
 ```
 """
 function strip_uncertainty(value)
-	return value isa Measurement ? (Measurements.value(value) ± 0.0) : value
+    return value isa Measurement ? (Measurements.value(value) ± 0.0) : value
 end
 
 """
@@ -145,7 +145,7 @@ $(FUNCTIONNAME)(10.0, 10)  # Output: 10.0 ± 1.0
 ```
 """
 function percent_to_uncertain(val, perc) #perc from 0 to 100
-	measurement(val, (perc * val) / 100)
+    measurement(val, (perc * val) / 100)
 end
 
 """
@@ -179,13 +179,13 @@ println(result)  # Output: Measurement with adjusted uncertainty
 ```
 """
 function bias_to_uncertain(nominal::Float64, measurements::Vector{<:Measurement})
-	# Compute the mean value and uncertainty from the measurements
-	mean_measurement = mean(measurements)
-	mean_value = Measurements.value(mean_measurement)  # Central value
-	sigma_mean = Measurements.uncertainty(mean_measurement)  # Uncertainty of the mean
-	# Compute the bias (deterministic nominal value minus mean measurement)
-	bias = abs(nominal - mean_value)
-	return mean_value ± (sigma_mean + bias)
+    # Compute the mean value and uncertainty from the measurements
+    mean_measurement = mean(measurements)
+    mean_value = Measurements.value(mean_measurement)  # Central value
+    sigma_mean = Measurements.uncertainty(mean_measurement)  # Uncertainty of the mean
+    # Compute the bias (deterministic nominal value minus mean measurement)
+    bias = abs(nominal - mean_value)
+    return mean_value ± (sigma_mean + bias)
 end
 
 """
@@ -215,11 +215,11 @@ upper_invalid = $(FUNCTIONNAME)(not_a_measurement)  # Output: NaN
 ```
 """
 function to_upper(m::Number)
-	if m isa Measurement
-		return Measurements.value(m) + Measurements.uncertainty(m)
-	else
-		return NaN
-	end
+    if m isa Measurement
+        return Measurements.value(m) + Measurements.uncertainty(m)
+    else
+        return NaN
+    end
 end
 
 """
@@ -249,11 +249,11 @@ lower_invalid = $(FUNCTIONNAME)(not_a_measurement)  # Output: NaN
 ```
 """
 function to_lower(m::Number)
-	if m isa Measurement
-		return Measurements.value(m) - Measurements.uncertainty(m)
-	else
-		return NaN
-	end
+    if m isa Measurement
+        return Measurements.value(m) - Measurements.uncertainty(m)
+    else
+        return NaN
+    end
 end
 
 """
@@ -283,11 +283,11 @@ percent_err_invalid = $(FUNCTIONNAME)(not_a_measurement)  # Output: NaN
 ```
 """
 function percent_error(m::Number)
-	if m isa Measurement
-		return 100 * Measurements.uncertainty(m) / Measurements.value(m)
-	else
-		return NaN
-	end
+    if m isa Measurement
+        return 100 * Measurements.uncertainty(m) / Measurements.value(m)
+    else
+        return NaN
+    end
 end
 
 """
@@ -319,34 +319,34 @@ Utils.@_autoexport
 ```
 """
 macro _autoexport()
-	mod = __module__
+    mod = __module__
 
-	# Get all names defined in the module, including unexported ones
-	all_names = names(mod; all = true)
+    # Get all names defined in the module, including unexported ones
+    all_names = names(mod; all=true)
 
-	# List of names to explicitly exclude
-	excluded_names = Set([:eval, :include, :using, :import, :export, :require])
+    # List of names to explicitly exclude
+    excluded_names = Set([:eval, :include, :using, :import, :export, :require])
 
-	# Filter out private names (starting with '_'), module name, built-in functions, and auto-generated method symbols
-	public_names = Symbol[]
-	for name in all_names
-		str_name = string(name)
+    # Filter out private names (starting with '_'), module name, built-in functions, and auto-generated method symbols
+    public_names = Symbol[]
+    for name in all_names
+        str_name = string(name)
 
-		startswith(str_name, "@_") && continue  # Skip private macros
-		startswith(str_name, "_") && continue  # Skip private names
-		name === nameof(mod) && continue  # Skip the module's own name
-		name in excluded_names && continue  # Skip built-in functions
-		startswith(str_name, "#") && continue  # Skip generated method symbols (e.g., #eval, #include)
+        startswith(str_name, "@_") && continue  # Skip private macros
+        startswith(str_name, "_") && continue  # Skip private names
+        name === nameof(mod) && continue  # Skip the module's own name
+        name in excluded_names && continue  # Skip built-in functions
+        startswith(str_name, "#") && continue  # Skip generated method symbols (e.g., #eval, #include)
 
-		if isdefined(mod, name)
-			val = getfield(mod, name)
-			if val isa Function || val isa Type || val isa Module
-				push!(public_names, name)
-			end
-		end
-	end
+        if isdefined(mod, name)
+            val = getfield(mod, name)
+            if val isa Function || val isa Type || val isa Module
+                push!(public_names, name)
+            end
+        end
+    end
 
-	return esc(Expr(:export, public_names...))
+    return esc(Expr(:export, public_names...))
 end
 
 @_autoexport

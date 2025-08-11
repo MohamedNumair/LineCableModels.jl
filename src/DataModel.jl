@@ -22,7 +22,7 @@ $(EXPORTS)
 module DataModel
 
 # Load common dependencies
-include("CommonDeps.jl")
+include("common_deps.jl")
 using ..Utils
 using ..Materials
 using ..EarthProps
@@ -192,7 +192,7 @@ Represents a semiconducting layer with defined geometric, material, and electric
 
 $(TYPEDFIELDS)
 """
-mutable struct Semicon <: AbstractInsulatorPart
+struct Semicon <: AbstractInsulatorPart
     "Internal radius of the semiconducting layer \\[m\\]."
     radius_in::Number
     "External radius of the semiconducting layer \\[m\\]."
@@ -220,7 +220,7 @@ Represents an insulating layer with defined geometric, material, and electrical 
 
 $(TYPEDFIELDS)
 """
-mutable struct Insulator <: AbstractInsulatorPart
+struct Insulator <: AbstractInsulatorPart
     "Internal radius of the insulating layer \\[m\\]."
     radius_in::Number
     "External radius of the insulating layer \\[m\\]."
@@ -1845,16 +1845,16 @@ Extracts and displays data from a [`CableDesign`](@ref).
 
 ```julia
 # Get basic RLC parameters
-data = cabledesign_todf(design)  # Default is :baseparams format
+data = to_df(design)  # Default is :baseparams format
 
 # Get component-level data
-comp_data = cabledesign_todf(design, :components)
+comp_data = to_df(design, :components)
 
 # Get detailed part-by-part breakdown
-detailed_data = cabledesign_todf(design, :detailed)
+detailed_data = to_df(design, :detailed)
 
 # Specify earth parameters for core calculations
-core_data = cabledesign_todf(design, :baseparams, S=0.5, rho_e=150)
+core_data = to_df(design, :baseparams, S=0.5, rho_e=150)
 ```
 
 # See also
@@ -1864,7 +1864,7 @@ core_data = cabledesign_todf(design, :baseparams, S=0.5, rho_e=150)
 - [`calc_inductance_trifoil`](@ref)
 - [`calc_shunt_capacitance`](@ref)
 """
-function cabledesign_todf(
+function to_df(
     design::CableDesign,
     format::Symbol=:baseparams;
     S::Union{Nothing,Number}=nothing,
@@ -2991,7 +2991,7 @@ println(df)
 - [`LineCableSystem`](@ref)
 - [`CablePosition`](@ref)
 """
-function linecablesystem_todf(system::LineCableSystem)
+function to_df(system::LineCableSystem)
     cable_ids = String[]
     horz_coords = Number[]
     vert_coords = Number[]
@@ -3129,24 +3129,6 @@ function Base.show(io::IO, ::MIME"text/plain", system::LineCableSystem)
         io,
         "LineCableSystem \"$(system.system_id)\": [line_length=$(system.line_length), num_cables=$(system.num_cables), num_phases=$(system.num_phases)]",
     )
-
-    # # Print earth model summary
-    # # Get model type summary
-    # model_type = system.earth_props.num_layers == 2 ? "homogeneous" : "multilayer"
-    # orientation = system.earth_props.vertical_layers ? "vertical" : "horizontal"
-    # layer_word = (system.earth_props.num_layers - 1) == 1 ? "layer" : "layers"
-
-    # # Format earth model info
-    # earth_model_summary = "EarthModel: $(system.earth_props.num_layers-1) $(orientation) $(model_type) $(layer_word)"
-
-    # Add formulation info if available
-    # if !isnothing(system.earth_props.FDformulation)
-    #     formulation_tag =
-    #         EarthProps._get_earth_formulation_tag(system.earth_props.FDformulation)
-    #     earth_model_summary *= ", $(formulation_tag)"
-    # end
-
-    # println(io, "├─ $(earth_model_summary)")
 
     # Print cable definitions
     println(io, "└─ $(length(system.cables))-element CablePosition:")

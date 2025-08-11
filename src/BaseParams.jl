@@ -23,7 +23,7 @@ $(EXPORTS)
 module BaseParams
 
 # Load common dependencies
-include("CommonDeps.jl")
+include("common_deps.jl")
 using ...Utils
 
 # Module-specific dependencies

@@ -343,13 +343,13 @@ In this section, the cable design is examined and the calculated parameters are 
 =#
 
 # Compare with datasheet information (R, L, C values):
-core_df = cabledesign_todf(cable_design, :baseparams)
+core_df = to_df(cable_design, :baseparams)
 
 # Obtain the equivalent electromagnetic properties of the cable:
-components_df = cabledesign_todf(cable_design, :components)
+components_df = to_df(cable_design, :components)
 
 # Get detailed description of all cable parts:
-detailed_df = cabledesign_todf(cable_design, :detailed)
+detailed_df = to_df(cable_design, :detailed)
 
 #=
 ## Saving the cable design
@@ -386,7 +386,7 @@ f = 10.0 .^ range(0, stop=6, length=10)  # Frequency range
 earth_params = EarthModel(f, 100.0, 10.0, 1.0)  # 100 Ω·m resistivity, εr=10, μr=1
 
 # Earth model base (DC) properties:
-earthmodel_df = earthmodel_todf(earth_params)
+earthmodel_df = to_df(earth_params)
 
 #=
 ### Three-phase system in trifoil configuration
@@ -425,7 +425,7 @@ In this section the complete three-phase cable system is examined.
 =#
 
 # Display system details:
-system_df = linecablesystem_todf(cable_system)
+system_df = to_df(cable_system)
 
 # Visualize the cross-section of the three-phase system:
 plt4 = preview_linecablesystem(cable_system, zoom_factor=0.15)
