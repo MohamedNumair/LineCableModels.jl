@@ -26,6 +26,7 @@ include("common_deps.jl")
 using ..Utils
 using ..Materials
 using ..EarthProps
+import ..LineCableModels: to_df, add!
 
 # Module-specific dependencies
 using Measurements
