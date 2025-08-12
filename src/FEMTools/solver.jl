@@ -443,24 +443,6 @@ function define_resolution!(problem::GetDP.Problem, formulation::FEMDarwin, work
 
 end
 
-# Verbosity Levels in GetDP
-# Level	Output Description
-# 0	     Silent (no output)
-# 1	     Errors only
-# 2	     Errors + warnings
-# 3	     Errors + warnings + basic info
-# 4	     Detailed debugging
-# 5	     Full internal tracing
-function map_verbosity_to_getdp(verbosity::Int)
-    if verbosity >= 2       # Debug
-        return 4            # GetDP Debug level
-    elseif verbosity == 1   # Info
-        return 3            # GetDP Info level
-    else                    # Warn
-        return 2            # GetDP Warnings level
-    end
-end
-
 
 function run_getdp(workspace::FEMWorkspace, fem_formulation::AbstractFormulationSet)
     # Initialize Gmsh if not already initialized
@@ -474,7 +456,11 @@ function run_getdp(workspace::FEMWorkspace, fem_formulation::AbstractFormulation
     # Flag to track if all solves are successful
     all_success = true
 
-    # Map verbosity to GetDP level
+    # Map verbosity to Gmsh/GetDP level
+    gmsh_verbosity = map_verbosity_to_gmsh(workspace.opts.verbosity)
+    gmsh.option.set_number("General.Verbosity", gmsh_verbosity)
+
+
     getdp_verbosity = map_verbosity_to_getdp(workspace.opts.verbosity)
 
     # Loop over each active_ind from 1 to n_phases

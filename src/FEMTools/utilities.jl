@@ -62,7 +62,9 @@ Set up directory structure and file paths for a FEM simulation.
 paths = $(FUNCTIONNAME)(solver, cable_system)
 ```
 """
-function setup_paths(cable_system::LineCableSystem, formulation::FEMFormulation, opts::FEMOptions)
+function setup_paths(cable_system::LineCableSystem, formulation::FEMFormulation)
+
+    opts = formulation.options
     # Create base output directory if it doesn't exist
     if !isdir(opts.base_path)
         mkpath(opts.base_path)
@@ -129,7 +131,7 @@ Clean up files based on configuration flags.
 $(FUNCTIONNAME)(paths, solver)
 ```
 """
-function cleanup_files(paths::Dict{Symbol,String}, opts::FEMOptions)
+function cleanup_files(paths::Dict{Symbol,String}, opts::NamedTuple)
     if opts.force_remesh
         # If force_remesh is true, delete mesh-related files
         if isfile(paths[:mesh_file])
@@ -201,4 +203,42 @@ function read_results_file(fem_formulation::Union{AbstractImpedanceFormulation,A
     end
 
     return matrix
+end
+
+
+# Verbosity Levels in GetDP
+# Level	Output Description
+# 0	     Silent (no output)
+# 1	     Errors only
+# 2	     Errors + warnings
+# 3	     Errors + warnings + basic info
+# 4	     Detailed debugging
+# 5	     Full internal tracing
+function map_verbosity_to_getdp(verbosity::Int)
+    if verbosity >= 2       # Debug
+        return 4            # GetDP Debug level
+    elseif verbosity == 1   # Info
+        return 3            # GetDP Info level
+    else                    # Warn
+        return 1            # GetDP Errors level
+    end
+end
+
+# Verbosity Levels in Gmsh
+# Level  Output Description
+# 0      Silent (no output)
+# 1      Errors only
+# 2      Warnings
+# 3      Direct/Important info
+# 4      Information
+# 5      Status messages
+# 99     Debug
+function map_verbosity_to_gmsh(verbosity::Int)
+    if verbosity >= 2       # Debug
+        return 99           # Gmsh Debug level
+    elseif verbosity == 1   # Info
+        return 4            # Gmsh Information level
+    else                    # Warn
+        return 1            # Gmsh Errors level
+    end
 end
