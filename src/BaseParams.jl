@@ -24,6 +24,7 @@ module BaseParams
 
 # Load common dependencies
 include("common_deps.jl")
+using ...LineCableModels
 using ...Utils
 
 # Module-specific dependencies
@@ -244,11 +245,17 @@ where ``\\alpha`` is the temperature coefficient of the material resistivity, ``
 # Examples
 
 ```julia
-# Copper resistivity correction (alpha = 0.00393 [1/°C])
-k = $(FUNCTIONNAME)(0.00393, 75.0, 20.0)  # Expected output: 1.2158
+    # Copper resistivity correction (alpha = 0.00393 [1/°C])
+    k = $(FUNCTIONNAME)(0.00393, 75.0, 20.0)  # Expected output: 1.2158
 ```
 """
 function calc_temperature_correction(alpha::Number, T::Number, T0::Number=T₀)
+    @assert abs(T - T0) < ΔTmax """
+    Temperature is outside the valid range for linear resistivity model:
+    T = $T
+    T0 = $T0
+    ΔTmax = $ΔTmax
+    |T - T0| = $(abs(T - T0))"""
     return 1 + alpha * (T - T0)
 end
 

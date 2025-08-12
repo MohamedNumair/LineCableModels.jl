@@ -26,6 +26,7 @@ include("common_deps.jl")
 using ..Utils
 using ..Materials
 using ..EarthProps
+using ..LineCableModels # For physical constants (f₀, μ₀, ε₀, ρ₀, T₀, TOL, ΔTmax)
 import ..LineCableModels: to_df, add!
 
 # Module-specific dependencies
@@ -1933,34 +1934,34 @@ function to_df(
         ]
 
         # Calculate differences
-        diffs = [
-            abs(design.nominal_data.resistance - R) / design.nominal_data.resistance * 100,
-            abs(design.nominal_data.inductance - L) / design.nominal_data.inductance * 100,
-            abs(design.nominal_data.capacitance - C) / design.nominal_data.capacitance *
-            100,
-        ]
-
-        # Check if we have measurement objects (with uncertainty)
-        has_error_bounds = !(isnan(to_lower(R)) || isnan(to_upper(R)))
+        diffs = map(zip([R, L, C], nominals)) do (computed, nominal)
+            if isnothing(nominal)
+                return missing
+            else
+                return abs(nominal - computed) / nominal * 100
+            end
+        end
 
         # Compute the comparison DataFrame
         data = DataFrame(
             parameter=["R [Ω/km]", "L [mH/km]", "C [μF/km]"],
             computed=[R, L, C],
             nominal=nominals,
-            percent_diff=diffs,
         )
 
-        # Add error bound columns only if measurements are present
+        # Add percent_diff column only for rows with non-nothing nominal values
+        data[!, "percent_diff"] = diffs
+
+        # Handle measurement bounds if present
+        has_error_bounds = !(isnan(to_lower(R)) || isnan(to_upper(R)))
         if has_error_bounds
             data[!, "lower"] = [to_lower(R), to_lower(L), to_lower(C)]
             data[!, "upper"] = [to_upper(R), to_upper(L), to_upper(C)]
 
-            # Add compliance column (requires bounds)
-            data[!, "in_range?"] = [
-                (data.nominal[i] >= data.lower[i] && data.nominal[i] <= data.upper[i])
-                for i in 1:nrow(data)
-            ]
+            # Add compliance column only for rows with non-nothing nominal values
+            data[!, "in_range?"] = map(zip(data.nominal, data.lower, data.upper)) do (nom, low, up)
+                isnothing(nom) ? missing : (nom >= low && nom <= up)
+            end
         end
 
     elseif format == :components

@@ -23,6 +23,7 @@ module EarthProps
 # Load common dependencies
 include("common_deps.jl")
 using ..Utils
+using ..LineCableModels # For physical constants (f₀, μ₀, ε₀, ρ₀, T₀, TOL, ΔTmax)
 import ..LineCableModels: _get_description, to_df, add!
 
 # Module-specific dependencies

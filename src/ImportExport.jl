@@ -30,6 +30,7 @@ using ..Utils
 using ..Materials
 using ..EarthProps
 using ..DataModel
+using ..LineCableModels # For physical constants (f₀, μ₀, ε₀, ρ₀, T₀, TOL, ΔTmax)
 
 # Module-specific dependencies
 using Measurements

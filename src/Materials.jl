@@ -23,6 +23,7 @@ module Materials
 
 # Load common dependencies
 include("common_deps.jl")
+using ..LineCableModels
 using ..Utils
 
 # Module-specific dependencies
