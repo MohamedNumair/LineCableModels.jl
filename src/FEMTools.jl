@@ -5,7 +5,7 @@ The [`FEMTools`](@ref) module provides functionality for generating geometric me
 
 # Overview
 
-- Defines core types [`FEMFormulation`](@ref), [`FEMOptions`](@ref), and [`FEMWorkspace`](@ref) for managing simulation parameters and state.
+- Defines core types [`FEMFormulation`](@ref), and [`FEMWorkspace`](@ref) for managing simulation parameters and state.
 - Implements a physical tag encoding system (CCOGYYYYY scheme for cable components, EPFXXXXX for domain regions).
 - Provides primitive drawing functions for geometric elements.
 - Creates a two-phase workflow: creation → fragmentation → identification.
@@ -28,6 +28,7 @@ using ..Materials
 using ..EarthProps
 using ..DataModel
 using ..Core
+using ..LineCableModels # For physical constants (f₀, μ₀, ε₀, ρ₀, T₀, TOL, ΔTmax)
 import ..LineCableModels: FormulationSet, OptSet
 
 # Module-specific dependencies
@@ -43,11 +44,24 @@ using LoggingExtras: TeeLogger, FileLogger
 
 # GetDP.jl
 using GetDP
-using GetDP: Problem
-using GetDP: get_getdp_executable
+using GetDP: Problem, get_getdp_executable, add!
+
+
+# Define default FEM options
+const DEFAULT_FEM_OPTIONS = (
+    mesh_only=false, # Build mesh only and preview (no solving)
+    force_remesh=false, # Force mesh regeneration even if file exists
+    force_overwrite=false, # Skip user confirmation for overwriting results
+    plot_field_maps=true, # Generate field visualization outputs
+    keep_run_files=false, # Archive temporary files after each frequency run
+    base_path=joinpath(".", "fem_output"), # Base path for output files
+    getdp_executable=nothing, # Path to GetDP executable
+    verbosity=0, # Verbosity level
+    logfile=nothing # Log file path
+)
 
 # Export public API
-export MeshTransition, FEMFormulation, FEMOptions
+export MeshTransition, FEMFormulation
 export compute!, preview_results
 export FEMElectrodynamics, FEMDarwin
 
@@ -324,7 +338,8 @@ struct FEMFormulation <: AbstractFormulationSet
     mesh_max_retries::Int
     "Materials database."
     materials_db::MaterialsLibrary
-
+    "Solver options for FEM simulations."
+    options::NamedTuple
     """
     $(TYPEDSIGNATURES)
 
@@ -378,21 +393,42 @@ struct FEMFormulation <: AbstractFormulationSet
         mesh_transitions::Vector{MeshTransition}=MeshTransition[],
         mesh_algorithm::Int=5,
         mesh_max_retries::Int=20,
-        materials_db::MaterialsLibrary=MaterialsLibrary()
+        materials_db::MaterialsLibrary=MaterialsLibrary(),
+        options::NamedTuple=NamedTuple() # Default to empty tuple
     )
+
+        # Create new merged options with updated getdp_executable
+        if isempty(options) || !haskey(options, :getdp_executable) || isnothing(options.getdp_executable)
+            getdp_executable = GetDP.get_getdp_executable()
+
+            if !isfile(getdp_executable)
+                Base.error("GetDP executable not found: $(getdp_executable)")
+            end
+
+            # Create new NamedTuple with updated executable
+            merged_options = merge(DEFAULT_FEM_OPTIONS,
+                options,
+                (getdp_executable=getdp_executable,))
+        else
+            merged_options = merge(DEFAULT_FEM_OPTIONS, options)
+        end
+
+        setup_fem_logging(merged_options.verbosity, merged_options.logfile)
+
         return new(
             domain_radius, domain_radius_inf,
             elements_per_length_conductor, elements_per_length_insulator,
             elements_per_length_semicon, elements_per_length_interfaces,
             points_per_circumference, (impedance, admittance),
             mesh_size_min, mesh_size_max, mesh_size_default,
-            mesh_transitions, mesh_algorithm, mesh_max_retries, materials_db
+            mesh_transitions, mesh_algorithm, mesh_max_retries, materials_db,
+            merged_options
         )
     end
 end
 
 # Wrapper function to create a FEMFormulation
-function FormulationSet(; impedance::AbstractImpedanceFormulation=FEMDarwin(),
+function FormulationSet(::Val{:FEM}; impedance::AbstractImpedanceFormulation=FEMDarwin(),
     admittance::AbstractAdmittanceFormulation=FEMElectrodynamics(),
     domain_radius::Float64,
     domain_radius_inf::Float64,
@@ -407,7 +443,8 @@ function FormulationSet(; impedance::AbstractImpedanceFormulation=FEMDarwin(),
     mesh_transitions::Vector{MeshTransition},
     mesh_algorithm::Int,
     mesh_max_retries::Int,
-    materials_db::MaterialsLibrary
+    materials_db::MaterialsLibrary,
+    options::NamedTuple
 )
     return FEMFormulation(; impedance=impedance,
         admittance=admittance,
@@ -424,85 +461,8 @@ function FormulationSet(; impedance::AbstractImpedanceFormulation=FEMDarwin(),
         mesh_transitions=mesh_transitions,
         mesh_algorithm=mesh_algorithm,
         mesh_max_retries=mesh_max_retries,
-        materials_db=materials_db
-    )
-end
-
-"""
-$(TYPEDEF)
-
-Solver configuration for FEM simulations.
-This contains the execution-related parameters.
-
-$(TYPEDFIELDS)
-"""
-struct FEMOptions <: FormulationOptions
-    "Build mesh only and preview (no solving)"
-    mesh_only::Bool
-    "Force mesh regeneration even if file exists"
-    force_remesh::Bool
-    "Skip user confirmation for overwriting results"
-    force_overwrite::Bool
-    "Generate field visualization outputs"
-    plot_field_maps::Bool
-    "Archive temporary files after each frequency run"
-    keep_run_files::Bool
-
-    "Base path for output files"
-    base_path::String
-    "Path to GetDP executable"
-    getdp_executable::String
-    "Verbosity level"
-    verbosity::Int
-    "Log file path"
-    logfile::Union{String,Nothing}
-
-    function FEMOptions(;
-        mesh_only::Bool=false,
-        force_remesh::Bool=false,
-        force_overwrite::Bool=false,
-        plot_field_maps::Bool=true,
-        keep_run_files::Bool=false,
-        base_path::String=joinpath(".", "fem_output"),
-        getdp_executable::Union{String,Nothing}=nothing,
-        verbosity::Int=0,
-        logfile::Union{String,Nothing}=nothing
-    )
-        # Validate GetDP executable
-        if isnothing(getdp_executable)
-            getdp_executable = GetDP.get_getdp_executable()
-        end
-
-        if !isfile(getdp_executable)
-            Base.error("GetDP executable not found: $getdp_executable")
-        end
-
-        setup_fem_logging(verbosity, logfile)
-
-        return new(mesh_only, force_remesh, force_overwrite, plot_field_maps, keep_run_files, base_path, getdp_executable, verbosity, logfile)
-    end
-end
-
-# Wrapper function to create a FEMOptions
-function OptSet(; mesh_only::Bool,
-    force_remesh::Bool,
-    force_overwrite::Bool,
-    plot_field_maps::Bool,
-    keep_run_files::Bool,
-    base_path::String,
-    getdp_executable::Union{String,Nothing}=nothing,
-    verbosity::Int,
-    logfile::Union{String,Nothing}=nothing,
-)
-    return FEMOptions(; mesh_only=mesh_only,
-        force_remesh=force_remesh,
-        force_overwrite=force_overwrite,
-        plot_field_maps=plot_field_maps,
-        keep_run_files=keep_run_files,
-        base_path=base_path,
-        getdp_executable=getdp_executable,
-        verbosity=verbosity,
-        logfile=logfile
+        materials_db=materials_db,
+        options=options
     )
 end
 
@@ -520,7 +480,7 @@ mutable struct FEMWorkspace
     "Formulation parameters."
     formulation::FEMFormulation
     "Computation options."
-    opts::FEMOptions
+    opts::NamedTuple
 
     "Path information."
     paths::Dict{Symbol,String}
@@ -563,9 +523,10 @@ mutable struct FEMWorkspace
     workspace = $(FUNCTIONNAME)(cable_system, formulation, solver)
     ```
     """
-    function FEMWorkspace(problem::LineParametersProblem, formulation::FEMFormulation, opts::FEMOptions)
+    function FEMWorkspace(problem::LineParametersProblem, formulation::FEMFormulation)
 
         # Initialize empty workspace
+        opts = formulation.options
         workspace = new(
             problem, formulation, opts,
             Dict{Symbol,String}(), # Path information.
@@ -579,7 +540,7 @@ mutable struct FEMWorkspace
         )
 
         # Set up paths
-        workspace.paths = setup_paths(problem.system, formulation, opts)
+        workspace.paths = setup_paths(problem.system, formulation)
 
         return workspace
     end
@@ -611,11 +572,12 @@ workspace = $(FUNCTIONNAME)(cable_system, formulation, solver)
 """
 function compute!(problem::LineParametersProblem,
     formulation::FEMFormulation,
-    opts::FEMOptions;
     workspace::Union{FEMWorkspace,Nothing}=nothing)
 
+    opts = formulation.options
+
     # Initialize workspace
-    workspace = init_workspace(problem, formulation, opts, workspace)
+    workspace = init_workspace(problem, formulation, workspace)
 
     # Meshing phase
     mesh_needed = !(mesh_exists(workspace, opts))
@@ -639,13 +601,15 @@ function compute!(problem::LineParametersProblem,
     return workspace, line_params
 end
 
-function init_workspace(problem, formulation, opts, workspace)
+function init_workspace(problem, formulation, workspace)
     if isnothing(workspace)
         @debug "Creating new workspace"
-        workspace = FEMWorkspace(problem, formulation, opts)
+        workspace = FEMWorkspace(problem, formulation)
     else
         @debug "Reusing existing workspace"
     end
+
+    opts = formulation.options
 
     # Handle existing results - check both current and archived
     results_dir = workspace.paths[:results_dir]
@@ -693,7 +657,7 @@ function init_workspace(problem, formulation, opts, workspace)
     return workspace
 end
 
-function mesh_exists(workspace::FEMWorkspace, opts::FEMOptions)
+function mesh_exists(workspace::FEMWorkspace, opts::NamedTuple)
     mesh_file = workspace.paths[:mesh_file]
 
     # Force remesh overrides everything

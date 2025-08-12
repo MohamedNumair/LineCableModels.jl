@@ -113,6 +113,7 @@ $(FUNCTIONNAME)(workspace)
 """
 function config_mesh_options(workspace::FEMWorkspace)
 
+
     gmsh.option.set_number("General.InitialModule", 2)
 
     # Set mesh algorithm
@@ -203,7 +204,8 @@ function initialize_gmsh(workspace::FEMWorkspace)
     gmsh.option.set_string("General.DefaultFileName", system_id * ".geo")
 
     # Define verbosity level
-    gmsh.option.set_number("General.Verbosity", workspace.opts.verbosity)
+    gmsh_verbosity = map_verbosity_to_gmsh(workspace.opts.verbosity)
+    gmsh.option.set_number("General.Verbosity", gmsh_verbosity)
 
     # Set OCC model healing options
     gmsh.option.set_number("Geometry.AutoCoherence", 1)
