@@ -155,9 +155,9 @@ datasheet_info = NominalData(
     U=525.0,                         # Phase (pole)-to-phase (pole) voltage [kV]
     conductor_cross_section=1600.0,  # [mm²]
     screen_cross_section=1000.0,     # [mm²]
-    resistance=NaN,                  # DC resistance [Ω/km]
-    capacitance=NaN,                 # Capacitance [μF/km]
-    inductance=NaN,                  # Inductance in trifoil [mH/km]
+    # resistance=NaN,                  # DC resistance [Ω/km]
+    # capacitance=NaN,                 # Capacitance [μF/km]
+    # inductance=NaN,                  # Inductance in trifoil [mH/km]
 )
 cable_design = CableDesign(cable_id, core_cc, nominal_data=datasheet_info)
 
@@ -250,8 +250,8 @@ save_cableslibrary(library, file_name=library_file);
 Define a frequency-dependent earth model (1 Hz to 1 MHz):
 =#
 
-f = 10.0 .^ range(0, stop=6, length=10)  # Frequency range
-earth_params = EarthModel(f, 100.0, 10.0, 1.0)  # 100 Ω·m resistivity, εr=10, μr=1
+f = 1e-3 # Near DC frequency for the analysis
+earth_params = EarthModel([f], 100.0, 10.0, 1.0)  # 100 Ω·m resistivity, εr=10, μr=1
 
 # Earth model base (DC) properties:
 earthmodel_df = to_df(earth_params)
@@ -302,7 +302,6 @@ export_file = export_pscad_lcp(cable_system, earth_params, file_name=output_file
 =#
 
 # Define a LineParametersProblem with the cable system and earth model
-f = 1e-3 # Near DC frequency for the analysis
 problem = LineParametersProblem(
     cable_system,
     temperature=20.0,  # Operating temperature
@@ -335,8 +334,19 @@ mesh_transition2 = MeshTransition(
     mesh_factor_max=0.25 / (domain_radius / 5),
     n_regions=5);
 
+# Define runtime options 
+opts = (
+    force_remesh=true,                          # Force remeshing
+    force_overwrite=true,                       # Overwrite existing files
+    plot_field_maps=false,                      # Do not compute/ plot field maps
+    mesh_only=false,                            # Preview the mesh
+    base_path=joinpath(@__DIR__, "fem_output"), # Results directory
+    keep_run_files=true,                        # Archive files after each run
+    verbosity=0,                                # Verbosity
+);
+
 # Define the FEM formulation with the specified parameters
-formulation = FormulationSet(
+formulation = FormulationSet(:FEM,
     impedance=FEMDarwin(),
     admittance=FEMElectrodynamics(),
     domain_radius=domain_radius,
@@ -353,22 +363,12 @@ formulation = FormulationSet(
     mesh_size_default=domain_radius / 10,
     mesh_algorithm=5,
     mesh_max_retries=20,
-    materials_db=materials_db
-);
-
-# Define runtime FEMOptions 
-opts = OptSet(
-    force_remesh=true,                          # Force remeshing
-    force_overwrite=true,                       # Overwrite existing files
-    plot_field_maps=false,                      # Do not compute/ plot field maps
-    mesh_only=false,                            # Preview the mesh
-    base_path=joinpath(@__DIR__, "fem_output"), # Results directory
-    keep_run_files=true,                        # Archive files after each run
-    verbosity=0,                                # Verbosity
+    materials_db=materials_db,
+    options=opts
 );
 
 # Run the FEM model
-@time workspace, line_params = compute!(problem, formulation, opts);
+@time workspace, line_params = compute!(problem, formulation);
 
 # Display primary core results
 if !opts.mesh_only
