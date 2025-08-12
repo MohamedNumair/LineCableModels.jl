@@ -19,7 +19,6 @@ Depth = 2:3
 # ##   Getting started
 
 # Load the package:
-push!(LOAD_PATH, joinpath(@__DIR__, "..", "src")) # hide
 using LineCableModels
 
 #=

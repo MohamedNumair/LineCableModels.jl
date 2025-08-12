@@ -25,7 +25,6 @@ HVDC cables are constructed around a central conductor enclosed by a triple-extr
 =#
 
 # Load the package and set up the environment:
-push!(LOAD_PATH, joinpath(@__DIR__, "..", "src")) # hide
 using DataFrames
 using LineCableModels
 
@@ -358,7 +357,7 @@ formulation = FormulationSet(
 );
 
 # Define runtime FEMOptions 
-opts = FEMOptions(
+opts = OptSet(
     force_remesh=true,                          # Force remeshing
     force_overwrite=true,                       # Overwrite existing files
     plot_field_maps=false,                      # Do not compute/ plot field maps

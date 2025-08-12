@@ -1,5 +1,5 @@
 # Export public API
-export FormulationSet, to_df, add!
+export FormulationSet, OptSet, to_df, add!
 
 """
     FormulationSet(...)
@@ -8,6 +8,8 @@ Constructs a specific formulation object based on the provided keyword arguments
 The system will infer the correct formulation type.
 """
 function FormulationSet end
+
+function OptSet end
 
 """
 $(TYPEDSIGNATURES)

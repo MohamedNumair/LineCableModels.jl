@@ -34,7 +34,6 @@ This tutorial covers:
 =#
 
 # Load the package and set up the environment:
-push!(LOAD_PATH, joinpath(@__DIR__, "..", "src")) # hide
 using DataFrames
 using LineCableModels
 
