@@ -4,7 +4,7 @@ module LineCableModels
 include("common_deps.jl")
 
 # Package-wide interfaces
-include("interf.jl")
+include("interfaces.jl")
 
 # Submodule `Utils`
 include("Utils.jl")
@@ -26,10 +26,10 @@ include("DataModel.jl")
 @force using .DataModel
 @reexport using .DataModel
 
-# Submodule `Core`
-include("Core.jl")
-@force using .Core
-@reexport using .Core
+# Submodule `Engine`
+include("Engine.jl")
+@force using .Engine
+@reexport using .Engine
 
 # Submodule `FEMTools`
 include("FEMTools.jl")
