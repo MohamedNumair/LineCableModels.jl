@@ -369,12 +369,6 @@ AbstractProblemFormulation
   ├── ...
   └── [Other specialized formulations, concrete or abstract]
 
-FormulationOptions
-  ├── FEMOptions
-  ├── EMTOptions
-  ├── ...
-  └── [Other specialized options sets]
-
 AbstractWorkspace
   ├── FEMWorkspace
   ├── EMTWorkspace
