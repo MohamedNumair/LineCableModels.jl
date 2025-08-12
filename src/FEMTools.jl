@@ -28,7 +28,7 @@ using ..Materials
 using ..EarthProps
 using ..DataModel
 using ..Core
-import ..LineCableModels: FormulationSet
+import ..LineCableModels: FormulationSet, OptSet
 
 # Module-specific dependencies
 using Gmsh
@@ -463,7 +463,7 @@ struct FEMOptions <: FormulationOptions
         force_overwrite::Bool=false,
         plot_field_maps::Bool=true,
         keep_run_files::Bool=false,
-        base_path::String="./fem_output",
+        base_path::String=joinpath(".", "fem_output"),
         getdp_executable::Union{String,Nothing}=nothing,
         verbosity::Int=0,
         logfile::Union{String,Nothing}=nothing
@@ -481,6 +481,29 @@ struct FEMOptions <: FormulationOptions
 
         return new(mesh_only, force_remesh, force_overwrite, plot_field_maps, keep_run_files, base_path, getdp_executable, verbosity, logfile)
     end
+end
+
+# Wrapper function to create a FEMOptions
+function OptSet(; mesh_only::Bool,
+    force_remesh::Bool,
+    force_overwrite::Bool,
+    plot_field_maps::Bool,
+    keep_run_files::Bool,
+    base_path::String,
+    getdp_executable::Union{String,Nothing}=nothing,
+    verbosity::Int,
+    logfile::Union{String,Nothing}=nothing,
+)
+    return FEMOptions(; mesh_only=mesh_only,
+        force_remesh=force_remesh,
+        force_overwrite=force_overwrite,
+        plot_field_maps=plot_field_maps,
+        keep_run_files=keep_run_files,
+        base_path=base_path,
+        getdp_executable=getdp_executable,
+        verbosity=verbosity,
+        logfile=logfile
+    )
 end
 
 """
