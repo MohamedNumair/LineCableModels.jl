@@ -271,7 +271,8 @@ function DataFrame(library::MaterialsLibrary)::DataFrame
         )
         for (name, m) in library.materials
     ]
-    return DataFrame(rows)
+    data = DataFrame(rows)
+    return data
 end
 
 """
