@@ -1871,7 +1871,7 @@ function DataFrame(
     format::Symbol=:baseparams;
     S::Union{Nothing,Number}=nothing,
     rho_e::Number=100,
-)
+)::DataFrame
     if format == :baseparams
         # Core parameters calculation
         # Get components from the vector
@@ -2527,7 +2527,7 @@ first(df, 5)  # Show the first 5 rows of the DataFrame
 - [`CableDesign`](@ref)
 - [`add!`](@ref)
 """
-function DataFrame(library::CablesLibrary)
+function DataFrame(library::CablesLibrary)::DataFrame
     ids = keys(library.cable_designs)
     nominal_data = [string(design.nominal_data) for design in values(library.cable_designs)]
     components = [
@@ -2598,7 +2598,7 @@ struct CablePosition
     - [`CableDesign`](@ref)
     """
     function CablePosition(
-        cable::CableDesign,
+        cable::Union{CableDesign,Nothing},
         horz::Number,
         vert::Number,
         conn::Union{Dict{String,Int},Nothing}=nothing,
@@ -3011,7 +3011,7 @@ println(df)
 - [`LineCableSystem`](@ref)
 - [`CablePosition`](@ref)
 """
-function DataFrame(system::LineCableSystem)
+function DataFrame(system::LineCableSystem)::DataFrame
     cable_ids = String[]
     horz_coords = Number[]
     vert_coords = Number[]
@@ -3029,13 +3029,13 @@ function DataFrame(system::LineCableSystem)
         )
         push!(mappings, mapping_str)
     end
-
-    return DataFrame(
+    data = DataFrame(
         cable_id=cable_ids,
         horz=horz_coords,
         vert=vert_coords,
-        phase_mapping=mappings,
+        phase_mapping=mappings
     )
+    return data
 end
 
 """
