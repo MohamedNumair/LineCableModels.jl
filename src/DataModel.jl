@@ -27,7 +27,7 @@ using ..Utils
 using ..Materials
 using ..EarthProps
 using ..LineCableModels # For physical constants (f₀, μ₀, ε₀, ρ₀, T₀, TOL, ΔTmax)
-import ..LineCableModels: add!, load!, preview, save
+import ..LineCableModels: add!, load!, preview, save, _is_headless
 
 # Module-specific dependencies
 using Measurements
@@ -3210,33 +3210,6 @@ function _resolve_backend(backend=nothing)
         backend()
     end
 end
-
-"""
-$(TYPEDSIGNATURES)
-
-Determines if the current execution environment is headless (without display capability).
-
-# Returns
-
-- `true` if running in a continuous integration environment or without display access.
-- `false` otherwise when a display is available.
-
-# Examples
-
-```julia
-if $(FUNCTIONNAME)()
-	# Use non-graphical backend
-	gr()
-else
-	# Use interactive backend
-	plotlyjs()
-end
-```
-"""
-function _is_headless()
-    return haskey(ENV, "CI") || !haskey(ENV, "DISPLAY")
-end
-
 
 """
 $(TYPEDSIGNATURES)

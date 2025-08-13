@@ -247,7 +247,7 @@ save(library, file_name=library_file);
 #=
 ### Earth model 
 
-Define a frequency-dependent earth model (1 Hz to 1 MHz):
+Define a constant frequency earth model:
 =#
 
 f = 1e-3 # Near DC frequency for the analysis

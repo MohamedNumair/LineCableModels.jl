@@ -29,7 +29,7 @@ using ..EarthProps
 using ..DataModel
 using ..Core
 using ..LineCableModels # For physical constants (f₀, μ₀, ε₀, ρ₀, T₀, TOL, ΔTmax)
-import ..LineCableModels: FormulationSet, OptSet
+import ..LineCableModels: FormulationSet, OptSet, _is_headless
 
 # Module-specific dependencies
 using Gmsh

@@ -67,3 +67,29 @@ function export_data end
 function save end
 
 function preview end
+
+"""
+$(TYPEDSIGNATURES)
+
+Determines if the current execution environment is headless (without display capability).
+
+# Returns
+
+- `true` if running in a continuous integration environment or without display access.
+- `false` otherwise when a display is available.
+
+# Examples
+
+```julia
+if $(FUNCTIONNAME)()
+	# Use non-graphical backend
+	gr()
+else
+	# Use interactive backend
+	plotlyjs()
+end
+```
+"""
+function _is_headless()
+    return haskey(ENV, "CI") || !haskey(ENV, "DISPLAY")
+end
