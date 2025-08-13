@@ -47,21 +47,21 @@ using GetDP
 using GetDP: Problem, get_getdp_executable, add!
 
 
-# Define default FEM options
-const DEFAULT_FEM_OPTIONS = (
-    mesh_only=false, # Build mesh only and preview (no solving)
-    force_remesh=false, # Force mesh regeneration even if file exists
-    force_overwrite=false, # Skip user confirmation for overwriting results
-    plot_field_maps=true, # Generate field visualization outputs
-    keep_run_files=false, # Archive temporary files after each frequency run
-    base_path=joinpath(".", "fem_output"), # Base path for output files
-    getdp_executable=nothing, # Path to GetDP executable
-    verbosity=0, # Verbosity level
-    logfile=nothing # Log file path
-)
+# # Define default FEM options
+# const DEFAULT_FEM_OPTIONS = (
+#     mesh_only=false, # Build mesh only and preview (no solving)
+#     force_remesh=false, # Force mesh regeneration even if file exists
+#     force_overwrite=false, # Skip user confirmation for overwriting results
+#     plot_field_maps=true, # Generate field visualization outputs
+#     keep_run_files=false, # Archive temporary files after each frequency run
+#     base_path=joinpath(".", "fem_output"), # Base path for output files
+#     getdp_executable=nothing, # Path to GetDP executable
+#     verbosity=0, # Verbosity level
+#     logfile=nothing # Log file path
+# )
 
 # Export public API
-export MeshTransition, FEMFormulation
+export MeshTransition#, FEMFormulation
 export compute!, preview_results
 export FEMElectrodynamics, FEMDarwin
 
@@ -299,6 +299,43 @@ function MeshTransition(
     )
 end
 
+
+# # Define default FEM options
+# const DEFAULT_FEM_OPTIONS = (
+#     mesh_only=false, # 
+#     force_remesh=false, # 
+#     force_overwrite=false, # Skip user confirmation for overwriting results
+#     plot_field_maps=true, # Generate field visualization outputs
+#     keep_run_files=false, # Archive temporary files after each frequency run
+#     base_path=joinpath(".", "fem_output"), # Base path for output files
+#     getdp_executable=nothing, # Path to GetDP executable
+#     verbosity=0, # Verbosity level
+#     logfile=nothing # Log file path
+# )
+@kwdef struct FEMOptions
+    "Build mesh only and preview (no solving)"
+    mesh_only::Bool = false
+    "Force mesh regeneration even if file exists"
+    force_remesh::Bool = false
+    "Skip user confirmation for overwriting results"
+    force_overwrite::Bool = false
+    "Generate field visualization outputs"
+    plot_field_maps::Bool = true
+    "Archive temporary files after each frequency run"
+    keep_run_files::Bool = false
+    "Base path for output files"
+    base_path::String = joinpath(".", "fem_output")
+    "Path to GetDP executable"
+    getdp_executable::Union{String,Nothing} = nothing
+    "Verbosity level"
+    verbosity::Int = 0
+    "Log file path"
+    logfile::Union{String,Nothing} = nothing
+end
+
+# The one-line constructor to "promote" a NamedTuple
+FEMOptions(opts::NamedTuple) = FEMOptions(; opts...)
+
 """
 $(TYPEDEF)
 
@@ -337,9 +374,9 @@ struct FEMFormulation <: AbstractFormulationSet
     "Maximum meshing retries and number of recursive subdivisions \\[dimensionless\\]."
     mesh_max_retries::Int
     "Materials database."
-    materials_db::MaterialsLibrary
+    materials::MaterialsLibrary
     "Solver options for FEM simulations."
-    options::NamedTuple
+    options::FEMOptions
     """
     $(TYPEDSIGNATURES)
 
@@ -357,7 +394,7 @@ struct FEMFormulation <: AbstractFormulationSet
     - `mesh_size_max`: Maximum mesh size \\[m\\]. Default: 1.0.
     - `mesh_size_default`: Default mesh size \\[m\\]. Default: `domain_radius/10`.
     - `mesh_algorithm`: Mesh algorithm to use \\[dimensionless\\]. Default: 6.
-    - `materials_db`: Materials database. Default: MaterialsLibrary().
+    - `materials`: Materials database. Default: MaterialsLibrary().
 
     # Returns
 
@@ -378,42 +415,27 @@ struct FEMFormulation <: AbstractFormulationSet
     ```
     """
     function FEMFormulation(;
-        impedance::AbstractImpedanceFormulation=FEMDarwin(),
-        admittance::AbstractAdmittanceFormulation=FEMElectrodynamics(),
-        domain_radius::Float64=5.0,
-        domain_radius_inf::Float64=6.25,
-        elements_per_length_conductor::Int=3,
-        elements_per_length_insulator::Int=2,
-        elements_per_length_semicon::Int=4,
-        elements_per_length_interfaces::Int=3,
-        points_per_circumference::Int=16,
-        mesh_size_min::Float64=1e-4,
-        mesh_size_max::Float64=1.0,
-        mesh_size_default::Float64=domain_radius / 10,
-        mesh_transitions::Vector{MeshTransition}=MeshTransition[],
-        mesh_algorithm::Int=5,
-        mesh_max_retries::Int=20,
-        materials_db::MaterialsLibrary=MaterialsLibrary(),
-        options::NamedTuple=NamedTuple() # Default to empty tuple
+        impedance::AbstractImpedanceFormulation,
+        admittance::AbstractAdmittanceFormulation,
+        domain_radius::Float64,
+        domain_radius_inf::Float64,
+        elements_per_length_conductor::Int,
+        elements_per_length_insulator::Int,
+        elements_per_length_semicon::Int,
+        elements_per_length_interfaces::Int,
+        points_per_circumference::Int,
+        mesh_size_min::Float64,
+        mesh_size_max::Float64,
+        mesh_size_default::Float64,
+        mesh_transitions::Vector{MeshTransition},
+        mesh_algorithm::Int,
+        mesh_max_retries::Int,
+        materials::MaterialsLibrary,
+        options::FEMOptions
     )
 
-        # Create new merged options with updated getdp_executable
-        if isempty(options) || !haskey(options, :getdp_executable) || isnothing(options.getdp_executable)
-            getdp_executable = GetDP.get_getdp_executable()
 
-            if !isfile(getdp_executable)
-                Base.error("GetDP executable not found: $(getdp_executable)")
-            end
-
-            # Create new NamedTuple with updated executable
-            merged_options = merge(DEFAULT_FEM_OPTIONS,
-                options,
-                (getdp_executable=getdp_executable,))
-        else
-            merged_options = merge(DEFAULT_FEM_OPTIONS, options)
-        end
-
-        setup_fem_logging(merged_options.verbosity, merged_options.logfile)
+        setup_fem_logging(options.verbosity, options.logfile)
 
         return new(
             domain_radius, domain_radius_inf,
@@ -421,31 +443,50 @@ struct FEMFormulation <: AbstractFormulationSet
             elements_per_length_semicon, elements_per_length_interfaces,
             points_per_circumference, (impedance, admittance),
             mesh_size_min, mesh_size_max, mesh_size_default,
-            mesh_transitions, mesh_algorithm, mesh_max_retries, materials_db,
-            merged_options
+            mesh_transitions, mesh_algorithm, mesh_max_retries, materials,
+            options
         )
     end
+end
+
+# Internal helper to find the executable path 
+function _resolve_getdp_path(opts::NamedTuple)
+    user_path = get(opts, :getdp_executable, nothing)
+    if user_path isa String && isfile(user_path)
+        return user_path
+    end
+    fallback_path = GetDP.get_getdp_executable()
+    if isfile(fallback_path)
+        return fallback_path
+    end
+    error("GetDP executable not found.")
 end
 
 # Wrapper function to create a FEMFormulation
 function FormulationSet(::Val{:FEM}; impedance::AbstractImpedanceFormulation=FEMDarwin(),
     admittance::AbstractAdmittanceFormulation=FEMElectrodynamics(),
-    domain_radius::Float64,
-    domain_radius_inf::Float64,
-    elements_per_length_conductor::Int,
-    elements_per_length_insulator::Int,
-    elements_per_length_semicon::Int,
-    elements_per_length_interfaces::Int,
-    points_per_circumference::Int,
-    mesh_size_min::Float64,
-    mesh_size_max::Float64,
-    mesh_size_default::Float64,
-    mesh_transitions::Vector{MeshTransition},
-    mesh_algorithm::Int,
-    mesh_max_retries::Int,
-    materials_db::MaterialsLibrary,
-    options::NamedTuple
+    domain_radius::Float64=5.0,
+    domain_radius_inf::Float64=6.25,
+    elements_per_length_conductor::Int=3,
+    elements_per_length_insulator::Int=2,
+    elements_per_length_semicon::Int=4,
+    elements_per_length_interfaces::Int=3,
+    points_per_circumference::Int=16,
+    mesh_size_min::Float64=1e-4,
+    mesh_size_max::Float64=1.0,
+    mesh_size_default::Float64=domain_radius / 10,
+    mesh_transitions::Vector{MeshTransition}=MeshTransition[],
+    mesh_algorithm::Int=5,
+    mesh_max_retries::Int=20,
+    materials::MaterialsLibrary=MaterialsLibrary(),
+    options::NamedTuple=(;)
 )
+    # Resolve solver path
+    validated_path = _resolve_getdp_path(options)
+
+    # Create a new NamedTuple with the validated path overwriting any user value
+    final_opts = merge(options, (getdp_executable=validated_path,))
+
     return FEMFormulation(; impedance=impedance,
         admittance=admittance,
         domain_radius=domain_radius,
@@ -461,8 +502,8 @@ function FormulationSet(::Val{:FEM}; impedance::AbstractImpedanceFormulation=FEM
         mesh_transitions=mesh_transitions,
         mesh_algorithm=mesh_algorithm,
         mesh_max_retries=mesh_max_retries,
-        materials_db=materials_db,
-        options=options
+        materials=materials,
+        options=FEMOptions(; final_opts...)
     )
 end
 
@@ -480,7 +521,7 @@ mutable struct FEMWorkspace
     "Formulation parameters."
     formulation::FEMFormulation
     "Computation options."
-    opts::NamedTuple
+    opts::FEMOptions
 
     "Path information."
     paths::Dict{Symbol,String}
@@ -579,23 +620,28 @@ function compute!(problem::LineParametersProblem,
     # Initialize workspace
     workspace = init_workspace(problem, formulation, workspace)
 
-    # Meshing phase
-    mesh_needed = !(mesh_exists(workspace, opts))
-    if mesh_needed || opts.mesh_only
-        @info "Building mesh for system: $(problem.system.system_id)"
-        make_mesh!(workspace)
-        if opts.mesh_only
-            @info "Saving workspace after mesh generation"
-            return workspace, nothing
-        end
-
-    else
-        @info "Using existing mesh"
+    # Meshing phase: make_mesh! decides if it needs to run.
+    # It returns true if the process should stop (e.g., mesh_only=true).
+    if make_mesh!(workspace)
+        return workspace, nothing
     end
+    # mesh_needed = !(mesh_exists(workspace))
+    # if mesh_needed || opts.mesh_only
+    #     @info "Building mesh for system: $(problem.system.system_id)"
+    #     make_mesh!(workspace)
+    #     if opts.mesh_only
+    #         @info "Saving workspace after mesh generation"
+    #         return workspace, nothing
+    #     end
+
+    # else
+    #     @info "Using existing mesh"
+    # end
 
     # Solving phase - always runs unless mesh_only
     @info "Starting FEM solver"
-    line_params = run_solver!(problem, formulation, workspace)
+    line_params = run_solver!(workspace)
+    # line_params = run_solver!(problem, formulation, workspace)
 
     @info "FEM computation completed successfully"
     return workspace, line_params
@@ -657,11 +703,11 @@ function init_workspace(problem, formulation, workspace)
     return workspace
 end
 
-function mesh_exists(workspace::FEMWorkspace, opts::NamedTuple)
+function mesh_exists(workspace::FEMWorkspace)
     mesh_file = workspace.paths[:mesh_file]
 
     # Force remesh overrides everything
-    if opts.force_remesh
+    if workspace.opts.force_remesh
         @debug "Force remesh requested"
         return false
     end
@@ -684,36 +730,63 @@ function mesh_exists(workspace::FEMWorkspace, opts::NamedTuple)
 end
 
 function make_mesh!(workspace::FEMWorkspace)
+
+    # If mesh exists and we are not forcing a remesh, do nothing and continue.
+    if mesh_exists(workspace)
+        @info "Using existing mesh"
+        return false # Signal to continue to solver
+    end
+
+    # --- Mesh generation is required from this point on ---
+    @info "Building mesh for system: $(workspace.problem_def.system.system_id)"
+
     try
+        # Ensure Gmsh is initialized
         if gmsh.is_initialized() == 0
             gmsh.initialize()
         end
+
+        # Perform the actual meshing
         _do_make_mesh!(workspace)
         @info "Mesh generation completed"
 
+        # Handle mesh-only mode: preview the mesh and stop.
+        # The Gmsh session is still active here.
         if workspace.opts.mesh_only
-            @info "Mesh-only mode: Opening preview"
+            @info "Mesh-only mode: Opening preview. Close the preview window to continue."
             preview_mesh(workspace)
+            @info "Preview closed. Halting computation as per mesh_only=true."
+            return true # Signal to stop computation
         end
 
     catch e
-        @error "Mesh generation failed" exception = e
+        @error "An error occurred during mesh generation or preview" exception = e
         rethrow(e)
     finally
-        try
-            gmsh.finalize()
-        catch fin_err
-            @warn "Gmsh finalization error" exception = fin_err
+        # CRITICAL: Finalize Gmsh only after all operations, including the
+        # potential preview, are complete. This ensures the session is
+        # always closed cleanly.
+        if gmsh.is_initialized() == 1
+            try
+                gmsh.finalize()
+            catch fin_err
+                @warn "Gmsh finalization error" exception = fin_err
+            end
         end
     end
+
+    # If we are not in mesh_only mode, signal to continue to the solver.
+    return false
 end
 
-function run_solver!(problem::LineParametersProblem,
-    formulation::FEMFormulation,
-    workspace::FEMWorkspace)
+function run_solver!(workspace::FEMWorkspace)
+
+    # Get problem and formulation from the workspace
+    problem = workspace.problem_def
+    formulation = workspace.formulation
 
     # Preallocate result matrices
-    n_phases = sum(length(c.design_data.components) for c in workspace.problem_def.system.cables)
+    n_phases = sum(length(c.design_data.components) for c in problem.system.cables)
     n_frequencies = length(problem.frequencies)
 
     Z = zeros(ComplexF64, n_phases, n_phases, n_frequencies)
@@ -724,7 +797,7 @@ function run_solver!(problem::LineParametersProblem,
         @info "Solving frequency $freq_idx/$n_frequencies: $frequency Hz"
 
         try
-            _do_run_solver!(frequency, freq_idx, formulation, workspace, Z, Y)
+            _do_run_solver!(frequency, freq_idx, workspace, Z, Y)
         catch e
             @error "Solver failed for frequency $frequency Hz" exception = e
             rethrow(e)
@@ -740,8 +813,11 @@ function run_solver!(problem::LineParametersProblem,
 end
 
 function _do_run_solver!(frequency::Float64, freq_idx::Int,
-    formulation::FEMFormulation, workspace::FEMWorkspace,
+    workspace::FEMWorkspace,
     Z::Array{ComplexF64,3}, Y::Array{ComplexF64,3})
+
+    # Get formulation from workspace
+    formulation = workspace.formulation
 
     # Build and solve both formulations
     for fem_formulation in formulation.analysis_type
