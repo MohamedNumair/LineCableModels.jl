@@ -29,18 +29,18 @@ using DataFrames
 using LineCableModels
 
 # Initialize materials library with default values:
-materials_db = MaterialsLibrary(add_defaults=true)
+materials = MaterialsLibrary(add_defaults=true)
 
 # Include the required materials for this design:
 lead = Material(21.4e-8, 1.0, 0.999983, 20.0, 0.00400) # Lead or lead alloy
-add!(materials_db, "lead", lead)
+add!(materials, "lead", lead)
 steel = Material(13.8e-8, 1.0, 300.0, 20.0, 0.00450) # Steel
-add!(materials_db, "steel", steel)
+add!(materials, "steel", steel)
 pp = Material(1e15, 2.8, 1.0, 20.0, 0.0) # Laminated paper propylene
-add!(materials_db, "pp", pp)
+add!(materials, "pp", pp)
 
 # Inspect the contents of the materials library:
-DataFrame(materials_db)
+materials_df = DataFrame(materials)
 
 #=
 ## Cable dimensions
@@ -102,7 +102,7 @@ df = DataFrame( # hide
 Initialize the conductor object and assign the central wire:
 =#
 
-material = get(materials_db, "copper")
+material = get(materials, "copper")
 n = 6
 core = ConductorGroup(WireArray(0, Diameter(d_w), 1, 0, material))
 
@@ -120,7 +120,7 @@ add!(core, WireArray, Diameter(d_w), 6 * n, 11, material)
 Inner semiconductor (1000 Ω.m as per IEC 840):
 =#
 
-material = get(materials_db, "semicon1")
+material = get(materials, "semicon1")
 main_insu = InsulatorGroup(Semicon(core, Thickness(t_sc_in), material))
 
 #=
@@ -129,7 +129,7 @@ main_insu = InsulatorGroup(Semicon(core, Thickness(t_sc_in), material))
 Add the insulation layer:
 =#
 
-material = get(materials_db, "pe")
+material = get(materials, "pe")
 add!(main_insu, Insulator, Thickness(t_ins), material)
 
 #=
@@ -138,11 +138,11 @@ add!(main_insu, Insulator, Thickness(t_ins), material)
 Outer semiconductor (500 Ω.m as per IEC 840):
 =#
 
-material = get(materials_db, "semicon2")
+material = get(materials, "semicon2")
 add!(main_insu, Semicon, Thickness(t_sc_out), material)
 
 # Water blocking (swellable) tape:
-material = get(materials_db, "polyacrylate")
+material = get(materials, "polyacrylate")
 add!(main_insu, Semicon, Thickness(t_wbt), material)
 
 # Group core-related components:
@@ -162,7 +162,7 @@ datasheet_info = NominalData(
 cable_design = CableDesign(cable_id, core_cc, nominal_data=datasheet_info)
 
 # At this point, it becomes possible to preview the cable design:
-plt1 = preview_cabledesign(cable_design)
+plt1 = preview(cable_design)
 
 #=
 ### Lead screen/sheath
@@ -170,24 +170,24 @@ plt1 = preview_cabledesign(cable_design)
 Build the wire screens on top of the previous layer:
 =#
 
-material = get(materials_db, "lead")
+material = get(materials, "lead")
 screen_con =
     ConductorGroup(Tubular(main_insu, Thickness(t_sc), material))
 
 # PE inner sheath:
-material = get(materials_db, "pe")
+material = get(materials, "pe")
 screen_insu = InsulatorGroup(Insulator(screen_con, Thickness(t_pe), material))
 
 # PP bedding:
-material = get(materials_db, "pp")
+material = get(materials, "pp")
 add!(screen_insu, Insulator, Thickness(t_bed), material)
 
 # Group sheath components and assign to design:
 sheath_cc = CableComponent("sheath", screen_con, screen_insu)
-addto_cabledesign!(cable_design, sheath_cc)
+add!(cable_design, sheath_cc)
 
 # Examine the newly added components:
-plt2 = preview_cabledesign(cable_design)
+plt2 = preview(cable_design)
 
 #=
 ### Armor and outer jacket components
@@ -196,19 +196,19 @@ plt2 = preview_cabledesign(cable_design)
 
 # Add the armor wires on top of the previous layer:
 lay_ratio = 10 # typical value for wire screens
-material = get(materials_db, "steel")
+material = get(materials, "steel")
 armor_con =
     ConductorGroup(WireArray(screen_insu, Diameter(d_wa), num_ar_wires, lay_ratio, material))
 
 # PP layer after armor:
-material = get(materials_db, "pp")
+material = get(materials, "pp")
 armor_insu = InsulatorGroup(Insulator(armor_con, Thickness(t_jac), material))
 
 # Assign the armor parts directly to the design:
-addto_cabledesign!(cable_design, "armor", armor_con, armor_insu)
+add!(cable_design, "armor", armor_con, armor_insu)
 
 # Inspect the finished cable design:
-plt3 = preview_cabledesign(cable_design)
+plt3 = preview(cable_design)
 
 #=
 ## Examining the cable parameters (RLC)
@@ -233,7 +233,7 @@ library = CablesLibrary()
 library_file = joinpath(@__DIR__, "cables_library.json")
 load!(library, file_name=library_file)
 add!(library, cable_design)
-DataFrame(library)
+library_df = DataFrame(library)
 
 # Save to file for later use:
 
@@ -342,7 +342,7 @@ opts = (
     mesh_only=false,                            # Preview the mesh
     base_path=joinpath(@__DIR__, "fem_output"), # Results directory
     keep_run_files=true,                        # Archive files after each run
-    verbosity=0,                                # Verbosity
+    verbosity=1,                                # Verbosity
 );
 
 # Define the FEM formulation with the specified parameters
@@ -363,7 +363,7 @@ formulation = FormulationSet(:FEM,
     mesh_size_default=domain_radius / 10,
     mesh_algorithm=5,
     mesh_max_retries=20,
-    materials_db=materials_db,
+    materials=materials,
     options=opts
 );
 
