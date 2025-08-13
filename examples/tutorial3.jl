@@ -155,9 +155,9 @@ datasheet_info = NominalData(
     U=525.0,                         # Phase (pole)-to-phase (pole) voltage [kV]
     conductor_cross_section=1600.0,  # [mm²]
     screen_cross_section=1000.0,     # [mm²]
-    # resistance=NaN,                  # DC resistance [Ω/km]
-    # capacitance=NaN,                 # Capacitance [μF/km]
-    # inductance=NaN,                  # Inductance in trifoil [mH/km]
+    resistance=nothing,              # DC resistance [Ω/km]
+    capacitance=nothing,             # Capacitance [μF/km]
+    inductance=nothing,              # Inductance in trifoil [mH/km]
 )
 cable_design = CableDesign(cable_id, core_cc, nominal_data=datasheet_info)
 
