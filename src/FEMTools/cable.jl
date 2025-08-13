@@ -271,6 +271,10 @@ function _make_cablepart!(workspace::FEMWorkspace, part::WireArray,
         mesh_size_next = mesh_size_current
     end
 
+    # A single wire without air gaps
+    is_single_wire = (num_wires == 1) && (isnothing(next_part) || !(next_part isa WireArray))
+
+
     mesh_size = min(mesh_size_current, mesh_size_next)
     num_points_circumference = workspace.formulation.points_per_circumference
 
@@ -299,7 +303,7 @@ function _make_cablepart!(workspace::FEMWorkspace, part::WireArray,
     wire_positions = _calc_wirearray_coords(num_wires, radius_in, radius_ext, C=(x_center, y_center))
 
     # Create wires
-    TOL = 5e-6 # Shrink the radius to avoid overlapping boundaries, this must be greater than Gmsh geometry tolerance
+    TOL = is_single_wire ? 0 : 5e-6 # Shrink the radius to avoid overlapping boundaries, this must be greater than Gmsh geometry tolerance
     for (wire_idx, (wx, wy)) in enumerate(wire_positions)
 
         _, _, marker, _ = draw_disk(wx, wy, radius_wire - TOL, mesh_size, num_points_circumference)
@@ -346,8 +350,7 @@ function _make_cablepart!(workspace::FEMWorkspace, part::WireArray,
     # - Multiple wires (always)
     # - Single wire IF next part is a WireArray
     # Skip ONLY for single wire when next part is not a WireArray
-
-    if num_wires > 1 || (num_wires == 1 && !isnothing(next_part) && next_part isa WireArray)
+    if !is_single_wire
         # Air gaps will be determined from the boolean fragmentation operation and do not need to be drawn. Only the markers are needed.
         markers_air_gap = get_air_gap_markers(num_wires, radius_wire, radius_in)
 
