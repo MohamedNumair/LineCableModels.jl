@@ -19,6 +19,7 @@ Depth = 2:3
 # ##   Getting started
 
 # Load the package:
+using DataFrames
 using LineCableModels
 
 #=
@@ -31,7 +32,7 @@ materials with their standard properties.
 materials_db = MaterialsLibrary()
 
 # Inspect the contents of the materials library:
-df_initial = DataFrame(materials_db)
+materials_df = DataFrame(materials_db)
 
 #=
 The function [`DataFrame`](@ref) returns a `DataFrame` with all materials and their properties, namely: electrical resistivity, relative permittivity, relative permeability, reference temperature, and temperature coefficient.
@@ -87,7 +88,7 @@ delete!(materials_db, "epr_dupe")
 
 # Examine the updated library after removing the duplicate:
 println("Material properties compiled from CIGRE TB-531 and IEC 60287:")
-df_final = DataFrame(materials_db)
+materials_df = DataFrame(materials_db)
 
 # ##  Saving the materials library to JSON
 output_file = joinpath(@__DIR__, "materials_library.json")
