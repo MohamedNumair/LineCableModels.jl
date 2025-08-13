@@ -23,22 +23,12 @@ $(FUNCTIONNAME)(workspace)
 ```
 """
 function preview_mesh(workspace::FEMWorkspace)
-    # Check if Gmsh is already initialized
-    gmsh_already_initialized = false
 
-    try
-        # Try to get version - this will throw if Gmsh is not initialized
-        gmsh.option.get_number("General.Terminal")
-        @debug "Gmsh already initialized"
-        gmsh_already_initialized = true
-    catch
-        gmsh_already_initialized = false
-    end
-
-    # Initialize Gmsh if needed
-    if !gmsh_already_initialized
+    if gmsh.is_initialized() == 0
         gmsh.initialize()
         @debug "Initialized Gmsh for mesh preview"
+    else
+        @debug "Gmsh already initialized"
     end
 
     try
