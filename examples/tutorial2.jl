@@ -38,16 +38,13 @@ using DataFrames
 using LineCableModels
 
 # Initialize materials library with default values:
-materials_db = MaterialsLibrary(add_defaults=true)
-DataFrame(materials_db)
+materials = MaterialsLibrary(add_defaults=true)
+materials_df = DataFrame(materials)
 
 #=
 ```julia
 # Alternatively, it can be loaded from the example file built in the previous tutorial:
-load!(
-	materials_db,
-	file_name = "materials_library.json",
-)
+load!(materials, file_name = "materials_library.json")
 ```
 =#
 
@@ -191,7 +188,7 @@ The core consists of a 4-layer AAAC stranded conductor with 61 wires arranged in
 =#
 
 # Initialize the conductor object and assign the central wire:
-material = get(materials_db, "aluminum")
+material = get(materials, "aluminum")
 core = ConductorGroup(WireArray(0, Diameter(d_w), 1, 0, material))
 
 #=
@@ -218,11 +215,11 @@ the conductor and insulation, eliminating air gaps and reducing field concentrat
 =#
 
 # Inner semiconductive tape:
-material = get(materials_db, "polyacrylate")
+material = get(materials, "polyacrylate")
 main_insu = InsulatorGroup(Semicon(core, Thickness(t_sct), material))
 
 # Inner semiconductor (1000 Ω.m as per IEC 840):
-material = get(materials_db, "semicon1")
+material = get(materials, "semicon1")
 add!(main_insu, Semicon, Thickness(t_sc_in), material)
 
 #=
@@ -233,7 +230,7 @@ medium and high voltage cables due to its excellent dielectric properties.
 =#
 
 # Add the insulation layer:
-material = get(materials_db, "pe")
+material = get(materials, "pe")
 add!(main_insu, Insulator, Thickness(t_ins), material)
 
 #=
@@ -244,11 +241,11 @@ transition from insulation to the metallic screen.
 =#
 
 # Outer semiconductor (500 Ω.m as per IEC 840):
-material = get(materials_db, "semicon2")
+material = get(materials, "semicon2")
 add!(main_insu, Semicon, Thickness(t_sc_out), material)
 
 # Outer semiconductive tape:
-material = get(materials_db, "polyacrylate")
+material = get(materials, "polyacrylate")
 add!(main_insu, Semicon, Thickness(t_sct), material)
 
 # Group core-related components:
@@ -287,7 +284,7 @@ The metallic screen (typically copper) serves multiple purposes:
 
 # Build the wire screens on top of the previous layer:
 lay_ratio = 10 # typical value for wire screens
-material = get(materials_db, "copper")
+material = get(materials, "copper")
 screen_con =
     ConductorGroup(WireArray(main_insu, Diameter(d_ws), num_sc_wires, lay_ratio, material))
 
@@ -295,7 +292,7 @@ screen_con =
 add!(screen_con, Strip, Thickness(t_cut), w_cut, lay_ratio, material)
 
 # Water blocking tape over screen:
-material = get(materials_db, "polyacrylate")
+material = get(materials, "polyacrylate")
 screen_insu = InsulatorGroup(Semicon(screen_con, Thickness(t_wbt), material))
 
 # Group sheath components and assign to design:
@@ -313,15 +310,15 @@ and PE (polyethylene) outer jacket for mechanical protection.
 =#
 
 # Add the aluminum foil (moisture barrier):
-material = get(materials_db, "aluminum")
+material = get(materials, "aluminum")
 jacket_con = ConductorGroup(Tubular(screen_insu, Thickness(t_alt), material))
 
 # PE layer after aluminum foil:
-material = get(materials_db, "pe")
+material = get(materials, "pe")
 jacket_insu = InsulatorGroup(Insulator(jacket_con, Thickness(t_pet), material))
 
 # PE jacket (outer mechanical protection):
-material = get(materials_db, "pe")
+material = get(materials, "pe")
 add!(jacket_insu, Insulator, Thickness(t_jac), material)
 
 #=
@@ -360,7 +357,7 @@ detailed_df = DataFrame(cable_design, :detailed)
 # Store the cable design and inspect the library contents:
 library = CablesLibrary()
 add!(library, cable_design)
-DataFrame(library)
+library_df = DataFrame(library)
 
 # Save to file for later use:
 output_file = joinpath(@__DIR__, "cables_library.json")
