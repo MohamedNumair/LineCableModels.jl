@@ -21,7 +21,7 @@ Get the name of a material from a materials library.
 # Examples
 
 ```julia
-name = $(FUNCTIONNAME)(material, materials_db)
+name = $(FUNCTIONNAME)(material, materials)
 ```
 """
 function get_material_name(material::Material, library::MaterialsLibrary; tol=1e-6)
@@ -110,8 +110,8 @@ function get_earth_model_material(workspace::FEMWorkspace, layer_idx::Int)
 end
 
 function get_air_material(workspace::FEMWorkspace)
-    if !isnothing(workspace.formulation.materials_db)
-        air_material = get(workspace.formulation.materials_db, "air")
+    if !isnothing(workspace.formulation.materials)
+        air_material = get(workspace.formulation.materials, "air")
         if isnothing(air_material)
             @warn("Air material not found in database. Overriding with default properties.")
             air_material = Material(Inf, 1.0, 1.0, 20.0, 0.0)
