@@ -33,14 +33,14 @@ materials_db = MaterialsLibrary(add_defaults=true)
 
 # Include the required materials for this design:
 lead = Material(21.4e-8, 1.0, 0.999983, 20.0, 0.00400) # Lead or lead alloy
-store_materialslibrary!(materials_db, "lead", lead)
+add!(materials_db, "lead", lead)
 steel = Material(13.8e-8, 1.0, 300.0, 20.0, 0.00450) # Steel
-store_materialslibrary!(materials_db, "steel", steel)
+add!(materials_db, "steel", steel)
 pp = Material(1e15, 2.8, 1.0, 20.0, 0.0) # Laminated paper propylene
-store_materialslibrary!(materials_db, "pp", pp)
+add!(materials_db, "pp", pp)
 
 # Inspect the contents of the materials library:
-list_materialslibrary(materials_db)
+DataFrame(materials_db)
 
 #=
 ## Cable dimensions
@@ -102,17 +102,17 @@ df = DataFrame( # hide
 Initialize the conductor object and assign the central wire:
 =#
 
-material = get_material(materials_db, "copper")
+material = get(materials_db, "copper")
 n = 6
 core = ConductorGroup(WireArray(0, Diameter(d_w), 1, 0, material))
 
 # Add the subsequent layers of wires and inspect the object:
-addto_conductorgroup!(core, WireArray, Diameter(d_w), 1 * n, 11, material)
-addto_conductorgroup!(core, WireArray, Diameter(d_w), 2 * n, 11, material)
-addto_conductorgroup!(core, WireArray, Diameter(d_w), 3 * n, 11, material)
-addto_conductorgroup!(core, WireArray, Diameter(d_w), 4 * n, 11, material)
-addto_conductorgroup!(core, WireArray, Diameter(d_w), 5 * n, 11, material)
-addto_conductorgroup!(core, WireArray, Diameter(d_w), 6 * n, 11, material)
+add!(core, WireArray, Diameter(d_w), 1 * n, 11, material)
+add!(core, WireArray, Diameter(d_w), 2 * n, 11, material)
+add!(core, WireArray, Diameter(d_w), 3 * n, 11, material)
+add!(core, WireArray, Diameter(d_w), 4 * n, 11, material)
+add!(core, WireArray, Diameter(d_w), 5 * n, 11, material)
+add!(core, WireArray, Diameter(d_w), 6 * n, 11, material)
 
 #=
 ### Inner semiconductor
@@ -120,7 +120,7 @@ addto_conductorgroup!(core, WireArray, Diameter(d_w), 6 * n, 11, material)
 Inner semiconductor (1000 Ω.m as per IEC 840):
 =#
 
-material = get_material(materials_db, "semicon1")
+material = get(materials_db, "semicon1")
 main_insu = InsulatorGroup(Semicon(core, Thickness(t_sc_in), material))
 
 #=
@@ -129,8 +129,8 @@ main_insu = InsulatorGroup(Semicon(core, Thickness(t_sc_in), material))
 Add the insulation layer:
 =#
 
-material = get_material(materials_db, "pe")
-addto_insulatorgroup!(main_insu, Insulator, Thickness(t_ins), material)
+material = get(materials_db, "pe")
+add!(main_insu, Insulator, Thickness(t_ins), material)
 
 #=
 ### Outer semiconductor
@@ -138,12 +138,12 @@ addto_insulatorgroup!(main_insu, Insulator, Thickness(t_ins), material)
 Outer semiconductor (500 Ω.m as per IEC 840):
 =#
 
-material = get_material(materials_db, "semicon2")
-addto_insulatorgroup!(main_insu, Semicon, Thickness(t_sc_out), material)
+material = get(materials_db, "semicon2")
+add!(main_insu, Semicon, Thickness(t_sc_out), material)
 
 # Water blocking (swellable) tape:
-material = get_material(materials_db, "polyacrylate")
-addto_insulatorgroup!(main_insu, Semicon, Thickness(t_wbt), material)
+material = get(materials_db, "polyacrylate")
+add!(main_insu, Semicon, Thickness(t_wbt), material)
 
 # Group core-related components:
 core_cc = CableComponent("core", core, main_insu)
@@ -170,17 +170,17 @@ plt1 = preview_cabledesign(cable_design)
 Build the wire screens on top of the previous layer:
 =#
 
-material = get_material(materials_db, "lead")
+material = get(materials_db, "lead")
 screen_con =
     ConductorGroup(Tubular(main_insu, Thickness(t_sc), material))
 
 # PE inner sheath:
-material = get_material(materials_db, "pe")
+material = get(materials_db, "pe")
 screen_insu = InsulatorGroup(Insulator(screen_con, Thickness(t_pe), material))
 
 # PP bedding:
-material = get_material(materials_db, "pp")
-addto_insulatorgroup!(screen_insu, Insulator, Thickness(t_bed), material)
+material = get(materials_db, "pp")
+add!(screen_insu, Insulator, Thickness(t_bed), material)
 
 # Group sheath components and assign to design:
 sheath_cc = CableComponent("sheath", screen_con, screen_insu)
@@ -196,12 +196,12 @@ plt2 = preview_cabledesign(cable_design)
 
 # Add the armor wires on top of the previous layer:
 lay_ratio = 10 # typical value for wire screens
-material = get_material(materials_db, "steel")
+material = get(materials_db, "steel")
 armor_con =
     ConductorGroup(WireArray(screen_insu, Diameter(d_wa), num_ar_wires, lay_ratio, material))
 
 # PP layer after armor:
-material = get_material(materials_db, "pp")
+material = get(materials_db, "pp")
 armor_insu = InsulatorGroup(Insulator(armor_con, Thickness(t_jac), material))
 
 # Assign the armor parts directly to the design:
@@ -217,10 +217,10 @@ In this section, the cable design is examined and the calculated parameters are 
 =#
 
 # Summarize DC lumped parameters (R, L, C):
-core_df = to_df(cable_design, :baseparams)
+core_df = DataFrame(cable_design, :baseparams)
 
 # Obtain the equivalent electromagnetic properties of the cable:
-components_df = to_df(cable_design, :components)
+components_df = DataFrame(cable_design, :components)
 
 #=
 ## Saving the cable design
@@ -231,13 +231,13 @@ Load an existing [`CablesLibrary`](@ref) file or create a new one:
 
 library = CablesLibrary()
 library_file = joinpath(@__DIR__, "cables_library.json")
-load_cableslibrary!(library, file_name=library_file)
-store_cableslibrary!(library, cable_design)
-list_cableslibrary(library)
+load!(library, file_name=library_file)
+add!(library, cable_design)
+DataFrame(library)
 
 # Save to file for later use:
 
-save_cableslibrary(library, file_name=library_file);
+save(library, file_name=library_file);
 
 #=
 ## Defining a cable system
@@ -254,7 +254,7 @@ f = 1e-3 # Near DC frequency for the analysis
 earth_params = EarthModel([f], 100.0, 10.0, 1.0)  # 100 Ω·m resistivity, εr=10, μr=1
 
 # Earth model base (DC) properties:
-earthmodel_df = to_df(earth_params)
+earthmodel_df = DataFrame(earth_params)
 
 #=
 ### Underground bipole configuration
@@ -271,7 +271,7 @@ cablepos = CablePosition(cable_design, xp, y0,
 cable_system = LineCableSystem("525kV_1600mm2_bipole", 1000.0, cablepos)
 
 # Add the other pole (negative) to the system:
-addto_linecablesystem!(cable_system, cable_design, xn, y0,
+add!(cable_system, cable_design, xn, y0,
     Dict("core" => 2, "sheath" => 0, "armor" => 0))
 
 #=
@@ -281,10 +281,10 @@ In this section the complete bipole cable system is examined.
 =#
 
 # Display system details:
-system_df = to_df(cable_system)
+system_df = DataFrame(cable_system)
 
 # Visualize the cross-section of the three-phase system:
-plt4 = preview_linecablesystem(cable_system, zoom_factor=0.15)
+plt4 = preview(cable_system, zoom_factor=0.15)
 
 #=
 ## PSCAD export
@@ -295,7 +295,7 @@ Export to PSCAD input file:
 =#
 
 output_file = joinpath(@__DIR__, "$(cable_system.system_id)_export.pscx")
-export_file = export_pscad_lcp(cable_system, earth_params, file_name=output_file);
+export_file = export_data(:pscad, cable_system, earth_params, file_name=output_file);
 
 #=
 ## FEM calculations
@@ -319,7 +319,7 @@ domain_radius = clamp(skin_depth_earth, 5.0, 5000.0);
 mesh_transition1 = MeshTransition(
     cable_system,
     [1],
-    r_min=0.0,
+    r_min=0.08,
     r_length=0.25,
     mesh_factor_min=0.01 / (domain_radius / 5),
     mesh_factor_max=0.25 / (domain_radius / 5),
@@ -328,7 +328,7 @@ mesh_transition1 = MeshTransition(
 mesh_transition2 = MeshTransition(
     cable_system,
     [2],
-    r_min=0.0,
+    r_min=0.08,
     r_length=0.25,
     mesh_factor_min=0.01 / (domain_radius / 5),
     mesh_factor_max=0.25 / (domain_radius / 5),

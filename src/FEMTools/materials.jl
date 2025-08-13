@@ -111,7 +111,7 @@ end
 
 function get_air_material(workspace::FEMWorkspace)
     if !isnothing(workspace.formulation.materials_db)
-        air_material = get_material(workspace.formulation.materials_db, "air")
+        air_material = get(workspace.formulation.materials_db, "air")
         if isnothing(air_material)
             @warn("Air material not found in database. Overriding with default properties.")
             air_material = Material(Inf, 1.0, 1.0, 20.0, 0.0)

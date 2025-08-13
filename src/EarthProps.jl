@@ -24,11 +24,13 @@ module EarthProps
 include("common_deps.jl")
 using ..Utils
 using ..LineCableModels # For physical constants (f₀, μ₀, ε₀, ρ₀, T₀, TOL, ΔTmax)
-import ..LineCableModels: _get_description, to_df, add!
+import ..LineCableModels: _get_description, add!
 
 # Module-specific dependencies
 using Measurements
 using DataFrames
+import DataFrames: DataFrame
+import Base: show
 
 # Export public API
 export AbstractFDEMFormulation,
@@ -437,7 +439,7 @@ df = $(FUNCTIONNAME)(earth_model)
 println(df)
 ```
 """
-function to_df(earth_model::EarthModel)
+function DataFrame(earth_model::EarthModel)
     layers = earth_model.layers
 
     base_rho_g = [layer.base_rho_g for layer in layers]
@@ -453,7 +455,6 @@ function to_df(earth_model::EarthModel)
     )
 end
 
-import Base: show
 """
 $(TYPEDSIGNATURES)
 

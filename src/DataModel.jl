@@ -27,7 +27,7 @@ using ..Utils
 using ..Materials
 using ..EarthProps
 using ..LineCableModels # For physical constants (f₀, μ₀, ε₀, ρ₀, T₀, TOL, ΔTmax)
-import ..LineCableModels: to_df, add!
+import ..LineCableModels: add!, load!, preview, save
 
 # Module-specific dependencies
 using Measurements
@@ -35,6 +35,8 @@ using DataFrames
 using Colors
 using Plots
 using DisplayAs: DisplayAs
+import DataFrames: DataFrame
+import Base: get, delete!
 
 """
 $(TYPEDEF)
@@ -432,7 +434,7 @@ $(FUNCTIONNAME)(conductor, WireArray, 0.02, 0.002, 7, 15, material_props, temper
 - [`calc_parallel_equivalent`](@ref)
 - [`calc_equivalent_alpha`](@ref)
 """
-function addto_conductorgroup!(
+function add!(
     group::ConductorGroup,
     part_type::Type{T},  # The type of conductor part (WireArray, Strip, Tubular)
     args...;  # Arguments specific to the part type
@@ -526,11 +528,9 @@ $(FUNCTIONNAME)(insulator_group, Semicon, 0.015, 0.018, material_props)
 - [`InsulatorGroup`](@ref)
 - [`Insulator`](@ref)
 - [`Semicon`](@ref)
-- [`calc_equivalent_gmr`](@ref) # This should be removed
 - [`calc_parallel_equivalent`](@ref)
-- [`calc_equivalent_alpha`](@ref) # This should be removed
 """
-function addto_insulatorgroup!(
+function add!(
     group::InsulatorGroup,
     part_type::Type{T},  # The type of insulator part (Insulator, Semicon)
     args...;  # Arguments specific to the part type
@@ -1764,7 +1764,7 @@ $(FUNCTIONNAME)(design, component)
 - [`CableDesign`](@ref)
 - [`CableComponent`](@ref)
 """
-function addto_cabledesign!(
+function add!(
     design::CableDesign,
     component::CableComponent,
 )
@@ -1811,7 +1811,7 @@ $(FUNCTIONNAME)(design, "shield", conductor_group, insulator_group)
 - [`CableDesign`](@ref)
 - [`CableComponent`](@ref)
 """
-function addto_cabledesign!(
+function add!(
     design::CableDesign,
     component_id::String,
     conductor_group::ConductorGroup,
@@ -1821,7 +1821,7 @@ function addto_cabledesign!(
     component = CableComponent(component_id, conductor_group, insulator_group)
 
     # Call the main function
-    return addto_cabledesign!(design, component)
+    return add!(design, component)
 end
 
 """
@@ -1847,16 +1847,16 @@ Extracts and displays data from a [`CableDesign`](@ref).
 
 ```julia
 # Get basic RLC parameters
-data = to_df(design)  # Default is :baseparams format
+data = DataFrame(design)  # Default is :baseparams format
 
 # Get component-level data
-comp_data = to_df(design, :components)
+comp_data = DataFrame(design, :components)
 
 # Get detailed part-by-part breakdown
-detailed_data = to_df(design, :detailed)
+detailed_data = DataFrame(design, :detailed)
 
 # Specify earth parameters for core calculations
-core_data = to_df(design, :baseparams, S=0.5, rho_e=150)
+core_data = DataFrame(design, :baseparams, S=0.5, rho_e=150)
 ```
 
 # See also
@@ -1866,7 +1866,7 @@ core_data = to_df(design, :baseparams, S=0.5, rho_e=150)
 - [`calc_inductance_trifoil`](@ref)
 - [`calc_shunt_capacitance`](@ref)
 """
-function to_df(
+function DataFrame(
     design::CableDesign,
     format::Symbol=:baseparams;
     S::Union{Nothing,Number}=nothing,
@@ -2189,7 +2189,7 @@ cable_plot = $(FUNCTIONNAME)(design)  # Cable cross-section is displayed
 - [`Strip`](@ref)
 - [`Semicon`](@ref)
 """
-function preview_cabledesign(
+function preview(
     design::CableDesign;
     x_offset=0.0,
     y_offset=0.0,
@@ -2358,10 +2358,10 @@ mutable struct CablesLibrary
     # See also
 
     - [`CableDesign`](@ref)
-    - [`store_cableslibrary!`](@ref)
-    - [`remove_cableslibrary!`](@ref)
-    - [`LineCableModels.ImportExport.save_cableslibrary`](@ref)
-    - [`list_cableslibrary`](@ref)
+    - [`add!`](@ref)
+    - [`delete!`](@ref)
+    - [`LineCableModels.ImportExport.save`](@ref)
+    - [`DataFrame`](@ref)
     """
     function CablesLibrary()::CablesLibrary
         library = new(Dict{String,CableDesign}())
@@ -2386,16 +2386,16 @@ Stores a cable design in a [`CablesLibrary`](@ref) object.
 ```julia
 library = CablesLibrary()
 design = CableDesign("example", ...) # Initialize CableDesign with required fields
-store_cableslibrary!(library, design)
+add!(library, design)
 println(library.cable_designs) # Prints the updated dictionary containing the new cable design
 ```
 # See also
 
 - [`CablesLibrary`](@ref)
 - [`CableDesign`](@ref)
-- [`remove_cableslibrary!`](@ref)
+- [`delete!`](@ref)
 """
-function store_cableslibrary!(library::CablesLibrary, design::CableDesign)
+function add!(library::CablesLibrary, design::CableDesign)
     library.cable_designs[design.cable_id] = design
     println("Cable design with ID `$(design.cable_id)` added to the library.")
     library
@@ -2420,7 +2420,7 @@ Removes a cable design from a [`CablesLibrary`](@ref) object by its ID.
 ```julia
 library = CablesLibrary()
 design = CableDesign("example", ...) # Initialize a CableDesign
-store_cableslibrary!(library, design)
+add!(library, design)
 
 # Remove the cable design
 $(FUNCTIONNAME)(library, "example")
@@ -2430,9 +2430,9 @@ haskey(library.cable_designs, "example")  # Returns false
 # See also
 
 - [`CablesLibrary`](@ref)
-- [`store_cableslibrary!`](@ref)
+- [`add!`](@ref)
 """
-function remove_cableslibrary!(library::CablesLibrary, cable_id::String)
+function delete!(library::CablesLibrary, cable_id::String)
     if haskey(library.cable_designs, cable_id)
         delete!(library.cable_designs, cable_id)
         println("Cable design with ID `$cable_id` removed from the library.")
@@ -2460,7 +2460,7 @@ Retrieves a cable design from a [`CablesLibrary`](@ref) object by its ID.
 ```julia
 library = CablesLibrary()
 design = CableDesign("example", ...) # Initialize a CableDesign
-store_cableslibrary!(library, design)
+add!(library, design)
 
 # Retrieve the cable design
 retrieved_design = $(FUNCTIONNAME)(library, "cable1")
@@ -2475,10 +2475,10 @@ println(missing_design === nothing)  # Prints true
 
 - [`CablesLibrary`](@ref)
 - [`CableDesign`](@ref)
-- [`store_cableslibrary!`](@ref)
-- [`remove_cableslibrary!`](@ref)
+- [`add!`](@ref)
+- [`delete!`](@ref)
 """
-function get_cabledesign(
+function get(
     library::CablesLibrary,
     cable_id::String,
 )::Union{Nothing,CableDesign}
@@ -2513,8 +2513,8 @@ Lists the cable designs in a [`CablesLibrary`](@ref) object as a `DataFrame`.
 library = CablesLibrary()
 design1 = CableDesign("example1", nominal_data=NominalData(...), components=Dict("A"=>...))
 design2 = CableDesign("example2", nominal_data=NominalData(...), components=Dict("C"=>...))
-store_cableslibrary!(library, design1)
-store_cableslibrary!(library, design2)
+add!(library, design1)
+add!(library, design2)
 
 # Display the library as a DataFrame
 df = $(FUNCTIONNAME)(library)
@@ -2525,9 +2525,9 @@ first(df, 5)  # Show the first 5 rows of the DataFrame
 
 - [`CablesLibrary`](@ref)
 - [`CableDesign`](@ref)
-- [`store_cableslibrary!`](@ref)
+- [`add!`](@ref)
 """
-function list_cableslibrary(library::CablesLibrary)
+function DataFrame(library::CablesLibrary)
     ids = keys(library.cable_designs)
     nominal_data = [string(design.nominal_data) for design in values(library.cable_designs)]
     components = [
@@ -2603,6 +2603,24 @@ struct CablePosition
         vert::Number,
         conn::Union{Dict{String,Int},Nothing}=nothing,
     )
+        # Validate cable design is not empty
+        @assert !isnothing(cable) "A valid CableDesign must be provided"
+        @assert !isempty(cable.components) "CableDesign must contain at least one component"
+
+        # Find outermost radius by checking both conductor and insulator groups of last component
+        last_comp = cable.components[end]
+        r_cond = last_comp.conductor_group.radius_ext
+        r_ins = last_comp.insulator_group.radius_ext
+        r_max = max(r_cond, r_ins)
+
+        # Validate vertical position
+        @assert vert != 0 "Vertical position cannot be exactly at the air/earth interface (z=0)"
+        @assert abs(vert) >= r_max """
+        Vertical position |$(vert)| must be greater than or equal to cable's outer radius $(r_max)
+        to prevent crossing the air/earth interface at z=0
+        """
+
+        # Create phase mapping vector
         components = [comp.id for comp in cable.components]
         if isnothing(conn)
             conn_vector = [i == 1 ? 1 : 0 for i in 1:length(components)]  # Default: First component gets phase 1
@@ -2720,7 +2738,7 @@ println(cable_system.num_cables)  # Prints: 2
 - [`CablePosition`](@ref)
 - [`CableDesign`](@ref)
 """
-function addto_linecablesystem!(
+function add!(
     system::LineCableSystem,
     cable::CableDesign,
     horz::Number,
@@ -2780,7 +2798,7 @@ $(FUNCTIONNAME)(system, earth_model=earth_params, zoom_factor=0.5)
 - [`EarthModel`](@ref)
 - [`CablePosition`](@ref)
 """
-function preview_linecablesystem(
+function preview(
     system::LineCableSystem;
     earth_model=nothing,
     zoom_factor=0.25,
@@ -2844,7 +2862,7 @@ function preview_linecablesystem(
     for cable_position in system.cables
         x_offset = to_nominal(cable_position.horz)
         y_offset = to_nominal(cable_position.vert)
-        preview_cabledesign(
+        preview(
             cable_position.design_data;  # Changed from cable_position.design_data
             x_offset,
             y_offset,
@@ -2993,7 +3011,7 @@ println(df)
 - [`LineCableSystem`](@ref)
 - [`CablePosition`](@ref)
 """
-function to_df(system::LineCableSystem)
+function DataFrame(system::LineCableSystem)
     cable_ids = String[]
     horz_coords = Number[]
     vert_coords = Number[]

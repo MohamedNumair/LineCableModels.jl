@@ -25,10 +25,13 @@ module Materials
 include("common_deps.jl")
 using ..LineCableModels
 using ..Utils
+import ..LineCableModels: add!, load!, save
 
 # Module-specific dependencies
 using Measurements
 using DataFrames
+import DataFrames: DataFrame
+import Base: get, delete!
 
 """
 $(TYPEDEF)
@@ -120,34 +123,34 @@ $(FUNCTIONNAME)(library)
 
 # See also
 
-- [`store_materialslibrary!`](@ref)
+- [`add!`](@ref)
 """
 function _add_default_materials!(library::MaterialsLibrary)
-    store_materialslibrary!(library, "air", Material(Inf, 1.0, 1.0, 20.0, 0.0))
-    store_materialslibrary!(library, "pec", Material(eps(), 1.0, 1.0, 20.0, 0.0))
-    store_materialslibrary!(
+    add!(library, "air", Material(Inf, 1.0, 1.0, 20.0, 0.0))
+    add!(library, "pec", Material(eps(), 1.0, 1.0, 20.0, 0.0))
+    add!(
         library,
         "copper",
         Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393),
     )
-    store_materialslibrary!(
+    add!(
         library,
         "aluminum",
         Material(2.8264e-8, 1.0, 1.000022, 20.0, 0.00429),
     )
-    store_materialslibrary!(library, "xlpe", Material(1.97e14, 2.5, 1.0, 20.0, 0.0))
-    store_materialslibrary!(library, "pe", Material(1.97e14, 2.3, 1.0, 20.0, 0.0))
-    store_materialslibrary!(
+    add!(library, "xlpe", Material(1.97e14, 2.5, 1.0, 20.0, 0.0))
+    add!(library, "pe", Material(1.97e14, 2.3, 1.0, 20.0, 0.0))
+    add!(
         library,
         "semicon1",
         Material(1000.0, 1000.0, 1.0, 20.0, 0.0),
     )
-    store_materialslibrary!(
+    add!(
         library,
         "semicon2",
         Material(500.0, 1000.0, 1.0, 20.0, 0.0),
     )
-    store_materialslibrary!(
+    add!(
         library,
         "polyacrylate",
         Material(5.3e3, 32.3, 1.0, 20.0, 0.0),
@@ -182,7 +185,7 @@ material = Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393)
 $(FUNCTIONNAME)(library, "copper", material)
 ```
 """
-function store_materialslibrary!(
+function add!(
     library::MaterialsLibrary,
     name::AbstractString,
     material::Material,
@@ -221,9 +224,9 @@ $(FUNCTIONNAME)(library, "copper")
 
 # See also
 
-- [`store_materialslibrary!`](@ref)
+- [`add!`](@ref)
 """
-function remove_materialslibrary!(library::MaterialsLibrary, name::String)
+function delete!(library::MaterialsLibrary, name::String)
     if !haskey(library.materials, name)
         error("Material $name not found in the library.")
     end
@@ -254,9 +257,9 @@ df = $(FUNCTIONNAME)(library)
 
 # See also
 
-- [`LineCableModels.ImportExport.save_materialslibrary`](@ref)
+- [`LineCableModels.ImportExport.save`](@ref)
 """
-function list_materialslibrary(library::MaterialsLibrary)::DataFrame
+function DataFrame(library::MaterialsLibrary)::DataFrame
     rows = [
         (
             name=name,
@@ -294,17 +297,15 @@ material = $(FUNCTIONNAME)(library, "copper")
 
 # See also
 
-- [`store_materialslibrary!`](@ref)
-- [`remove_materialslibrary!`](@ref)
+- [`add!`](@ref)
+- [`delete!`](@ref)
 """
-function get_material(library::MaterialsLibrary, name::String)::Union{Nothing,Material}
+function get(library::MaterialsLibrary, name::String)::Union{Nothing,Material}
     material = get(library.materials, name, nothing)
     if material === nothing
         println("Material '$name' not found in the library.")
-        return nothing
-    else
-        return material
     end
+    return material
 end
 
 """

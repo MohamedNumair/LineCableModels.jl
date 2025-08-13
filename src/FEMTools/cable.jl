@@ -342,45 +342,49 @@ function _make_cablepart!(workspace::FEMWorkspace, part::WireArray,
         )
     end
 
-    # --------Then those nasty air gaps
+    # Create air gaps for:
+    # - Multiple wires (always)
+    # - Single wire IF next part is a WireArray
+    # Skip ONLY for single wire when next part is not a WireArray
 
-    # Air gaps will be determined from the boolean fragmentation operation and do not need to be drawn. Only the markers are needed.
-    markers_air_gap = get_air_gap_markers(num_wires, radius_wire, radius_in)
+    if num_wires > 1 || (num_wires == 1 && !isnothing(next_part) && next_part isa WireArray)
+        # Air gaps will be determined from the boolean fragmentation operation and do not need to be drawn. Only the markers are needed.
+        markers_air_gap = get_air_gap_markers(num_wires, radius_wire, radius_in)
 
-    # Adjust air gap markers to cable center
-    for marker in markers_air_gap
-        marker[1] += x_center
-        marker[2] += y_center
+        # Adjust air gap markers to cable center
+        for marker in markers_air_gap
+            marker[1] += x_center
+            marker[2] += y_center
+        end
+
+        # Determine material group - air gaps map to insulators
+        material_group = 2
+
+        # Get air material
+        air_material = get_air_material(workspace)
+
+        # Get or register material ID
+        material_id = get_or_register_material_id(workspace, air_material)
+
+        # Create physical tag with new encoding scheme
+        physical_group_tag_air_gap = encode_physical_group_tag(
+            1,              # Surface type 1 = cable component
+            cable_idx,      # Cable number
+            comp_idx,       # Component number
+            material_group, # Material group from part type
+            material_id     # Material ID from registry
+        )
+
+        for marker in markers_air_gap
+            # elementary names are not assigned to the air gaps because they are not drawn and appear as a result of the boolean operation
+            core_data = CoreEntityData(physical_group_tag_air_gap, "", mesh_size)
+            entity_data = SurfaceEntity(core_data, air_material)
+
+            # Add to unassigned entities with type information
+            workspace.unassigned_entities[marker] = entity_data
+        end
+
+        # Add physical groups to the workspace
+        register_physical_group!(workspace, physical_group_tag_air_gap, air_material)
     end
-
-    # Determine material group - air gaps map to insulators
-    material_group = 2
-
-    # Get air material
-    air_material = get_air_material(workspace)
-
-    # Get or register material ID
-    material_id = get_or_register_material_id(workspace, air_material)
-
-    # Create physical tag with new encoding scheme
-    physical_group_tag_air_gap = encode_physical_group_tag(
-        1,              # Surface type 1 = cable component
-        cable_idx,      # Cable number
-        comp_idx,       # Component number
-        material_group, # Material group from part type
-        material_id     # Material ID from registry
-    )
-
-    for marker in markers_air_gap
-        # elementary names are not assigned to the air gaps because they are not drawn and appear as a result of the boolean operation
-        core_data = CoreEntityData(physical_group_tag_air_gap, "", mesh_size)
-        entity_data = SurfaceEntity(core_data, air_material)
-
-        # Add to unassigned entities with type information
-        workspace.unassigned_entities[marker] = entity_data
-    end
-
-    # Add physical groups to the workspace
-    register_physical_group!(workspace, physical_group_tag_air_gap, air_material)
-
 end

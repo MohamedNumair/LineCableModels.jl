@@ -1,5 +1,5 @@
 # Export public API
-export FormulationSet, OptSet, to_df, add!
+export FormulationSet, OptSet, DataFrame, add!, load!, export_data, save, preview
 export f₀, μ₀, ε₀, ρ₀, T₀, TOL, ΔTmax
 
 # General constants
@@ -58,6 +58,12 @@ $(_CLEANMETHODLIST)
 """
 function _get_description end
 
-function to_df end
-
 function add! end
+
+function load! end
+
+function export_data end
+
+function save end
+
+function preview end

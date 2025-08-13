@@ -30,6 +30,7 @@ using ..Utils
 using ..Materials
 using ..EarthProps
 using ..DataModel
+import ..LineCableModels: add!, load!, export_data, save
 using ..LineCableModels # For physical constants (f₀, μ₀, ε₀, ρ₀, T₀, TOL, ΔTmax)
 
 # Module-specific dependencies
@@ -38,7 +39,7 @@ using EzXML # For PSCAD export
 using Dates # For PSCAD export
 using JSON3
 using Serialization # For .jls format
-
+import Base: get
 
 function _display_path(file_name)
     return DataModel._is_headless() ? basename(file_name) : abspath(file_name)
@@ -51,6 +52,8 @@ Starts from 100,000,000 and increments.
 let current_id = 100000000
     global _next_id = () -> (id = current_id; current_id += 1; string(id))
 end
+
+export_data(format::Symbol, args...; kwargs...) = export_data(Val(format), args...; kwargs...)
 
 """
 $(TYPEDSIGNATURES)
@@ -80,7 +83,7 @@ $(FUNCTIONNAME)(cable_system, earth_model, base_freq=50)
 
 - [`LineCableSystem`](@ref)
 """
-function export_pscad_lcp(
+function export_data(::Val{:pscad},
     cable_system::LineCableSystem,
     earth_props::EarthModel;
     base_freq=f₀,
@@ -1344,7 +1347,7 @@ The format is determined by the file extension:
 # Returns
 - The absolute path of the saved file, or `nothing` on failure.
 """
-function save_cableslibrary(
+function save(
     library::CablesLibrary;
     file_name::String="cables_library.json",
 )::Union{String,Nothing}
@@ -1437,7 +1440,7 @@ Saves a [`MaterialsLibrary`](@ref) to a JSON file.
 # Returns
 - The absolute path of the saved file, or `nothing` on failure.
 """
-function save_materialslibrary(
+function save(
     library::MaterialsLibrary;
     file_name::String="materials_library.json",
 )::Union{String,Nothing}
@@ -1512,7 +1515,7 @@ The format is determined by the file extension:
 # Returns
 - The modified [`CablesLibrary`](@ref) instance.
 """
-function load_cableslibrary!(
+function load!(
     library::CablesLibrary; # Type annotation ensures it's the correct object
     file_name::String="cables_library.json",
 )::CablesLibrary # Return the modified library
@@ -1806,11 +1809,11 @@ This function handles the sequential process of building cable designs:
  3. For each component:
     a. Reconstruct the first layer of the conductor group.
     b. Create the [`ConductorGroup`](@ref) with the first layer.
-    c. Add subsequent conductor layers using [`addto_conductorgroup!`](@ref).
+    c. Add subsequent conductor layers using [`add!`](@ref).
     d. Repeat a-c for the [`InsulatorGroup`](@ref).
     e. Create the [`CableComponent`](@ref).
  4. Create the [`CableDesign`](@ref) with the first component.
- 5. Add subsequent components using [`addto_cabledesign!`](@ref).
+ 5. Add subsequent components using [`add!`](@ref).
 
 # Arguments
 - `cable_id`: The identifier string for the cable design.
@@ -1891,7 +1894,7 @@ function _reconstruct_cabledesign(
         conductor_group = ConductorGroup(first_cond_layer)
         println("    Created ConductorGroup with first layer: $(typeof(first_cond_layer))")
 
-        # - Add remaining layers using addto_conductorgroup!
+        # - Add remaining layers using add!
         for i in 2:lastindex(cond_layers_data)
             layer_data = cond_layers_data[i]
             if !(layer_data isa AbstractDict)
@@ -1899,7 +1902,7 @@ function _reconstruct_cabledesign(
                 continue
             end
 
-            # Extract Type and necessary arguments for addto_conductorgroup!
+            # Extract Type and necessary arguments for add!
             LayerType = _resolve_type(layer_data["__julia_type__"])
             material_props = _deserialize_value(get(layer_data, "material_props", missing))
             ismissing(material_props) &&
@@ -1908,7 +1911,7 @@ function _reconstruct_cabledesign(
                 "'material_props' did not deserialize to Material for conductor layer $i in $comp_id. Got: $(typeof(material_props))",
             )
 
-            # Prepare args and kwargs based on LayerType for addto_conductorgroup!
+            # Prepare args and kwargs based on LayerType for add!
             args = []
             kwargs = Dict{Symbol,Any}()
             kwargs[:temperature] = _deserialize_value(get(layer_data, "temperature", T₀))
@@ -1917,7 +1920,7 @@ function _reconstruct_cabledesign(
                     _deserialize_value(get(layer_data, "lay_direction", 1))
             end
 
-            # Extract type-specific arguments needed by addto_conductorgroup!
+            # Extract type-specific arguments needed by add!
             try
                 if LayerType == WireArray
                     radius_wire =
@@ -1942,11 +1945,11 @@ function _reconstruct_cabledesign(
                         error("Missing required field(s) for Strip layer $i in $comp_id")
                     args = [radius_ext, width, lay_ratio, material_props]
                 else
-                    error("Unsupported layer type '$LayerType' for addto_conductorgroup!")
+                    error("Unsupported layer type '$LayerType' for add!")
                 end
 
-                # Call addto_conductorgroup! with Type, args..., and kwargs...
-                addto_conductorgroup!(conductor_group, LayerType, args...; kwargs...)
+                # Call add! with Type, args..., and kwargs...
+                add!(conductor_group, LayerType, args...; kwargs...)
                 println("      Added conductor layer $i: $LayerType")
             catch e
                 @error "Failed to add conductor layer $i ($LayerType) to component $comp_id: $e"
@@ -1979,7 +1982,7 @@ function _reconstruct_cabledesign(
         insulator_group = InsulatorGroup(first_insu_layer)
         println("    Created InsulatorGroup with first layer: $(typeof(first_insu_layer))")
 
-        # - Add remaining layers using addto_insulatorgroup!
+        # - Add remaining layers using add!
         for i in 2:lastindex(insu_layers_data)
             layer_data = insu_layers_data[i]
             if !(layer_data isa AbstractDict)
@@ -2002,18 +2005,18 @@ function _reconstruct_cabledesign(
 
             try
                 # All insulator types (Semicon, Insulator) take radius_ext, material_props
-                # for the addto_insulatorgroup! method.
+                # for the add! method.
                 if LayerType in [Semicon, Insulator]
                     radius_ext = _deserialize_value(get(layer_data, "radius_ext", missing))
                     ismissing(radius_ext) &&
                         error("Missing 'radius_ext' for $LayerType layer $i in $comp_id")
                     args = [radius_ext, material_props]
                 else
-                    error("Unsupported layer type '$LayerType' for addto_insulatorgroup!")
+                    error("Unsupported layer type '$LayerType' for add!")
                 end
 
-                # Call addto_insulatorgroup! with Type, args..., and kwargs...
-                addto_insulatorgroup!(insulator_group, LayerType, args...; kwargs...)
+                # Call add! with Type, args..., and kwargs...
+                add!(insulator_group, LayerType, args...; kwargs...)
                 println("      Added insulator layer $i: $LayerType")
             catch e
                 @error "Failed to add insulator layer $i ($LayerType) to component $comp_id: $e"
@@ -2042,10 +2045,10 @@ function _reconstruct_cabledesign(
         "  Created initial CableDesign with component: $(reconstructed_components[1].id)",
     )
 
-    # 4. Add remaining components to the design sequentially using addto_cabledesign!
+    # 4. Add remaining components to the design sequentially using add!
     for i in 2:lastindex(reconstructed_components)
         try
-            addto_cabledesign!(cable_design, reconstructed_components[i])
+            add!(cable_design, reconstructed_components[i])
             println(
                 "  Added component $(reconstructed_components[i].id) to CableDesign '$cable_id'",
             )
@@ -2075,7 +2078,7 @@ Modifies the library in-place.
 # See also
 - [`MaterialsLibrary`](@ref)
 """
-function load_materialslibrary!(
+function load!(
     library::MaterialsLibrary;
     file_name::String="materials_library.json",
 )::MaterialsLibrary
@@ -2124,7 +2127,7 @@ Internal function to load materials from JSON into the library.
 # See also
 - [`MaterialsLibrary`](@ref)
 - [`Material`](@ref)
-- [`store_materialslibrary!`](@ref)
+- [`add!`](@ref)
 - [`_deserialize_value`](@ref)
 """
 function _load_materialslibrary_json!(library::MaterialsLibrary, file_name::String)
@@ -2161,11 +2164,11 @@ function _load_materialslibrary_json!(library::MaterialsLibrary, file_name::Stri
 
             # **Crucial Check:** Verify the deserialized object is actually a Material
             if deserialized_material isa Material
-                # Use store_materialslibrary! (assuming it exists in Utils or DataModel)
+                # Use add! (assuming it exists in Utils or DataModel)
                 # to add the material correctly, potentially handling duplicates.
-                # If store_materialslibrary! doesn't exist, use direct assignment:
+                # If add! doesn't exist, use direct assignment:
                 # library.materials[name] = deserialized_material
-                store_materialslibrary!(library, name, deserialized_material) # Assumes this function exists
+                add!(library, name, deserialized_material) # Assumes this function exists
                 num_loaded += 1
             else
                 # This path is taken if _deserialize_obj failed and returned the original Dict
@@ -2174,7 +2177,7 @@ function _load_materialslibrary_json!(library::MaterialsLibrary, file_name::Stri
                 num_failed += 1
             end
         catch e
-            # Catch errors that might occur outside _deserialize_value (e.g., in store_materialslibrary!)
+            # Catch errors that might occur outside _deserialize_value (e.g., in add!)
             num_failed += 1
             @error "Error processing material entry '$name': $e"
             showerror(stderr, e, catch_backtrace())

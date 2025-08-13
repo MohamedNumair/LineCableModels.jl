@@ -275,7 +275,7 @@ struct EMTFormulation <: AbstractFormulationSet
     # Examples
 
     ```julia
-    emt = $(FUNCTIONNAME)(internal_imp, earth_imp, internal_adm, earth_adm)
+    emt = $(FUNCTIONNAME)(...)
     ```
     """
     function EMTFormulation(;
