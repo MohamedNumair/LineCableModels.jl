@@ -68,13 +68,35 @@ $(TYPEDFIELDS)
 struct LineParametersProblem{T<:Union{Float64,Measurement{Float64}}} <: ProblemDefinition
     "The physical cable system to analyze."
     system::LineCableSystem
-    "Operating temperature [°C]."
+    "Operating temperature \\[°C\\]."
     temperature::T
     "Earth properties model."
     earth_props::EarthModel{T}
-    "Frequencies at which to perform the analysis [Hz]."
+    "Frequencies at which to perform the analysis \\[Hz\\]."
     frequencies::Vector{Float64}
 
+    @doc """
+    $(TYPEDSIGNATURES)
+
+    Constructs a [`LineParametersProblem`](@ref) instance.
+
+    # Arguments
+
+    - `system`: The cable system to analyze ([`LineCableSystem`](@ref)).
+    - `temperature`: Operating temperature \\[°C\\]. Default: `T₀`.
+    - `earth_props`: Earth properties model ([`EarthModel`](@ref)).
+    - `frequencies`: Frequencies for analysis \\[Hz\\]. Default: [`f₀`](@ref).
+
+    # Returns
+
+    - A [`LineParametersProblem`](@ref) object with validated cable system, temperature, earth model, and frequency vector.
+
+    # Examples
+
+    ```julia
+    prob = $(FUNCTIONNAME)(system; temperature=25.0, earth_props=earth, frequencies=[50.0, 60.0, 100.0])
+    ```
+    """
     function LineParametersProblem(
         system::LineCableSystem;
         temperature::T=T(T₀),
@@ -174,25 +196,39 @@ struct LineParametersProblem{T<:Union{Float64,Measurement{Float64}}} <: ProblemD
     end
 end
 
-# """
-# $(TYPEDEF)
+"""
+$(TYPEDEF)
 
-# Formulation base type for defining solver options in the computation framework.
-# Solver options define execution-related parameters such as output options,
-# solver command line arguments, and post-processing settings.
+Represents the frequency-dependent line parameters (series impedance and shunt admittance matrices) for a cable or line system.
 
-# Concrete implementations should define how the solution process is controlled,
-# including file handling, previewing options, and external tool integration.
-# """
-# abstract type FormulationOptions end
-
+$(TYPEDFIELDS)
+"""
 struct LineParameters{T<:Union{Complex{Float64},Complex{Measurement{Float64}}}}
-    "Series impedance matrices [Ω/m]"
+    "Series impedance matrices \\[Ω/m\\]."
     Z::Array{T,3}
-    "Shunt admittance matrices [S/m]"
+    "Shunt admittance matrices \\[S/m\\]."
     Y::Array{T,3}
 
-    # Inner constructor with validation
+    @doc """
+    $(TYPEDSIGNATURES)
+
+    Constructs a [`LineParameters`](@ref) instance.
+
+    # Arguments
+
+    - `Z`: Series impedance matrices \\[Ω/m\\].
+    - `Y`: Shunt admittance matrices \\[S/m\\].
+
+    # Returns
+
+    - A [`LineParameters`](@ref) object with prelocated impedance and admittance matrices.
+
+    # Examples
+
+    ```julia
+    params = $(FUNCTIONNAME)(Z, Y)
+    ```
+    """
     function LineParameters(Z::Array{T,3}, Y::Array{T,3}) where {T<:Union{Complex{Float64},Complex{Measurement{Float64}}}}
         # Validate dimensions
         size(Z, 1) == size(Z, 2) || throw(DimensionMismatch("Z matrix must be square"))
@@ -203,12 +239,45 @@ struct LineParameters{T<:Union{Complex{Float64},Complex{Measurement{Float64}}}}
     end
 end
 
+"""
+$(TYPEDEF)
+
+Represents the electromagnetic transient (EMT) formulation set for cable or line systems, containing all required impedance and admittance models for internal and earth effects.
+
+$(TYPEDFIELDS)
+"""
 struct EMTFormulation <: AbstractFormulationSet
+    "Internal impedance formulation."
     internal_impedance::InternalImpedanceFormulation
+    "Earth impedance formulation."
     earth_impedance::EarthImpedanceFormulation
+    "Internal admittance formulation."
     internal_admittance::InternalAdmittanceFormulation
+    "Earth admittance formulation."
     earth_admittance::EarthAdmittanceFormulation
 
+    @doc """
+    $(TYPEDSIGNATURES)
+
+    Constructs an [`EMTFormulation`](@ref) instance.
+
+    # Arguments
+
+    - `internal_impedance`: Internal impedance formulation.
+    - `earth_impedance`: Earth impedance formulation.
+    - `internal_admittance`: Internal admittance formulation.
+    - `earth_admittance`: Earth admittance formulation.
+
+    # Returns
+
+    - An [`EMTFormulation`](@ref) object containing the specified models.
+
+    # Examples
+
+    ```julia
+    emt = $(FUNCTIONNAME)(internal_imp, earth_imp, internal_adm, earth_adm)
+    ```
+    """
     function EMTFormulation(;
         internal_impedance::InternalImpedanceFormulation=nothing,
         earth_impedance::EarthImpedanceFormulation=nothing,
@@ -230,6 +299,42 @@ function FormulationSet(::Val{:EMT}; internal_impedance::InternalImpedanceFormul
         internal_admittance, earth_admittance)
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Flattens a hierarchical cable system into 1D arrays of geometric and material properties for each cable component, suitable for matrix-based calculations and parameter extraction.
+
+# Arguments
+
+- `system`: The cable system to flatten ([`LineCableSystem`](@ref)).
+
+# Returns
+
+- Named tuple containing arrays for each geometric and material property:
+    - `horz`: Horizontal positions \\[m\\]
+    - `vert`: Vertical positions \\[m\\]
+    - `r_in`: Internal conductor radii \\[m\\]
+    - `r_ext`: External conductor radii \\[m\\]
+    - `r_ins_in`: Internal insulator radii \\[m\\]
+    - `r_ins_ext`: External insulator radii \\[m\\]
+    - `rho_cond`: Conductor resistivities \\[Ω·m\\]
+    - `mu_cond`: Conductor relative permeabilities \\[dimensionless\\]
+    - `eps_cond`: Conductor relative permittivities \\[dimensionless\\]
+    - `rho_ins`: Insulator resistivities \\[Ω·m\\]
+    - `mu_ins`: Insulator relative permeabilities \\[dimensionless\\]
+    - `eps_ins`: Insulator relative permittivities \\[dimensionless\\]
+    - `tan_ins`: Insulator loss tangents \\[dimensionless\\]
+    - `phase_map`: Phase mapping indices \\[dimensionless\\]
+    - `cable_map`: Cable mapping indices \\[dimensionless\\]
+
+# Examples
+
+```julia
+flat = $(FUNCTIONNAME)(system)
+horz = flat.horz  # Horizontal positions [m]
+rho_cond = flat.rho_cond  # Conductor resistivities [Ω·m]
+```
+"""
 function flatten_cablesystem(system::LineCableSystem)
     # Count total components
     n_components = sum(length(cable.design_data.components) for cable in system.cables)
