@@ -24,6 +24,13 @@ $(EXPORTS)
 """
 module ImportExport
 
+# Export public API
+export export_data
+export save
+export load!
+export get
+export delete!
+
 # Load common dependencies
 include("common_deps.jl")
 using ..Utils
@@ -997,7 +1004,7 @@ _serializable_fields(::CableDesign) = (:cable_id, :nominal_data, :components)
 
 # Library Types
 _serializable_fields(::CablesLibrary) = (:cable_designs,)
-_serializable_fields(::MaterialsLibrary) = (:materials,)
+_serializable_fields(::MaterialsLibrary) = (:data,)
 
 
 #=
@@ -1481,13 +1488,13 @@ Internal function to save the [`MaterialsLibrary`](@ref) to JSON.
 - The absolute path of the saved file.
 """
 function _save_materialslibrary_json(library::MaterialsLibrary, file_name::String)::String
-    # Check if the library has the materials field initialized correctly
-    if !isdefined(library, :materials) || !(library.materials isa AbstractDict)
-        error("MaterialsLibrary does not have a valid 'materials' dictionary. Cannot save.")
+    # Check if the library has the data field initialized correctly
+    if !isdefined(library, :data) || !(library.data isa AbstractDict)
+        error("MaterialsLibrary does not have a valid 'data' dictionary. Cannot save.")
     end
 
     # Use the generic _serialize_value, which handles the dictionary and its Material contents
-    serialized_library_data = _serialize_value(library.materials) # Serialize the dict directly
+    serialized_library_data = _serialize_value(library) # Serialize the dict directly
 
     open(file_name, "w") do io
         JSON3.pretty(io, serialized_library_data, allow_inf=true)
@@ -2086,9 +2093,9 @@ function load!(
     if !isfile(file_name)
         @warn "Materials library file not found: '$(_display_path(file_name))'. Library remains unchanged."
         # Ensure the library has the necessary field, even if empty
-        if !isdefined(library, :materials) || !(library.materials isa AbstractDict)
-            library.materials = Dict{String,Material}()
-        end
+        # if !isdefined(library, :materials) || !(library isa AbstractDict)
+        #     library = Dict{String,Material}()
+        # end
         return library
     end
 
@@ -2107,7 +2114,7 @@ function load!(
         showerror(stderr, e, catch_backtrace())
         println(stderr)
         # Optionally clear or leave partially loaded
-        # empty!(library.materials)
+        # empty!(library)
     end
     return library
 end
@@ -2132,12 +2139,12 @@ Internal function to load materials from JSON into the library.
 """
 function _load_materialslibrary_json!(library::MaterialsLibrary, file_name::String)
     # Ensure library structure is initialized
-    if !isdefined(library, :materials) || !(library.materials isa AbstractDict)
-        @warn "Library's 'materials' field was not initialized or not a Dict. Initializing."
-        library.materials = Dict{String,Material}()
+    if !isdefined(library, :data) || !(library.data isa AbstractDict)
+        @warn "Library 'data' field was not initialized or not a Dict. Initializing."
+        library.data = Dict{String,Material}()
     else
         # Clear existing materials before loading
-        empty!(library.materials)
+        empty!(library.data)
     end
 
     # Load and parse the JSON data (expecting a Dict of material_name => material_data)
@@ -2164,10 +2171,6 @@ function _load_materialslibrary_json!(library::MaterialsLibrary, file_name::Stri
 
             # **Crucial Check:** Verify the deserialized object is actually a Material
             if deserialized_material isa Material
-                # Use add! (assuming it exists in Utils or DataModel)
-                # to add the material correctly, potentially handling duplicates.
-                # If add! doesn't exist, use direct assignment:
-                # library.materials[name] = deserialized_material
                 add!(library, name, deserialized_material) # Assumes this function exists
                 num_loaded += 1
             else
@@ -2190,9 +2193,5 @@ function _load_materialslibrary_json!(library::MaterialsLibrary, file_name::Stri
     )
     return nothing
 end
-
-
-# --- Auto Export ---
-Utils.@_autoexport
 
 end # module ImportExport
