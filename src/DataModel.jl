@@ -21,6 +21,20 @@ $(EXPORTS)
 """
 module DataModel
 
+# Export public API
+export Thickness, Diameter  # Type definitions
+export WireArray, Strip, Tubular  # Conductor types
+export Semicon, Insulator  # Insulator types
+export ConductorGroup, InsulatorGroup  # Group types
+export CableComponent, CableDesign  # Cable design types
+export CablePosition, LineCableSystem  # System types
+export CablesLibrary, NominalData  # Support types
+export add!, get, delete!  # Common operations
+export trifoil_formation, flat_formation  # Formation helpers
+export preview  # Visualization
+export DataFrame  # Data conversion
+#export AbstractCablePart, AbstractConductorPart, AbstractInsulatorPart
+
 # Load common dependencies
 include("common_deps.jl")
 using ..Utils
@@ -36,7 +50,7 @@ using Colors
 using Plots
 using DisplayAs: DisplayAs
 import DataFrames: DataFrame
-import Base: get, delete!
+import Base: get, delete!, length, setindex!, iterate, keys, values
 
 """
 $(TYPEDEF)
@@ -3252,6 +3266,5 @@ function _print_fields(io::IO, obj, fields_to_show::Vector{Symbol}; sigdigits::I
 end
 
 @reexport using .BaseParams
-Utils.@_autoexport
 
-end
+end # module DataModel
