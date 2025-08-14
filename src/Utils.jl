@@ -19,6 +19,16 @@ $(EXPORTS)
 """
 module Utils
 
+# Export public API
+export equals,
+    to_nominal,
+    strip_uncertainty,
+    percent_to_uncertain,
+    bias_to_uncertain,
+    to_upper,
+    to_lower,
+    percent_error
+
 # Load common dependencies
 include("common_deps.jl")
 
@@ -278,7 +288,7 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Automatically exports public functions, types, and modules from a module.
+Automatically exports public functions, types, and modules from a module. This is meant for temporary development chores and should never be used in production code.
 
 # Arguments
 
@@ -334,6 +344,4 @@ macro _autoexport()
     return esc(Expr(:export, public_names...))
 end
 
-@_autoexport
-
-end
+end # module Utils
