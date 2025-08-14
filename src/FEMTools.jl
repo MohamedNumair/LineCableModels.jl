@@ -21,15 +21,22 @@ $(EXPORTS)
 """
 module FEMTools
 
+# Export public API
+export MeshTransition
+export compute!, preview_results
+export FEMElectrodynamics, FEMDarwin
+
 # Load common dependencies
 include("common_deps.jl")
 using ..Utils
 using ..Materials
 using ..EarthProps
 using ..DataModel
-using ..Core
+using ..Engine
 using ..LineCableModels # For physical constants (f₀, μ₀, ε₀, ρ₀, T₀, TOL, ΔTmax)
-import ..LineCableModels: FormulationSet, OptSet, _is_headless
+import ..LineCableModels: FormulationSet, _is_headless
+import ..DataModel: AbstractCablePart, AbstractConductorPart, AbstractInsulatorPart
+import ..Engine: AbstractFormulationSet, AbstractImpedanceFormulation, AbstractAdmittanceFormulation
 
 # Module-specific dependencies
 using Gmsh
@@ -45,25 +52,6 @@ using LoggingExtras: TeeLogger, FileLogger
 # GetDP.jl
 using GetDP
 using GetDP: Problem, get_getdp_executable, add!
-
-
-# # Define default FEM options
-# const DEFAULT_FEM_OPTIONS = (
-#     mesh_only=false, # Build mesh only and preview (no solving)
-#     force_remesh=false, # Force mesh regeneration even if file exists
-#     force_overwrite=false, # Skip user confirmation for overwriting results
-#     plot_field_maps=true, # Generate field visualization outputs
-#     keep_run_files=false, # Archive temporary files after each frequency run
-#     base_path=joinpath(".", "fem_output"), # Base path for output files
-#     getdp_executable=nothing, # Path to GetDP executable
-#     verbosity=0, # Verbosity level
-#     logfile=nothing # Log file path
-# )
-
-# Export public API
-export MeshTransition#, FEMFormulation
-export compute!, preview_results
-export FEMElectrodynamics, FEMDarwin
 
 """
 $(TYPEDEF)
