@@ -8,44 +8,44 @@ using EzXML
 
 
     println("\nSetting up materials and dimensions for DataModel test...")
-    materials_db = MaterialsLibrary(add_defaults=true)
-    @test haskey(materials_db.materials, "aluminum")
-    @test haskey(materials_db.materials, "copper")
-    @test haskey(materials_db.materials, "polyacrylate")
-    @test haskey(materials_db.materials, "semicon1")
-    @test haskey(materials_db.materials, "semicon2")
-    @test haskey(materials_db.materials, "pe")
+    materials = MaterialsLibrary(add_defaults=true)
+    @test haskey(materials, "aluminum")
+    @test haskey(materials, "copper")
+    @test haskey(materials, "polyacrylate")
+    @test haskey(materials, "semicon1")
+    @test haskey(materials, "semicon2")
+    @test haskey(materials, "pe")
 
-    initial_default_count = length(materials_db.materials)
+    initial_default_count = length(materials)
     @test initial_default_count > 5 # Should have several defaults
 
-    materials_db_empty = MaterialsLibrary(add_defaults=false)
-    @test isempty(materials_db_empty.materials)
+    materials_empty = MaterialsLibrary(add_defaults=false)
+    @test isempty(materials_empty)
 
     # Add a custom material for removal tests
     mat_remove_test = Material(1e-5, 5.0, 1.0, 20.0, 0.05)
-    add!(materials_db, "remove_me", mat_remove_test)
-    @test length(materials_db.materials) == initial_default_count + 1
-    @test haskey(materials_db.materials, "remove_me")
+    add!(materials, "remove_me", mat_remove_test)
+    @test length(materials) == initial_default_count + 1
+    @test haskey(materials, "remove_me")
 
     println("  Testing delete!...")
-    delete!(materials_db, "remove_me")
-    @test !haskey(materials_db.materials, "remove_me")
-    @test length(materials_db.materials) == initial_default_count
+    delete!(materials, "remove_me")
+    @test !haskey(materials, "remove_me")
+    @test length(materials) == initial_default_count
 
     # Test removing non-existent (should throw ErrorException based on source)
     @test_throws ErrorException delete!(
-        materials_db,
+        materials,
         "does_not_exist",
     )
     # Verify count didn't change
-    @test length(materials_db.materials) == initial_default_count
+    @test length(materials) == initial_default_count
 
     println("  Testing DataFrame...")
     # Use the empty DB + one material for simpler checking
     mat_list_test = Material(9e9, 9.0, 9.0, 99.0, 0.9)
-    add!(materials_db_empty, "list_test_mat", mat_list_test)
-    df_listed = DataFrame(materials_db_empty)
+    add!(materials_empty, "list_test_mat", mat_list_test)
+    df_listed = DataFrame(materials_empty)
 
     @test df_listed isa DataFrame
     @test names(df_listed) == ["name", "rho", "eps_r", "mu_r", "T0", "alpha"] # Check column names
@@ -67,7 +67,7 @@ using EzXML
         db_to_save = MaterialsLibrary(add_defaults=true)
         mat_temp = Material(1e-5, 5.0, 1.0, 20.0, 0.05)
         add!(db_to_save, "temp_mat", mat_temp)
-        num_expected = length(db_to_save.materials)
+        num_expected = length(db_to_save)
 
         save(db_to_save, file_name=output_file)
         @test isfile(output_file)
@@ -78,9 +78,9 @@ using EzXML
         load!(materials_from_json, file_name=output_file)
 
         # Verify loaded content
-        @test length(materials_from_json.materials) == num_expected
-        @test haskey(materials_from_json.materials, "temp_mat")
-        @test haskey(materials_from_json.materials, "copper") # Check a default also loaded
+        @test length(materials_from_json) == num_expected
+        @test haskey(materials_from_json, "temp_mat")
+        @test haskey(materials_from_json, "copper") # Check a default also loaded
         loaded_temp_mat = get(materials_from_json, "temp_mat")
         @test loaded_temp_mat.rho == mat_temp.rho
         @test loaded_temp_mat.eps_r == mat_temp.eps_r
@@ -169,7 +169,7 @@ using EzXML
     end
 
     println("Constructing core conductor group...")
-    material_alu = get(materials_db, "aluminum")
+    material_alu = get(materials, "aluminum")
     core = ConductorGroup(WireArray(0, Diameter(d_w), 1, 0, material_alu))
     @test core isa ConductorGroup
     @test length(core.layers) == 1
@@ -202,7 +202,7 @@ using EzXML
 
     println("Constructing main insulation group...")
     # Inner semiconductive tape
-    material_sc_tape = get(materials_db, "polyacrylate")
+    material_sc_tape = get(materials, "polyacrylate")
     main_insu = InsulatorGroup(Semicon(core, Thickness(t_sct), material_sc_tape))
     @test main_insu isa InsulatorGroup
     @test length(main_insu.layers) == 1
@@ -210,19 +210,19 @@ using EzXML
     @test main_insu.radius_ext ≈ final_core_radius + t_sct
 
     # Inner semiconductor
-    material_sc1 = get(materials_db, "semicon1")
+    material_sc1 = get(materials, "semicon1")
     add!(main_insu, Semicon, Thickness(t_sc_in), material_sc1)
     @test length(main_insu.layers) == 2
     @test main_insu.radius_ext ≈ final_core_radius + t_sct + t_sc_in
 
     # Main insulation (XLPE)
-    material_pe = get(materials_db, "pe")
+    material_pe = get(materials, "pe")
     add!(main_insu, Insulator, Thickness(t_ins), material_pe)
     @test length(main_insu.layers) == 3
     @test main_insu.radius_ext ≈ final_core_radius + t_sct + t_sc_in + t_ins
 
     # Outer semiconductor
-    material_sc2 = get(materials_db, "semicon2")
+    material_sc2 = get(materials, "semicon2")
     add!(main_insu, Semicon, Thickness(t_sc_out), material_sc2)
     @test length(main_insu.layers) == 4
     @test main_insu.radius_ext ≈ final_core_radius + t_sct + t_sc_in + t_ins + t_sc_out
@@ -256,7 +256,7 @@ using EzXML
     println("Constructing sheath group...")
     # Wire screens
     lay_ratio_screen = 10
-    material_cu = get(materials_db, "copper")
+    material_cu = get(materials, "copper")
     screen_con = ConductorGroup(
         WireArray(
             main_insu,
@@ -283,7 +283,7 @@ using EzXML
     final_screen_con_radius = screen_con.radius_ext
 
     # Water blocking tape
-    material_wbt = get(materials_db, "polyacrylate") # Assuming same as sc tape
+    material_wbt = get(materials, "polyacrylate") # Assuming same as sc tape
     screen_insu = InsulatorGroup(Semicon(screen_con, Thickness(t_wbt), material_wbt))
     @test screen_insu.radius_ext ≈ final_screen_con_radius + t_wbt
     final_screen_insu_radius = screen_insu.radius_ext
@@ -297,13 +297,13 @@ using EzXML
 
     println("Constructing jacket group...")
     # Aluminum foil
-    material_alu = get(materials_db, "aluminum") # Re-get just in case
+    material_alu = get(materials, "aluminum") # Re-get just in case
     jacket_con = ConductorGroup(Tubular(screen_insu, Thickness(t_alt), material_alu))
     @test jacket_con.radius_ext ≈ final_screen_insu_radius + t_alt
     final_jacket_con_radius = jacket_con.radius_ext
 
     # PE layer after foil
-    material_pe = get(materials_db, "pe") # Re-get just in case
+    material_pe = get(materials, "pe") # Re-get just in case
     jacket_insu = InsulatorGroup(Insulator(jacket_con, Thickness(t_pet), material_pe))
     @test jacket_insu.radius_ext ≈ final_jacket_con_radius + t_pet
 
@@ -747,9 +747,9 @@ using EzXML
         core_cc,         # CableComponent
         cable_design,    # CableDesign
         cable_system,    # LineCableSystem
-        materials_db,
+        materials,
         # Add an example of a basic part if desired and has a show method
-        Tubular(0.0, 0.01, get(materials_db, "aluminum")),
+        Tubular(0.0, 0.01, get(materials, "aluminum")),
     ]
 
     mime = MIME"text/plain"()
