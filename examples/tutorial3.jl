@@ -342,7 +342,7 @@ opts = (
     mesh_only=false,                            # Preview the mesh
     base_path=joinpath(@__DIR__, "fem_output"), # Results directory
     keep_run_files=true,                        # Archive files after each run
-    verbosity=1,                                # Verbosity
+    verbosity=0,                                # Verbosity
 );
 
 # Define the FEM formulation with the specified parameters
