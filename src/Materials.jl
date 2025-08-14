@@ -21,6 +21,14 @@ $(EXPORTS)
 """
 module Materials
 
+# Export public API
+export Material,
+    MaterialsLibrary,
+    add!,
+    delete!,
+    get,
+    DataFrame
+
 # Load common dependencies
 include("common_deps.jl")
 using ..LineCableModels
@@ -31,7 +39,7 @@ import ..LineCableModels: add!, load!, save
 using Measurements
 using DataFrames
 import DataFrames: DataFrame
-import Base: get, delete!
+import Base: get, delete!, length, setindex!, iterate, keys, values
 
 """
 $(TYPEDEF)
@@ -60,10 +68,18 @@ Stores a collection of predefined materials for cable modeling, indexed by mater
 
 $(TYPEDFIELDS)
 """
-mutable struct MaterialsLibrary
+mutable struct MaterialsLibrary <: AbstractDict{String,Material}
     "Dictionary mapping material names to [`Material`](@ref) objects."
-    materials::Dict{String,Material}  # Key: Material name, Value: Material object
+    data::Dict{String,Material}  # Key: Material name, Value: Material object
 end
+
+# Implement the AbstractDict interface
+length(lib::MaterialsLibrary) = length(lib.data)
+get(lib::MaterialsLibrary, key::String, default) = get(lib.data, key, default)
+setindex!(lib::MaterialsLibrary, value::Material, key::String) = (lib.data[key] = value)
+iterate(lib::MaterialsLibrary, state...) = iterate(lib.data, state...)
+keys(lib::MaterialsLibrary) = keys(lib.data)
+values(lib::MaterialsLibrary) = values(lib.data)
 
 """
 $(TYPEDSIGNATURES)
@@ -190,10 +206,10 @@ function add!(
     name::AbstractString,
     material::Material,
 )
-    if haskey(library.materials, name)
+    if haskey(library, name)
         error("Material $name already exists in the library.")
     end
-    library.materials[String(name)] = material
+    library[String(name)] = material
     library
 end
 
@@ -227,10 +243,10 @@ $(FUNCTIONNAME)(library, "copper")
 - [`add!`](@ref)
 """
 function delete!(library::MaterialsLibrary, name::String)
-    if !haskey(library.materials, name)
+    if !haskey(library.data, name)
         error("Material $name not found in the library.")
     end
-    delete!(library.materials, name)
+    delete!(library.data, name)
     library
 end
 
@@ -269,7 +285,7 @@ function DataFrame(library::MaterialsLibrary)::DataFrame
             T0=m.T0,
             alpha=m.alpha,
         )
-        for (name, m) in library.materials
+        for (name, m) in library
     ]
     data = DataFrame(rows)
     return data
@@ -302,7 +318,7 @@ material = $(FUNCTIONNAME)(library, "copper")
 - [`delete!`](@ref)
 """
 function get(library::MaterialsLibrary, name::String)::Union{Nothing,Material}
-    material = get(library.materials, name, nothing)
+    material = get(library, name, nothing)
     if material === nothing
         println("Material '$name' not found in the library.")
     end
@@ -357,7 +373,7 @@ Defines the display representation of a [`MaterialsLibrary`](@ref) object for RE
 - Nothing. Modifies `io` by writing text representation of the library.
 """
 function Base.show(io::IO, ::MIME"text/plain", library::MaterialsLibrary)
-    num_materials = length(library.materials)
+    num_materials = length(library)
     material_word = num_materials == 1 ? "material" : "materials"
     print(io, "MaterialsLibrary with $num_materials $material_word")
 
@@ -365,7 +381,7 @@ function Base.show(io::IO, ::MIME"text/plain", library::MaterialsLibrary)
         print(io, ":")
         # Optional: list the first few materials
         shown_materials = min(5, num_materials)
-        material_names = collect(keys(library.materials))[1:shown_materials]
+        material_names = collect(keys(library))[1:shown_materials]
 
         for (i, name) in enumerate(material_names)
             print(io, "\n$(i == shown_materials ? "└─" : "├─") $name")
@@ -415,6 +431,4 @@ function Base.show(io::IO, ::MIME"text/plain", dict::Dict{String,Material})
     end
 end
 
-Utils.@_autoexport
-
-end
+end # module Materials
