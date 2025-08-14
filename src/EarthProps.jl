@@ -36,7 +36,8 @@ import Base: show
 export AbstractFDEMFormulation,
     CPEarth,
     EarthLayer,
-    EarthModel
+    EarthModel,
+    DataFrame
 
 """
 $(TYPEDEF)
