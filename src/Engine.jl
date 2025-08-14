@@ -24,6 +24,10 @@ $(EXPORTS)
 """
 module Engine
 
+# Export public API
+export LineParametersProblem, LineParameters
+# export AbstractFormulationSet, AbstractImpedanceFormulation, AbstractAdmittanceFormulation
+
 # Load common dependencies
 include("common_deps.jl")
 using ..Utils
@@ -37,10 +41,6 @@ import ..LineCableModels: FormulationSet, _get_description
 using Measurements
 using LinearAlgebra
 using SpecialFunctions
-
-# Export public API
-export LineParametersProblem, LineParameters
-export AbstractFormulationSet, AbstractImpedanceFormulation, AbstractAdmittanceFormulation
 
 """
 $(TYPEDEF)
@@ -57,6 +57,7 @@ abstract type InternalImpedanceFormulation <: AbstractImpedanceFormulation end
 abstract type EarthImpedanceFormulation <: AbstractImpedanceFormulation end
 abstract type InternalAdmittanceFormulation <: AbstractAdmittanceFormulation end
 abstract type EarthAdmittanceFormulation <: AbstractAdmittanceFormulation end
+abstract type AbstractFormulationOptions end
 
 """
 $(TYPEDEF)
