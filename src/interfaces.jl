@@ -1,5 +1,5 @@
 # Export public API
-export FormulationSet, OptSet, DataFrame, add!, load!, export_data, save, preview
+export FormulationSet, DataFrame, add!, load!, export_data, save, preview
 export f₀, μ₀, ε₀, ρ₀, T₀, TOL, ΔTmax
 
 # General constants
@@ -25,8 +25,6 @@ Constructs a specific formulation object based on the provided keyword arguments
 The system will infer the correct formulation type.
 """
 FormulationSet(engine::Symbol; kwargs...) = FormulationSet(Val(engine); kwargs...)
-
-function OptSet end
 
 """
 $(TYPEDSIGNATURES)
