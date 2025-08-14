@@ -29,10 +29,10 @@ materials with their standard properties.
 =#
 
 # Initialize a [`MaterialsLibrary`](@ref) with default values:
-materials_db = MaterialsLibrary()
+materials = MaterialsLibrary()
 
 # Inspect the contents of the materials library:
-materials_df = DataFrame(materials_db)
+materials_df = DataFrame(materials)
 
 #=
 The function [`DataFrame`](@ref) returns a `DataFrame` with all materials and their properties, namely: electrical resistivity, relative permittivity, relative permeability, reference temperature, and temperature coefficient.
@@ -47,32 +47,32 @@ It might be useful to add other conductor materials with corrected properties ba
 =#
 
 copper_corrected = Material(1.835e-8, 1.0, 0.999994, 20.0, 0.00393) # Copper with corrected resistivity from IEC 60287-3-2
-add!(materials_db, "copper_corrected", copper_corrected)
+add!(materials, "copper_corrected", copper_corrected)
 aluminum_corrected = Material(3.03e-8, 1.0, 0.999994, 20.0, 0.00403) # Aluminum with corrected resistivity from IEC 60287-3-2
-add!(materials_db, "aluminum_corrected", aluminum_corrected)
+add!(materials, "aluminum_corrected", aluminum_corrected)
 lead = Material(21.4e-8, 1.0, 0.999983, 20.0, 0.00400) # Lead or lead alloy
-add!(materials_db, "lead", lead)
+add!(materials, "lead", lead)
 steel = Material(13.8e-8, 1.0, 300.0, 20.0, 0.00450) # Steel
-add!(materials_db, "steel", steel)
+add!(materials, "steel", steel)
 bronze = Material(3.5e-8, 1.0, 1.0, 20.0, 0.00300) # Bronze
-add!(materials_db, "bronze", bronze)
+add!(materials, "bronze", bronze)
 stainless_steel = Material(70.0e-8, 1.0, 500.0, 20.0, 0.0) # Stainless steel
-add!(materials_db, "stainless_steel", stainless_steel)
+add!(materials, "stainless_steel", stainless_steel)
 
 #=
 When modeling cables for EMT analysis, one might be concerned with the impact of insulators and semiconductive layers on cable constants. Common insulation materials and semicons with different dielectric properties are reported in Table 6 of [cigre531](@cite). Let us include some of these materials in the [`MaterialsLibrary`](@ref) to help our future selves.
 =#
 
 epr = Material(1e15, 3.0, 1.0, 20.0, 0.005) # EPR (ethylene propylene rubber)
-add!(materials_db, "epr", epr)
+add!(materials, "epr", epr)
 pvc = Material(1e15, 8.0, 1.0, 20.0, 0.1) # PVC (polyvinyl chloride)
-add!(materials_db, "pvc", pvc)
+add!(materials, "pvc", pvc)
 laminated_paper = Material(1e15, 2.8, 1.0, 20.0, 0.0) # Laminated paper propylene
-add!(materials_db, "laminated_paper", laminated_paper)
+add!(materials, "laminated_paper", laminated_paper)
 carbon_pe = Material(0.06, 1e3, 1.0, 20.0, 0.0) # Carbon-polyethylene compound (semicon)
-add!(materials_db, "carbon_pe", carbon_pe)
+add!(materials, "carbon_pe", carbon_pe)
 conductive_paper = Material(18.5, 8.6, 1.0, 20.0, 0.0) # Conductive paper layer (semicon)
-add!(materials_db, "conductive_paper", conductive_paper)
+add!(materials, "conductive_paper", conductive_paper)
 
 # ##  Removing materials
 #=
@@ -81,18 +81,18 @@ add!(materials_db, "conductive_paper", conductive_paper)
 =#
 
 # Add a duplicate material by accident:
-add!(materials_db, "epr_dupe", epr)
+add!(materials, "epr_dupe", epr)
 
 # And now remove it using the [`delete!`](@ref) function:
-delete!(materials_db, "epr_dupe")
+delete!(materials, "epr_dupe")
 
 # Examine the updated library after removing the duplicate:
 println("Material properties compiled from CIGRE TB-531 and IEC 60287:")
-materials_df = DataFrame(materials_db)
+materials_df = DataFrame(materials)
 
 # ##  Saving the materials library to JSON
 output_file = joinpath(@__DIR__, "materials_library.json")
-save(materials_db, file_name=output_file);
+save(materials, file_name=output_file);
 
 
 # ##  Retrieving materials for use
