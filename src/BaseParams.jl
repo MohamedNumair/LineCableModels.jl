@@ -22,10 +22,35 @@ $(EXPORTS)
 """
 module BaseParams
 
+# Export public API
+export calc_equivalent_alpha
+export calc_parallel_equivalent
+export calc_helical_params
+export calc_strip_resistance
+export calc_temperature_correction
+export calc_tubular_resistance
+export calc_tubular_inductance
+export calc_wirearray_coords
+export calc_inductance_trifoil
+export calc_wirearray_gmr
+export calc_tubular_gmr
+export calc_equivalent_mu
+export calc_shunt_capacitance
+export calc_shunt_conductance
+export calc_equivalent_gmr
+export calc_gmd
+export calc_solenoid_correction
+export calc_equivalent_rho
+export calc_equivalent_eps
+export calc_equivalent_lossfact
+export calc_sigma_lossfact
+
 # Load common dependencies
 include("common_deps.jl")
 using ...LineCableModels
 using ...Utils
+using ..DataModel: ConductorGroup, WireArray
+import ..DataModel: AbstractCablePart
 
 # Module-specific dependencies
 using Measurements
@@ -734,7 +759,6 @@ function calc_shunt_conductance(radius_in::Number, radius_ext::Number, rho::Numb
     return 2 * π * (1 / rho) / log(radius_ext / radius_in)
 end
 
-using ..DataModel: AbstractCablePart, ConductorGroup, WireArray
 """
 $(TYPEDSIGNATURES)
 
@@ -1055,6 +1079,5 @@ function calc_sigma_lossfact(G_eq::Number, radius_in::Number, radius_ext::Number
     return G_eq * log(radius_ext / radius_in) / (2 * pi)
 end
 
-Utils.@_autoexport
 
-end
+end # module BaseParams
