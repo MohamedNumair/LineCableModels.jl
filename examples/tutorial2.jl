@@ -33,12 +33,11 @@ This tutorial covers:
 ## Getting started
 =#
 
-fullfile(filename) = joinpath(@__DIR__, filename); # hide
-setup_logging!(0); # hide
-
 # Load the package and set up the environment:
 using DataFrames
 using LineCableModels
+fullfile(filename) = joinpath(@__DIR__, filename); #hide
+setup_logging!(0); #hide
 
 # Initialize materials library with default values:
 materials = MaterialsLibrary(add_defaults=true)
@@ -85,40 +84,40 @@ t_alt = .15e-3     # nominal thickness of the aluminum tape
 t_pet = .05e-3     # nominal thickness of the pe face in the aluminum tape
 t_jac = 2.4e-3     # nominal PE jacket thickness
 
-d_overall = d_core # hide
-layers = [] # hide
-push!(layers, ("Conductor", missing, d_overall * 1000)) # hide
-d_overall += 2 * t_sct # hide
-push!(layers, ("Inner semiconductive tape", t_sct * 1000, d_overall * 1000)) # hide
-d_overall += 2 * t_sc_in # hide
-push!(layers, ("Inner semiconductor", t_sc_in * 1000, d_overall * 1000)) # hide
-d_overall += 2 * t_ins # hide
-push!(layers, ("Main insulation", t_ins * 1000, d_overall * 1000)) # hide
-d_overall += 2 * t_sc_out # hide
-push!(layers, ("Outer semiconductor", t_sc_out * 1000, d_overall * 1000)) # hide
-d_overall += 2 * t_sct # hide
-push!(layers, ("Outer semiconductive tape", t_sct * 1000, d_overall * 1000)) # hide
-d_overall += 2 * d_ws # hide
-push!(layers, ("Wire screen", d_ws * 1000, d_overall * 1000)) # hide
-d_overall += 2 * t_cut # hide
-push!(layers, ("Copper tape", t_cut * 1000, d_overall * 1000)) # hide
-d_overall += 2 * t_wbt # hide
-push!(layers, ("Water-blocking tape", t_wbt * 1000, d_overall * 1000)) # hide
-d_overall += 2 * t_alt # hide
-push!(layers, ("Aluminum tape", t_alt * 1000, d_overall * 1000)) # hide
-d_overall += 2 * t_pet # hide
-push!(layers, ("PE with aluminum face", t_pet * 1000, d_overall * 1000)) # hide
-d_overall += 2 * t_jac # hide
-push!(layers, ("PE jacket", t_jac * 1000, d_overall * 1000)); # hide
+d_overall = d_core #hide
+layers = [] #hide
+push!(layers, ("Conductor", missing, d_overall * 1000)) #hide
+d_overall += 2 * t_sct #hide
+push!(layers, ("Inner semiconductive tape", t_sct * 1000, d_overall * 1000)) #hide
+d_overall += 2 * t_sc_in #hide
+push!(layers, ("Inner semiconductor", t_sc_in * 1000, d_overall * 1000)) #hide
+d_overall += 2 * t_ins #hide
+push!(layers, ("Main insulation", t_ins * 1000, d_overall * 1000)) #hide
+d_overall += 2 * t_sc_out #hide
+push!(layers, ("Outer semiconductor", t_sc_out * 1000, d_overall * 1000)) #hide
+d_overall += 2 * t_sct #hide
+push!(layers, ("Outer semiconductive tape", t_sct * 1000, d_overall * 1000)) #hide
+d_overall += 2 * d_ws #hide
+push!(layers, ("Wire screen", d_ws * 1000, d_overall * 1000)) #hide
+d_overall += 2 * t_cut #hide
+push!(layers, ("Copper tape", t_cut * 1000, d_overall * 1000)) #hide
+d_overall += 2 * t_wbt #hide
+push!(layers, ("Water-blocking tape", t_wbt * 1000, d_overall * 1000)) #hide
+d_overall += 2 * t_alt #hide
+push!(layers, ("Aluminum tape", t_alt * 1000, d_overall * 1000)) #hide
+d_overall += 2 * t_pet #hide
+push!(layers, ("PE with aluminum face", t_pet * 1000, d_overall * 1000)) #hide
+d_overall += 2 * t_jac #hide
+push!(layers, ("PE jacket", t_jac * 1000, d_overall * 1000)); #hide
 
 # The cable structure is summarized in a table for better visualization, with dimensions in milimiters:
-df = DataFrame( # hide
-    layer=first.(layers), # hide
-    thickness=[ # hide
-        ismissing(t) ? "-" : round(t, sigdigits=2) for t in getindex.(layers, 2) # hide
-    ], # hide
-    diameter=[round(d, digits=2) for d in getindex.(layers, 3)], # hide
-) # hide
+df = DataFrame( #hide
+    layer=first.(layers), #hide
+    thickness=[ #hide
+        ismissing(t) ? "-" : round(t, sigdigits=2) for t in getindex.(layers, 2) #hide
+    ], #hide
+    diameter=[round(d, digits=2) for d in getindex.(layers, 3)], #hide
+) #hide
 
 #=
 ## Using the cable constructors
