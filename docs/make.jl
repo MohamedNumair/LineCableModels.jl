@@ -61,6 +61,11 @@ function customize_literate_footer(content, custom_footer="")
     end
 end
 
+function post_process_literate(content)
+    content = customize_literate_footer(content, "🏠 Back to [Tutorials](@ref)\n")
+    return content
+end
+
 tutorial_source = joinpath(@__DIR__, "..", "examples")
 tutorial_output = joinpath(@__DIR__, "src", "tutorials")
 # Remove the directory if it exists and then create it fresh
@@ -76,7 +81,9 @@ for file in readdir(tutorial_source)
             tutorial_output,
             documenter=true,
             postprocess=content ->
-                customize_literate_footer(content, "🏠 Back to [Tutorials](@ref)\n"),
+                post_process_literate(
+                    content,
+                ),
         )
     end
 end
