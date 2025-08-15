@@ -24,7 +24,8 @@ HVDC cables are constructed around a central conductor enclosed by a triple-extr
 ## Getting started
 =#
 
-fullfile(filename) = joinpath(@__DIR__, filename) # hide
+fullfile(filename) = joinpath(@__DIR__, filename); # hide
+setup_logging!(0); # hide
 
 # Load the package and set up the environment:
 using DataFrames
