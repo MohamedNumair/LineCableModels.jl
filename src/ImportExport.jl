@@ -37,7 +37,7 @@ using ..Utils
 using ..Materials
 using ..EarthProps
 using ..DataModel
-import ..LineCableModels: add!, load!, export_data, save
+import ..LineCableModels: add!, load!, export_data, save, _is_headless, _display_path
 using ..LineCableModels # For physical constants (f₀, μ₀, ε₀, ρ₀, T₀, TOL, ΔTmax)
 
 # Module-specific dependencies
@@ -47,10 +47,6 @@ using Dates # For PSCAD export
 using JSON3
 using Serialization # For .jls format
 import Base: get
-
-function _display_path(file_name)
-    return DataModel._is_headless() ? basename(file_name) : abspath(file_name)
-end
 
 #=
 Generates sequential IDs, used for simulation element identification (e.g., PSCAD).
@@ -1430,7 +1426,7 @@ function _save_cableslibrary_json(library::CablesLibrary, file_name::String)::St
         JSON3.pretty(io, serialized_library, allow_inf=true)
     end
     if isfile(file_name)
-        @info "Cables library saved to: $(file_name)"
+        @info "Cables library saved to: $(_display_path(file_name))"
     end
     return abspath(file_name)
 end
