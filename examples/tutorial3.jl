@@ -112,6 +112,7 @@ n_layers = 6 # Layers of strands
 for i in 1:n_layers
     add!(core, WireArray, Diameter(d_w), i * n_strands, 11, material)
 end
+core
 
 #=
 ### Inner semiconductor
