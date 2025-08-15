@@ -37,7 +37,7 @@ function get_material_name(material::Material, library::MaterialsLibrary; tol=1e
     alpha = to_nominal(material.alpha)
 
     # Try to find an exact match
-    for (name, lib_material) in library.materials
+    for (name, lib_material) in library
         # Check if all properties match within tolerance
         if isapprox(rho, to_nominal(lib_material.rho), rtol=tol) &&
            isapprox(eps_r, to_nominal(lib_material.eps_r), rtol=tol) &&
