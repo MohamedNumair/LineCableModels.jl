@@ -20,12 +20,11 @@ Depth = 2:3
 ##   Getting started
 =#
 
-fullfile(filename) = joinpath(@__DIR__, filename); # hide
-setup_logging!(0); # hide
-
 # Load the package:
 using DataFrames
 using LineCableModels
+fullfile(filename) = joinpath(@__DIR__, filename); #hide
+setup_logging!(0); #hide
 
 #=
 The [`MaterialsLibrary`](@ref) is a container for storing electromagnetic properties of 
