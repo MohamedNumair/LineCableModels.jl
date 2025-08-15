@@ -13,6 +13,9 @@ using Test
     end
     @info "DataModel tests completed."
 
+    include("earthprops.jl")
+    @info "EarthProps tests completed."
+
     @testset "Integration tests based on example files" begin
         exa_files = ["test_tutorial1.jl", "test_tutorial2.jl", "test_tutorial3.jl"]
         for f in exa_files
