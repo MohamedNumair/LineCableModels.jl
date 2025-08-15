@@ -269,6 +269,11 @@ struct EarthModel{T<:Union{Float64,Measurement{Float64}}}
         @assert mur_g > 0 "Relative permeability must be positive"
         @assert t > 0 || isinf(t) "Layer thickness must be positive or infinite"
 
+        # Enforce rule for vertical model initialization
+        if vertical_layers && !isinf(t)
+            error("A vertically-layered model must be initialized with an infinite thickness (t=Inf).")
+        end
+
         # Create air layer if not provided
         if air_layer === nothing
             air_layer = EarthLayer(frequencies, T(Inf), T(1.0), T(1.0), T(Inf), FDformulation)
@@ -380,25 +385,17 @@ function add!(
     @assert base_mur_g > 0 "Relative permeability must be positive"
     @assert t > 0 || isinf(t) "Layer thickness must be positive or infinite"
 
-    # Enforce thickness rules for vertically-layered models
-    if model.vertical_layers
-        if num_layers <= 3
-            # Any thicknesses are valid for the first two earth layers
-        elseif num_layers > 3
-            prev_layer = model.layers[end]
-            if prev_layer.t == Inf && t == Inf
-                error("Cannot add consecutive vertical layers with infinite thickness.")
-            end
-        end
-    else
-        # Standard horizontal layering checks
-        if num_layers == 2
-            # If adding the first earth layer, any thickness is valid
-        elseif num_layers > 2
-            prev_layer = model.layers[end]
-            if prev_layer.t == Inf && t == Inf
-                error("Cannot add consecutive earth layers with infinite thickness.")
-            end
+    # Enforce thickness rules
+    if isinf(last(model.layers).t)
+        # The current last layer is infinite.
+        if model.vertical_layers && num_layers == 2
+            # This is the special case: adding the second earth layer to a vertical model.
+            # The new layer can be finite or infinite. No error.
+        else
+            # For all other cases (horizontal, or vertical with >2 earth layers),
+            # it's an error to add anything after an infinite layer.
+            model_type = model.vertical_layers ? "vertical" : "horizontal"
+            error("Cannot add a $(model_type) layer after an infinite one.")
         end
     end
 
