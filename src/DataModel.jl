@@ -29,7 +29,7 @@ export ConductorGroup, InsulatorGroup  # Group types
 export CableComponent, CableDesign  # Cable design types
 export CablePosition, LineCableSystem  # System types
 export CablesLibrary, NominalData  # Support types
-export add!, get, delete!  # Common operations
+export add!, get, delete!, length, setindex!, iterate, keys, values, haskey, getindex
 export trifoil_formation, flat_formation  # Formation helpers
 export preview  # Visualization
 export DataFrame  # Data conversion
@@ -41,7 +41,7 @@ using ..Utils
 using ..Materials
 using ..EarthProps
 using ..LineCableModels # For physical constants (f₀, μ₀, ε₀, ρ₀, T₀, TOL, ΔTmax)
-import ..LineCableModels: add!, load!, preview, save, _is_headless
+import ..LineCableModels: add!, preview, save, _is_headless
 
 # Module-specific dependencies
 using Measurements
@@ -50,7 +50,9 @@ using Colors
 using Plots
 using DisplayAs: DisplayAs
 import DataFrames: DataFrame
-import Base: get, delete!, length, setindex!, iterate, keys, values
+import Base: get, delete!, length, setindex!, iterate, keys, values, haskey, getindex
+
+abstract type AbstractRadius end
 
 """
 $(TYPEDEF)
@@ -59,11 +61,14 @@ Represents the thickness of a cable component.
 
 $(TYPEDFIELDS)
 """
-struct Thickness{T<:Number} <: Number
+struct Thickness{T<:Real} <: AbstractRadius
     "Numerical value of the thickness \\[m\\]."
     value::T
+    function Thickness(value::T) where {T<:Real}
+        value >= 0 || throw(ArgumentError("Thickness must be a non-negative number."))
+        new{T}(value)
+    end
 end
-
 
 """
 $(TYPEDEF)
@@ -72,9 +77,13 @@ Represents the diameter of a cable component.
 
 $(TYPEDFIELDS)
 """
-struct Diameter{T<:Number} <: Number
+struct Diameter{T<:Real} <: AbstractRadius
     "Numerical value of the diameter \\[m\\]."
     value::T
+    function Diameter(value::T) where {T<:Real}
+        value > 0 || throw(ArgumentError("Diameter must be a positive number."))
+        new{T}(value)
+    end
 end
 
 """
@@ -995,6 +1004,7 @@ function WireArray(
     temperature::Number=T₀,
     lay_direction::Int=1,
 )
+    @assert(lay_ratio >= 0, "Lay ratio must be non-negative.")
 
     radius_in, radius_ext, diameter =
         _resolve_radius(radius_in, radius_wire, WireArray)
@@ -1890,7 +1900,7 @@ function DataFrame(
         # Core parameters calculation
         # Get components from the vector
         if length(design.components) < 2
-            error("Core format requires at least two components (core and shield)")
+            throw(ArgumentError("At least two components are required for :baseparams format."))
         end
 
         cable_core = design.components[1]
@@ -2347,7 +2357,7 @@ $(TYPEDFIELDS)
 """
 mutable struct CablesLibrary
     "Dictionary mapping cable IDs to the respective CableDesign objects."
-    cable_designs::Dict{String,CableDesign}
+    data::Dict{String,CableDesign}
 
     @doc """
     $(TYPEDSIGNATURES)
@@ -2379,10 +2389,19 @@ mutable struct CablesLibrary
     """
     function CablesLibrary()::CablesLibrary
         library = new(Dict{String,CableDesign}())
-        println("Initializing empty cables database...")
+        @info "Initializing empty cables database..."
         return library
     end
 end
+
+# Implement the AbstractDict interface
+length(lib::CablesLibrary) = length(lib.data)
+setindex!(lib::CablesLibrary, value::CableDesign, key::String) = (lib.data[key] = value)
+iterate(lib::CablesLibrary, state...) = iterate(lib.data, state...)
+keys(lib::CablesLibrary) = keys(lib.data)
+values(lib::CablesLibrary) = values(lib.data)
+haskey(lib::CablesLibrary, key::String) = haskey(lib.data, key)
+getindex(lib::CablesLibrary, key::String) = getindex(lib.data, key)
 
 """
 Stores a cable design in a [`CablesLibrary`](@ref) object.
@@ -2394,14 +2413,14 @@ Stores a cable design in a [`CablesLibrary`](@ref) object.
 
 # Returns
 
-- None. Modifies the `cable_designs` field of the [`CablesLibrary`](@ref) object in-place by adding the new cable design.
+- None. Modifies the `data` field of the [`CablesLibrary`](@ref) object in-place by adding the new cable design.
 
 # Examples
 ```julia
 library = CablesLibrary()
 design = CableDesign("example", ...) # Initialize CableDesign with required fields
 add!(library, design)
-println(library.cable_designs) # Prints the updated dictionary containing the new cable design
+println(library) # Prints the updated dictionary containing the new cable design
 ```
 # See also
 
@@ -2410,8 +2429,8 @@ println(library.cable_designs) # Prints the updated dictionary containing the ne
 - [`delete!`](@ref)
 """
 function add!(library::CablesLibrary, design::CableDesign)
-    library.cable_designs[design.cable_id] = design
-    println("Cable design with ID `$(design.cable_id)` added to the library.")
+    library.data[design.cable_id] = design
+    @info "Cable design with ID `$(design.cable_id)` added to the library."
     library
 end
 
@@ -2427,7 +2446,7 @@ Removes a cable design from a [`CablesLibrary`](@ref) object by its ID.
 
 # Returns
 
-- Nothing. Modifies the `cable_designs` field of the [`CablesLibrary`](@ref) object in-place by removing the specified cable design if it exists.
+- Nothing. Modifies the `data` field of the [`CablesLibrary`](@ref) object in-place by removing the specified cable design if it exists.
 
 # Examples
 
@@ -2438,7 +2457,7 @@ add!(library, design)
 
 # Remove the cable design
 $(FUNCTIONNAME)(library, "example")
-haskey(library.cable_designs, "example")  # Returns false
+haskey(library, "example")  # Returns false
 ```
 
 # See also
@@ -2447,11 +2466,12 @@ haskey(library.cable_designs, "example")  # Returns false
 - [`add!`](@ref)
 """
 function delete!(library::CablesLibrary, cable_id::String)
-    if haskey(library.cable_designs, cable_id)
-        delete!(library.cable_designs, cable_id)
-        println("Cable design with ID `$cable_id` removed from the library.")
+    if haskey(library, cable_id)
+        delete!(library.data, cable_id)
+        @info "Cable design with ID `$cable_id` removed from the library."
     else
-        println("Cable design with ID `$cable_id` not found in the library.")
+        @error "Cable design with ID `$cable_id` not found in the library."
+        throw(KeyError(cable_id))
     end
 end
 
@@ -2492,16 +2512,13 @@ println(missing_design === nothing)  # Prints true
 - [`add!`](@ref)
 - [`delete!`](@ref)
 """
-function get(
-    library::CablesLibrary,
-    cable_id::String,
-)::Union{Nothing,CableDesign}
-    if haskey(library.cable_designs, cable_id)
-        println("Cable design with ID `$cable_id` loaded from the library.")
-        return library.cable_designs[cable_id]
+function get(library::CablesLibrary, cable_id::String, default=nothing)::Union{Nothing,CableDesign}
+    if haskey(library, cable_id)
+        @info "Cable design with ID `$cable_id` loaded from the library."
+        return library[cable_id]
     else
-        println("Cable design with ID `$cable_id` not found.")
-        return nothing
+        @error "Cable design with ID `$cable_id` not found in the library."
+        throw(KeyError(cable_id))
     end
 end
 
@@ -2542,11 +2559,11 @@ first(df, 5)  # Show the first 5 rows of the DataFrame
 - [`add!`](@ref)
 """
 function DataFrame(library::CablesLibrary)::DataFrame
-    ids = keys(library.cable_designs)
-    nominal_data = [string(design.nominal_data) for design in values(library.cable_designs)]
+    ids = keys(library)
+    nominal_data = [string(design.nominal_data) for design in values(library)]
     components = [
         join([comp.id for comp in design.components], ", ") for
-        design in values(library.cable_designs)
+        design in values(library)
     ]
     df = DataFrame(
         cable_id=collect(ids),
@@ -2634,6 +2651,7 @@ struct CablePosition
         to prevent crossing the air/earth interface at z=0
         """
 
+
         # Create phase mapping vector
         components = [comp.id for comp in cable.components]
         if isnothing(conn)
@@ -2641,6 +2659,10 @@ struct CablePosition
         else
             conn_vector = [get(conn, name, 0) for name in components]  # Ensure correct mapping order
         end
+        # Validate there is at least one ungrounded conductor
+        !all(iszero, conn_vector) || throw(ArgumentError("At least one component must be assigned to a non-zero phase."))
+
+
         return new(cable, horz, vert, conn_vector)
     end
 end
@@ -2768,6 +2790,13 @@ function add!(
         Dict(name => (i == 1 ? max_phase + 1 : 0) for (i, name) in enumerate(component_names))
     else
         Dict(name => get(conn, name, 0) for name in component_names)  # Ensures correct mapping order
+    end
+
+    # Validate that the coordinates do not overlap with existing cables
+    for cable_pos in system.cables
+        if cable_pos.horz == horz && cable_pos.vert == vert
+            throw(ArgumentError("Cable position overlaps with existing cable"))
+        end
     end
 
     push!(system.cables, CablePosition(cable, horz, vert, new_conn))
@@ -2925,6 +2954,7 @@ println((xc, yc))  # Coordinates of bottom-right cable
 ```
 """
 function trifoil_formation(xc, yc, r_ext)
+    @assert r_ext > 0 "External radius must be positive"
     # Horizontal distance between centers of adjacent circles (equal to twice the radius of each circle)
     d = 2 * r_ext
     # Vertical distance from top circle center to the line between bottom two circles
