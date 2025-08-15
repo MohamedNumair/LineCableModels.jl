@@ -24,12 +24,12 @@ HVDC cables are constructed around a central conductor enclosed by a triple-extr
 ## Getting started
 =#
 
-fullfile(filename) = joinpath(@__DIR__, filename); # hide
-setup_logging!(0); # hide
-
 # Load the package and set up the environment:
 using DataFrames
 using LineCableModels
+using Printf
+fullfile(filename) = joinpath(@__DIR__, filename); #hide
+setup_logging!(0); #hide
 
 # Initialize library and the required materials for this design:
 materials = MaterialsLibrary(add_defaults=true)
@@ -65,37 +65,37 @@ t_bed = 3e-3       # nominal thickness of the PP bedding
 d_wa = 5.827e-3    # nominal armor wire diameter
 t_jac = 10e-3      # nominal PP jacket thickness
 
-d_overall = d_core # hide
-layers = [] # hide
-push!(layers, ("Conductor", missing, d_overall * 1000)) # hide
-d_overall += 2 * t_sc_in # hide
-push!(layers, ("Inner semiconductor", t_sc_in * 1000, d_overall * 1000)) # hide
-d_overall += 2 * t_ins # hide
-push!(layers, ("Main insulation", t_ins * 1000, d_overall * 1000)) # hide
-d_overall += 2 * t_sc_out # hide
-push!(layers, ("Outer semiconductor", t_sc_out * 1000, d_overall * 1000)) # hide
-d_overall += 2 * t_wbt # hide
-push!(layers, ("Swellable tape", t_wbt * 1000, d_overall * 1000)) # hide
-d_overall += 2 * t_sc # hide
-push!(layers, ("Lead screen", t_sc * 1000, d_overall * 1000)) # hide
-d_overall += 2 * t_pe # hide
-push!(layers, ("PE inner sheath", t_pe * 1000, d_overall * 1000)) # hide
-d_overall += 2 * t_bed # hide
-push!(layers, ("PP bedding", t_bed * 1000, d_overall * 1000)) # hide
-d_overall += 2 * d_wa # hide
-push!(layers, ("Stranded wire armor", d_wa * 1000, d_overall * 1000)) # hide
-d_overall += 2 * t_jac # hide
-push!(layers, ("PP jacket", t_jac * 1000, d_overall * 1000)); # hide
+d_overall = d_core #hide
+layers = [] #hide
+push!(layers, ("Conductor", missing, d_overall * 1000)) #hide
+d_overall += 2 * t_sc_in #hide
+push!(layers, ("Inner semiconductor", t_sc_in * 1000, d_overall * 1000)) #hide
+d_overall += 2 * t_ins #hide
+push!(layers, ("Main insulation", t_ins * 1000, d_overall * 1000)) #hide
+d_overall += 2 * t_sc_out #hide
+push!(layers, ("Outer semiconductor", t_sc_out * 1000, d_overall * 1000)) #hide
+d_overall += 2 * t_wbt #hide
+push!(layers, ("Swellable tape", t_wbt * 1000, d_overall * 1000)) #hide
+d_overall += 2 * t_sc #hide
+push!(layers, ("Lead screen", t_sc * 1000, d_overall * 1000)) #hide
+d_overall += 2 * t_pe #hide
+push!(layers, ("PE inner sheath", t_pe * 1000, d_overall * 1000)) #hide
+d_overall += 2 * t_bed #hide
+push!(layers, ("PP bedding", t_bed * 1000, d_overall * 1000)) #hide
+d_overall += 2 * d_wa #hide
+push!(layers, ("Stranded wire armor", d_wa * 1000, d_overall * 1000)) #hide
+d_overall += 2 * t_jac #hide
+push!(layers, ("PP jacket", t_jac * 1000, d_overall * 1000)); #hide
 
 
 # The cable structure is summarized in a table for better visualization, with dimensions in milimiters:
-df = DataFrame( # hide
-    layer=first.(layers), # hide
-    thickness=[ # hide
-        ismissing(t) ? "-" : round(t, sigdigits=2) for t in getindex.(layers, 2) # hide
-    ], # hide
-    diameter=[round(d, digits=2) for d in getindex.(layers, 3)], # hide
-) # hide
+df = DataFrame( #hide
+    layer=first.(layers), #hide
+    thickness=[ #hide
+        ismissing(t) ? "-" : round(t, sigdigits=2) for t in getindex.(layers, 2) #hide
+    ], #hide
+    diameter=[round(d, digits=2) for d in getindex.(layers, 3)], #hide
+) #hide
 
 #=
 ## Core and main insulation
@@ -300,7 +300,7 @@ problem = LineParametersProblem(
 );
 
 # Estimate domain size based on skin depth in the earth
-domain_radius = calc_domain_size(earth_params, [f])
+domain_radius = calc_domain_size(earth_params, [f]);
 
 # Define custom mesh transitions around each cable
 mesh_transition1 = MeshTransition(
@@ -359,7 +359,12 @@ formulation = FormulationSet(:FEM,
 
 # Display primary core results
 if !opts.mesh_only
-    println("R = $(round(real(line_params.Z[1,1,1])*1000, sigdigits=6)) Ω/km")
-    println("L = $(round(imag(line_params.Z[1,1,1])/(2π*f)*1e6, sigdigits=6)) mH/km")
-    println("C = $(round(imag(line_params.Y[1,1,1])/(2π*f)*1e9, sigdigits=6)) μF/km")
+    Z = line_params.Z[1, 1, 1]
+    Y = line_params.Y[1, 1, 1]
+    R = real(Z) * 1000
+    L = imag(Z) / (2π * f) * 1e6
+    C = imag(Y) / (2π * f) * 1e9
+    println("R = $(@sprintf("%.6g", R)) Ω/km")
+    println("L = $(@sprintf("%.6g", L)) mH/km")
+    println("C = $(@sprintf("%.6g", C)) μF/km")
 end
