@@ -22,24 +22,21 @@ $(EXPORTS)
 module Materials
 
 # Export public API
-export Material,
-    MaterialsLibrary,
-    add!,
-    delete!,
-    get,
-    DataFrame
+export Material, MaterialsLibrary
+export add!, get, delete!, length, setindex!, iterate, keys, values, haskey, getindex
+export DataFrame
 
 # Load common dependencies
 include("common_deps.jl")
 using ..LineCableModels
 using ..Utils
-import ..LineCableModels: add!, load!, save
+import ..LineCableModels: add!, save
 
 # Module-specific dependencies
 using Measurements
 using DataFrames
 import DataFrames: DataFrame
-import Base: get, delete!, length, setindex!, iterate, keys, values
+import Base: get, delete!, length, setindex!, iterate, keys, values, haskey, getindex
 
 """
 $(TYPEDEF)
@@ -75,11 +72,12 @@ end
 
 # Implement the AbstractDict interface
 length(lib::MaterialsLibrary) = length(lib.data)
-get(lib::MaterialsLibrary, key::String, default) = get(lib.data, key, default)
 setindex!(lib::MaterialsLibrary, value::Material, key::String) = (lib.data[key] = value)
 iterate(lib::MaterialsLibrary, state...) = iterate(lib.data, state...)
 keys(lib::MaterialsLibrary) = keys(lib.data)
 values(lib::MaterialsLibrary) = values(lib.data)
+haskey(lib::MaterialsLibrary, key::String) = haskey(lib.data, key)
+getindex(lib::MaterialsLibrary, key::String) = getindex(lib.data, key)
 
 """
 $(TYPEDSIGNATURES)
@@ -110,7 +108,7 @@ function MaterialsLibrary(; add_defaults::Bool=true)::MaterialsLibrary
     library = MaterialsLibrary(Dict{String,Material}())
 
     if add_defaults
-        println("Initializing default materials database...")
+        @info "Initializing default materials database..."
         _add_default_materials!(library)
     end
 
@@ -243,8 +241,10 @@ $(FUNCTIONNAME)(library, "copper")
 - [`add!`](@ref)
 """
 function delete!(library::MaterialsLibrary, name::String)
-    if !haskey(library.data, name)
-        error("Material $name not found in the library.")
+    if !haskey(library, name)
+        @error "Material '$name' not found in the library."
+        throw(KeyError(name))
+
     end
     delete!(library.data, name)
     library
@@ -317,10 +317,11 @@ material = $(FUNCTIONNAME)(library, "copper")
 - [`add!`](@ref)
 - [`delete!`](@ref)
 """
-function get(library::MaterialsLibrary, name::String)::Union{Nothing,Material}
-    material = get(library, name, nothing)
+function get(library::MaterialsLibrary, name::String, default=nothing)::Union{Nothing,Material}
+    material = get(library.data, name, default)
     if material === nothing
-        println("Material '$name' not found in the library.")
+        @error "Material '$name' not found in the library."
+        throw(KeyError(name))
     end
     return material
 end
