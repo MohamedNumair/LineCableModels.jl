@@ -178,7 +178,7 @@ end
 # 5	     Full internal tracing
 function map_verbosity_to_getdp(verbosity::Int)
     if _is_headless()       # Prevent huge logs in CI/CD deploys
-        @warn "Running in headless mode, suppressing GetDP output"
+        @info "Running in headless mode, suppressing GetDP output"
         return 0            # Gmsh Silent level
     elseif verbosity >= 2   # Debug
         return 4            # GetDP Debug level
@@ -200,7 +200,7 @@ end
 # 99     Debug
 function map_verbosity_to_gmsh(verbosity::Int)
     if _is_headless()       # Prevent huge logs in CI/CD deploys
-        @warn "Running in headless mode, suppressing Gmsh output"
+        @info "Running in headless mode, suppressing Gmsh output"
         return 0            # Gmsh Silent level
     elseif verbosity >= 2   # Debug
         return 99           # Gmsh Debug level
