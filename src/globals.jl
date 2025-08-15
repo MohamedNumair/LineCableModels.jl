@@ -93,6 +93,9 @@ function _is_headless()::Bool
     return haskey(ENV, "CI") || !haskey(ENV, "DISPLAY")
 end
 
+function _display_path(file_name)
+    return _is_headless() ? basename(file_name) : basename(file_name) #abspath(file_name)
+end
 
 using Logging
 using Logging: AbstractLogger, LogLevel, Info, global_logger
@@ -133,7 +136,8 @@ function setup_logging!(verbosity::Int, logfile::Union{String,Nothing}=nothing)
             combined_logger = TeeLogger(console_logger, file_logger)
             global_logger(TimestampLogger(combined_logger))
         catch e
-            @warn "Failed to set up file logging to $logfile: $e"
+            @warn "Failed to set up file logging to $(_display_path(logfile)): $e"
+
             global_logger(TimestampLogger(console_logger))
         end
     end
