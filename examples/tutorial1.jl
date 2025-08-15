@@ -16,9 +16,12 @@ Depth = 2:3
 ```
 =#
 
-###   Getting started
+#=
+##   Getting started
+=#
 
-fullfile(filename) = joinpath(@__DIR__, filename) # hide
+fullfile(filename) = joinpath(@__DIR__, filename); # hide
+setup_logging!(0); # hide
 
 # Load the package:
 using DataFrames
@@ -90,7 +93,7 @@ delete!(materials, "epr_dupe")
 
 # Examine the updated library after removing the duplicate:
 println("Material properties compiled from CIGRE TB-531 and IEC 60287:")
-display(DataFrame(materials))
+materials_df = DataFrame(materials)
 
 # ##  Saving the materials library to JSON
 output_file = fullfile("materials_library.json")
