@@ -899,11 +899,11 @@ function export_data(::Val{:pscad},
         # open(filename, "w") do io; prettyprint(io, doc); end
         write(file_name, doc) # Standard write
         if isfile(file_name)
-            println("PSCAD file saved to: ", _display_path(file_name))
+            @info "PSCAD file saved to: $(_display_path(file_name))"
         end
         return file_name
     catch e
-        println("ERROR: Failed to write PSCAD file '$(_display_path(file_name))': ", e)
+        @error "Failed to write PSCAD file '$(_display_path(file_name))': $(e)"
         isa(e, SystemError) && println("SystemError details: ", e.extrainfo)
         return nothing
         rethrow(e) # Rethrow to indicate failure clearly
@@ -1003,7 +1003,7 @@ _serializable_fields(::CableComponent) = (:id, :conductor_group, :insulator_grou
 _serializable_fields(::CableDesign) = (:cable_id, :nominal_data, :components)
 
 # Library Types
-_serializable_fields(::CablesLibrary) = (:cable_designs,)
+_serializable_fields(::CablesLibrary) = (:data,)
 _serializable_fields(::MaterialsLibrary) = (:data,)
 
 
@@ -1103,7 +1103,7 @@ function _serialize_obj(obj)
         end
         return result
     catch e
-        @error "Error determining module or type name for object of type $T: $e. Cannot serialize."
+        error("Error determining module or type name for object of type $T: $e. Cannot serialize.")
         # Return a representation indicating the error
         return Dict(
             "__error__" => "Serialization failed for type $T",
@@ -1402,8 +1402,8 @@ but can be faster and preserves exact types.
 function _save_cableslibrary_jls(library::CablesLibrary, file_name::String)::String
     # Note: Serializing the whole library object directly might be problematic
     # if the library struct itself changes. Serializing the core data (designs) is safer.
-    serialize(file_name, library.cable_designs)
-    println("Cables library saved using Julia serialization to: ", _display_path(file_name))
+    serialize(file_name, library.data)
+    @info "Cables library saved using Julia serialization to: $(file_name)"
     return abspath(file_name)
 end
 
@@ -1430,7 +1430,7 @@ function _save_cableslibrary_json(library::CablesLibrary, file_name::String)::St
         JSON3.pretty(io, serialized_library, allow_inf=true)
     end
     if isfile(file_name)
-        println("Cables library saved to: ", _display_path(file_name))
+        @info "Cables library saved to: $(file_name)"
     end
     return abspath(file_name)
 end
@@ -1500,7 +1500,7 @@ function _save_materialslibrary_json(library::MaterialsLibrary, file_name::Strin
         JSON3.pretty(io, serialized_library_data, allow_inf=true)
     end
     if isfile(file_name)
-        println("Materials library saved to: ", _display_path(file_name))
+        @info "Materials library saved to: $(file_name)"
     end
 
     return abspath(file_name)
@@ -1527,12 +1527,7 @@ function load!(
     file_name::String="cables_library.json",
 )::CablesLibrary # Return the modified library
     if !isfile(file_name)
-        @warn "Cables library file not found: '$(_display_path(file_name))'. Library remains unchanged."
-        # Ensure the library has the necessary field, even if empty
-        if !isdefined(library, :cable_designs) || !(library.cable_designs isa AbstractDict)
-            library.cable_designs = Dict{String,CableDesign}()
-        end
-        return library
+        throw(ErrorException("Cables library file not found: '$(_display_path(file_name))'")) # make caller receive an Exception
     end
 
     _, ext = splitext(file_name)
@@ -1552,7 +1547,7 @@ function load!(
         showerror(stderr, e, catch_backtrace())
         println(stderr)
         # Optionally clear the library or leave it partially loaded depending on desired robustness
-        # empty!(library.cable_designs)
+        # empty!(library.data)
     end
     return library # Return the modified library
 end
@@ -1575,7 +1570,7 @@ function _load_cableslibrary_jls!(library::CablesLibrary, file_name::String)
 
     if isa(loaded_data, Dict{String,CableDesign})
         # Replace the existing designs
-        library.cable_designs = loaded_data
+        library.data = loaded_data
         println(
             "Cables library successfully loaded via Julia deserialization from: ",
             _display_path(file_name),
@@ -1583,9 +1578,9 @@ function _load_cableslibrary_jls!(library::CablesLibrary, file_name::String)
     else
         # This indicates the .jls file did not contain the expected dictionary structure
         @error "Invalid data format in '$(_display_path(file_name))'. Expected Dict{String, CableDesign}, got $(typeof(loaded_data)). Library not loaded."
-        # Ensure library.cable_designs exists if it was potentially wiped before load attempt
-        if !isdefined(library, :cable_designs) || !(library.cable_designs isa AbstractDict)
-            library.cable_designs = Dict{String,CableDesign}()
+        # Ensure library.data exists if it was potentially wiped before load attempt
+        if !isdefined(library, :data) || !(library.data isa AbstractDict)
+            library.data = Dict{String,CableDesign}()
         end
     end
     return nothing
@@ -1606,12 +1601,12 @@ using the detailed, sequential reconstruction logic.
 """
 function _load_cableslibrary_json!(library::CablesLibrary, file_name::String)
     # Ensure library structure is initialized
-    if !isdefined(library, :cable_designs) || !(library.cable_designs isa AbstractDict)
-        @warn "Library's 'cable_designs' field was not initialized or not a Dict. Initializing."
-        library.cable_designs = Dict{String,CableDesign}()
+    if !isdefined(library, :data) || !(library.data isa AbstractDict)
+        @warn "Library 'data' field was not initialized or not a Dict. Initializing."
+        library.data = Dict{String,CableDesign}()
     else
         # Clear existing designs before loading (common behavior)
-        empty!(library.cable_designs)
+        empty!(library.data)
     end
 
     # Load the entire JSON structure
@@ -1619,17 +1614,17 @@ function _load_cableslibrary_json!(library::CablesLibrary, file_name::String)
         JSON3.read(io, Dict{String,Any}) # Read the top level as a Dict
     end
 
-    # The JSON might store designs directly under "cable_designs" key,
+    # The JSON might store designs directly under "data" key,
     # or the top level might be the dictionary of designs itself.
     local designs_to_process::Dict
-    if haskey(json_data, "cable_designs") && json_data["cable_designs"] isa AbstractDict
-        # Standard case: designs are under the "cable_designs" key
-        designs_to_process = json_data["cable_designs"]
+    if haskey(json_data, "data") && json_data["data"] isa AbstractDict
+        # Standard case: designs are under the "data" key
+        designs_to_process = json_data["data"]
     elseif haskey(json_data, "__julia_type__") &&
            occursin("CablesLibrary", json_data["__julia_type__"]) &&
-           haskey(json_data, "cable_designs")
+           haskey(json_data, "data")
         # Case where the entire library object was serialized
-        designs_to_process = json_data["cable_designs"]
+        designs_to_process = json_data["data"]
     elseif all(
         v ->
             v isa AbstractDict && haskey(v, "__julia_type__") &&
@@ -1640,11 +1635,11 @@ function _load_cableslibrary_json!(library::CablesLibrary, file_name::String)
         @info "Assuming top-level JSON object in '$(_display_path(file_name))' is the dictionary of cable designs."
         designs_to_process = json_data
     else
-        @error "JSON file '$(_display_path(file_name))' does not contain a recognizable 'cable_designs' dictionary or structure."
+        @error "JSON file '$(_display_path(file_name))' does not contain a recognizable 'data' dictionary or structure."
         return nothing # Exit loading process
     end
 
-    println("Loading cable designs from JSON: '$(_display_path(file_name))'...")
+    @info "Loading cable designs from JSON: '$(_display_path(file_name))'..."
     num_loaded = 0
     num_failed = 0
 
@@ -1660,7 +1655,7 @@ function _load_cableslibrary_json!(library::CablesLibrary, file_name::String)
             reconstructed_design =
                 _reconstruct_cabledesign(string(cable_id), design_data)
             # Store the fully reconstructed design in the library
-            library.cable_designs[string(cable_id)] = reconstructed_design
+            library.data[string(cable_id)] = reconstructed_design
             num_loaded += 1
         catch e
             num_failed += 1
@@ -1671,16 +1666,14 @@ function _load_cableslibrary_json!(library::CablesLibrary, file_name::String)
         end
     end
 
-    println(
-        "Finished loading from '$(_display_path(file_name))'. Successfully loaded $num_loaded cable designs, failed to load $num_failed.",
-    )
+    @info "Finished loading from '$(_display_path(file_name))'. Successfully loaded $num_loaded cable designs, failed to load $num_failed."
     return nothing
 end
 
 """
 $(TYPEDSIGNATURES)
 
-Helper function to reconstruct a [`ConductorGroup`](@ref) or [`InsulatorGroup`](@ref) object with the first layer of the respective [`AbstractCablePart`](@ref). Subsequent layers are added using `addto_*` methods.
+Helper function to reconstruct a [`ConductorGroup`](@ref) or [`InsulatorGroup`](@ref) object with the first layer of the respective [`AbstractCablePart`](@ref). Subsequent layers are added using `add!` methods.
 
 # Arguments
 - `layer_data`: Dictionary containing the data for the first layer, parsed from JSON.
@@ -1836,7 +1829,7 @@ function _reconstruct_cabledesign(
     cable_id::String,
     design_data::Dict,
 )::CableDesign
-    println("Reconstructing CableDesign: $cable_id")
+    @info "Reconstructing CableDesign: $cable_id"
 
     # 1. Reconstruct NominalData using generic deserialization
     local nominal_data::NominalData
@@ -1856,7 +1849,7 @@ function _reconstruct_cabledesign(
             )
         end
         nominal_data = nominal_data_val
-        println("  Reconstructed NominalData")
+        @info "  Reconstructed NominalData"
     else
         @warn "Missing 'nominal_data' for $cable_id. Using default NominalData()."
         nominal_data = NominalData() # Use default if missing
@@ -1876,7 +1869,7 @@ function _reconstruct_cabledesign(
             continue
         end
         comp_id = get(comp_data, "id", "UNKNOWN_COMPONENT_ID_$idx")
-        println("  Processing Component $idx: $comp_id")
+        @info "  Processing Component $idx: $comp_id"
 
         # --- 2.1 Build Conductor Group ---
         local conductor_group::ConductorGroup
@@ -1899,7 +1892,7 @@ function _reconstruct_cabledesign(
 
         # - Initialize ConductorGroup using its constructor with the first layer
         conductor_group = ConductorGroup(first_cond_layer)
-        println("    Created ConductorGroup with first layer: $(typeof(first_cond_layer))")
+        @info "    Created ConductorGroup with first layer: $(typeof(first_cond_layer))"
 
         # - Add remaining layers using add!
         for i in 2:lastindex(cond_layers_data)
@@ -1957,7 +1950,7 @@ function _reconstruct_cabledesign(
 
                 # Call add! with Type, args..., and kwargs...
                 add!(conductor_group, LayerType, args...; kwargs...)
-                println("      Added conductor layer $i: $LayerType")
+                @info "      Added conductor layer $i: $LayerType"
             catch e
                 @error "Failed to add conductor layer $i ($LayerType) to component $comp_id: $e"
                 println(stderr, "      Layer Data: $layer_data")
@@ -1987,7 +1980,7 @@ function _reconstruct_cabledesign(
 
         # - Initialize InsulatorGroup
         insulator_group = InsulatorGroup(first_insu_layer)
-        println("    Created InsulatorGroup with first layer: $(typeof(first_insu_layer))")
+        @info "    Created InsulatorGroup with first layer: $(typeof(first_insu_layer))"
 
         # - Add remaining layers using add!
         for i in 2:lastindex(insu_layers_data)
@@ -2024,7 +2017,7 @@ function _reconstruct_cabledesign(
 
                 # Call add! with Type, args..., and kwargs...
                 add!(insulator_group, LayerType, args...; kwargs...)
-                println("      Added insulator layer $i: $LayerType")
+                @info "      Added insulator layer $i: $LayerType"
             catch e
                 @error "Failed to add insulator layer $i ($LayerType) to component $comp_id: $e"
                 println(stderr, "      Layer Data: $layer_data")
@@ -2037,7 +2030,7 @@ function _reconstruct_cabledesign(
         # --- 2.3 Create the CableComponent object ---
         component = CableComponent(comp_id, conductor_group, insulator_group)
         push!(reconstructed_components, component)
-        println("    Created CableComponent: $comp_id")
+        @info "    Created CableComponent: $comp_id"
 
     end # End loop through components_data
 
@@ -2048,24 +2041,20 @@ function _reconstruct_cabledesign(
     # Use the CableDesign constructor which takes the first component
     cable_design =
         CableDesign(cable_id, reconstructed_components[1]; nominal_data=nominal_data)
-    println(
-        "  Created initial CableDesign with component: $(reconstructed_components[1].id)",
-    )
+    @info "  Created initial CableDesign with component: $(reconstructed_components[1].id)"
 
     # 4. Add remaining components to the design sequentially using add!
     for i in 2:lastindex(reconstructed_components)
         try
             add!(cable_design, reconstructed_components[i])
-            println(
-                "  Added component $(reconstructed_components[i].id) to CableDesign '$cable_id'",
-            )
+            @info "  Added component $(reconstructed_components[i].id) to CableDesign '$cable_id'"
         catch e
             @error "Failed to add component '$(reconstructed_components[i].id)' to CableDesign '$cable_id': $e"
             rethrow(e)
         end
     end
 
-    println("Finished Reconstructing CableDesign: $cable_id")
+    @info "Finished Reconstructing CableDesign: $cable_id"
     return cable_design
 end
 
@@ -2091,12 +2080,8 @@ function load!(
 )::MaterialsLibrary
 
     if !isfile(file_name)
-        @warn "Materials library file not found: '$(_display_path(file_name))'. Library remains unchanged."
-        # Ensure the library has the necessary field, even if empty
-        # if !isdefined(library, :materials) || !(library isa AbstractDict)
-        #     library = Dict{String,Material}()
-        # end
-        return library
+        throw(ErrorException("Materials library file not found: '$(_display_path(file_name))'")) # make caller receive an Exception 
+
     end
 
     # Only JSON format is supported now
@@ -2153,7 +2138,7 @@ function _load_materialslibrary_json!(library::MaterialsLibrary, file_name::Stri
     end
 
 
-    println("Loading materials from JSON: '$(_display_path(file_name))'...")
+    @info "Loading materials from JSON: '$(_display_path(file_name))'..."
     num_loaded = 0
     num_failed = 0
 
@@ -2188,9 +2173,7 @@ function _load_materialslibrary_json!(library::MaterialsLibrary, file_name::Stri
         end
     end
 
-    println(
-        "Finished loading materials from '$(_display_path(file_name))'. Successfully loaded $num_loaded materials, failed to load $num_failed.",
-    )
+    @info "Finished loading materials from '$(_display_path(file_name))'. Successfully loaded $num_loaded materials, failed to load $num_failed."
     return nothing
 end
 
