@@ -4,7 +4,7 @@ module LineCableModels
 include("common_deps.jl")
 
 # Package-wide interfaces
-include("interfaces.jl")
+include("globals.jl")
 
 # Submodule `Utils`
 include("Utils.jl")
