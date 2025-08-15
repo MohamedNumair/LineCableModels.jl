@@ -13,9 +13,13 @@ using Test
     end
     @info "DataModel tests completed."
 
-    # @testset "Integration tests based on tutorial files" begin
-    #     include("tutorial1.jl")
-    # end
+    @testset "Integration tests based on example files" begin
+        exa_files = ["test_tutorial1.jl", "test_tutorial2.jl", "test_tutorial3.jl"]
+        for f in exa_files
+            include(f)
+        end
+    end
+
     @info "Tutorials tests completed."
 
     @info "All tests completed."
