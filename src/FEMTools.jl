@@ -640,6 +640,8 @@ function init_workspace(problem, formulation, workspace)
 
     opts = formulation.options
 
+    setup_logging!(opts.verbosity, opts.logfile)
+
     # Handle existing results - check both current and archived
     results_dir = workspace.paths[:results_dir]
     base_dir = dirname(results_dir)
