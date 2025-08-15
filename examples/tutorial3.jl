@@ -24,14 +24,14 @@ HVDC cables are constructed around a central conductor enclosed by a triple-extr
 ## Getting started
 =#
 
+fullfile(filename) = joinpath(@__DIR__, filename) # hide
+
 # Load the package and set up the environment:
 using DataFrames
 using LineCableModels
 
-# Initialize materials library with default values:
+# Initialize library and the required materials for this design:
 materials = MaterialsLibrary(add_defaults=true)
-
-# Include the required materials for this design:
 lead = Material(21.4e-8, 1.0, 0.999983, 20.0, 0.00400) # Lead or lead alloy
 add!(materials, "lead", lead)
 steel = Material(13.8e-8, 1.0, 300.0, 20.0, 0.00450) # Steel
@@ -103,16 +103,14 @@ Initialize the conductor object and assign the central wire:
 =#
 
 material = get(materials, "copper")
-n = 6
 core = ConductorGroup(WireArray(0, Diameter(d_w), 1, 0, material))
 
 # Add the subsequent layers of wires and inspect the object:
-add!(core, WireArray, Diameter(d_w), 1 * n, 11, material)
-add!(core, WireArray, Diameter(d_w), 2 * n, 11, material)
-add!(core, WireArray, Diameter(d_w), 3 * n, 11, material)
-add!(core, WireArray, Diameter(d_w), 4 * n, 11, material)
-add!(core, WireArray, Diameter(d_w), 5 * n, 11, material)
-add!(core, WireArray, Diameter(d_w), 6 * n, 11, material)
+n_strands = 6 # Strands per layer
+n_layers = 6 # Layers of strands
+for i in 1:n_layers
+    add!(core, WireArray, Diameter(d_w), i * n_strands, 11, material)
+end
 
 #=
 ### Inner semiconductor
@@ -161,9 +159,6 @@ datasheet_info = NominalData(
 )
 cable_design = CableDesign(cable_id, core_cc, nominal_data=datasheet_info)
 
-# At this point, it becomes possible to preview the cable design:
-plt1 = preview(cable_design)
-
 #=
 ### Lead screen/sheath
 
@@ -171,8 +166,7 @@ Build the wire screens on top of the previous layer:
 =#
 
 material = get(materials, "lead")
-screen_con =
-    ConductorGroup(Tubular(main_insu, Thickness(t_sc), material))
+screen_con = ConductorGroup(Tubular(main_insu, Thickness(t_sc), material))
 
 # PE inner sheath:
 material = get(materials, "pe")
@@ -186,9 +180,6 @@ add!(screen_insu, Insulator, Thickness(t_bed), material)
 sheath_cc = CableComponent("sheath", screen_con, screen_insu)
 add!(cable_design, sheath_cc)
 
-# Examine the newly added components:
-plt2 = preview(cable_design)
-
 #=
 ### Armor and outer jacket components
 
@@ -197,8 +188,8 @@ plt2 = preview(cable_design)
 # Add the armor wires on top of the previous layer:
 lay_ratio = 10 # typical value for wire screens
 material = get(materials, "steel")
-armor_con =
-    ConductorGroup(WireArray(screen_insu, Diameter(d_wa), num_ar_wires, lay_ratio, material))
+armor_con = ConductorGroup(
+    WireArray(screen_insu, Diameter(d_wa), num_ar_wires, lay_ratio, material))
 
 # PP layer after armor:
 material = get(materials, "pp")
@@ -213,7 +204,6 @@ plt3 = preview(cable_design)
 #=
 ## Examining the cable parameters (RLC)
 
-In this section, the cable design is examined and the calculated parameters are compared with datasheet values. [`LineCableModels.jl`](@ref) provides methods to analyze the design in different levels of detail.
 =#
 
 # Summarize DC lumped parameters (R, L, C):
@@ -230,13 +220,12 @@ Load an existing [`CablesLibrary`](@ref) file or create a new one:
 
 
 library = CablesLibrary()
-library_file = joinpath(@__DIR__, "cables_library.json")
+library_file = fullfile("cables_library.json")
 load!(library, file_name=library_file)
 add!(library, cable_design)
 library_df = DataFrame(library)
 
 # Save to file for later use:
-
 save(library, file_name=library_file);
 
 #=
@@ -294,7 +283,7 @@ This step showcases how to export the model for electromagnetic transient simula
 Export to PSCAD input file:
 =#
 
-output_file = joinpath(@__DIR__, "$(cable_system.system_id)_export.pscx")
+output_file = fullfile("$(cable_system.system_id)_export.pscx")
 export_file = export_data(:pscad, cable_system, earth_params, file_name=output_file);
 
 #=
@@ -307,13 +296,10 @@ problem = LineParametersProblem(
     temperature=20.0,  # Operating temperature
     earth_props=earth_params,
     frequencies=[f],   # Frequency for the analysis
-)
+);
 
-# Create a FEMFormulation with custom mesh definitions
-rho_g = earth_params.layers[end].rho_g[1]
-mu_g = earth_params.layers[end].mu_g[1]
-skin_depth_earth = abs(sqrt(rho_g / (1im * (2 * pi * f[1]) * mu_g)))
-domain_radius = clamp(skin_depth_earth, 5.0, 5000.0);
+# Estimate domain size based on skin depth in the earth
+domain_radius = calc_domain_size(earth_params, [f])
 
 # Define custom mesh transitions around each cable
 mesh_transition1 = MeshTransition(
@@ -336,13 +322,13 @@ mesh_transition2 = MeshTransition(
 
 # Define runtime options 
 opts = (
-    force_remesh=true,                          # Force remeshing
-    force_overwrite=true,                       # Overwrite existing files
-    plot_field_maps=false,                      # Do not compute/ plot field maps
-    mesh_only=false,                            # Preview the mesh
-    base_path=joinpath(@__DIR__, "fem_output"), # Results directory
-    keep_run_files=true,                        # Archive files after each run
-    verbosity=0,                                # Verbosity
+    force_remesh=true,                # Force remeshing
+    force_overwrite=true,             # Overwrite existing files
+    plot_field_maps=false,            # Do not compute/ plot field maps
+    mesh_only=false,                  # Preview the mesh
+    base_path=fullfile("fem_output"), # Results directory
+    keep_run_files=true,              # Archive files after each run
+    verbosity=0,                      # Verbosity
 );
 
 # Define the FEM formulation with the specified parameters
@@ -372,7 +358,7 @@ formulation = FormulationSet(:FEM,
 
 # Display primary core results
 if !opts.mesh_only
-    println("R = $(round(real(line_params.Z[1,1,1])*1000, sigdigits=4)) Ω/km")
-    println("L = $(round(imag(line_params.Z[1,1,1])/(2π*f)*1e6, sigdigits=4)) mH/km")
-    println("C = $(round(imag(line_params.Y[1,1,1])/(2π*f)*1e9, sigdigits=4)) μF/km")
+    println("R = $(round(real(line_params.Z[1,1,1])*1000, sigdigits=6)) Ω/km")
+    println("L = $(round(imag(line_params.Z[1,1,1])/(2π*f)*1e6, sigdigits=6)) mH/km")
+    println("C = $(round(imag(line_params.Y[1,1,1])/(2π*f)*1e9, sigdigits=6)) μF/km")
 end

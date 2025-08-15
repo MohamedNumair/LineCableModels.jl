@@ -16,7 +16,9 @@ Depth = 2:3
 ```
 =#
 
-# ##   Getting started
+###   Getting started
+
+fullfile(filename) = joinpath(@__DIR__, filename) # hide
 
 # Load the package:
 using DataFrames
@@ -88,10 +90,10 @@ delete!(materials, "epr_dupe")
 
 # Examine the updated library after removing the duplicate:
 println("Material properties compiled from CIGRE TB-531 and IEC 60287:")
-materials_df = DataFrame(materials)
+display(DataFrame(materials))
 
 # ##  Saving the materials library to JSON
-output_file = joinpath(@__DIR__, "materials_library.json")
+output_file = fullfile("materials_library.json")
 save(materials, file_name=output_file);
 
 
@@ -109,7 +111,7 @@ load!(materials_from_json, file_name=output_file)
 copper = get(materials_from_json, "copper_corrected")
 
 # Access the material properties:
-println("\nRetrieved copper_corrected material properties:")
+println("Retrieved copper_corrected material properties:")
 println("Resistivity: $(copper.rho) Ω·m")
 println("Relative permittivity: $(copper.eps_r)")
 println("Relative permeability: $(copper.mu_r)")

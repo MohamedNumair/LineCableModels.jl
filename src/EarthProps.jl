@@ -33,11 +33,11 @@ import DataFrames: DataFrame
 import Base: show
 
 # Export public API
-export AbstractFDEMFormulation,
-    CPEarth,
+export CPEarth,
     EarthLayer,
     EarthModel,
     DataFrame
+
 
 """
 $(TYPEDEF)

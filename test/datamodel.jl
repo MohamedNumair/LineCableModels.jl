@@ -33,8 +33,8 @@ using EzXML
     @test !haskey(materials, "remove_me")
     @test length(materials) == initial_default_count
 
-    # Test removing non-existent (should throw ErrorException based on source)
-    @test_throws ErrorException delete!(
+    # Test removing non-existent (should throw KeyError based on source)
+    @test_throws KeyError delete!(
         materials,
         "does_not_exist",
     )
@@ -443,27 +443,26 @@ using EzXML
     library = CablesLibrary()
     add!(library, cable_design)
 
-    initial_count = length(library.cable_designs)
+    initial_count = length(library)
     test_cable_id = cable_design.cable_id # Should be "tutorial2_test"
     @test initial_count >= 1
-    @test haskey(library.cable_designs, test_cable_id)
+    @test haskey(library, test_cable_id)
 
     println("  Testing delete!...")
     delete!(library, test_cable_id)
-    @test !haskey(library.cable_designs, test_cable_id)
-    @test length(library.cable_designs) == initial_count - 1
+    @test !haskey(library, test_cable_id)
+    @test length(library) == initial_count - 1
 
-    # Test removing non-existent (should print warning, not throw error)
-    # We can capture stdout, but that's complex. Let's just check state.
-    delete!(library, "non_existent_cable_id_123")
-    @test length(library.cable_designs) == initial_count - 1 # Count remains unchanged
+    # Test removing non-existent (should throw error)
+    @test_throws KeyError delete!(library, "non_existent_cable_id_123")
+    @test length(library) == initial_count - 1 # Count remains unchanged
 
 
     println("\nTesting JSON Save/Load and RLC consistency...")
 
     add!(library, cable_design)
-    @test length(library.cable_designs) == initial_count # Should be back to original count
-    @test haskey(library.cable_designs, test_cable_id)
+    @test length(library) == initial_count # Should be back to original count
+    @test haskey(library, test_cable_id)
 
     mktempdir() do tmpdir # Create a temporary directory for the test file
         output_file = joinpath(tmpdir, "cables_library_test.json")
@@ -476,7 +475,7 @@ using EzXML
         # Test loading into a new library
         loaded_library = CablesLibrary()
         load!(loaded_library, file_name=output_file)
-        @test length(loaded_library.cable_designs) == length(library.cable_designs)
+        @test length(loaded_library) == length(library)
 
         # Retrieve the reloaded design
         reloaded_design = get(loaded_library, cable_design.cable_id)

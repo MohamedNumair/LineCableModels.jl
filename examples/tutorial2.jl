@@ -33,6 +33,8 @@ This tutorial covers:
 ## Getting started
 =#
 
+fullfile(filename) = joinpath(@__DIR__, filename) # hide
+
 # Load the package and set up the environment:
 using DataFrames
 using LineCableModels
@@ -360,7 +362,7 @@ add!(library, cable_design)
 library_df = DataFrame(library)
 
 # Save to file for later use:
-output_file = joinpath(@__DIR__, "cables_library.json")
+output_file = fullfile("cables_library.json")
 save(library, file_name=output_file);
 
 
@@ -394,7 +396,7 @@ This section ilustrates the construction of a cable system with three identical 
 # Define system center point (underground at 1 m depth) and the trifoil positions
 x0 = 0
 y0 = -1
-xa, ya, xb, yb, xc, yc = trifoil_formation(x0, y0, 0.035)
+xa, ya, xb, yb, xc, yc = trifoil_formation(x0, y0, 0.035);
 
 # Initialize the `LineCableSystem` with the first cable (phase A):
 cablepos = CablePosition(cable_design, xa, ya,
@@ -403,12 +405,9 @@ cable_system = LineCableSystem("18kV_1000mm2_trifoil", 1000.0, cablepos)
 
 # Add remaining cables (phases B and C):
 add!(cable_system, cable_design, xb, yb,
-    Dict("core" => 2, "sheath" => 0, "jacket" => 0),
-)
-add!(
-    cable_system, cable_design, xc, yc,
-    Dict("core" => 3, "sheath" => 0, "jacket" => 0),
-)
+    Dict("core" => 2, "sheath" => 0, "jacket" => 0))
+add!(cable_system, cable_design, xc, yc,
+    Dict("core" => 3, "sheath" => 0, "jacket" => 0))
 
 #=
 !!! note "Phase mapping"
@@ -434,7 +433,7 @@ The final step showcases how to export the model for electromagnetic transient s
 =#
 
 # Export to PSCAD input file:
-output_file = joinpath(@__DIR__, "$(cable_system.system_id)_export.pscx")
+output_file = fullfile("$(cable_system.system_id)_export.pscx")
 export_file = export_data(:pscad, cable_system, earth_params, file_name=output_file);
 
 #=
