@@ -3,44 +3,6 @@ Utility functions for the FEMTools.jl module.
 These functions provide various utilities for file management, logging, etc.
 """
 
-struct TimestampLogger <: AbstractLogger
-    logger::AbstractLogger
-end
-
-Logging.min_enabled_level(logger::TimestampLogger) = Logging.min_enabled_level(logger.logger)
-Logging.shouldlog(logger::TimestampLogger, level, _module, group, id) =
-    Logging.shouldlog(logger.logger, level, _module, group, id)
-
-function Logging.handle_message(logger::TimestampLogger, level, message, _module, group, id,
-    filepath, line; kwargs...)
-    timestamp = Dates.format(now(), "yyyy-mm-dd HH:MM:SS")
-    new_message = "[$timestamp] $message"
-    Logging.handle_message(logger.logger, level, new_message, _module, group, id,
-        filepath, line; kwargs...)
-end
-
-function setup_fem_logging(verbosity::Int, logfile::Union{String,Nothing}=nothing)
-    level = verbosity >= 2 ? Logging.Debug :
-            verbosity == 1 ? Logging.Info : Logging.Warn
-
-    # Create console logger
-    console_logger = ConsoleLogger(stderr, level)
-
-    if isnothing(logfile)
-        # Log to console only
-        global_logger(TimestampLogger(console_logger))
-    else
-        # Try to set up file logging with fallback to console-only
-        try
-            file_logger = FileLogger(logfile, level)
-            combined_logger = TeeLogger(console_logger, file_logger)
-            global_logger(TimestampLogger(combined_logger))
-        catch e
-            @warn "Failed to set up file logging to $logfile: $e"
-            global_logger(TimestampLogger(console_logger))
-        end
-    end
-end
 
 """
 $(TYPEDSIGNATURES)
@@ -248,3 +210,21 @@ function map_verbosity_to_gmsh(verbosity::Int)
         return 1            # Gmsh Errors level
     end
 end
+
+function calc_domain_size(earth_params::EarthModel, f::Vector{<:Float64}; min_radius=5.0, max_radius=5000.0)
+    # Find the earth layer with the highest resistivity to determine the domain size
+    if isempty(earth_params.layers)
+        error("EarthModel has no layers defined.")
+    end
+
+    # Find the index of the layer with the maximum resistivity at the first frequency
+    max_rho_idx = argmax([layer.rho_g[1] for layer in earth_params.layers])
+    target_layer = earth_params.layers[max_rho_idx]
+
+    rho_g = target_layer.rho_g[1]
+    mu_g = target_layer.mu_g[1]
+    freq = first(f) # Use the first frequency for the calculation
+    skin_depth_earth = abs(sqrt(rho_g / (1im * 2 * pi * freq * mu_g)))
+    return clamp(skin_depth_earth, min_radius, max_radius)
+end
+

@@ -24,7 +24,7 @@ module FEMTools
 # Export public API
 export MeshTransition
 export compute!, preview_results
-export FEMElectrodynamics, FEMDarwin
+export FEMElectrodynamics, FEMDarwin, FormulationSet, calc_domain_size
 
 # Load common dependencies
 include("common_deps.jl")
@@ -40,14 +40,9 @@ import ..Engine: AbstractFormulationSet, AbstractImpedanceFormulation, AbstractA
 
 # Module-specific dependencies
 using Gmsh
-using Printf
-using Dates
 using Measurements
 using LinearAlgebra
 using Colors
-using Logging
-using Logging: AbstractLogger, LogLevel, Info, global_logger
-using LoggingExtras: TeeLogger, FileLogger
 
 # GetDP.jl
 using GetDP
@@ -423,7 +418,7 @@ struct FEMFormulation <: AbstractFormulationSet
     )
 
 
-        setup_fem_logging(options.verbosity, options.logfile)
+        setup_logging!(options.verbosity, options.logfile)
 
         return new(
             domain_radius, domain_radius_inf,
