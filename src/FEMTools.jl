@@ -27,7 +27,7 @@ export compute!, preview_results
 export FEMElectrodynamics, FEMDarwin, FormulationSet, calc_domain_size
 
 # Load common dependencies
-include("common_deps.jl")
+include("commondeps.jl")
 using ..Utils
 using ..Materials
 using ..EarthProps
@@ -36,7 +36,7 @@ using ..Engine
 using ..LineCableModels # For physical constants (f₀, μ₀, ε₀, ρ₀, T₀, TOL, ΔTmax)
 import ..LineCableModels: FormulationSet, _is_headless
 import ..DataModel: AbstractCablePart, AbstractConductorPart, AbstractInsulatorPart
-import ..Engine: AbstractFormulationSet, AbstractImpedanceFormulation, AbstractAdmittanceFormulation
+import ..Engine: AbstractFormulationSet, AbstractFormulationOptions, AbstractImpedanceFormulation, AbstractAdmittanceFormulation
 
 # Module-specific dependencies
 using Gmsh
@@ -283,19 +283,7 @@ function MeshTransition(
 end
 
 
-# # Define default FEM options
-# const DEFAULT_FEM_OPTIONS = (
-#     mesh_only=false, # 
-#     force_remesh=false, # 
-#     force_overwrite=false, # Skip user confirmation for overwriting results
-#     plot_field_maps=true, # Generate field visualization outputs
-#     keep_run_files=false, # Archive temporary files after each frequency run
-#     base_path=joinpath(".", "fem_output"), # Base path for output files
-#     getdp_executable=nothing, # Path to GetDP executable
-#     verbosity=0, # Verbosity level
-#     logfile=nothing # Log file path
-# )
-@kwdef struct FEMOptions
+@kwdef struct FEMOptions <: AbstractFormulationOptions
     "Build mesh only and preview (no solving)"
     mesh_only::Bool = false
     "Force mesh regeneration even if file exists"
@@ -416,9 +404,6 @@ struct FEMFormulation <: AbstractFormulationSet
         materials::MaterialsLibrary,
         options::FEMOptions
     )
-
-
-        setup_logging!(options.verbosity, options.logfile)
 
         return new(
             domain_radius, domain_radius_inf,
@@ -608,18 +593,6 @@ function compute!(problem::LineParametersProblem,
     if make_mesh!(workspace)
         return workspace, nothing
     end
-    # mesh_needed = !(mesh_exists(workspace))
-    # if mesh_needed || opts.mesh_only
-    #     @info "Building mesh for system: $(problem.system.system_id)"
-    #     make_mesh!(workspace)
-    #     if opts.mesh_only
-    #         @info "Saving workspace after mesh generation"
-    #         return workspace, nothing
-    #     end
-
-    # else
-    #     @info "Using existing mesh"
-    # end
 
     # Solving phase - always runs unless mesh_only
     @info "Starting FEM solver"

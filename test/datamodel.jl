@@ -170,7 +170,7 @@ using EzXML
 
     println("Constructing core conductor group...")
     material_alu = get(materials, "aluminum")
-    core = ConductorGroup(WireArray(0, Diameter(d_w), 1, 0, material_alu))
+    core = ConductorGroup(WireArray(0.0, Diameter(d_w), 1, 0.0, material_alu))
     @test core isa ConductorGroup
     @test length(core.layers) == 1
     @test core.radius_in == 0
@@ -178,7 +178,7 @@ using EzXML
     @test core.resistance > 0
     @test core.gmr > 0
 
-    add!(core, WireArray, Diameter(d_w), 6, 15, material_alu)
+    add!(core, WireArray, Diameter(d_w), 6, 15.0, material_alu)
     @test length(core.layers) == 2
     @test core.radius_ext ≈ (d_w / 2.0) * 3 # Approximation for 1+6 wires
     @test core.resistance > 0 # Resistance should decrease
@@ -191,7 +191,7 @@ using EzXML
     @test length(core.layers) == 4
     @test core.radius_ext ≈ (d_w / 2.0) * 7 # Approximation
 
-    add!(core, WireArray, Diameter(d_w), 24, 11, material_alu)
+    add!(core, WireArray, Diameter(d_w), 24, 11.0, material_alu)
     @test length(core.layers) == 5
     @test core.radius_ext ≈ (d_w / 2.0) * 9 # Approximation
     # Check final calculated radius against nominal diameter
@@ -255,7 +255,7 @@ using EzXML
 
     println("Constructing sheath group...")
     # Wire screens
-    lay_ratio_screen = 10
+    lay_ratio_screen = 10.0
     material_cu = get(materials, "copper")
     screen_con = ConductorGroup(
         WireArray(
@@ -391,9 +391,9 @@ using EzXML
             r_in_cond,
             r_ext_cond,
             eff_cond_props.rho,
-            0,
-            20,
-            20,
+            0.0,
+            20.0,
+            20.0,
         ) rtol =
             1e-6
         @test equiv_ins_group.shunt_capacitance ≈
@@ -610,17 +610,17 @@ using EzXML
                 @test parsed_x ≈ expected_x rtol = 1e-6
             end
 
-            # Check Y position (Note: XML Y=0.9697 vs expected Y around -1. Possible coordinate system difference?)
+            # Check Y position (in PSCAD Y is oriented downwards)
             y_val_str = get_param_value(params_cable1_node, "Y")
             @test !isnothing(y_val_str)
             if !isnothing(y_val_str)
-                parsed_y = parse(Float64, y_val_str)
-                expected_y = cable_system.cables[1].vert
+                parsed_y = abs(parse(Float64, y_val_str))
+                expected_y = abs(cable_system.cables[1].vert)
                 println(
                     "    Checking first cable vert: XML='$(y_val_str)', Expected='$(expected_y)' (May differ due to PSCAD coord system)",
                 )
-                # Don't assert equality if coordinate system is different, maybe just check parsing
-                @test parsed_y isa Float64
+                # Don't assert exact equality 
+                @test isapprox(parsed_y, expected_y, rtol=1e-4)
             end
 
 
@@ -653,7 +653,7 @@ using EzXML
                 @test parsed_eps1 ≈ expected_eps1 rtol = 1e-4
             end
 
-        end # if !isnothing(params_cable1_node)
+        end
 
         # 6. Check Ground Parameters (Example)
         ground_params =

@@ -29,7 +29,7 @@ export LineParametersProblem, LineParameters
 # export AbstractFormulationSet, AbstractImpedanceFormulation, AbstractAdmittanceFormulation
 
 # Load common dependencies
-include("common_deps.jl")
+include("commondeps.jl")
 using ..Utils
 using ..Materials
 using ..EarthProps
@@ -51,13 +51,26 @@ abstract type ProblemDefinition end
 
 # Formulation abstract types
 abstract type AbstractFormulationSet end
+abstract type AbstractFormulationOptions end
+
 abstract type AbstractImpedanceFormulation <: AbstractFormulationSet end
-abstract type AbstractAdmittanceFormulation <: AbstractFormulationSet end
 abstract type InternalImpedanceFormulation <: AbstractImpedanceFormulation end
 abstract type EarthImpedanceFormulation <: AbstractImpedanceFormulation end
+
+abstract type AbstractAdmittanceFormulation <: AbstractFormulationSet end
 abstract type InternalAdmittanceFormulation <: AbstractAdmittanceFormulation end
 abstract type EarthAdmittanceFormulation <: AbstractAdmittanceFormulation end
-abstract type AbstractFormulationOptions end
+
+"""
+$(TYPEDEF)
+
+Abstract type representing different equivalent homogeneous earth models (EHEM). Used in the multi-dispatch implementation of [`_calc_ehem_properties!`](@ref).
+
+# Currently available formulations
+
+- [`EnforceLayer`](@ref): Effective parameters defined according to a specific earth layer.
+"""
+abstract type AbstractEHEMFormulation end
 
 """
 $(TYPEDEF)
@@ -247,7 +260,7 @@ Represents the electromagnetic transient (EMT) formulation set for cable or line
 
 $(TYPEDFIELDS)
 """
-struct EMTFormulation <: AbstractFormulationSet
+struct CoaxialFormulation <: AbstractFormulationSet
     "Internal impedance formulation."
     internal_impedance::InternalImpedanceFormulation
     "Earth impedance formulation."
@@ -260,7 +273,7 @@ struct EMTFormulation <: AbstractFormulationSet
     @doc """
     $(TYPEDSIGNATURES)
 
-    Constructs an [`EMTFormulation`](@ref) instance.
+    Constructs an [`CoaxialFormulation`](@ref) instance.
 
     # Arguments
 
@@ -271,7 +284,7 @@ struct EMTFormulation <: AbstractFormulationSet
 
     # Returns
 
-    - An [`EMTFormulation`](@ref) object containing the specified models.
+    - An [`CoaxialFormulation`](@ref) object containing the specified methods.
 
     # Examples
 
@@ -279,25 +292,30 @@ struct EMTFormulation <: AbstractFormulationSet
     emt = $(FUNCTIONNAME)(...)
     ```
     """
-    function EMTFormulation(;
-        internal_impedance::InternalImpedanceFormulation=nothing,
-        earth_impedance::EarthImpedanceFormulation=nothing,
-        internal_admittance::InternalAdmittanceFormulation=nothing,
-        earth_admittance::EarthAdmittanceFormulation=nothing
+    function CoaxialFormulation(;
+        internal_impedance::InternalImpedanceFormulation,
+        earth_impedance::EarthImpedanceFormulation,
+        internal_admittance::InternalAdmittanceFormulation,
+        earth_admittance::EarthAdmittanceFormulation,
+        equivalent_earth::Union{AbstractEHEMFormulation,Nothing}
     )
         return new(
             internal_impedance, earth_impedance,
-            internal_admittance, earth_admittance
+            internal_admittance, earth_admittance, equivalent_earth
         )
     end
 end
 
-function FormulationSet(::Val{:EMT}; internal_impedance::InternalImpedanceFormulation,
-    earth_impedance::EarthImpedanceFormulation,
-    internal_admittance::InternalAdmittanceFormulation,
-    earth_admittance::EarthAdmittanceFormulation)
-    return EMTFormulation(; internal_impedance, earth_impedance,
-        internal_admittance, earth_admittance)
+function FormulationSet(::Val{:Coaxial};
+    internal_impedance::InternalImpedanceFormulation=nothing,
+    earth_impedance::EarthImpedanceFormulation=nothing,
+    internal_admittance::InternalAdmittanceFormulation=nothing,
+    earth_admittance::EarthAdmittanceFormulation=nothing,
+    equivalent_earth::Union{AbstractEHEMFormulation,Nothing}=nothing
+)
+    return CoaxialFormulation(; internal_impedance, earth_impedance,
+        internal_admittance, earth_admittance, equivalent_earth
+    )
 end
 
 """
@@ -336,7 +354,7 @@ horz = flat.horz  # Horizontal positions [m]
 rho_cond = flat.rho_cond  # Conductor resistivities [Ω·m]
 ```
 """
-function flatten_cablesystem(system::LineCableSystem)
+function flatten(system::LineCableSystem)
     # Count total components
     n_components = sum(length(cable.design_data.components) for cable in system.cables)
 
@@ -404,6 +422,32 @@ function flatten_cablesystem(system::LineCableSystem)
     )
 end
 
+@kwdef struct CoaxialOptions <: AbstractFormulationOptions
+    "Skip user confirmation for overwriting results"
+    force_overwrite::Bool = false
+    "Save path for output files"
+    save_path::String = joinpath(".", "lineparams_output")
+    "Verbosity level"
+    verbosity::Int = 0
+end
+
+# The one-line constructor to "promote" a NamedTuple
+CoaxialOptions(opts::NamedTuple) = CoaxialOptions(; opts...)
+
+function compute!(problem::LineParametersProblem,
+    formulation::CoaxialFormulation)
+
+    opts = formulation.options
+
+    @info "Starting line parameters computation"
+    line_params = nothing
+
+    @info "Line parameters computation completed successfully"
+    return line_params
+end
+
+include("Engine/skineffect.jl")
+include("Engine/ehem.jl")
 include("Engine/io.jl")
 
 end # module Engine

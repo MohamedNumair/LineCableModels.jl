@@ -13,7 +13,9 @@ using Test
     end
     @info "DataModel tests completed."
 
-    include("earthprops.jl")
+    @testset "EarthProps module" begin
+        include("earthprops.jl")
+    end
     @info "EarthProps tests completed."
 
     @testset "Integration tests based on example files" begin

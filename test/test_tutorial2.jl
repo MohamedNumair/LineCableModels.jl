@@ -27,11 +27,11 @@ using LineCableModels
     @testset "core and main insulation" begin
         material_al = get(materials, "aluminum")
         @test material_al isa LineCableModels.Material
-        core = ConductorGroup(WireArray(0, Diameter(d_w), 1, 0, material_al))
-        add!(core, WireArray, Diameter(d_w), 6, 15, material_al)
+        core = ConductorGroup(WireArray(0.0, Diameter(d_w), 1, 0.0, material_al))
+        add!(core, WireArray, Diameter(d_w), 6, 15.0, material_al)
         add!(core, WireArray, Diameter(d_w), 12, 13.5, material_al)
         add!(core, WireArray, Diameter(d_w), 18, 12.5, material_al)
-        add!(core, WireArray, Diameter(d_w), 24, 11, material_al)
+        add!(core, WireArray, Diameter(d_w), 24, 11.0, material_al)
 
         @test length(core.layers) == 5
         @test isapprox(core.radius_ext * 2, 0.0423, atol=1e-4)
@@ -56,11 +56,11 @@ using LineCableModels
     # Build the full cable design step-by-step as in the tutorial
     # This also tests the constructors and `add!` methods implicitly
     material_al = get(materials, "aluminum")
-    core = ConductorGroup(WireArray(0, Diameter(d_w), 1, 0, material_al))
-    add!(core, WireArray, Diameter(d_w), 6, 15, material_al)
+    core = ConductorGroup(WireArray(0.0, Diameter(d_w), 1, 0.0, material_al))
+    add!(core, WireArray, Diameter(d_w), 6, 15.0, material_al)
     add!(core, WireArray, Diameter(d_w), 12, 13.5, material_al)
     add!(core, WireArray, Diameter(d_w), 18, 12.5, material_al)
-    add!(core, WireArray, Diameter(d_w), 24, 11, material_al)
+    add!(core, WireArray, Diameter(d_w), 24, 11.0, material_al)
 
     material_poly = get(materials, "polyacrylate")
     material_sc1 = get(materials, "semicon1")
@@ -86,7 +86,7 @@ using LineCableModels
     @test cable_design.cable_id == cable_id
 
     material_cu = get(materials, "copper")
-    lay_ratio = 10
+    lay_ratio = 10.0
     screen_con = ConductorGroup(WireArray(main_insu, Diameter(d_ws), num_sc_wires, lay_ratio, material_cu))
     add!(screen_con, Strip, Thickness(t_cut), w_cut, lay_ratio, material_cu)
     screen_insu = InsulatorGroup(Semicon(screen_con, Thickness(t_wbt), material_poly))
@@ -154,7 +154,7 @@ using LineCableModels
         earth_params = EarthModel(f, 100.0, 10.0, 1.0)
         @test DataFrame(earth_params) isa DataFrame
 
-        x0, y0 = 0, -1
+        x0, y0 = 0.0, -1.0
         xa, ya, xb, yb, xc, yc = trifoil_formation(x0, y0, 0.035)
 
         cablepos = CablePosition(cable_design, xa, ya, Dict("core" => 1, "sheath" => 0, "jacket" => 0))
@@ -182,7 +182,7 @@ using LineCableModels
 
         f = 10.0 .^ range(0, stop=6, length=10)
         earth_params = EarthModel(f, 100.0, 10.0, 1.0)
-        x0, y0 = 0, -1
+        x0, y0 = 0.0, -1.0
         xa, ya, xb, yb, xc, yc = trifoil_formation(x0, y0, 0.035)
         cablepos = CablePosition(cable_design, xa, ya, Dict("core" => 1, "sheath" => 0, "jacket" => 0))
         cable_system = LineCableSystem("18kV_1000mm2_trifoil", 1000.0, cablepos)
@@ -197,9 +197,9 @@ using LineCableModels
         @test_throws KeyError get(materials, "unobtanium")
 
         # Test invalid geometric parameters
-        @test_throws ArgumentError WireArray(0, Diameter(-1.0), 1, 0, material_al)
+        @test_throws ArgumentError WireArray(0.0, Diameter(-1.0), 1, 0.0, material_al)
         @test_throws ArgumentError Insulator(core, Thickness(-1.0), material_pe)
-        @test_throws AssertionError WireArray(core, Diameter(d_w), 1, -1, material_al) # Negative lay ratio
+        @test_throws AssertionError WireArray(core, Diameter(d_w), 1, -1.0, material_al) # Negative lay ratio
         @test_throws ArgumentError Strip(core, Thickness(-0.1), w_cut, lay_ratio, material_cu)
 
         # Test empty object creation
@@ -209,23 +209,23 @@ using LineCableModels
         @test_throws MethodError LineCableSystem("empty_system", 1000.0)
 
         # Test trifoil formation with negative radius
-        @test_throws AssertionError trifoil_formation(0, -1, -1)
+        @test_throws AssertionError trifoil_formation(0.0, -1.0, -1.0)
 
         # Test adding a cable at an overlapping position in LineCableSystem
-        x0, y0 = 0, -1
+        x0, y0 = 0.0, -1.0
         xa, ya, xb, yb, xc, yc = trifoil_formation(x0, y0, 0.1) # Use a valid distance
         cablepos = CablePosition(cable_design, xa, ya, Dict("core" => 1))
         cable_system = LineCableSystem("overlap_test", 1000.0, cablepos)
         @test_throws ArgumentError add!(cable_system, cable_design, xa, ya, Dict("core" => 2))
 
         # Test conductor at interface
-        @test_throws AssertionError CablePosition(cable_design, 0, 0, Dict("core" => 1))
+        @test_throws AssertionError CablePosition(cable_design, 0.0, 0.0, Dict("core" => 1))
 
         # Test invalid phase mapping
-        @test_throws ArgumentError CablePosition(cable_design, 1, 1, Dict("non_existent_component" => 1))
+        @test_throws ArgumentError CablePosition(cable_design, 1.0, 1.0, Dict("non_existent_component" => 1))
 
         # Test phase mapping where all components are grounded (no active phases)
-        @test_throws ArgumentError CablePosition(cable_design, 10, 10, Dict("core" => 0, "sheath" => 0, "jacket" => 0))
+        @test_throws ArgumentError CablePosition(cable_design, 10.0, 10.0, Dict("core" => 0, "sheath" => 0, "jacket" => 0))
 
         # Test exporting a system where some components are grounded (valid case)
         f = 10.0 .^ range(0, stop=6, length=10)

@@ -191,7 +191,7 @@ The core consists of a 4-layer AAAC stranded conductor with 61 wires arranged in
 
 # Initialize the conductor object and assign the central wire:
 material = get(materials, "aluminum")
-core = ConductorGroup(WireArray(0, Diameter(d_w), 1, 0, material))
+core = ConductorGroup(WireArray(0.0, Diameter(d_w), 1, 0.0, material))
 
 #=
 !!! tip "Convenience methods"
@@ -199,10 +199,10 @@ core = ConductorGroup(WireArray(0, Diameter(d_w), 1, 0, material))
 =#
 
 # Add the subsequent layers of wires and inspect the object:
-add!(core, WireArray, Diameter(d_w), 6, 15, material)
+add!(core, WireArray, Diameter(d_w), 6, 15.0, material)
 add!(core, WireArray, Diameter(d_w), 12, 13.5, material)
 add!(core, WireArray, Diameter(d_w), 18, 12.5, material)
-add!(core, WireArray, Diameter(d_w), 24, 11, material)
+add!(core, WireArray, Diameter(d_w), 24, 11.0, material)
 
 #=
 ### Inner semiconductor
@@ -285,7 +285,7 @@ The metallic screen (typically copper) serves multiple purposes:
 =#
 
 # Build the wire screens on top of the previous layer:
-lay_ratio = 10 # typical value for wire screens
+lay_ratio = 10.0 # typical value for wire screens
 material = get(materials, "copper")
 screen_con =
     ConductorGroup(WireArray(main_insu, Diameter(d_ws), num_sc_wires, lay_ratio, material))
@@ -394,8 +394,7 @@ This section ilustrates the construction of a cable system with three identical 
 
 
 # Define system center point (underground at 1 m depth) and the trifoil positions
-x0 = 0
-y0 = -1
+x0, y0 = 0.0, -1.0
 xa, ya, xb, yb, xc, yc = trifoil_formation(x0, y0, 0.035);
 
 # Initialize the `LineCableSystem` with the first cable (phase A):

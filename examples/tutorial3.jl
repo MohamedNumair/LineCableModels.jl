@@ -104,13 +104,13 @@ Initialize the conductor object and assign the central wire:
 =#
 
 material = get(materials, "copper")
-core = ConductorGroup(WireArray(0, Diameter(d_w), 1, 0, material))
+core = ConductorGroup(WireArray(0.0, Diameter(d_w), 1, 0.0, material))
 
 # Add the subsequent layers of wires and inspect the object:
 n_strands = 6 # Strands per layer
 n_layers = 6 # Layers of strands
 for i in 1:n_layers
-    add!(core, WireArray, Diameter(d_w), i * n_strands, 11, material)
+    add!(core, WireArray, Diameter(d_w), i * n_strands, 11.0, material)
 end
 core
 
@@ -188,7 +188,7 @@ add!(cable_design, sheath_cc)
 =#
 
 # Add the armor wires on top of the previous layer:
-lay_ratio = 10 # typical value for wire screens
+lay_ratio = 10.0 # typical value for wire screens
 material = get(materials, "steel")
 armor_con = ConductorGroup(
     WireArray(screen_insu, Diameter(d_wa), num_ar_wires, lay_ratio, material))
@@ -252,9 +252,8 @@ earthmodel_df = DataFrame(earth_params)
 
 =#
 
-xp = -0.5
-xn = 0.5
-y0 = -1.0;
+# Define the coordinates for both cables:
+xp, xn, y0 = -0.5, 0.5, -1.0;
 
 # Initialize the `LineCableSystem` with positive pole:
 cablepos = CablePosition(cable_design, xp, y0,

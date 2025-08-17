@@ -46,11 +46,12 @@ export calc_equivalent_lossfact
 export calc_sigma_lossfact
 
 # Load common dependencies
-include("common_deps.jl")
+include("commondeps.jl")
 using ...LineCableModels
 using ...Utils
 using ..DataModel: ConductorGroup, WireArray
 import ..DataModel: AbstractCablePart
+import ...LineCableModels: REALTYPES, COMPLEXTYPES, NUMERICTYPES
 
 # Module-specific dependencies
 using Measurements
@@ -87,7 +88,7 @@ alpha_eq = $(FUNCTIONNAME)(alpha_conductor, R_conductor, alpha_new_part, R_new_p
 println(alpha_eq)  # Output: 0.00396 (approximately)
 ```
 """
-function calc_equivalent_alpha(alpha1::Number, R1::Number, alpha2::Number, R2::Number)
+function calc_equivalent_alpha(alpha1::T, R1::T, alpha2::T, R2::T) where {T<:REALTYPES}
     return (alpha1 * R2 + alpha2 * R1) / (R1 + R2)
 end
 
@@ -134,7 +135,7 @@ println(Req) # Outputs: 3.3333333333333335
 
 - [`calc_helical_params`](@ref)
 """
-function calc_parallel_equivalent(Z1::Number, Z2::Number)
+function calc_parallel_equivalent(Z1::T, Z2::T) where {T<:NUMERICTYPES}
     return 1 / (1 / Z1 + 1 / Z2)
 end
 
@@ -187,7 +188,7 @@ mean_diam, pitch, overlength = $(FUNCTIONNAME)(radius_in, radius_ext, lay_ratio)
 # overlength > 1.0 [1/m]
 ```
 """
-function calc_helical_params(radius_in::Number, radius_ext::Number, lay_ratio::Number)
+function calc_helical_params(radius_in::T, radius_ext::T, lay_ratio::T) where {T<:REALTYPES}
     mean_diameter = 2 * (radius_in + (radius_ext - radius_in) / 2)
     pitch_length = lay_ratio * mean_diameter
     overlength = pitch_length != 0 ? sqrt(1 + (π * mean_diameter / pitch_length)^2) : 1
@@ -212,7 +213,7 @@ where ``\\ell`` is the length of the strip, ``W`` is the width, and ``T`` is the
 - `rho`: Electrical resistivity of the conductor material \\[Ω·m\\].
 - `alpha`: Temperature coefficient of resistivity \\[1/°C\\].
 - `T0`: Reference temperature for the material properties \\[°C\\].
-- `T`: Operating temperature of the conductor \\[°C\\].
+- `Top`: Operating temperature of the conductor \\[°C\\].
 
 # Returns
 
@@ -231,20 +232,21 @@ resistance = $(FUNCTIONNAME)(thickness, width, rho, alpha, T0, T)
 # Output: ~8.62e-7 Ω
 ```
 
-# See also
+# See also  
 
 - [`calc_temperature_correction`](@ref)
 """
 function calc_strip_resistance(
-    thickness::Number,
-    width::Number,
-    rho::Number,
-    alpha::Number,
-    T0::Number,
-    T::Number,
-)
+    thickness::T,
+    width::T,
+    rho::T,
+    alpha::T,
+    T0::T,
+    Top::T,
+) where {T<:REALTYPES}
+
     cross_section = thickness * width
-    return calc_temperature_correction(alpha, T, T0) * rho / cross_section
+    return calc_temperature_correction(alpha, Top, T0) * rho / cross_section
 end
 
 """
@@ -274,14 +276,14 @@ where ``\\alpha`` is the temperature coefficient of the material resistivity, ``
     k = $(FUNCTIONNAME)(0.00393, 75.0, 20.0)  # Expected output: 1.2158
 ```
 """
-function calc_temperature_correction(alpha::Number, T::Number, T0::Number=T₀)
-    @assert abs(T - T0) < ΔTmax """
+function calc_temperature_correction(alpha::T, Top::T, T0::T=T₀) where {T<:REALTYPES}
+    @assert abs(Top - T0) < ΔTmax """
     Temperature is outside the valid range for linear resistivity model:
-    T = $T
+    Top = $Top
     T0 = $T0
     ΔTmax = $ΔTmax
-    |T - T0| = $(abs(T - T0))"""
-    return 1 + alpha * (T - T0)
+    |Top - T0| = $(abs(Top - T0))"""
+    return 1 + alpha * (Top - T0)
 end
 
 """
@@ -301,7 +303,7 @@ where ``\\ell`` is the length of the conductor, ``r_{in}`` and ``r_{ext}`` are t
 - `rho`: Electrical resistivity of the conductor material \\[Ω·m\\].
 - `alpha`: Temperature coefficient of resistivity \\[1/°C\\].
 - `T0`: Reference temperature for the material properties \\[°C\\].
-- `T`: Operating temperature of the conductor \\[°C\\].
+- `Top`: Operating temperature of the conductor \\[°C\\].
 
 # Returns
 
@@ -325,15 +327,15 @@ resistance = $(FUNCTIONNAME)(radius_in, radius_ext, rho, alpha, T0, T)
 - [`calc_temperature_correction`](@ref)
 """
 function calc_tubular_resistance(
-    radius_in::Number,
-    radius_ext::Number,
-    rho::Number,
-    alpha::Number,
-    T0::Number,
-    T::Number,
-)
+    radius_in::T,
+    radius_ext::T,
+    rho::T,
+    alpha::T,
+    T0::T,
+    Top::T,
+) where {T<:REALTYPES}
     cross_section = π * (radius_ext^2 - radius_in^2)
-    return calc_temperature_correction(alpha, T, T0) * rho / cross_section
+    return calc_temperature_correction(alpha, Top, T0) * rho / cross_section
 end
 
 """
@@ -370,7 +372,7 @@ L = $(FUNCTIONNAME)(radius_in, radius_ext, mu_r)
 
 - [`calc_tubular_resistance`](@ref)
 """
-function calc_tubular_inductance(radius_in::Number, radius_ext::Number, mu_r::Number)
+function calc_tubular_inductance(radius_in::T, radius_ext::T, mu_r::T) where {T<:REALTYPES}
     return mu_r * μ₀ / (2 * π) * log(radius_ext / radius_in)
 end
 
@@ -406,11 +408,11 @@ wire_coords = $(FUNCTIONNAME)(7, 0.002, 0.01, C=(0.5, 0.3))
 - [`LineCableModels.DataModel.WireArray`](@ref)
 """
 function calc_wirearray_coords(
-    num_wires::Number,
-    radius_wire::Number,
-    radius_in::Number;
+    num_wires::Int,
+    radius_wire::T,
+    radius_in::T;
     C=(0.0, 0.0),
-)
+) where {T<:REALTYPES}
     wire_coords = []  # Global coordinates of all wires
     lay_radius = num_wires == 1 ? 0 : radius_in + radius_wire
 
@@ -468,27 +470,27 @@ println(L) # Output: Inductance value in H/m
 - [`calc_tubular_gmr`](@ref)
 """
 function calc_inductance_trifoil(
-    r_in_co::Number,
-    r_ext_co::Number,
-    rho_co::Number,
-    mu_r_co::Number,
-    r_in_scr::Number,
-    r_ext_scr::Number,
-    rho_scr::Number,
-    mu_r_scr::Number,
-    S::Number;
-    rho_e::Number=100,
-    f::Number=f₀,
-)
+    r_in_co::T,
+    r_ext_co::T,
+    rho_co::T,
+    mu_r_co::T,
+    r_in_scr::T,
+    r_ext_scr::T,
+    rho_scr::T,
+    mu_r_scr::T,
+    S::T;
+    rho_e::T=100.0,
+    f::T=f₀,
+) where {T<:REALTYPES}
 
     ω = 2 * π * f
     C = μ₀ / (2π)
 
     # Compute simplified earth return depth
-    DE = 659 * sqrt(rho_e / f)
+    DE = 659.0 * sqrt(rho_e / f)
 
     # Compute R'_E
-    RpE = (ω * μ₀) / 8
+    RpE = (ω * μ₀) / 8.0
 
     # Compute Xa
     GMRa = calc_tubular_gmr(r_ext_co, r_in_co, mu_r_co)
@@ -560,7 +562,7 @@ gmr = $(FUNCTIONNAME)(lay_rad, N, rad_wire, mu_r)
 println(gmr) # Expected output: 0.01187... [m]
 ```
 """
-function calc_wirearray_gmr(lay_rad::Number, N::Number, rad_wire::Number, mu_r::Number)
+function calc_wirearray_gmr(lay_rad::T, N::Int, rad_wire::T, mu_r::T) where {T<:REALTYPES}
     gmr_wire = rad_wire * exp(-mu_r / 4)
     log_gmr_array = log(gmr_wire * N * lay_rad^(N - 1)) / N
     return exp(log_gmr_array)
@@ -601,7 +603,7 @@ gmr = $(FUNCTIONNAME)(radius_ext, radius_in, mu_r)
 println(gmr) # Expected output: ~0.0135 [m]
 ```
 """
-function calc_tubular_gmr(radius_ext::Number, radius_in::Number, mu_r::Number)
+function calc_tubular_gmr(radius_ext::T, radius_in::T, mu_r::T) where {T<:REALTYPES}
     if radius_ext < radius_in
         throw(ArgumentError("Invalid parameters: radius_ext must be >= radius_in."))
     end
@@ -673,7 +675,7 @@ println(mu_r) # Expected output: ~1.5 [dimensionless]
 # See also
 - [`calc_tubular_gmr`](@ref)
 """
-function calc_equivalent_mu(gmr::Number, radius_ext::Number, radius_in::Number)
+function calc_equivalent_mu(gmr::T, radius_ext::T, radius_in::T) where {T<:REALTYPES}
     if radius_ext < radius_in
         throw(ArgumentError("Invalid parameters: radius_ext must be >= radius_in."))
     end
@@ -721,7 +723,7 @@ capacitance = $(FUNCTIONNAME)(radius_in, radius_ext, epsr)
 println(capacitance) # Expected output: ~1.24e-10 [F/m]
 ```
 """
-function calc_shunt_capacitance(radius_in::Number, radius_ext::Number, epsr::Number)
+function calc_shunt_capacitance(radius_in::T, radius_ext::T, epsr::T) where {T<:REALTYPES}
     return 2 * π * ε₀ * epsr / log(radius_ext / radius_in)
 end
 
@@ -755,7 +757,7 @@ g = $(FUNCTIONNAME)(radius_in, radius_ext, rho)
 println(g) # Expected output: 2.7169e-9 [S·m]
 ```
 """
-function calc_shunt_conductance(radius_in::Number, radius_ext::Number, rho::Number)
+function calc_shunt_conductance(radius_in::T, radius_ext::T, rho::T) where {T<:REALTYPES}
     return 2 * π * (1 / rho) / log(radius_ext / radius_in)
 end
 
@@ -938,10 +940,10 @@ correction = $(FUNCTIONNAME)(NaN, 0.005, 0.01)  # Expected output: 1.0 [dimensio
 ```
 """
 function calc_solenoid_correction(
-    num_turns::Number,
-    radius_ext_con::Number,
-    radius_ext_ins::Number,
-)
+    num_turns::T,
+    radius_ext_con::T,
+    radius_ext_ins::T,
+) where {T<:REALTYPES}
     if isnan(num_turns)
         return 1.0
     else
@@ -978,7 +980,7 @@ where ``S_{eff}`` is the effective cross-sectional area of the tubular conductor
 rho_eq = $(FUNCTIONNAME)(0.01, 0.02, 0.01)  # Expected output: ~9.42e-4 [Ω·m]
 ```
 """
-function calc_equivalent_rho(R::Number, radius_ext_con::Number, radius_in_con::Number)
+function calc_equivalent_rho(R::T, radius_ext_con::T, radius_in_con::T) where {T<:REALTYPES}
     eff_conductor_area = π * (radius_ext_con^2 - radius_in_con^2)
     return R * eff_conductor_area
 end
@@ -1013,7 +1015,7 @@ eps_eq = $(FUNCTIONNAME)(1e-10, 0.01, 0.005)  # Expected output: ~2.26 [dimensio
 # See also
 - [`ε₀`](@ref)
 """
-function calc_equivalent_eps(C_eq::Number, radius_ext::Number, radius_in::Number)
+function calc_equivalent_eps(C_eq::T, radius_ext::T, radius_in::T) where {T<:REALTYPES}
     return (C_eq * log(radius_ext / radius_in)) / (2 * pi) / ε₀
 end
 
@@ -1044,7 +1046,7 @@ where ``\\tan \\delta`` is the loss factor (tangent).
 loss_factor = $(FUNCTIONNAME)(1e-8, 1e-10, 2π*50)  # Expected output: ~0.0318 [dimensionless]
 ```
 """
-function calc_equivalent_lossfact(G_eq::Number, C_eq::Number, ω::Number)
+function calc_equivalent_lossfact(G_eq::T, C_eq::T, ω::T) where {T<:REALTYPES}
     return G_eq / (ω * C_eq)
 end
 
@@ -1075,7 +1077,7 @@ Geq = 2.7169e-9
 sigma_eq = $(FUNCTIONNAME)(G_eq, radius_in, radius_ext)
 ```
 """
-function calc_sigma_lossfact(G_eq::Number, radius_in::Number, radius_ext::Number)
+function calc_sigma_lossfact(G_eq::T, radius_in::T, radius_ext::T) where {T<:REALTYPES}
     return G_eq * log(radius_ext / radius_in) / (2 * pi)
 end
 

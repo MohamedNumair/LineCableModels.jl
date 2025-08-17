@@ -1,17 +1,6 @@
 """
 $(TYPEDEF)
 
-Abstract type representing different equivalent homogeneous earth models (EHEM). Used in the multi-dispatch implementation of [`_calc_ehem_properties!`](@ref).
-
-# Currently available formulations
-
-- [`EnforceLayer`](@ref): Effective parameters defined according to a specific earth layer.
-"""
-abstract type AbstractEHEMFormulation end
-
-"""
-$(TYPEDEF)
-
 Represents a homogeneous earth model defined using the properties of a specific earth layer, with atttribute:
 
 $(TYPEDFIELDS)

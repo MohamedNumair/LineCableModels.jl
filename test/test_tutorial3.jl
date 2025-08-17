@@ -34,13 +34,13 @@ using DataFrames
         # Core and main insulation
         material_cu = get(materials, "copper")
         n = 6
-        core = ConductorGroup(WireArray(0, Diameter(d_w), 1, 0, material_cu))
-        add!(core, WireArray, Diameter(d_w), 1 * n, 11, material_cu)
-        add!(core, WireArray, Diameter(d_w), 2 * n, 11, material_cu)
-        add!(core, WireArray, Diameter(d_w), 3 * n, 11, material_cu)
-        add!(core, WireArray, Diameter(d_w), 4 * n, 11, material_cu)
-        add!(core, WireArray, Diameter(d_w), 5 * n, 11, material_cu)
-        add!(core, WireArray, Diameter(d_w), 6 * n, 11, material_cu)
+        core = ConductorGroup(WireArray(0.0, Diameter(d_w), 1, 0.0, material_cu))
+        add!(core, WireArray, Diameter(d_w), 1 * n, 11.0, material_cu)
+        add!(core, WireArray, Diameter(d_w), 2 * n, 11.0, material_cu)
+        add!(core, WireArray, Diameter(d_w), 3 * n, 11.0, material_cu)
+        add!(core, WireArray, Diameter(d_w), 4 * n, 11.0, material_cu)
+        add!(core, WireArray, Diameter(d_w), 5 * n, 11.0, material_cu)
+        add!(core, WireArray, Diameter(d_w), 6 * n, 11.0, material_cu)
 
         material_sc1 = get(materials, "semicon1")
         main_insu = InsulatorGroup(Semicon(core, Thickness(t_sc_in), material_sc1))
@@ -73,7 +73,7 @@ using DataFrames
         @test cable_design.components[2].id == "sheath"
 
         # Armor and outer jacket components
-        lay_ratio = 10
+        lay_ratio = 10.0
         material_steel = get(materials, "steel")
         armor_con = ConductorGroup(WireArray(screen_insu, Diameter(d_wa), num_ar_wires, lay_ratio, material_steel))
         material_pp_jacket = get(materials, "pp")

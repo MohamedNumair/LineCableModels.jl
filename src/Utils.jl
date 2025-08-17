@@ -30,7 +30,7 @@ export equals,
     percent_error
 
 # Load common dependencies
-include("common_deps.jl")
+include("commondeps.jl")
 
 # Module-specific dependencies
 using Measurements

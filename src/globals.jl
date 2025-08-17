@@ -19,6 +19,14 @@ const ΔTmax = 150.0
 "Default tolerance for floating-point comparisons, TOL = 1e-6."
 const TOL = 1e-6
 
+# Define aliases for the type constraints
+using Measurements
+const BASE_FLOAT = Float64
+const REALTYPES = Union{BASE_FLOAT,Measurement{BASE_FLOAT}}
+const COMPLEXTYPES = Union{Complex{BASE_FLOAT},Complex{Measurement{BASE_FLOAT}}}
+const NUMERICTYPES = Union{REALTYPES,COMPLEXTYPES}
+
+
 """
     FormulationSet(...)
 

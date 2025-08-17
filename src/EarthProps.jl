@@ -21,7 +21,7 @@ $(EXPORTS)
 module EarthProps
 
 # Load common dependencies
-include("common_deps.jl")
+include("commondeps.jl")
 using ..Utils
 using ..LineCableModels # For physical constants (f₀, μ₀, ε₀, ρ₀, T₀, TOL, ΔTmax)
 import ..LineCableModels: _get_description, add!
@@ -39,85 +39,7 @@ export CPEarth,
     DataFrame
 
 
-"""
-$(TYPEDEF)
-
-Abstract type representing different frequency-dependent earth models (FDEM). Used in the multi-dispatch implementation of [`_calc_earth_properties`](@ref).
-
-# Currently available formulations
-
-- [`CPEarth`](@ref): Constant properties (CP) model.
-"""
-abstract type AbstractFDEMFormulation end
-
-"""
-$(TYPEDEF)
-
-Represents an earth model with constant properties (CP), i.e. frequency-invariant electromagnetic properties.
-"""
-struct CPEarth <: AbstractFDEMFormulation end
-
-
-"""
-$(TYPEDSIGNATURES)
-
-Computes frequency-dependent earth properties using the [`CPEarth`](@ref) formulation, which assumes frequency-invariant values for resistivity, permittivity, and permeability.
-
-# Arguments
-
-- `frequencies`: Vector of frequency values \\[Hz\\].
-- `base_rho_g`: Base (DC) electrical resistivity of the soil \\[Ω·m\\].
-- `base_epsr_g`: Base (DC) relative permittivity of the soil \\[dimensionless\\].
-- `base_mur_g`: Base (DC) relative permeability of the soil \\[dimensionless\\].
-- `formulation`: Instance of a subtype of [`AbstractFDEMFormulation`](@ref) defining the computation method.
-
-# Returns
-
-- `rho`: Vector of resistivity values \\[Ω·m\\] at the given frequencies.
-- `epsilon`: Vector of permittivity values \\[F/m\\] at the given frequencies.
-- `mu`: Vector of permeability values \\[H/m\\] at the given frequencies.
-
-# Examples
-
-```julia
-frequencies = [1e3, 1e4, 1e5]
-
-# Using the CP model
-rho, epsilon, mu = $(FUNCTIONNAME)(frequencies, 100, 10, 1, CPEarth())
-println(rho)     # Output: [100, 100, 100]
-println(epsilon) # Output: [8.854e-11, 8.854e-11, 8.854e-11]
-println(mu)      # Output: [1.2566e-6, 1.2566e-6, 1.2566e-6]
-```
-
-# See also
-
-- [`EarthLayer`](@ref)
-- [`AbstractFDEMFormulation`](@ref)
-"""
-function _calc_earth_properties(
-    frequencies::Vector{<:Float64},
-    base_rho_g::T,
-    base_epsr_g::T,
-    base_mur_g::T,
-    ::CPEarth,
-) where {T<:Union{Float64,Measurement{Float64}}}
-
-    # Preallocate for performance
-    n_freq = length(frequencies)
-    rho = Vector{T}(undef, n_freq)
-    epsilon = Vector{typeof(ε₀ * base_epsr_g)}(undef, n_freq)
-    mu = Vector{typeof(μ₀ * base_mur_g)}(undef, n_freq)
-
-    # Vectorized assignment
-    fill!(rho, base_rho_g)
-    fill!(epsilon, ε₀ * base_epsr_g)
-    fill!(mu, μ₀ * base_mur_g)
-
-    return rho, epsilon, mu
-end
-
-_get_description(::CPEarth) = "CP model"
-
+include("EarthProps/fdprops.jl")
 
 """
 $(TYPEDEF)
@@ -413,107 +335,7 @@ function add!(
     model
 end
 
-"""
-$(TYPEDSIGNATURES)
-
-Generates a `DataFrame` summarizing basic properties of earth layers from an [`EarthModel`](@ref).
-
-# Arguments
-
-- `earth_model`: Instance of [`EarthModel`](@ref) containing earth layers.
-
-# Returns
-
-- A `DataFrame` with columns:
-  - `rho_g`: Base (DC) resistivity of each layer \\[Ω·m\\].
-  - `epsr_g`: Base (DC) relative permittivity of each layer \\[dimensionless\\].
-  - `mur_g`: Base (DC) relative permeability of each layer \\[dimensionless\\].
-  - `thickness`: Thickness of each layer \\[m\\].
-
-# Examples
-
-```julia
-df = $(FUNCTIONNAME)(earth_model)
-println(df)
-```
-"""
-function DataFrame(earth_model::EarthModel)
-    layers = earth_model.layers
-
-    base_rho_g = [layer.base_rho_g for layer in layers]
-    base_epsr_g = [layer.base_epsr_g for layer in layers]
-    base_mur_g = [layer.base_mur_g for layer in layers]
-    thickness = [layer.t for layer in layers]
-
-    return DataFrame(
-        rho_g=base_rho_g,
-        epsr_g=base_epsr_g,
-        mur_g=base_mur_g,
-        thickness=thickness,
-    )
-end
-
-"""
-$(TYPEDSIGNATURES)
-
-Defines the display representation of a [`EarthModel`](@ref) object for REPL or text output.
-
-# Arguments
-
-- `io`: The output stream to write the representation to \\[IO\\].
-- `mime`: The MIME type for plain text output \\[MIME"text/plain"\\].
-- `model`: The [`EarthModel`](@ref) instance to be displayed.
-
-
-# Returns
-
-- Nothing. Modifies `io` to format the output.
-"""
-function show(io::IO, ::MIME"text/plain", model::EarthModel)
-    # Determine model type based on num_layers and vertical_layers flag
-    num_layers = length(model.layers)
-    model_type = num_layers == 2 ? "homogeneous" : "multilayer"
-    orientation = model.vertical_layers ? "vertical" : "horizontal"
-    layer_word = (num_layers - 1) == 1 ? "layer" : "layers"
-
-    # Count frequency samples from the first layer's property arrays
-    num_freq_samples = length(model.layers[1].rho_g)
-    freq_word = (num_freq_samples) == 1 ? "sample" : "samples"
-
-    # Print header with key information
-    println(
-        io,
-        "EarthModel with $(num_layers-1) $(orientation) earth $(layer_word) ($(model_type)) and $(num_freq_samples) frequency $(freq_word)",
-    )
-
-    # Print layers in treeview style
-    for i in 1:num_layers
-        layer = model.layers[i]
-        # Determine prefix based on whether it's the last layer
-        prefix = i == num_layers ? "└─" : "├─"
-
-        # Format thickness value
-        thickness_str = isinf(layer.t) ? "∞" : "$(round(layer.t, sigdigits=4))"
-
-        # Format layer name
-        layer_name = i == 1 ? "Layer $i (air)" : "Layer $i"
-
-        # Print layer properties with proper formatting
-        println(
-            io,
-            "$prefix $layer_name: [rho_g=$(round(layer.base_rho_g, sigdigits=4)), " *
-            "epsr_g=$(round(layer.base_epsr_g, sigdigits=4)), " *
-            "mur_g=$(round(layer.base_mur_g, sigdigits=4)), " *
-            "t=$thickness_str]",
-        )
-    end
-
-    # Add formulation information as child nodes
-    if !isnothing(model.FDformulation)
-        formulation_tag = _get_description(model.FDformulation)
-        println(io, "   Frequency-dependent model: $(formulation_tag)")
-    end
-
-end
+include("EarthProps/dataframe.jl")
+include("EarthProps/io.jl")
 
 end # module EarthProps

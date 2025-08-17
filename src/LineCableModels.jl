@@ -1,7 +1,7 @@
 module LineCableModels
 
 # Load common dependencies and definitions
-include("common_deps.jl")
+include("commondeps.jl")
 
 # Package-wide interfaces
 include("globals.jl")
