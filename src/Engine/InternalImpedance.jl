@@ -12,7 +12,7 @@ $(EXPORTS)
 module InternalImpedance
 
 # Export public API
-export Schelkunoff
+export ScaledBessel
 
 # Load common dependencies
 include("../commondeps.jl")
@@ -24,8 +24,8 @@ import ..Engine: InternalImpedanceFormulation
 # Module-specific dependencies
 using Measurements
 
-struct Schelkunoff <: InternalImpedanceFormulation end
-_get_description(::Schelkunoff) = "Schelkunoff formulation (exact Bessel functions)"
+struct ScaledBessel <: InternalImpedanceFormulation end
+_get_description(::ScaledBessel) = "Scaled Bessel (Schelkunoff)"
 
 
 macro uncertain_bessel(expr::Expr)
