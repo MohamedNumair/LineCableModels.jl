@@ -117,7 +117,7 @@ function preview_results(workspace::FEMWorkspace, pos_file::String)
         end
 
         # Merge the single result file
-        @info "Loading field data: $(basename(pos_file))"
+        @info "Loading field data: $(_display_path(pos_file))"
         gmsh.merge(abspath(pos_file))
 
         # Set mesh color to light gray
