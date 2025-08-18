@@ -1,5 +1,6 @@
 using MacroTools
 # TODO: Develop and integrate input type normalization
+# Issue URL: https://github.com/Electa-Git/LineCableModels.jl/issues/10
 
 # """
 #     @sanitize_inputs(func_def)
