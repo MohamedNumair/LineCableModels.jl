@@ -25,6 +25,7 @@ include("commondeps.jl")
 using ..Utils
 using ..LineCableModels # For physical constants (f₀, μ₀, ε₀, ρ₀, T₀, TOL, ΔTmax)
 import ..LineCableModels: _get_description, add!
+import ..LineCableModels: REALTYPES, COMPLEXTYPES, NUMERICTYPES
 
 # Module-specific dependencies
 using Measurements
@@ -48,7 +49,7 @@ Represents one single earth layer in an [`EarthModel`](@ref) object, with base a
 
 $(TYPEDFIELDS)
 """
-struct EarthLayer{T<:Union{Float64,Measurement{Float64}}}
+struct EarthLayer{T<:REALTYPES}
     "Base (DC) electrical resistivity \\[Ω·m\\]."
     base_rho_g::T
     "Base (DC) relative permittivity \\[dimensionless\\]."
@@ -97,13 +98,13 @@ struct EarthLayer{T<:Union{Float64,Measurement{Float64}}}
     - [`_calc_earth_properties`](@ref)
     """
     function EarthLayer(
-        frequencies::Vector{Float64},
+        frequencies::Vector{T},
         base_rho_g::T,
         base_epsr_g::T,
         base_mur_g::T,
         t::T,
         FDformulation::AbstractFDEMFormulation,
-    ) where {T<:Union{Float64,Measurement{Float64}}}
+    ) where {T<:REALTYPES}
 
         rho_g, eps_g, mu_g = _calc_earth_properties(
             frequencies,
@@ -131,7 +132,7 @@ Represents a multi-layered earth model with frequency-dependent properties, and 
 
 $(TYPEDFIELDS)
 """
-struct EarthModel{T<:Union{Float64,Measurement{Float64}}}
+struct EarthModel{T<:REALTYPES}
     "Selected frequency-dependent formulation for earth properties."
     FDformulation::AbstractFDEMFormulation
     "Boolean flag indicating whether the model is treated as vertically layered."
@@ -174,7 +175,7 @@ struct EarthModel{T<:Union{Float64,Measurement{Float64}}}
     - [`add!`](@ref)
     """
     function EarthModel(
-        frequencies::Vector{Float64},
+        frequencies::Vector{T},
         rho_g::T,
         epsr_g::T,
         mur_g::T;
@@ -182,7 +183,7 @@ struct EarthModel{T<:Union{Float64,Measurement{Float64}}}
         FDformulation::AbstractFDEMFormulation=CPEarth(),
         vertical_layers::Bool=false,
         air_layer::Union{EarthLayer{T},Nothing}=nothing,
-    ) where {T<:Union{Float64,Measurement{Float64}}}
+    ) where {T<:REALTYPES}
 
         # Validate inputs
         @assert all(f -> f > 0, frequencies) "Frequencies must be positive"
@@ -291,12 +292,12 @@ println(length(vert_earth_model.layers)) # Output: 4
 """
 function add!(
     model::EarthModel{T},
-    frequencies::Vector{Float64},
+    frequencies::Vector{T},
     base_rho_g::T,
     base_epsr_g::T,
     base_mur_g::T;
     t::T=T(Inf),
-) where {T<:Union{Float64,Measurement{Float64}}}
+) where {T<:REALTYPES}
 
     num_layers = length(model.layers)
 
