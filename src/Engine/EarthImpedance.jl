@@ -12,7 +12,7 @@ $(EXPORTS)
 module EarthImpedance
 
 # Export public API
-# export calc_outer_insulation_impedance
+export Papadopoulos
 
 # Load common dependencies
 include("../commondeps.jl")
@@ -25,7 +25,7 @@ import ..Engine: EarthImpedanceFormulation
 using Measurements
 
 struct Papadopoulos <: EarthImpedanceFormulation end
-_get_description(::Papadopoulos) = "Papadopoulos formulation (homogeneous earth)"
+_get_description(::Papadopoulos) = "Papadopoulos (homogeneous earth)"
 
 struct Carson <: EarthImpedanceFormulation end
 
