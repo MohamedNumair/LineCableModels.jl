@@ -256,11 +256,11 @@ function _do_make_mesh!(workspace::FEMWorkspace)
     generate_mesh(workspace)
 
     # Save mesh
-    @info "Saving mesh to file: $(workspace.paths[:mesh_file])"
+    @info "Saving mesh to file: $(_display_path(workspace.paths[:mesh_file]))"
     gmsh.write(workspace.paths[:mesh_file])
 
     # Save geometry
-    @info "Saving geometry to file: $(workspace.paths[:geo_file])"
+    @info "Saving geometry to file: $(_display_path(workspace.paths[:geo_file]))"
     gmsh.write(workspace.paths[:geo_file])
 end
 
