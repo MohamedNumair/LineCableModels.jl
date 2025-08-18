@@ -41,7 +41,8 @@ using ..Utils
 using ..Materials
 using ..EarthProps
 using ..LineCableModels # For physical constants (f₀, μ₀, ε₀, ρ₀, T₀, TOL, ΔTmax)
-import ..LineCableModels: add!, preview, save, _is_headless, REALTYPES, COMPLEXTYPES, NUMERICTYPES
+import ..LineCableModels: add!, preview, save, _is_headless, _is_in_testset
+import ..LineCableModels: REALTYPES, COMPLEXTYPES, NUMERICTYPES
 
 # Module-specific dependencies
 using Measurements
@@ -124,7 +125,7 @@ include("DataModel/conductors.jl")
 include("DataModel/insulators.jl")
 
 # Submodule `BaseParams`
-include("BaseParams.jl")
+include("DataModel/BaseParams.jl")
 @force using .BaseParams
 
 include("DataModel/cabledesign.jl")
