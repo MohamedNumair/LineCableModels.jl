@@ -248,20 +248,38 @@ function preview(
             color = _get_material_color(material_props)
 
             arcshape(θ1, θ2, rin, rext, x0=0.0, y0=0.0, N=100) = begin
+                # Generate angles for the arc
+                θ = range(θ1, θ2, length=N)
+
                 # Outer circle coordinates
-                outer_coords = Plots.partialcircle(θ1, θ2, N, rext)
-                x_outer = first.(outer_coords) .+ x0
-                y_outer = last.(outer_coords) .+ y0
+                x_outer = x0 .+ rext .* cos.(θ)
+                y_outer = y0 .+ rext .* sin.(θ)
 
                 # Inner circle coordinates (reversed to close the shape properly)
-                inner_coords = Plots.partialcircle(θ1, θ2, N, rin)
-                x_inner = reverse(first.(inner_coords)) .+ x0
-                y_inner = reverse(last.(inner_coords)) .+ y0
+                x_inner = x0 .+ rin .* cos.(reverse(θ))
+                y_inner = y0 .+ rin .* sin.(reverse(θ))
 
-                Shape(vcat(x_outer, x_inner), vcat(y_outer, y_inner))
+                # Concatenate and explicitly close the shape by repeating the first point
+                x_coords = [x_outer; x_inner; x_outer[1]]
+                y_coords = [y_outer; y_inner; y_outer[1]]
+
+                Shape(x_coords, y_coords)
             end
+            # arcshape(θ1, θ2, rin, rext, x0=0.0, y0=0.0, N=100) = begin
+            #     # Outer circle coordinates
+            #     outer_coords = Plots.partialcircle(θ1, θ2, N, rext)
+            #     x_outer = first.(outer_coords) .+ x0
+            #     y_outer = last.(outer_coords) .+ y0
 
-            shape = arcshape(0, 2π + 0.01, radius_in, radius_ext, x0, y0)
+            #     # Inner circle coordinates (reversed to close the shape properly)
+            #     inner_coords = Plots.partialcircle(θ1, θ2, N, rin)
+            #     x_inner = reverse(first.(inner_coords)) .+ x0
+            #     y_inner = reverse(last.(inner_coords)) .+ y0
+
+            #     Shape(vcat(x_outer, x_inner), vcat(y_outer, y_inner))
+            # end
+
+            shape = arcshape(0, 2π, radius_in, radius_ext, x0, y0)
             plot!(
                 plt,
                 shape,
@@ -312,10 +330,12 @@ function preview(
     end
 
     if display_plot
-        if _is_headless()
-            DisplayAs.Text(DisplayAs.PNG(plt))
-        else
-            display(plt)
+        if !_is_in_testset()
+            if _is_headless()
+                DisplayAs.Text(DisplayAs.PNG(plt))
+            else
+                display(plt)
+            end
         end
     end
 
@@ -429,14 +449,9 @@ function preview(
 
     plot!(plt, xlim=(x_limits[1], x_limits[2]) .* zoom_factor)
 
-    # if _is_headless()
-    #     DisplayAs.Text(DisplayAs.PNG(plt))
-    # else
-    #     display(plt)
-    # end
     if !_is_in_testset()
         if _is_headless()
-            DisplayAs.Text(DisplayAs.SVG(plt))
+            DisplayAs.Text(DisplayAs.PNG(plt))
         else
             display(plt)
         end
