@@ -12,7 +12,7 @@ $(EXPORTS)
 module InsulationImpedance
 
 # Export public API
-# export calc_outer_insulation_impedance
+export Standard
 
 # Load common dependencies
 include("../commondeps.jl")
@@ -23,6 +23,9 @@ import ..Engine: InsulationImpedanceFormulation
 
 # Module-specific dependencies
 using Measurements
+
+struct Standard <: InsulationImpedanceFormulation end
+_get_description(::Standard) = "Standard inductance"
 
 function calc_outer_insulation_impedance(
     radius_ex::Measurement{T},
