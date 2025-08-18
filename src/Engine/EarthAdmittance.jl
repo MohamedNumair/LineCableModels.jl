@@ -25,7 +25,7 @@ import ..Engine: EarthAdmittanceFormulation
 using Measurements
 
 struct Papadopoulos <: EarthAdmittanceFormulation end
-_get_description(::Papadopoulos) = "Papadopoulos formulation (homogeneous earth)"
+_get_description(::Papadopoulos) = "Papadopoulos (homogeneous earth)"
 
 function calc_self_potential_coeff_papadopoulos(
     h::Vector{Measurement{Float64}},
