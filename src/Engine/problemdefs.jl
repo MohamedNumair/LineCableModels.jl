@@ -5,15 +5,15 @@ Represents a line parameters computation problem for a given physical cable syst
 
 $(TYPEDFIELDS)
 """
-struct LineParametersProblem{T<:REALTYPES} <: ProblemDefinition
+struct LineParametersProblem <: ProblemDefinition
     "The physical cable system to analyze."
     system::LineCableSystem
     "Operating temperature \\[°C\\]."
-    temperature::T
+    temperature::REALTYPES
     "Earth properties model."
-    earth_props::EarthModel{T}
+    earth_props::EarthModel
     "Frequencies at which to perform the analysis \\[Hz\\]."
-    frequencies::Vector{T}
+    frequencies::Vector{<:Number}
 
     @doc """
     $(TYPEDSIGNATURES)
@@ -39,10 +39,10 @@ struct LineParametersProblem{T<:REALTYPES} <: ProblemDefinition
     """
     function LineParametersProblem(
         system::LineCableSystem;
-        temperature::T=T(T₀),
-        earth_props::EarthModel{T},
-        frequencies::Vector{T}=[f₀]
-    ) where {T<:REALTYPES}
+        temperature::REALTYPES=(T₀),
+        earth_props::EarthModel,
+        frequencies::Vector{<:Number}=[f₀]
+    )
 
         # 1. System structure validation
         @assert !isempty(system.cables) "LineCableSystem must contain at least one cable"
@@ -132,7 +132,7 @@ struct LineParametersProblem{T<:REALTYPES} <: ProblemDefinition
             end
         end
 
-        return new{T}(system, temperature, earth_props, frequencies)
+        return new(system, temperature, earth_props, frequencies)
     end
 end
 
@@ -186,6 +186,8 @@ end
     save_path::String = joinpath(".", "lineparams_output")
     "Verbosity level"
     verbosity::Int = 0
+    "Log file path"
+    logfile::Union{String,Nothing} = nothing
 end
 
 # The one-line constructor to "promote" a NamedTuple
@@ -211,6 +213,8 @@ struct CoaxialFormulation <: AbstractFormulationSet
     earth_admittance::EarthAdmittanceFormulation
     "Equivalent homogeneous earth model (EHEM) formulation."
     equivalent_earth::Union{AbstractEHEMFormulation,Nothing}
+    "Solver options for coaxial computations."
+    options::CoaxialOptions
 
     @doc """
     $(TYPEDSIGNATURES)
@@ -221,9 +225,11 @@ struct CoaxialFormulation <: AbstractFormulationSet
 
     - `internal_impedance`: Internal impedance formulation.
     - `earth_impedance`: Earth impedance formulation.
-    - `internal_admittance`: Internal admittance formulation.
+    - `insulation_impedance`: Insulation impedance formulation.
     - `earth_admittance`: Earth admittance formulation.
+    - `internal_admittance`: Internal admittance formulation.
     - `equivalent_earth`: Equivalent homogeneous earth model (EHEM) formulation.
+    - `options`: Solver options for coaxial computations.
 
     # Returns
 
@@ -252,11 +258,11 @@ struct CoaxialFormulation <: AbstractFormulationSet
 end
 
 function FormulationSet(::Val{:Coaxial};
-    internal_impedance::InternalImpedanceFormulation=nothing,
-    insulation_impedance::InsulationImpedanceFormulation=nothing,
-    earth_impedance::EarthImpedanceFormulation=nothing,
-    insulation_admittance::InsulationAdmittanceFormulation=nothing,
-    earth_admittance::EarthAdmittanceFormulation=nothing,
+    internal_impedance::InternalImpedanceFormulation=InternalImpedance.ScaledBessel(),
+    insulation_impedance::InsulationImpedanceFormulation=InsulationImpedance.Standard(),
+    earth_impedance::EarthImpedanceFormulation=EarthImpedance.Papadopoulos(),
+    insulation_admittance::InsulationAdmittanceFormulation=InsulationAdmittance.Lossless(),
+    earth_admittance::EarthAdmittanceFormulation=EarthAdmittance.Papadopoulos(),
     equivalent_earth::Union{AbstractEHEMFormulation,Nothing}=nothing,
     options::NamedTuple=(;)
 )
