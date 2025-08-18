@@ -212,7 +212,7 @@ function define_constraint!(problem::GetDP.Problem, fem_formulation::Union{Abstr
 
 end
 
-function define_resolution!(problem::GetDP.Problem, formulation::FEMElectrodynamics, workspace::FEMWorkspace)
+function define_resolution!(problem::GetDP.Problem, formulation::Electrodynamics, workspace::FEMWorkspace)
     resolution_name = formulation.resolution_name
     num_sources = workspace.problem_def.system.num_cables
 
@@ -315,7 +315,7 @@ function define_resolution!(problem::GetDP.Problem, formulation::FEMElectrodynam
 
 end
 
-function define_resolution!(problem::GetDP.Problem, formulation::FEMDarwin, workspace::FEMWorkspace)
+function define_resolution!(problem::GetDP.Problem, formulation::Darwin, workspace::FEMWorkspace)
 
     resolution_name = formulation.resolution_name
 
@@ -495,3 +495,107 @@ function run_getdp(workspace::FEMWorkspace, fem_formulation::AbstractFormulation
     # Return true only if all solves were successful
     return all_success
 end
+
+function run_solver!(workspace::FEMWorkspace)
+
+    # Get problem and formulation from the workspace
+    problem = workspace.problem_def
+    formulation = workspace.formulation
+
+    # Preallocate result matrices
+    n_phases = sum(length(c.design_data.components) for c in problem.system.cables)
+    n_frequencies = length(problem.frequencies)
+
+    Z = zeros(ComplexF64, n_phases, n_phases, n_frequencies)
+    Y = zeros(ComplexF64, n_phases, n_phases, n_frequencies)
+
+    # Solve for each frequency
+    for (freq_idx, frequency) in enumerate(problem.frequencies)
+        @info "Solving frequency $freq_idx/$n_frequencies: $frequency Hz"
+
+        try
+            _do_run_solver!(frequency, freq_idx, workspace, Z, Y)
+        catch e
+            @error "Solver failed for frequency $frequency Hz" exception = e
+            rethrow(e)
+        end
+
+        # Archive results if not cleaning up
+        if workspace.opts.keep_run_files
+            archive_frequency_results(workspace, frequency)
+        end
+    end
+
+    return LineParameters(Z, Y)
+end
+
+function _do_run_solver!(frequency::Float64, freq_idx::Int,
+    workspace::FEMWorkspace,
+    Z::Array{ComplexF64,3}, Y::Array{ComplexF64,3})
+
+    # Get formulation from workspace
+    formulation = workspace.formulation
+
+    # Build and solve both formulations
+    for fem_formulation in formulation.analysis_type
+        @debug "Processing $(fem_formulation.resolution_name) formulation"
+
+        make_fem_problem!(fem_formulation, frequency, workspace)
+
+        if !run_getdp(workspace, fem_formulation)
+            Base.error("$(fem_formulation.resolution_name) solver failed")
+        end
+    end
+
+    # Extract results into preallocated arrays
+    Z[:, :, freq_idx] = read_results_file(formulation.analysis_type[1], workspace)
+    Y[:, :, freq_idx] = read_results_file(formulation.analysis_type[2], workspace)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Main function to run the FEM simulation workflow for a cable system.
+
+# Arguments
+
+- `cable_system`: Cable system to simulate.
+- `formulation`: Problem definition parameters.
+- `solver`: Solver parameters.
+- `frequency`: Simulation frequency \\[Hz\\]. Default: 50.0.
+
+# Returns
+
+- A [`FEMWorkspace`](@ref) instance with the simulation results.
+
+# Examples
+
+```julia
+# Run a FEM simulation
+workspace = $(FUNCTIONNAME)(cable_system, formulation, solver)
+```
+"""
+function compute!(problem::LineParametersProblem,
+    formulation::FEMFormulation,
+    workspace::Union{FEMWorkspace,Nothing}=nothing)
+
+    opts = formulation.options
+
+    # Initialize workspace
+    workspace = init_workspace(problem, formulation, workspace)
+
+    # Meshing phase: make_mesh! decides if it needs to run.
+    # It returns true if the process should stop (e.g., mesh_only=true).
+    if make_mesh!(workspace)
+        return workspace, nothing
+    end
+
+    # Solving phase - always runs unless mesh_only
+    @info "Starting FEM solver"
+    line_params = run_solver!(workspace)
+    # line_params = run_solver!(problem, formulation, workspace)
+
+    @info "FEM computation completed successfully"
+    return workspace, line_params
+end
+
