@@ -102,7 +102,21 @@ function _is_headless()::Bool
 end
 
 function _display_path(file_name)
-    return _is_headless() ? basename(file_name) : basename(file_name) #abspath(file_name)
+    return _is_headless() ? basename(file_name) : relpath(file_name) #abspath(file_name)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Checks if the code is running inside a `@testset` by checking if `Test` is loaded
+in the current session and then calling `get_testset_depth()`.
+"""
+function _is_in_testset()
+    if isdefined(Main, :Test)
+        # If Test is loaded, we can safely access its functions
+        return Main.Test.get_testset_depth() > 0
+    end
+    return false
 end
 
 using Logging
