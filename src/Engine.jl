@@ -27,7 +27,6 @@ module Engine
 # Export public API
 export LineParametersProblem, LineParameters
 export CoaxialFormulation, FormulationSet
-export Schelkunoff
 
 export compute!
 
@@ -99,16 +98,23 @@ include("Engine/InsulationAdmittance.jl")
 include("Engine/EarthAdmittance.jl")
 @force using .EarthAdmittance
 
+# Submodule `EHEM`
+include("Engine/EHEM.jl")
+@force using .EHEM
+
+# Helpers
+include("Engine/utils.jl")
+
+# Workspace definition
+include("Engine/workspace.jl")
+
 # Computation methods
 include("Engine/solver.jl")
-
-# Earth equivalent parameters
-include("Engine/ehem.jl")
 
 # Override I/O methods
 include("Engine/io.jl")
 
 @reexport using .InternalImpedance, .InsulationImpedance, .EarthImpedance,
-    .InsulationAdmittance, .EarthAdmittance
+    .InsulationAdmittance, .EarthAdmittance, .EHEM
 
 end # module Engine
