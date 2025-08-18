@@ -429,10 +429,17 @@ function preview(
 
     plot!(plt, xlim=(x_limits[1], x_limits[2]) .* zoom_factor)
 
-    if _is_headless()
-        DisplayAs.Text(DisplayAs.PNG(plt))
-    else
-        display(plt)
+    # if _is_headless()
+    #     DisplayAs.Text(DisplayAs.PNG(plt))
+    # else
+    #     display(plt)
+    # end
+    if !_is_in_testset()
+        if _is_headless()
+            DisplayAs.Text(DisplayAs.SVG(plt))
+        else
+            display(plt)
+        end
     end
 
     return plt
