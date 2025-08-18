@@ -12,7 +12,7 @@ $(EXPORTS)
 module InsulationAdmittance
 
 # Export public API
-# export 
+export Lossless
 
 # Load common dependencies
 include("../commondeps.jl")
@@ -23,5 +23,8 @@ import ..Engine: InsulationAdmittanceFormulation
 
 # Module-specific dependencies
 using Measurements
+
+struct Lossless <: InsulationAdmittanceFormulation end
+_get_description(::Lossless) = "Lossless dielectric"
 
 end # module InsulationAdmittance
