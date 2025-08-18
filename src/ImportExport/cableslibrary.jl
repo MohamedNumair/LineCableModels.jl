@@ -62,7 +62,7 @@ function _save_cableslibrary_jls(library::CablesLibrary, file_name::String)::Str
     # Note: Serializing the whole library object directly might be problematic
     # if the library struct itself changes. Serializing the core data (designs) is safer.
     serialize(file_name, library.data)
-    @info "Cables library saved using Julia serialization to: $(file_name)"
+    @info "Cables library saved using Julia serialization to: $(_display_path(file_name))"
     return abspath(file_name)
 end
 
