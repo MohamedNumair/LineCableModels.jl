@@ -13,7 +13,7 @@ const EP = LCM.EarthProps
     @testset "CPEarth" begin
         cp_formulation = EP.CPEarth()
         @test cp_formulation isa EP.AbstractFDEMFormulation
-        @test EP._get_description(cp_formulation) == "CP model"
+        @test EP._get_description(cp_formulation) == "Constant properties (CP)"
     end
 end
 
@@ -228,7 +228,7 @@ end
         @test occursin("EarthModel with 1 horizontal earth layer (homogeneous) and 2 frequency samples", str_repr)
         @test occursin("└─ Layer 2:", str_repr)
         @test occursin("t=∞", str_repr)
-        @test occursin("Frequency-dependent model: CP model", str_repr)
+        @test occursin("Frequency-dependent model: Constant properties (CP)", str_repr)
     end
 
     @testset "Multilayer Horizontal" begin
