@@ -1,62 +1,62 @@
 using MacroTools
 # TODO: Develop and integrate input type normalization
 
-"""
-    @sanitize_inputs(func_def)
+# """
+#     @sanitize_inputs(func_def)
 
-A macro that wraps a function definition (typically a constructor) to sanitize its numeric inputs.
+# A macro that wraps a function definition (typically a constructor) to sanitize its numeric inputs.
 
-It enforces type consistency by promoting inputs to `Measurement{Float64}` if any input is a `Measurement`,
-or to `Float64` otherwise. Integers are automatically converted.
+# It enforces type consistency by promoting inputs to `Measurement{Float64}` if any input is a `Measurement`,
+# or to `Float64` otherwise. Integers are automatically converted.
 
-# Usage
-Apply this macro to a constructor definition:
+# # Usage
+# Apply this macro to a constructor definition:
 
-```julia
-@sanitize_inputs function MyType(a::Number, b::Number)
-    # constructor logic
-end
-```
-"""
-macro sanitize_inputs(func_def)
-    # Deconstruct the function definition into its parts (name, args, body, etc.)
-    dict = splitdef(func_def)
+# ```julia
+# @sanitize_inputs function MyType(a::Number, b::Number)
+#     # constructor logic
+# end
+# ```
+# """
+# macro sanitize_inputs(func_def)
+#     # Deconstruct the function definition into its parts (name, args, body, etc.)
+#     dict = splitdef(func_def)
 
-    # Extract argument names
-    arg_names = [isa(arg, Symbol) ? arg : arg.args[1] for arg in dict[:args]]
+#     # Extract argument names
+#     arg_names = [isa(arg, Symbol) ? arg : arg.args[1] for arg in dict[:args]]
 
-    # Generate the code for the new function body
-    new_body = quote
-        # 1. Collect all arguments into a tuple
-        all_args = ($(arg_names...),)
+#     # Generate the code for the new function body
+#     new_body = quote
+#         # 1. Collect all arguments into a tuple
+#         all_args = ($(arg_names...),)
 
-        # 2. Determine the target numeric type
-        # If any argument is a Measurement, the target is Measurement{Float64}.
-        # Otherwise, it's Float64.
-        target_type = any(x -> isa(x, Measurement), all_args) ? Measurement{Float64} : Float64
+#         # 2. Determine the target numeric type
+#         # If any argument is a Measurement, the target is Measurement{Float64}.
+#         # Otherwise, it's Float64.
+#         target_type = any(x -> isa(x, Measurement), all_args) ? Measurement{Float64} : Float64
 
-        # 3. Sanitize and promote arguments
-        # Create a new tuple `sanitized_args` with corrected types.
-        sanitized_args = map(all_args) do arg
-            if isa(arg, Number) && !isa(arg, Bool) # Exclude Bools
-                return convert(target_type, arg)
-            else
-                return arg # Keep non-numeric types as they are
-            end
-        end
+#         # 3. Sanitize and promote arguments
+#         # Create a new tuple `sanitized_args` with corrected types.
+#         sanitized_args = map(all_args) do arg
+#             if isa(arg, Number) && !isa(arg, Bool) # Exclude Bools
+#                 return convert(target_type, arg)
+#             else
+#                 return arg # Keep non-numeric types as they are
+#             end
+#         end
 
-        # 4. Re-call the original constructor logic with sanitized arguments.
-        # We use `invokelatest` to call the inner constructor method with the newly typed arguments.
-        # This avoids recursion and correctly dispatches to the intended implementation.
-        return Base.invokelatest(__module__.$(dict[:name]), sanitized_args...)
-    end
+#         # 4. Re-call the original constructor logic with sanitized arguments.
+#         # We use `invokelatest` to call the inner constructor method with the newly typed arguments.
+#         # This avoids recursion and correctly dispatches to the intended implementation.
+#         return Base.invokelatest(__module__.$(dict[:name]), sanitized_args...)
+#     end
 
-    # Update the function body with our new sanitation logic
-    dict[:body] = new_body
+#     # Update the function body with our new sanitation logic
+#     dict[:body] = new_body
 
-    # Reconstruct the function definition and escape it to be inserted into the calling module's AST
-    return esc(combinedef(dict))
-end
+#     # Reconstruct the function definition and escape it to be inserted into the calling module's AST
+#     return esc(combinedef(dict))
+# end
 #=
 ...existing code...
 import Base: get, delete!, length, setindex!, iterate, keys, values, haskey, getindex
