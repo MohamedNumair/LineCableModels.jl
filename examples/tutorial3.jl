@@ -327,15 +327,15 @@ opts = (
     force_overwrite=true,             # Overwrite existing files
     plot_field_maps=false,            # Do not compute/ plot field maps
     mesh_only=false,                  # Preview the mesh
-    base_path=fullfile("fem_output"), # Results directory
+    save_path=fullfile("fem_output"), # Results directory
     keep_run_files=true,              # Archive files after each run
     verbosity=0,                      # Verbosity
 );
 
 # Define the FEM formulation with the specified parameters
 formulation = FormulationSet(:FEM,
-    impedance=FEMDarwin(),
-    admittance=FEMElectrodynamics(),
+    impedance=Darwin(),
+    admittance=Electrodynamics(),
     domain_radius=domain_radius,
     domain_radius_inf=domain_radius * 1.25,
     elements_per_length_conductor=1,
