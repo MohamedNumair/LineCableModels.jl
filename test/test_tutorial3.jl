@@ -115,11 +115,11 @@ using DataFrames
         skin_depth_earth = abs(sqrt(rho_g / (1im * (2 * pi * f) * mu_g)))
         domain_radius = clamp(skin_depth_earth, 5.0, 5000.0)
 
-        opts = (force_remesh=true, force_overwrite=true, plot_field_maps=false, mesh_only=false, base_path=joinpath(tmpdir, "fem_output"), keep_run_files=false, verbosity=0)
+        opts = (force_remesh=true, force_overwrite=true, plot_field_maps=false, mesh_only=false, save_path=joinpath(tmpdir, "fem_output"), keep_run_files=false, verbosity=0)
 
         formulation = FormulationSet(:FEM,
-            impedance=FEMDarwin(),
-            admittance=FEMElectrodynamics(),
+            impedance=Darwin(),
+            admittance=Electrodynamics(),
             domain_radius=domain_radius,
             domain_radius_inf=domain_radius * 1.25,
             elements_per_length_conductor=1,
