@@ -363,7 +363,7 @@ Each module follows a consistent type hierarchy:
 
 ```julia
 AbstractProblemFormulation
-  ├── FEMFormulation :> {FEMDarwin, FEMElectrodynamics, ...}
+  ├── FEMFormulation :> {Darwin, Electrodynamics, ...}
   ├── AbstractFDEMFormulation :> {CPEarth, CIGRE, ...}
   ├── AbstractEHEMFormulation :> {EnforceLayer, EquivalentSigma, ...}
   ├── ...
