@@ -34,7 +34,7 @@ using ..EarthProps
 using ..DataModel
 using ..Engine
 using ..LineCableModels # For physical constants (f₀, μ₀, ε₀, ρ₀, T₀, TOL, ΔTmax)
-import ..LineCableModels: FormulationSet, _is_headless
+import ..LineCableModels: FormulationSet, _is_headless, _display_path
 import ..DataModel: AbstractCablePart, AbstractConductorPart, AbstractInsulatorPart
 import ..Engine: AbstractFormulationSet, AbstractFormulationOptions, AbstractImpedanceFormulation, AbstractAdmittanceFormulation, compute!
 
