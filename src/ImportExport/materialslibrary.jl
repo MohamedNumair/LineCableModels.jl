@@ -63,7 +63,7 @@ function _save_materialslibrary_json(library::MaterialsLibrary, file_name::Strin
         JSON3.pretty(io, serialized_library_data, allow_inf=true)
     end
     if isfile(file_name)
-        @info "Materials library saved to: $(file_name)"
+        @info "Materials library saved to: $(_display_path(file_name))"
     end
 
     return abspath(file_name)
