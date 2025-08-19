@@ -33,16 +33,10 @@ export add!, get, delete!, length, setindex!, iterate, keys, values, haskey, get
 export trifoil_formation, flat_formation  # Formation helpers
 export preview  # Visualization
 export DataFrame  # Data conversion
-#export AbstractCablePart, AbstractConductorPart, AbstractInsulatorPart
 
 # Load common dependencies
+using ..LineCableModels
 include("commondeps.jl")
-using ..Utils
-using ..Materials
-using ..EarthProps
-using ..LineCableModels # For physical constants (f₀, μ₀, ε₀, ρ₀, T₀, TOL, ΔTmax)
-import ..LineCableModels: add!, preview, save, _is_headless, _is_in_testset
-import ..LineCableModels: REALTYPES, COMPLEXTYPES, NUMERICTYPES
 
 # Module-specific dependencies
 using Measurements
@@ -53,10 +47,17 @@ using DisplayAs: DisplayAs
 import DataFrames: DataFrame
 import Base: get, delete!, length, setindex!, iterate, keys, values, haskey, getindex
 
+using ..Utils
+using ..Materials
+using ..EarthProps
+import ..LineCableModels: add!, preview, save, _is_headless, _is_in_testset, _CLEANMETHODLIST
+
 # To handle radius-related operations
 abstract type AbstractRadius end
 function _do_resolve_radius end
 
+# TODO: Develop and integrate input type normalization
+# Issue URL: https://github.com/Electa-Git/LineCableModels.jl/issues/10
 
 """
 $(TYPEDEF)
