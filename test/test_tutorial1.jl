@@ -105,8 +105,9 @@ end
         # Fresh empty library (no defaults) for deterministic error behavior
         empty_lib = MaterialsLibrary(add_defaults=false)
 
-        # get on non-existent key should throw KeyError (match tutorial usage expectation)
-        @test_throws KeyError get(empty_lib, "non_existent_material")
+        # get on non-existent key should display alert
+        @test get(empty_lib, "non_existent_material") === nothing
+
 
         # delete! on non-existent key should throw KeyError
         @test_throws KeyError delete!(empty_lib, "non_existent_material")
