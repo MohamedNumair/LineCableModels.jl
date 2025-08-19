@@ -30,6 +30,7 @@ export equals,
     percent_error
 
 # Load common dependencies
+using ..LineCableModels
 include("commondeps.jl")
 
 # Module-specific dependencies
@@ -283,65 +284,6 @@ function percent_error(m::Number)
     else
         return NaN
     end
-end
-
-"""
-$(TYPEDSIGNATURES)
-
-Automatically exports public functions, types, and modules from a module. This is meant for temporary development chores and should never be used in production code.
-
-# Arguments
-
-- None.
-
-# Returns
-
-- An `export` expression containing all public symbols that should be exported.
-
-# Notes
-
-This macro scans the current module for all defined symbols and automatically generates an `export` statement for public functions, types, and submodules, excluding built-in and private names. Private names are considered those starting with an underscore ('_'), as per standard Julia conventions.
-	
-# Examples
-
-```julia
-@_autoexport
-```
-```julia
-using ..Utils
-# ...
-Utils.@_autoexport
-```
-"""
-macro _autoexport()
-    mod = __module__
-
-    # Get all names defined in the module, including unexported ones
-    all_names = names(mod; all=true)
-
-    # List of names to explicitly exclude
-    excluded_names = Set([:eval, :include, :using, :import, :export, :require])
-
-    # Filter out private names (starting with '_'), module name, built-in functions, and auto-generated method symbols
-    public_names = Symbol[]
-    for name in all_names
-        str_name = string(name)
-
-        startswith(str_name, "@_") && continue  # Skip private macros
-        startswith(str_name, "_") && continue  # Skip private names
-        name === nameof(mod) && continue  # Skip the module's own name
-        name in excluded_names && continue  # Skip built-in functions
-        startswith(str_name, "#") && continue  # Skip generated method symbols (e.g., #eval, #include)
-
-        if isdefined(mod, name)
-            val = getfield(mod, name)
-            if val isa Function || val isa Type || val isa Module
-                push!(public_names, name)
-            end
-        end
-    end
-
-    return esc(Expr(:export, public_names...))
 end
 
 end # module Utils

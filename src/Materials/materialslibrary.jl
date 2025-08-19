@@ -11,13 +11,13 @@ mutable struct MaterialsLibrary <: AbstractDict{String,Material}
 end
 
 # Implement the AbstractDict interface
-length(lib::MaterialsLibrary) = length(lib.data)
-setindex!(lib::MaterialsLibrary, value::Material, key::String) = (lib.data[key] = value)
-iterate(lib::MaterialsLibrary, state...) = iterate(lib.data, state...)
-keys(lib::MaterialsLibrary) = keys(lib.data)
-values(lib::MaterialsLibrary) = values(lib.data)
-haskey(lib::MaterialsLibrary, key::String) = haskey(lib.data, key)
-getindex(lib::MaterialsLibrary, key::String) = getindex(lib.data, key)
+Base.length(lib::MaterialsLibrary) = length(lib.data)
+Base.setindex!(lib::MaterialsLibrary, value::Material, key::String) = (lib.data[key] = value)
+Base.iterate(lib::MaterialsLibrary, state...) = iterate(lib.data, state...)
+Base.keys(lib::MaterialsLibrary) = keys(lib.data)
+Base.values(lib::MaterialsLibrary) = values(lib.data)
+Base.haskey(lib::MaterialsLibrary, key::String) = haskey(lib.data, key)
+Base.getindex(lib::MaterialsLibrary, key::String) = getindex(lib.data, key)
 
 """
 $(TYPEDSIGNATURES)
@@ -139,7 +139,7 @@ material = Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393)
 $(FUNCTIONNAME)(library, "copper", material)
 ```
 """
-function add!(
+function LineCableModels.add!(
     library::MaterialsLibrary,
     name::AbstractString,
     material::Material,
@@ -180,7 +180,7 @@ $(FUNCTIONNAME)(library, "copper")
 
 - [`add!`](@ref)
 """
-function delete!(library::MaterialsLibrary, name::String)
+function Base.delete!(library::MaterialsLibrary, name::String)
     if !haskey(library, name)
         @error "Material '$name' not found in the library."
         throw(KeyError(name))
@@ -216,11 +216,11 @@ material = $(FUNCTIONNAME)(library, "copper")
 - [`add!`](@ref)
 - [`delete!`](@ref)
 """
-function get(library::MaterialsLibrary, name::String, default=nothing)::Union{Nothing,Material}
+function Base.get(library::MaterialsLibrary, name::String, default=nothing)::Union{Nothing,Material}
     material = get(library.data, name, default)
     if material === nothing
-        @error "Material '$name' not found in the library."
-        throw(KeyError(name))
+        @warn "Material '$name' not found in the library."
+        # throw(KeyError(name))
     end
     return material
 end

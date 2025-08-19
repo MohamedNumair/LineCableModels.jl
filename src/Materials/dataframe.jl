@@ -22,7 +22,7 @@ df = $(FUNCTIONNAME)(library)
 
 - [`LineCableModels.ImportExport.save`](@ref)
 """
-function DataFrame(library::MaterialsLibrary)::DataFrame
+function DataFrames.DataFrame(library::MaterialsLibrary)::DataFrame
     rows = [
         (
             name=name,
