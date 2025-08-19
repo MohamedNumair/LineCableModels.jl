@@ -32,13 +32,8 @@ export get
 export delete!
 
 # Load common dependencies
+using ..LineCableModels
 include("commondeps.jl")
-using ..Utils
-using ..Materials
-using ..EarthProps
-using ..DataModel
-import ..LineCableModels: add!, load!, export_data, save, _is_headless, _display_path
-using ..LineCableModels # For physical constants (f₀, μ₀, ε₀, ρ₀, T₀, TOL, ΔTmax)
 
 # Module-specific dependencies
 using Measurements
@@ -47,6 +42,11 @@ using Dates # For PSCAD export
 using JSON3
 using Serialization # For .jls format
 import Base: get
+using ..Utils
+using ..Materials
+using ..EarthProps
+using ..DataModel
+import ..LineCableModels: add!, load!, export_data, save, _is_headless, _display_path, _CLEANMETHODLIST
 
 
 include("ImportExport/serialize.jl")

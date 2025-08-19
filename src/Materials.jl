@@ -27,16 +27,15 @@ export add!, get, delete!, length, setindex!, iterate, keys, values, haskey, get
 export DataFrame
 
 # Load common dependencies
-include("commondeps.jl")
 using ..LineCableModels
-using ..Utils
-import ..LineCableModels: add!, save
+include("commondeps.jl")
+
 
 # Module-specific dependencies
 using Measurements
 using DataFrames
-import DataFrames: DataFrame
-import Base: get, delete!, length, setindex!, iterate, keys, values, haskey, getindex
+import ..LineCableModels: _coerce_RealT
+using ..Utils
 
 """
 $(TYPEDEF)
@@ -45,18 +44,33 @@ Defines electromagnetic and thermal properties of a material used in cable model
 
 $(TYPEDFIELDS)
 """
-struct Material
+struct Material{T<:REALTYPES}
     "Electrical resistivity of the material \\[Ω·m\\]."
-    rho::Number
+    rho::T
     "Relative permittivity \\[dimensionless\\]."
-    eps_r::Number
+    eps_r::T
     "Relative permeability \\[dimensionless\\]."
-    mu_r::Number
+    mu_r::T
     "Reference temperature for property evaluations \\[°C\\]."
-    T0::Number
+    T0::T
     "Temperature coefficient of resistivity \\[1/°C\\]."
-    alpha::Number
+    alpha::T
 end
+
+function Material(rho, eps_r, mu_r, T0, alpha)
+    T = _coerce_RealT(rho, eps_r, mu_r, T0, alpha)
+    return Material{T}(
+        convert(T, rho),
+        convert(T, eps_r),
+        convert(T, mu_r),
+        convert(T, T0),
+        convert(T, alpha),
+    )
+end
+
+Base.convert(::Type{Material{T}}, m::Material) where {T<:REALTYPES} =
+    Material{T}(convert(T, m.rho), convert(T, m.eps_r), convert(T, m.mu_r),
+        convert(T, m.T0), convert(T, m.alpha))
 
 include("Materials/materialslibrary.jl")
 include("Materials/dataframe.jl")

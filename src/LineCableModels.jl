@@ -1,10 +1,10 @@
 module LineCableModels
 
-# Load common dependencies and definitions
-include("commondeps.jl")
-
 # Package-wide interfaces
 include("globals.jl")
+
+# Useful macros
+include("macros.jl")
 
 # Submodule `Utils`
 include("Utils.jl")
