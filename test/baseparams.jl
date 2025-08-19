@@ -25,6 +25,8 @@ insulator_props = Material(1e14, 2.3, 1.0, 20.0, 0.0) # Basic insulator (like PE
             TEST_TOL
         # No correction if alpha is zero
         @test calc_temperature_correction(0.0, 50.0, T0) ≈ 1.0 atol = TEST_TOL
+        @test @inferred(calc_equivalent_alpha(measurement(0.5), 100.0, 0.8, 200.0)) isa Measurement{Float64}
+
     end
 
     @testset "Parallel impedance calculations" begin
