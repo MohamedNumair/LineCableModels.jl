@@ -51,7 +51,7 @@ using ...LineCableModels
 using ...Utils
 using ..DataModel: ConductorGroup, WireArray
 import ..DataModel: AbstractCablePart
-import ...LineCableModels: REALTYPES, COMPLEXTYPES, NUMERICTYPES
+import ...LineCableModels: REALTYPES, COMPLEXTYPES, NUMERICTYPES, @measurify
 
 # Module-specific dependencies
 using Measurements
@@ -88,7 +88,7 @@ alpha_eq = $(FUNCTIONNAME)(alpha_conductor, R_conductor, alpha_new_part, R_new_p
 println(alpha_eq)  # Output: 0.00396 (approximately)
 ```
 """
-function calc_equivalent_alpha(alpha1::T, R1::T, alpha2::T, R2::T) where {T<:REALTYPES}
+@measurify function calc_equivalent_alpha(alpha1::T, R1::T, alpha2::T, R2::T) where {T<:REALTYPES}
     return (alpha1 * R2 + alpha2 * R1) / (R1 + R2)
 end
 
