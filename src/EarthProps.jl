@@ -21,17 +21,17 @@ $(EXPORTS)
 module EarthProps
 
 # Load common dependencies
+using ..LineCableModels
 include("commondeps.jl")
-using ..Utils
-using ..LineCableModels # For physical constants (f₀, μ₀, ε₀, ρ₀, T₀, TOL, ΔTmax)
-import ..LineCableModels: _get_description, add!
-import ..LineCableModels: REALTYPES, COMPLEXTYPES, NUMERICTYPES
 
 # Module-specific dependencies
 using Measurements
 using DataFrames
 import DataFrames: DataFrame
 import Base: show
+
+using ..Utils
+import ..LineCableModels: _get_description, add!
 
 # Export public API
 export CPEarth,

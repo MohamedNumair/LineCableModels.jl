@@ -31,18 +31,19 @@ export CoaxialFormulation, FormulationSet
 export compute!
 
 # Load common dependencies
+using ..LineCableModels
 include("commondeps.jl")
-using ..Utils
-using ..Materials
-using ..EarthProps
-using ..DataModel
-using ..LineCableModels # For physical constants (f₀, μ₀, ε₀, ρ₀, T₀, TOL, ΔTmax)
-import ..LineCableModels: FormulationSet, _get_description, REALTYPES, COMPLEXTYPES, NUMERICTYPES
 
 # Module-specific dependencies
 using Measurements
 using LinearAlgebra
 using SpecialFunctions
+
+using ..Utils
+using ..Materials
+using ..EarthProps
+using ..DataModel
+import ..LineCableModels: FormulationSet, _get_description
 
 """
 $(TYPEDEF)
