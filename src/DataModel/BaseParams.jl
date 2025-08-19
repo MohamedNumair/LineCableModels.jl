@@ -48,13 +48,13 @@ export calc_sigma_lossfact
 # Load common dependencies
 include("../commondeps.jl")
 using ...LineCableModels
-using ...Utils
-using ..DataModel: ConductorGroup, WireArray
-import ..DataModel: AbstractCablePart
-import ...LineCableModels: REALTYPES, COMPLEXTYPES, NUMERICTYPES, @measurify
 
 # Module-specific dependencies
 using Measurements
+
+using ...Utils
+using ..DataModel: ConductorGroup, WireArray
+import ..DataModel: AbstractCablePart
 
 """
 $(TYPEDSIGNATURES)
@@ -135,7 +135,7 @@ println(Req) # Outputs: 3.3333333333333335
 
 - [`calc_helical_params`](@ref)
 """
-function calc_parallel_equivalent(Z1::T, Z2::T) where {T<:NUMERICTYPES}
+function calc_parallel_equivalent(Z1::T, Z2::T) where {T<:Union{REALTYPES,COMPLEXTYPES}}
     return 1 / (1 / Z1 + 1 / Z2)
 end
 

@@ -85,7 +85,13 @@ struct CablePosition
             conn_vector = [get(conn, name, 0) for name in components]  # Ensure correct mapping order
         end
         # Validate there is at least one ungrounded conductor
-        !all(iszero, conn_vector) || throw(ArgumentError("At least one component must be assigned to a non-zero phase."))
+        !all(iszero, conn_vector) || @warn ("At least one component must be assigned to a non-zero phase.")
+
+        for component_id in keys(conn)
+            if !(component_id in [c.id for c in cable.components])
+                throw(ArgumentError("Component ID '$component_id' not found in the cable design."))
+            end
+        end
 
 
         return new(cable, horz, vert, conn_vector)
