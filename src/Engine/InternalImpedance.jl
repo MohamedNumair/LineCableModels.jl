@@ -15,14 +15,14 @@ module InternalImpedance
 export ScaledBessel
 
 # Load common dependencies
-include("../commondeps.jl")
 using ...LineCableModels
-using ...Utils
-import ...LineCableModels: _get_description, REALTYPES, COMPLEXTYPES, NUMERICTYPES
-import ..Engine: InternalImpedanceFormulation
+include("../commondeps.jl")
 
 # Module-specific dependencies
 using Measurements
+using ...Utils
+import ...LineCableModels: _get_description
+import ..Engine: InternalImpedanceFormulation
 
 struct ScaledBessel <: InternalImpedanceFormulation end
 _get_description(::ScaledBessel) = "Scaled Bessel (Schelkunoff)"

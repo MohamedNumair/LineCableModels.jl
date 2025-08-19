@@ -27,24 +27,24 @@ export compute!, preview_results
 export FormulationSet, Electrodynamics, Darwin
 
 # Load common dependencies
+using ..LineCableModels
 include("commondeps.jl")
+
+# Module-specific dependencies
+using Measurements
+using LinearAlgebra
+using Colors
 using ..Utils
 using ..Materials
 using ..EarthProps
 using ..DataModel
 using ..Engine
-using ..LineCableModels # For physical constants (f₀, μ₀, ε₀, ρ₀, T₀, TOL, ΔTmax)
 import ..LineCableModels: FormulationSet, _is_headless, _display_path
 import ..DataModel: AbstractCablePart, AbstractConductorPart, AbstractInsulatorPart
 import ..Engine: AbstractFormulationSet, AbstractFormulationOptions, AbstractImpedanceFormulation, AbstractAdmittanceFormulation, compute!
 
-# Module-specific dependencies
+# FEM specific dependencies
 using Gmsh
-using Measurements
-using LinearAlgebra
-using Colors
-
-# GetDP.jl
 using GetDP
 using GetDP: Problem, get_getdp_executable, add!
 
