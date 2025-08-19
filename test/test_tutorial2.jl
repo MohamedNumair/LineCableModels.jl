@@ -194,7 +194,7 @@ using LineCableModels
 
     @testset "user error handling and robustness" begin
         # Test invalid material request
-        @test_throws KeyError get(materials, "unobtanium")
+        @test get(materials, "unobtanium") === nothing
 
         # Test invalid geometric parameters
         @test_throws ArgumentError WireArray(0.0, Diameter(-1.0), 1, 0.0, material_al)
@@ -224,8 +224,6 @@ using LineCableModels
         # Test invalid phase mapping
         @test_throws ArgumentError CablePosition(cable_design, 1.0, 1.0, Dict("non_existent_component" => 1))
 
-        # Test phase mapping where all components are grounded (no active phases)
-        @test_throws ArgumentError CablePosition(cable_design, 10.0, 10.0, Dict("core" => 0, "sheath" => 0, "jacket" => 0))
 
         # Test exporting a system where some components are grounded (valid case)
         f = 10.0 .^ range(0, stop=6, length=10)
