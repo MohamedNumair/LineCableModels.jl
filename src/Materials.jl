@@ -44,7 +44,7 @@ Defines electromagnetic and thermal properties of a material used in cable model
 
 $(TYPEDFIELDS)
 """
-struct Material{T<:REALTYPES}
+struct Material{T<:REALSCALAR}
     "Electrical resistivity of the material \\[Ω·m\\]."
     rho::T
     "Relative permittivity \\[dimensionless\\]."
@@ -68,7 +68,7 @@ function Material(rho, eps_r, mu_r, T0, alpha)
     )
 end
 
-Base.convert(::Type{Material{T}}, m::Material) where {T<:REALTYPES} =
+Base.convert(::Type{Material{T}}, m::Material) where {T<:REALSCALAR} =
     Material{T}(convert(T, m.rho), convert(T, m.eps_r), convert(T, m.mu_r),
         convert(T, m.T0), convert(T, m.alpha))
 

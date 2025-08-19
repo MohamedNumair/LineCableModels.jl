@@ -45,7 +45,7 @@ function _find_common_type(problem::LineParametersProblem)
     return Float64
 end
 
-function _get_earth_data(formulation::AbstractEHEMFormulation, earth_model::EarthModel, frequencies::Vector{<:REALTYPES}, T::DataType)
+function _get_earth_data(formulation::AbstractEHEMFormulation, earth_model::EarthModel, frequencies::Vector{<:REALSCALAR}, T::DataType)
     return formulation(earth_model, frequencies, T)
 end
 
@@ -54,7 +54,7 @@ Default method for when no EHEM formulation is provided. It processes the
 original multi-layer earth model, promoting its property vectors to the
 target numeric type `T` and returning it in the standard "Array of Structs" format.
 """
-function _get_earth_data(::Nothing, earth_model::EarthModel, frequencies::Vector{<:REALTYPES}, T::DataType)
+function _get_earth_data(::Nothing, earth_model::EarthModel, frequencies::Vector{<:REALSCALAR}, T::DataType)
     return [
         (
             rho_g=T.(layer.rho_g),

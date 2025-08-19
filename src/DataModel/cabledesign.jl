@@ -321,7 +321,7 @@ $(FUNCTIONNAME)(design, component)
 - [`CableDesign`](@ref)
 - [`CableComponent`](@ref)
 """
-function add!(
+function LineCableModels.add!(
     design::CableDesign,
     component::CableComponent,
 )
@@ -368,7 +368,7 @@ $(FUNCTIONNAME)(design, "shield", conductor_group, insulator_group)
 - [`CableDesign`](@ref)
 - [`CableComponent`](@ref)
 """
-function add!(
+function LineCableModels.add!(
     design::CableDesign,
     component_id::String,
     conductor_group::ConductorGroup,
@@ -378,5 +378,5 @@ function add!(
     component = CableComponent(component_id, conductor_group, insulator_group)
 
     # Call the main function
-    return add!(design, component)
+    return LineCableModels.add!(design, component)
 end

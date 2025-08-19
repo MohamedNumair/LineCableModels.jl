@@ -221,7 +221,7 @@ $(FUNCTIONNAME)(conductor, WireArray, 0.02, 0.002, 7, 15, material_props, temper
 - [`calc_parallel_equivalent`](@ref)
 - [`calc_equivalent_alpha`](@ref)
 """
-function add!(
+function LineCableModels.add!(
     group::ConductorGroup,
     part_type::Type{T},  # The type of conductor part (WireArray, Strip, Tubular)
     args...;  # Arguments specific to the part type

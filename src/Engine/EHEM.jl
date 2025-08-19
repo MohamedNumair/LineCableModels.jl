@@ -73,7 +73,7 @@ Takes a multi-layer `EarthModel` and returns a new two-layer model (air + one ef
 # Returns
 - A `Vector{EarthLayer}` containing two layers: the original air layer and the selected earth layer.
 """
-function (f::EnforceLayer)(model::EarthModel, frequencies::Vector{<:REALTYPES}, T::DataType)
+function (f::EnforceLayer)(model::EarthModel, frequencies::Vector{<:REALSCALAR}, T::DataType)
     num_layers = length(model.layers)
 
     # Determine the index of the layer to select
@@ -210,7 +210,7 @@ end
 #     model::EarthModel,
 #     frequencies::Vector{<:T},
 #     formulation::AbstractEHEMFormulation=EnforceLayer(-1),
-# ) where {T<:REALTYPES}
+# ) where {T<:REALSCALAR}
 #     layer_idx = formulation.layer
 
 #     if layer_idx == -1

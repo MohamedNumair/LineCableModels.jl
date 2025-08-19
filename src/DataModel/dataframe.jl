@@ -34,7 +34,7 @@ first(df, 5)  # Show the first 5 rows of the DataFrame
 - [`CableDesign`](@ref)
 - [`add!`](@ref)
 """
-function DataFrame(library::CablesLibrary)::DataFrame
+function DataFrames.DataFrame(library::CablesLibrary)::DataFrame
     ids = keys(library)
     nominal_data = [string(design.nominal_data) for design in values(library)]
     components = [
@@ -83,7 +83,7 @@ println(df)
 - [`LineCableSystem`](@ref)
 - [`CablePosition`](@ref)
 """
-function DataFrame(system::LineCableSystem)::DataFrame
+function DataFrames.DataFrame(system::LineCableSystem)::DataFrame
     cable_ids = String[]
     horz_coords = Number[]
     vert_coords = Number[]
@@ -152,7 +152,7 @@ core_data = DataFrame(design, :baseparams, S=0.5, rho_e=150)
 - [`calc_inductance_trifoil`](@ref)
 - [`calc_shunt_capacitance`](@ref)
 """
-function DataFrame(
+function DataFrames.DataFrame(
     design::CableDesign,
     format::Symbol=:baseparams;
     S::Union{Nothing,Number}=nothing,

@@ -44,13 +44,10 @@ using DataFrames
 using Colors
 using Plots
 using DisplayAs: DisplayAs
-import DataFrames: DataFrame
-import Base: get, delete!, length, setindex!, iterate, keys, values, haskey, getindex
-
 using ..Utils
 using ..Materials
 using ..EarthProps
-import ..LineCableModels: add!, preview, save, _is_headless, _is_in_testset, _CLEANMETHODLIST
+import ..LineCableModels: _is_headless, _is_in_testset, _CLEANMETHODLIST
 
 # To handle radius-related operations
 abstract type AbstractRadius end

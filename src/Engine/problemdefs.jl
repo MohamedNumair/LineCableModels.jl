@@ -9,7 +9,7 @@ struct LineParametersProblem <: ProblemDefinition
     "The physical cable system to analyze."
     system::LineCableSystem
     "Operating temperature \\[°C\\]."
-    temperature::REALTYPES
+    temperature::REALSCALAR
     "Earth properties model."
     earth_props::EarthModel
     "Frequencies at which to perform the analysis \\[Hz\\]."
@@ -39,7 +39,7 @@ struct LineParametersProblem <: ProblemDefinition
     """
     function LineParametersProblem(
         system::LineCableSystem;
-        temperature::REALTYPES=(T₀),
+        temperature::REALSCALAR=(T₀),
         earth_props::EarthModel,
         frequencies::Vector{<:Number}=[f₀]
     )
@@ -143,7 +143,7 @@ Represents the frequency-dependent line parameters (series impedance and shunt a
 
 $(TYPEDFIELDS)
 """
-struct LineParameters{T<:COMPLEXTYPES}
+struct LineParameters{T<:COMPLEXSCALAR}
     "Series impedance matrices \\[Ω/m\\]."
     Z::Array{T,3}
     "Shunt admittance matrices \\[S/m\\]."
@@ -169,7 +169,7 @@ struct LineParameters{T<:COMPLEXTYPES}
     params = $(FUNCTIONNAME)(Z, Y)
     ```
     """
-    function LineParameters(Z::Array{T,3}, Y::Array{T,3}) where {T<:COMPLEXTYPES}
+    function LineParameters(Z::Array{T,3}, Y::Array{T,3}) where {T<:COMPLEXSCALAR}
         # Validate dimensions
         size(Z, 1) == size(Z, 2) || throw(DimensionMismatch("Z matrix must be square"))
         size(Y, 1) == size(Y, 2) || throw(DimensionMismatch("Y matrix must be square"))

@@ -85,7 +85,7 @@ end
         model = EarthModel(frequencies, rho_g, epsr_g, mur_g)
         @test length(model.layers) == 2 # Air + 1 earth layer
         @test model.vertical_layers == false
-        @test model.FDformulation isa EP.CPEarth
+        @test model.freq_dependence isa EP.CPEarth
         @test isinf(model.layers[1].t) # Air layer
         @test isinf(model.layers[2].t) # Homogeneous earth
         @test model.layers[2].base_rho_g == rho_g

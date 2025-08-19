@@ -25,24 +25,24 @@ println((xb, yb))  # Coordinates of bottom-left cable
 println((xc, yc))  # Coordinates of bottom-right cable
 ```
 """
-function trifoil_formation(xc::T, yc::T, r_ext::T) where {T<:REALTYPES}
-    @assert r_ext > 0 "External radius must be positive"
-    # Horizontal distance between centers of adjacent circles (equal to twice the radius of each circle)
-    d = 2 * r_ext
-    # Vertical distance from top circle center to the line between bottom two circles
-    h = sqrt(3) * r_ext
+function trifoil_formation(xc::T, yc::T, r_ext::T) where {T<:REALSCALAR}
+  @assert r_ext > 0 "External radius must be positive"
+  # Horizontal distance between centers of adjacent circles (equal to twice the radius of each circle)
+  d = 2 * r_ext
+  # Vertical distance from top circle center to the line between bottom two circles
+  h = sqrt(3) * r_ext
 
-    # Calculate the top circle coordinates (centered directly above the midpoint of the bottom two circles)
-    xa = xc
-    ya = yc + h / 2
+  # Calculate the top circle coordinates (centered directly above the midpoint of the bottom two circles)
+  xa = xc
+  ya = yc + h / 2
 
-    # Calculate the coordinates of the bottom two circles
-    xb = xc - d / 2
-    yb = yc - h / 2
-    xc = xc + d / 2
-    yc = yc - h / 2
+  # Calculate the coordinates of the bottom two circles
+  xb = xc - d / 2
+  yb = yc - h / 2
+  xc = xc + d / 2
+  yc = yc - h / 2
 
-    return xa, ya, xb, yb, xc, yc
+  return xa, ya, xb, yb, xc, yc
 end
 
 """
@@ -77,18 +77,18 @@ println((xc, yc))  # Third conductor coordinates
 xa, ya, xb, yb, xc, yc = $(FUNCTIONNAME)(0.0, 0.0, 0.1, vertical=true)
 ```
 """
-function flat_formation(xc::T, yc::T, s::T; vertical=false) where {T<:REALTYPES}
-    if vertical
-        # Layout is vertical; adjust only y-coordinates
-        xa, ya = xc, yc
-        xb, yb = xc, yc - s
-        xc, yc = xc, yc - 2s
-    else
-        # Layout is horizontal; adjust only x-coordinates
-        xa, ya = xc, yc
-        xb, yb = xc + s, yc
-        xc, yc = xc + 2s, yc
-    end
+function flat_formation(xc::T, yc::T, s::T; vertical=false) where {T<:REALSCALAR}
+  if vertical
+    # Layout is vertical; adjust only y-coordinates
+    xa, ya = xc, yc
+    xb, yb = xc, yc - s
+    xc, yc = xc, yc - 2s
+  else
+    # Layout is horizontal; adjust only x-coordinates
+    xa, ya = xc, yc
+    xb, yb = xc + s, yc
+    xc, yc = xc + 2s, yc
+  end
 
-    return xa, ya, xb, yb, xc, yc
+  return xa, ya, xb, yb, xc, yc
 end

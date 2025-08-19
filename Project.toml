@@ -15,11 +15,13 @@ DisplayAs = "0b91fe84-8a4c-11e9-3e1d-67c38462b6d6"
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
 EzXML = "8f5d6c58-4d21-5cfd-889c-e3ad7ee6a615"
 ForceImport = "9dda63f9-cce7-5873-89fa-eccbb2fffcde"
+GetDP = "dbfd83e6-7aba-450b-9c2b-93ccd973023a"
 Gmsh = "705231aa-382f-11e9-3f0c-b7cb4346fdeb"
 JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 LoggingExtras = "e6f89c97-d47a-5376-807f-9c37f3926c36"
+MacroTools = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
 Measurements = "eff96d63-e80a-5855-80a2-b1b0885c5ab7"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 PkgTemplates = "14b8a8f1-9102-5b29-a752-f990bacb7fe1"
@@ -30,10 +32,9 @@ Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
-GetDP = "dbfd83e6-7aba-450b-9c2b-93ccd973023a"
 
 [sources]
-GetDP = {url = "https://github.com/Electa-Git/GetDP.jl", rev="main"}
+GetDP = {rev = "main", url = "https://github.com/Electa-Git/GetDP.jl"}
 
 [compat]
 CSV = "0.10.15"
@@ -51,6 +52,7 @@ JSON3 = "1.14.2"
 LinearAlgebra = "1.11.0"
 Logging = "1.11.0"
 LoggingExtras = "1.1.0"
+MacroTools = "0.5.16"
 Measurements = "2.11.0"
 Pkg = "1.11.0"
 PkgTemplates = "0.7.56"

@@ -156,7 +156,7 @@ $(FUNCTIONNAME)(insulator_group, Semicon, 0.015, 0.018, material_props)
 - [`Semicon`](@ref)
 - [`calc_parallel_equivalent`](@ref)
 """
-function add!(
+function LineCableModels.add!(
     group::InsulatorGroup,
     part_type::Type{T},  # The type of insulator part (Insulator, Semicon)
     args...;  # Arguments specific to the part type

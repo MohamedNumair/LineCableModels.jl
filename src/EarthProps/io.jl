@@ -14,7 +14,7 @@ Defines the display representation of a [`EarthModel`](@ref) object for REPL or 
 
 - Nothing. Modifies `io` to format the output.
 """
-function show(io::IO, ::MIME"text/plain", model::EarthModel)
+function Base.show(io::IO, ::MIME"text/plain", model::EarthModel)
     # Determine model type based on num_layers and vertical_layers flag
     num_layers = length(model.layers)
     model_type = num_layers == 2 ? "homogeneous" : "multilayer"
@@ -54,8 +54,8 @@ function show(io::IO, ::MIME"text/plain", model::EarthModel)
     end
 
     # Add formulation information as child nodes
-    if !isnothing(model.FDformulation)
-        formulation_tag = _get_description(model.FDformulation)
+    if !isnothing(model.freq_dependence)
+        formulation_tag = _get_description(model.freq_dependence)
         println(io, "   Frequency-dependent model: $(formulation_tag)")
     end
 

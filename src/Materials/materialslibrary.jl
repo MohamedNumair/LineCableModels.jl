@@ -187,7 +187,7 @@ function Base.delete!(library::MaterialsLibrary, name::String)
 
     end
     delete!(library.data, name)
-    library
+    @info "Material '$name' removed from the library."
 end
 
 """

@@ -205,7 +205,7 @@ println(cable_system.num_cables)  # Prints: 2
 - [`CablePosition`](@ref)
 - [`CableDesign`](@ref)
 """
-function add!(
+function LineCableModels.add!(
     system::LineCableSystem,
     cable::CableDesign,
     horz::Number,

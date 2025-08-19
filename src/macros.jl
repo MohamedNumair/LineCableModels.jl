@@ -1,21 +1,6 @@
 export @parameterize, @measurify
+using MacroTools
 
-"""
-    @parameterize(container_expr, union_expr)
-
-Takes a parameterized container expression with a `_` placeholder
-(e.g., `Array{_, 3}` or `Vector{_}`) and a Union type (e.g., `REALTYPES`),
-and expands it into a Union of concrete container types at compile time.
-
-# Example
-```julia
-`@parameterize Vector{_} REALTYPES`
-...expands to: `Union{Vector{Float64}, Vector{Measurement{Float64}}}`
-
-`@parameterize Array{_, 3} COMPLEXTYPES`
-...expands to: `Union{Array{Complex{Float64}, 3}, Array{Complex{Measurement{Float64}}, 3}}`
-```
-"""
 macro parameterize(container_expr, union_expr)
     # Evaluate the Union type from the provided expression 
     local union_type
@@ -71,133 +56,467 @@ parametric type `T` to `Measurement` with zero uncertainty. Other arguments
 (e.g., `i::Int`) are ignored.
 """
 macro measurify(def)
+    # Helper function to check if a type variable is used in an expression
+    function _contains_tvar(expr, typevars)
+        found = false
+        MacroTools.postwalk(expr) do x
+            if x isa Symbol && x in typevars
+                found = true
+            end
+            return x
+        end
+        return found
+    end
+
     # Normalize to long form
     if def.head == :(=)
-        call = def.args[1]
-        body = def.args[2]
-        def = Expr(:function, call, body)
-    elseif def.head == :function
-        # ok
-    else
+        def = MacroTools.longdef(def)
+    elseif def.head != :function
         error("@measurify must wrap a function definition")
     end
 
-    sig = def.args[1]
-    body = def.args[2]
+    dict = MacroTools.splitdef(def)
 
-    # Extract call expr and where-clauses
-    call_expr = sig
-    where_items = Any[]
-    if sig isa Expr && sig.head == :where
-        call_expr = sig.args[1]
-        where_items = sig.args[2:end]
+    where_items = get(dict, :whereparams, [])
+
+    # Extract type variables from where clause
+    typevars = Set{Symbol}()
+    for w in where_items
+        if w isa Symbol
+            push!(typevars, w)
+        elseif w isa Expr && w.head == :(<:)
+            push!(typevars, w.args[1])
+        end
     end
-    fname = call_expr.args[1]
 
-    # Bounds for each where typevar: Dict{Symbol,Any}
+    # Get positional and keyword args
+    posargs = get(dict, :args, [])
+    kwargs = get(dict, :kwargs, [])
+
+    # Identify which arguments are of the form ::T and thus "promotable"
+    promotable_args = Symbol[]
+    wrapper_posargs = []
+
     bounds = Dict{Symbol,Any}()
     for w in where_items
         if w isa Symbol
             bounds[w] = :Any
         elseif w isa Expr && w.head == :(<:)
-            tv = w.args[1]::Symbol
-            ub = w.args[2]
-            bounds[tv] = ub
-        else
-            error("@measurify: unsupported where item: $w")
-        end
-    end
-    typevars = collect(keys(bounds))
-
-    # Split positional vs keyword args in the signature
-    posargs = Any[]
-    kwexpr = nothing
-    for a in call_expr.args[2:end]
-        if a isa Expr && a.head == :parameters
-            kwexpr = a
-        else
-            push!(posargs, a)
+            bounds[w.args[1]] = w.args[2]
         end
     end
 
-    # Collect names and find which are promotable (annotated exactly as one of the where typevars)
-    names = Symbol[]
-    promotable = Symbol[]
-    wrapper_posargs = Any[]
-
-    for a in posargs
-        if a isa Symbol
-            push!(names, a)
-            push!(wrapper_posargs, a)  # untyped positional
-        elseif a isa Expr && a.head == :(::)
-            nm = a.args[1]::Symbol
-            ty = a.args[2]
-            push!(names, nm)
-            if ty isa Symbol && haskey(bounds, ty)
-                # replace ::T with ::Bound(T)
-                push!(promotable, nm)
-                push!(wrapper_posargs, Expr(:(::), nm, bounds[ty]))
-            else
-                push!(wrapper_posargs, a)
-            end
+    for arg in posargs
+        nm, ty, _ = MacroTools.splitarg(arg)
+        if ty isa Symbol && ty in typevars
+            push!(promotable_args, nm)
+            push!(wrapper_posargs, Expr(:(::), nm, bounds[ty]))
         else
-            error("@measurify: unsupported arg form: $a")
+            push!(wrapper_posargs, arg)
         end
     end
 
-    # Build the tight/original method exactly as written
+    # The original function is the "tight" one
     tight = def
 
-    # Build the loose wrapper signature: same name, same args,
-    # but with ::T replaced by ::Bound(T), and NO where-clauses.
-    wrapper_call = Expr(:call, fname, wrapper_posargs...)
-    if kwexpr !== nothing
-        push!(wrapper_call.args, kwexpr)  # keep kw defaults/types as-is
+    # Build the "loose" wrapper
+    wrapper_dict = deepcopy(dict)
+    wrapper_dict[:args] = wrapper_posargs
+
+    if !any(_contains_tvar(arg, typevars) for arg in wrapper_dict[:args])
+        delete!(wrapper_dict, :whereparams)
     end
 
-    # Build the call to the tight method (same arg names; keywords forwarded as k=k)
-    forward_call = Expr(:call, fname, (:($n) for n in names)...)
-    if kwexpr !== nothing
-        # transform each kw def into k=k for forwarding
-        pairs = Any[]
-        for e in kwexpr.args
-            kn = e isa Expr && e.head == :(=) ? e.args[1] :
-                 e isa Expr && e.head == :(::) ? e.args[1] :
-                 e isa Symbol ? e : error("@measurify: bad kw: $e")
-            push!(pairs, Expr(:(=), kn, kn))
-        end
-        push!(forward_call.args, Expr(:parameters, pairs...))
+    conversion_block = quote end
+    conversions = [Expr(:(=), nm, :(convert(T, $nm))) for nm in promotable_args]
+    if !isempty(conversions)
+        conversion_block = Expr(:block, conversions...)
     end
 
-    # If nothing is promotable, wrapper just forwards (harmless)
-    promote_tuple = Expr(:tuple, (:($n) for n in promotable)...)
+    # --- THIS IS THE FIX ---
+    # Revert the broken `mkcall` to the manual forward_call construction
+    # forward_call = MacroTools.mkcall(dict[:name], get(dict, :args, [])...; kwargs = get(dict, :kwargs, []))
 
-    # make a fresh name for the promoted tuple
-    pp = gensym(:promoted)
-
-    # rebinding statements: NO `local`
-    rebinding = Any[]
-    for (i, nm) in enumerate(promotable)
-        push!(rebinding, :($(nm) = $(pp)[$i]))
+    arg_names = [MacroTools.splitarg(a)[1] for a in posargs]
+    kw_forwards = [Expr(:kw, MacroTools.splitarg(kw)[1], MacroTools.splitarg(kw)[1]) for kw in kwargs]
+    forward_call = Expr(:call, dict[:name], arg_names...)
+    if !isempty(kw_forwards)
+        push!(forward_call.args, Expr(:parameters, kw_forwards...))
     end
+    # --- END FIX ---
 
-    wrapper_body = quote
-        $(length(promotable) == 0 ? :(nothing) : quote
-            $(pp) = promote($(promote_tuple.args...))
-            $(rebinding...)
-        end)
+    wrapper_dict[:body] = quote
+        $(conversion_block)
         $(forward_call)
     end
 
-    loose = Expr(:function, wrapper_call, wrapper_body)
+    loose = MacroTools.combinedef(wrapper_dict)
 
-    # @info "measurify input" def
-    # ... build `tight`, `loose` ...
-    out = Expr(:block, :(Base.@__doc__ $tight), loose)
-    # @info "measurify output" out
-    return esc(out)
-
+    return esc(Expr(:block, :(Base.@__doc__ $tight), loose))
 end
+
+# macro measurify(def)
+#     # Helper function to check if a type variable is used in an expression
+#     function _contains_tvar(expr, typevars)
+#         found = false
+#         MacroTools.postwalk(expr) do x
+#             if x isa Symbol && x in typevars
+#                 found = true
+#             end
+#             return x
+#         end
+#         return found
+#     end
+
+#     # Normalize to long form
+#     if def.head == :(=)
+#         def = MacroTools.longdef(def)
+#     elseif def.head != :function
+#         error("@measurify must wrap a function definition")
+#     end
+
+#     dict = MacroTools.splitdef(def)
+#     sig = dict[:name]
+#     if haskey(dict, :params) && !isempty(dict[:params])
+#         sig = Expr(:call, sig, dict[:params]...)
+#     end
+#     if haskey(dict, :whereparams) && !isempty(dict[:whereparams])
+#         sig = Expr(:where, sig, dict[:whereparams]...)
+#     end
+
+#     # Extract call expr and where-clauses
+#     call_expr = sig
+#     where_items = get(dict, :whereparams, [])
+#     fname = dict[:name]
+
+#     # Bounds for each where typevar
+#     bounds = Dict{Symbol,Any}()
+#     for w in where_items
+#         if w isa Symbol
+#             bounds[w] = :Any
+#         elseif w isa Expr && w.head == :(<:)
+#             tv = w.args[1]::Symbol
+#             ub = w.args[2]
+#             bounds[tv] = ub
+#         else
+#             error("@measurify: unsupported where item: $w")
+#         end
+#     end
+#     typevars = Set(keys(bounds))
+
+#     # Get positional args
+#     posargs = get(dict, :args, [])
+#     kwargs = get(dict, :kwargs, [])
+
+#     # Collect names and find promotable args
+#     names = [MacroTools.splitarg(a)[1] for a in posargs]
+#     promotable = Symbol[]
+#     wrapper_posargs = []
+
+#     for arg in posargs
+#         nm, ty, _ = MacroTools.splitarg(arg)
+#         if ty isa Symbol && ty in typevars
+#             push!(promotable, nm)
+#             push!(wrapper_posargs, Expr(:(::), nm, bounds[ty]))
+#         else
+#             push!(wrapper_posargs, arg)
+#         end
+#     end
+
+#     # Build the tight/original method exactly as written
+#     tight = def
+
+#     # Build the loose wrapper signature
+#     wrapper_dict = deepcopy(dict)
+#     wrapper_dict[:args] = wrapper_posargs
+
+#     # Conditionally remove the where clause if no typevars are left in the signature
+#     if !any(_contains_tvar(arg, typevars) for arg in wrapper_dict[:args])
+#         delete!(wrapper_dict, :whereparams)
+#     end
+
+#     wrapper_sig = MacroTools.combinedef(wrapper_dict)
+
+#     # Build the call to the tight method
+#     forward_call_args = [a isa Expr && a.head == :... ? Expr(:..., nm) : nm for (nm, a) in zip(names, posargs)]
+#     forward_kwargs = [Expr(:kw, MacroTools.splitarg(kw)[1], MacroTools.splitarg(kw)[1]) for kw in kwargs]
+#     forward_call = Expr(:call, fname, forward_call_args...)
+#     if !isempty(forward_kwargs)
+#         push!(forward_call.args, Expr(:parameters, forward_kwargs...))
+#     end
+
+#     pp = gensym(:promoted)
+#     rebinding = [Expr(:(=), nm, :($pp[$(i)])) for (i, nm) in enumerate(promotable)]
+
+#     wrapper_body = quote
+#         if !isempty($(promotable))
+#             $(pp) = promote($((:($n) for n in promotable)...))
+#             $(rebinding...)
+#         end
+#         $(forward_call)
+#     end
+
+#     wrapper_dict[:body] = wrapper_body
+#     loose = MacroTools.combinedef(wrapper_dict)
+
+#     out = Expr(:block, :(Base.@__doc__ $tight), loose)
+#     return esc(out)
+# end
+# macro measurify(def)
+#     # Normalize to long form
+#     if def.head == :(=)
+#         call = def.args[1]
+#         body = def.args[2]
+#         def = Expr(:function, call, body)
+#     elseif def.head == :function
+#         # ok
+#     else
+#         error("@measurify must wrap a function definition")
+#     end
+
+#     sig = def.args[1]
+#     body = def.args[2]
+
+#     # Extract call expr and where-clauses
+#     call_expr = sig
+#     where_items = Any[]
+#     if sig isa Expr && sig.head == :where
+#         call_expr = sig.args[1]
+#         where_items = sig.args[2:end]
+#     end
+#     fname = call_expr.args[1]
+
+#     # Bounds for each where typevar: Dict{Symbol,Any}
+#     bounds = Dict{Symbol,Any}()
+#     for w in where_items
+#         if w isa Symbol
+#             bounds[w] = :Any
+#         elseif w isa Expr && w.head == :(<:)
+#             tv = w.args[1]::Symbol
+#             ub = w.args[2]
+#             bounds[tv] = ub
+#         else
+#             error("@measurify: unsupported where item: $w")
+#         end
+#     end
+#     typevars = collect(keys(bounds))
+
+#     # Split positional vs keyword args in the signature
+#     posargs = Any[]
+#     kwexpr = nothing
+#     for a in call_expr.args[2:end]
+#         if a isa Expr && a.head == :parameters
+#             kwexpr = a
+#         else
+#             push!(posargs, a)
+#         end
+#     end
+
+#     # Collect names and find which are promotable (annotated exactly as one of the where typevars)
+#     names = Symbol[]
+#     promotable = Symbol[]
+#     wrapper_posargs = Any[]
+
+#     for a in posargs
+#         if a isa Symbol
+#             push!(names, a)
+#             push!(wrapper_posargs, a)  # untyped positional
+#         elseif a isa Expr && a.head == :(::)
+#             nm = a.args[1]::Symbol
+#             ty = a.args[2]
+#             push!(names, nm)
+#             if ty isa Symbol && haskey(bounds, ty)
+#                 # replace ::T with ::Bound(T)
+#                 push!(promotable, nm)
+#                 push!(wrapper_posargs, Expr(:(::), nm, bounds[ty]))
+#             else
+#                 push!(wrapper_posargs, a)
+#             end
+#         else
+#             error("@measurify: unsupported arg form: $a")
+#         end
+#     end
+
+#     # Build the tight/original method exactly as written
+#     tight = def
+
+#     # Build the loose wrapper signature: same name, same args,
+#     # but with ::T replaced by ::Bound(T).
+#     # Re-attach the where-clause to define T for types like Vector{T}.
+#     wrapper_call_base = Expr(:call, fname, wrapper_posargs...)
+#     if kwexpr !== nothing
+#         push!(wrapper_call_base.args, kwexpr)  # keep kw defaults/types as-is
+#     end
+#     wrapper_call = !isempty(where_items) ? Expr(:where, wrapper_call_base, where_items...) : wrapper_call_base
+
+
+#     # Build the call to the tight method (same arg names; keywords forwarded as k=k)
+#     forward_call = Expr(:call, fname, (:($n) for n in names)...)
+#     if kwexpr !== nothing
+#         # transform each kw def into k=k for forwarding
+#         pairs = Any[]
+#         for e in kwexpr.args
+#             kn = e isa Expr && e.head == :(=) ? e.args[1] :
+#                  e isa Expr && e.head == :(::) ? e.args[1] :
+#                  e isa Symbol ? e : error("@measurify: bad kw: $e")
+#             push!(pairs, Expr(:(=), kn, kn))
+#         end
+#         push!(forward_call.args, Expr(:parameters, pairs...))
+#     end
+
+#     # If nothing is promotable, wrapper just forwards (harmless)
+#     promote_tuple = Expr(:tuple, (:($n) for n in promotable)...)
+
+#     # make a fresh name for the promoted tuple
+#     pp = gensym(:promoted)
+
+#     # rebinding statements: NO `local`
+#     rebinding = Any[]
+#     for (i, nm) in enumerate(promotable)
+#         push!(rebinding, :($(nm) = $(pp)[$i]))
+#     end
+
+#     wrapper_body = quote
+#         $(length(promotable) == 0 ? :(nothing) : quote
+#             $(pp) = promote($(promote_tuple.args...))
+#             $(rebinding...)
+#         end)
+#         $(forward_call)
+#     end
+
+#     loose = Expr(:function, wrapper_call, wrapper_body)
+
+#     out = Expr(:block, :(Base.@__doc__ $tight), loose)
+#     return esc(out)
+# end
+# macro measurify(def)
+#     # Normalize to long form
+#     if def.head == :(=)
+#         call = def.args[1]
+#         body = def.args[2]
+#         def = Expr(:function, call, body)
+#     elseif def.head == :function
+#         # ok
+#     else
+#         error("@measurify must wrap a function definition")
+#     end
+
+#     sig = def.args[1]
+#     body = def.args[2]
+
+#     # Extract call expr and where-clauses
+#     call_expr = sig
+#     where_items = Any[]
+#     if sig isa Expr && sig.head == :where
+#         call_expr = sig.args[1]
+#         where_items = sig.args[2:end]
+#     end
+#     fname = call_expr.args[1]
+
+#     # Bounds for each where typevar: Dict{Symbol,Any}
+#     bounds = Dict{Symbol,Any}()
+#     for w in where_items
+#         if w isa Symbol
+#             bounds[w] = :Any
+#         elseif w isa Expr && w.head == :(<:)
+#             tv = w.args[1]::Symbol
+#             ub = w.args[2]
+#             bounds[tv] = ub
+#         else
+#             error("@measurify: unsupported where item: $w")
+#         end
+#     end
+#     typevars = collect(keys(bounds))
+
+#     # Split positional vs keyword args in the signature
+#     posargs = Any[]
+#     kwexpr = nothing
+#     for a in call_expr.args[2:end]
+#         if a isa Expr && a.head == :parameters
+#             kwexpr = a
+#         else
+#             push!(posargs, a)
+#         end
+#     end
+
+#     # Collect names and find which are promotable (annotated exactly as one of the where typevars)
+#     names = Symbol[]
+#     promotable = Symbol[]
+#     wrapper_posargs = Any[]
+
+#     for a in posargs
+#         if a isa Symbol
+#             push!(names, a)
+#             push!(wrapper_posargs, a)  # untyped positional
+#         elseif a isa Expr && a.head == :(::)
+#             nm = a.args[1]::Symbol
+#             ty = a.args[2]
+#             push!(names, nm)
+#             if ty isa Symbol && haskey(bounds, ty)
+#                 # replace ::T with ::Bound(T)
+#                 push!(promotable, nm)
+#                 push!(wrapper_posargs, Expr(:(::), nm, bounds[ty]))
+#             else
+#                 push!(wrapper_posargs, a)
+#             end
+#         else
+#             error("@measurify: unsupported arg form: $a")
+#         end
+#     end
+
+#     # Build the tight/original method exactly as written
+#     tight = def
+
+#     # Build the loose wrapper signature: same name, same args,
+#     # but with ::T replaced by ::Bound(T), and NO where-clauses.
+#     wrapper_call = Expr(:call, fname, wrapper_posargs...)
+#     if kwexpr !== nothing
+#         push!(wrapper_call.args, kwexpr)  # keep kw defaults/types as-is
+#     end
+
+#     # Build the call to the tight method (same arg names; keywords forwarded as k=k)
+#     forward_call = Expr(:call, fname, (:($n) for n in names)...)
+#     if kwexpr !== nothing
+#         # transform each kw def into k=k for forwarding
+#         pairs = Any[]
+#         for e in kwexpr.args
+#             kn = e isa Expr && e.head == :(=) ? e.args[1] :
+#                  e isa Expr && e.head == :(::) ? e.args[1] :
+#                  e isa Symbol ? e : error("@measurify: bad kw: $e")
+#             push!(pairs, Expr(:(=), kn, kn))
+#         end
+#         push!(forward_call.args, Expr(:parameters, pairs...))
+#     end
+
+#     # If nothing is promotable, wrapper just forwards (harmless)
+#     promote_tuple = Expr(:tuple, (:($n) for n in promotable)...)
+
+#     # make a fresh name for the promoted tuple
+#     pp = gensym(:promoted)
+
+#     # rebinding statements: NO `local`
+#     rebinding = Any[]
+#     for (i, nm) in enumerate(promotable)
+#         push!(rebinding, :($(nm) = $(pp)[$i]))
+#     end
+
+#     wrapper_body = quote
+#         $(length(promotable) == 0 ? :(nothing) : quote
+#             $(pp) = promote($(promote_tuple.args...))
+#             $(rebinding...)
+#         end)
+#         $(forward_call)
+#     end
+
+#     loose = Expr(:function, wrapper_call, wrapper_body)
+
+#     # @info "measurify input" def
+#     # ... build `tight`, `loose` ...
+#     out = Expr(:block, :(Base.@__doc__ $tight), loose)
+#     # @info "measurify output" out
+#     return esc(out)
+
+# end
 
 """
 $(TYPEDSIGNATURES)

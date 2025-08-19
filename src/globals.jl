@@ -2,7 +2,7 @@
 export FormulationSet, DataFrame, add!, load!, export_data, save, preview
 export f₀, μ₀, ε₀, ρ₀, T₀, TOL, ΔTmax
 export setup_logging!
-export BASE_FLOAT, REALTYPES, COMPLEXTYPES
+export BASE_FLOAT, REALSCALAR, COMPLEXSCALAR
 
 # General constants
 "Base power system frequency, f₀ = 50.0 [Hz]."
@@ -25,8 +25,12 @@ using Reexport, ForceImport
 # Define aliases for the type constraints
 using Measurements
 const BASE_FLOAT = Float64
-const REALTYPES = Union{BASE_FLOAT,Measurement{BASE_FLOAT}}
-const COMPLEXTYPES = Union{Complex{BASE_FLOAT},Complex{Measurement{BASE_FLOAT}}}
+const REALSCALAR = Union{BASE_FLOAT,Measurement{BASE_FLOAT}}
+const COMPLEXSCALAR = Union{Complex{BASE_FLOAT},Complex{Measurement{BASE_FLOAT}}}
+# const REALVECTOR = Union{Vector{BASE_FLOAT},Vector{Measurement{BASE_FLOAT}}}
+# const COMPLEXVECTOR = Union{Vector{Complex{BASE_FLOAT}},Vector{Complex{Measurement{BASE_FLOAT}}}}
+# const REAL3DARRAY = Union{Array{BASE_FLOAT,3},Array{Measurement{BASE_FLOAT},3}}
+# const COMPLEX3DARRAY = Union{Array{Complex{BASE_FLOAT},3},Array{Complex{Measurement{BASE_FLOAT},3}}}
 
 using DocStringExtensions, Pkg
 """

@@ -187,7 +187,7 @@ cable_plot = $(FUNCTIONNAME)(design)  # Cable cross-section is displayed
 - [`Strip`](@ref)
 - [`Semicon`](@ref)
 """
-function preview(
+function LineCableModels.preview(
     design::CableDesign;
     x_offset=0.0,
     y_offset=0.0,
@@ -373,7 +373,7 @@ $(FUNCTIONNAME)(system, earth_model=earth_params, zoom_factor=0.5)
 - [`EarthModel`](@ref)
 - [`CablePosition`](@ref)
 """
-function preview(
+function LineCableModels.preview(
     system::LineCableSystem;
     earth_model=nothing,
     zoom_factor=0.25,
@@ -437,7 +437,7 @@ function preview(
     for cable_position in system.cables
         x_offset = to_nominal(cable_position.horz)
         y_offset = to_nominal(cable_position.vert)
-        preview(
+        LineCableModels.preview(
             cable_position.design_data;  # Changed from cable_position.design_data
             x_offset,
             y_offset,
@@ -481,8 +481,8 @@ for interactive use when no backend is explicitly specified. This is particularl
 # Examples
 
 ```julia
-choose_proper_backend()           # Auto-selects based on environment
-choose_proper_backend(pyplot)     # Explicitly use PyPlot backend
+_resolve_backend()           # Auto-selects based on environment
+_resolve_backend(pyplot)     # Explicitly use PyPlot backend
 ```
 """
 function _resolve_backend(backend=nothing)

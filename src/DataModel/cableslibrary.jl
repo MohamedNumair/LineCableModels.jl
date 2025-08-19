@@ -45,13 +45,13 @@ mutable struct CablesLibrary
 end
 
 # Implement the AbstractDict interface
-length(lib::CablesLibrary) = length(lib.data)
-setindex!(lib::CablesLibrary, value::CableDesign, key::String) = (lib.data[key] = value)
-iterate(lib::CablesLibrary, state...) = iterate(lib.data, state...)
-keys(lib::CablesLibrary) = keys(lib.data)
-values(lib::CablesLibrary) = values(lib.data)
-haskey(lib::CablesLibrary, key::String) = haskey(lib.data, key)
-getindex(lib::CablesLibrary, key::String) = getindex(lib.data, key)
+Base.length(lib::CablesLibrary) = length(lib.data)
+Base.setindex!(lib::CablesLibrary, value::CableDesign, key::String) = (lib.data[key] = value)
+Base.iterate(lib::CablesLibrary, state...) = iterate(lib.data, state...)
+Base.keys(lib::CablesLibrary) = keys(lib.data)
+Base.values(lib::CablesLibrary) = values(lib.data)
+Base.haskey(lib::CablesLibrary, key::String) = haskey(lib.data, key)
+Base.getindex(lib::CablesLibrary, key::String) = getindex(lib.data, key)
 
 """
 Stores a cable design in a [`CablesLibrary`](@ref) object.
@@ -78,7 +78,7 @@ println(library) # Prints the updated dictionary containing the new cable design
 - [`CableDesign`](@ref)
 - [`delete!`](@ref)
 """
-function add!(library::CablesLibrary, design::CableDesign)
+function LineCableModels.add!(library::CablesLibrary, design::CableDesign)
     library.data[design.cable_id] = design
     @info "Cable design with ID `$(design.cable_id)` added to the library."
     library
@@ -115,7 +115,7 @@ haskey(library, "example")  # Returns false
 - [`CablesLibrary`](@ref)
 - [`add!`](@ref)
 """
-function delete!(library::CablesLibrary, cable_id::String)
+function LineCableModels.delete!(library::CablesLibrary, cable_id::String)
     if haskey(library, cable_id)
         delete!(library.data, cable_id)
         @info "Cable design with ID `$cable_id` removed from the library."
@@ -162,12 +162,12 @@ println(missing_design === nothing)  # Prints true
 - [`add!`](@ref)
 - [`delete!`](@ref)
 """
-function get(library::CablesLibrary, cable_id::String, default=nothing)::Union{Nothing,CableDesign}
+function Base.get(library::CablesLibrary, cable_id::String, default=nothing)::Union{Nothing,CableDesign}
     if haskey(library, cable_id)
         @info "Cable design with ID `$cable_id` loaded from the library."
         return library[cable_id]
     else
-        @error "Cable design with ID `$cable_id` not found in the library."
-        throw(KeyError(cable_id))
+        @warn "Cable design with ID `$cable_id` not found in the library."
+        return default
     end
 end

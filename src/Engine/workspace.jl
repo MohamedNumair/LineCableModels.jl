@@ -8,7 +8,7 @@ for all subsequent computational steps.
 # Fields
 $(TYPEDFIELDS)
 """
-@kwdef struct CoaxialWorkspace{T<:REALTYPES,U<:Vector{<:REALTYPES}}
+@kwdef struct CoaxialWorkspace{T<:REALSCALAR,U<:Vector{<:REALSCALAR}}
     "Vector of frequency values [Hz]."
     freq::Vector{T}
     "Vector of horizontal positions [m]."
