@@ -15,14 +15,14 @@ module EarthAdmittance
 # export 
 
 # Load common dependencies
-include("../commondeps.jl")
 using ...LineCableModels
-using ...Utils
-import ...LineCableModels: _get_description, REALTYPES, COMPLEXTYPES, NUMERICTYPES
-import ..Engine: EarthAdmittanceFormulation
+include("../commondeps.jl")
 
 # Module-specific dependencies
 using Measurements
+using ...Utils
+import ...LineCableModels: _get_description
+import ..Engine: EarthAdmittanceFormulation
 
 struct Papadopoulos <: EarthAdmittanceFormulation end
 _get_description(::Papadopoulos) = "Papadopoulos (homogeneous earth)"
