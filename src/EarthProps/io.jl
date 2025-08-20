@@ -38,7 +38,7 @@ function Base.show(io::IO, ::MIME"text/plain", model::EarthModel)
         prefix = i == num_layers ? "└─" : "├─"
 
         # Format thickness value
-        thickness_str = isinf(layer.t) ? "∞" : "$(round(layer.t, sigdigits=4))"
+        thickness_str = isinf(layer.t) ? "Inf" : "$(round(layer.t, sigdigits=4))"
 
         # Format layer name
         layer_name = i == 1 ? "Layer $i (air)" : "Layer $i"
@@ -55,7 +55,7 @@ function Base.show(io::IO, ::MIME"text/plain", model::EarthModel)
 
     # Add formulation information as child nodes
     if !isnothing(model.freq_dependence)
-        formulation_tag = _get_description(model.freq_dependence)
+        formulation_tag = LineCableModels._get_description(model.freq_dependence)
         println(io, "   Frequency-dependent model: $(formulation_tag)")
     end
 
