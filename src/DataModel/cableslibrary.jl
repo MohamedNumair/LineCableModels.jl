@@ -120,7 +120,7 @@ function LineCableModels.delete!(library::CablesLibrary, cable_id::String)
         delete!(library.data, cable_id)
         @info "Cable design with ID `$cable_id` removed from the library."
     else
-        @error "Cable design with ID `$cable_id` not found in the library."
+        @error "Cable design with ID `$cable_id` not found in the library; cannot delete."
         throw(KeyError(cable_id))
     end
 end
@@ -162,12 +162,12 @@ println(missing_design === nothing)  # Prints true
 - [`add!`](@ref)
 - [`delete!`](@ref)
 """
-function Base.get(library::CablesLibrary, cable_id::String, default=nothing)::Union{Nothing,CableDesign}
+function Base.get(library::CablesLibrary, cable_id::String, default=nothing)
     if haskey(library, cable_id)
         @info "Cable design with ID `$cable_id` loaded from the library."
         return library[cable_id]
     else
-        @warn "Cable design with ID `$cable_id` not found in the library."
+        @warn "Cable design with ID `$cable_id` not found in the library; returning default."
         return default
     end
 end
