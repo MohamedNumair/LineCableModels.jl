@@ -182,7 +182,7 @@ $(FUNCTIONNAME)(library, "copper")
 """
 function Base.delete!(library::MaterialsLibrary, name::String)
     if !haskey(library, name)
-        @error "Material '$name' not found in the library."
+        @error "Material '$name' not found in the library; cannot delete."
         throw(KeyError(name))
 
     end
@@ -216,11 +216,10 @@ material = $(FUNCTIONNAME)(library, "copper")
 - [`add!`](@ref)
 - [`delete!`](@ref)
 """
-function Base.get(library::MaterialsLibrary, name::String, default=nothing)::Union{Nothing,Material}
+function Base.get(library::MaterialsLibrary, name::String, default=nothing)
     material = get(library.data, name, default)
     if material === nothing
-        @warn "Material '$name' not found in the library."
-        # throw(KeyError(name))
+        @warn "Material '$name' not found in the library; returning default."
     end
     return material
 end
