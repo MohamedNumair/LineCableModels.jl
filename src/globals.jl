@@ -23,14 +23,11 @@ const TOL = 1e-6
 using Reexport, ForceImport
 
 # Define aliases for the type constraints
-using Measurements
+using Measurements: Measurement, value
 const BASE_FLOAT = Float64
 const REALSCALAR = Union{BASE_FLOAT,Measurement{BASE_FLOAT}}
 const COMPLEXSCALAR = Union{Complex{BASE_FLOAT},Complex{Measurement{BASE_FLOAT}}}
-# const REALVECTOR = Union{Vector{BASE_FLOAT},Vector{Measurement{BASE_FLOAT}}}
-# const COMPLEXVECTOR = Union{Vector{Complex{BASE_FLOAT}},Vector{Complex{Measurement{BASE_FLOAT}}}}
-# const REAL3DARRAY = Union{Array{BASE_FLOAT,3},Array{Measurement{BASE_FLOAT},3}}
-# const COMPLEX3DARRAY = Union{Array{Complex{BASE_FLOAT},3},Array{Complex{Measurement{BASE_FLOAT},3}}}
+
 
 using DocStringExtensions, Pkg
 """
@@ -145,57 +142,26 @@ function _is_in_testset()
     return false
 end
 
-_coerce_RealT(args...) =
+@inline _coerce_args_to_T(args...) =
     any(x -> x isa Measurement, args) ? Measurement{BASE_FLOAT} : BASE_FLOAT
 
-using Logging
-using Logging: AbstractLogger, LogLevel, Info, global_logger
-using LoggingExtras: TeeLogger, FileLogger
-using Dates
-using Printf
-
-struct TimestampLogger <: AbstractLogger
-    logger::AbstractLogger
-end
-
-Logging.min_enabled_level(logger::TimestampLogger) = Logging.min_enabled_level(logger.logger)
-Logging.shouldlog(logger::TimestampLogger, level, _module, group, id) =
-    Logging.shouldlog(logger.logger, level, _module, group, id)
-
-function Logging.handle_message(logger::TimestampLogger, level, message, _module, group, id,
-    filepath, line; kwargs...)
-    timestamp = Dates.format(now(), "yyyy-mm-dd HH:MM:SS")
-    new_message = "[$timestamp] $message"
-    Logging.handle_message(logger.logger, level, new_message, _module, group, id,
-        filepath, line; kwargs...)
-end
-
-function setup_logging!(verbosity::Int, logfile::Union{String,Nothing}=nothing)
-    level = verbosity >= 2 ? Logging.Debug :
-            verbosity == 1 ? Logging.Info : Logging.Warn
-
-    # Create console logger
-    console_logger = ConsoleLogger(stderr, level)
-
-    if isnothing(logfile)
-        # Log to console only
-        global_logger(TimestampLogger(console_logger))
+# Promote scalar to T if T is Measurement; otherwise take nominal if x is Measurement.
+@inline function _coerce_scalar_to_T(x, ::Type{T}) where {T}
+    if T <: Measurement
+        return x isa Measurement ? x : (zero(T) + x)
     else
-        # Try to set up file logging with fallback to console-only
-        try
-            file_logger = FileLogger(logfile, level)
-            combined_logger = TeeLogger(console_logger, file_logger)
-            global_logger(TimestampLogger(combined_logger))
-        catch e
-            @warn "Failed to set up file logging to $(_display_path(logfile)): $e"
-
-            global_logger(TimestampLogger(console_logger))
-        end
+        return x isa Measurement ? T(value(x)) : convert(T, x)
     end
 end
 
-function __init__()
-    # Set a default logging level when the package is loaded at runtime.
-    # This ensures it overrides any environment-specific loggers.
-    setup_logging!(0)
+# Arrays: promote/demote elementwise, preserving shape. Arrays NEVER decide T.
+function _coerce_array_to_T(A::AbstractArray, ::Type{T}) where {T}
+    if T <: Measurement
+        return (eltype(A) === T) ? A : (A .+ zero(T))             # Real → Measurement(σ=0)
+    elseif eltype(A) <: Measurement
+        B = value.(A)                                             # Measurement → Real (nominal)
+        return (eltype(B) === T) ? B : convert.(T, B)
+    else
+        return (eltype(A) === T) ? A : convert.(T, A)
+    end
 end
