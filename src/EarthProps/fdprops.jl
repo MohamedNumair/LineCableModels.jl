@@ -15,7 +15,7 @@ $(TYPEDEF)
 Represents an earth model with constant properties (CP), i.e. frequency-invariant electromagnetic properties.
 """
 struct CPEarth <: AbstractFDEMFormulation end
-_get_description(::CPEarth) = "Constant properties (CP)"
+LineCableModels._get_description(::CPEarth) = "Constant properties (CP)"
 
 # """
 # $(TYPEDSIGNATURES)
