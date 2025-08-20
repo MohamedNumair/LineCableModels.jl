@@ -34,8 +34,8 @@ include("commondeps.jl")
 # Module-specific dependencies
 using Measurements
 using DataFrames
-import ..LineCableModels: _coerce_RealT
 using ..Utils
+import ..LineCableModels: _coerce_args_to_T
 
 """
 $(TYPEDEF)
@@ -58,7 +58,8 @@ struct Material{T<:REALSCALAR}
 end
 
 function Material(rho, eps_r, mu_r, T0, alpha)
-    T = _coerce_RealT(rho, eps_r, mu_r, T0, alpha)
+
+    T = _coerce_args_to_T(rho, eps_r, mu_r, T0, alpha)
     return Material{T}(
         convert(T, rho),
         convert(T, eps_r),
