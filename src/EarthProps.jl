@@ -20,17 +20,6 @@ $(EXPORTS)
 """
 module EarthProps
 
-# Load common dependencies
-using ..LineCableModels
-include("commondeps.jl")
-
-# Module-specific dependencies
-using Measurements
-using DataFrames
-
-using ..Utils
-import ..LineCableModels: _get_description
-
 # Export public API
 export CPEarth,
     EarthLayer,
@@ -38,6 +27,15 @@ export CPEarth,
     DataFrame,
     add!
 
+# Load common dependencies
+using ..LineCableModels
+include("commondeps.jl")
+
+# Module-specific dependencies
+using Measurements
+using DataFrames
+using ..Utils
+import ..LineCableModels: _coerce_args_to_T, _coerce_scalar_to_T, _coerce_array_to_T
 
 include("EarthProps/fdprops.jl")
 
@@ -65,63 +63,65 @@ struct EarthLayer{T<:REALSCALAR}
     mu_g::Vector{T}
 
     @doc """
-    $(TYPEDSIGNATURES)
-
-    Constructs an [`EarthLayer`](@ref) instance with specified base properties and computes its frequency-dependent values.
-
-    # Arguments
-
-    - `frequencies`: Vector of frequency values \\[Hz\\].
-    - `base_rho_g`: Base (DC) electrical resistivity of the layer \\[Ω·m\\].
-    - `base_epsr_g`: Base (DC) relative permittivity of the layer \\[dimensionless\\].
-    - `base_mur_g`: Base (DC) relative permeability of the layer \\[dimensionless\\].
-    - `t`: Thickness of the layer \\[m\\].
-    - `freq_dependence`: Instance of a subtype of [`AbstractFDEMFormulation`](@ref) defining the computation method for frequency-dependent properties.
-
-    # Returns
-
-    - An [`EarthLayer`](@ref) instance with computed frequency-dependent properties.
-
-    # Examples
-
-    ```julia
-    frequencies = [1e3, 1e4, 1e5]
-    layer = $(FUNCTIONNAME)(frequencies, 100, 10, 1, 5, CPEarth())
-    println(layer.rho_g) # Output: [100, 100, 100]
-    println(layer.eps_g) # Output: [8.854e-11, 8.854e-11, 8.854e-11]
-    println(layer.mu_g)  # Output: [1.2566e-6, 1.2566e-6, 1.2566e-6]
-    ```
-
-    # See also
-
-    - [`_calc_earth_properties`](@ref)
+    Constructs an [`EarthLayer`](@ref) instance with specified base and frequency-dependent properties.
     """
-    function EarthLayer(
-        frequencies::Vector{T},
-        base_rho_g::T,
-        base_epsr_g::T,
-        base_mur_g::T,
-        t::T,
-        freq_dependence::AbstractFDEMFormulation,
-    ) where {T<:REALSCALAR}
-
-        rho_g, eps_g, mu_g = 0.0, 0.0, 0.0 #_calc_earth_properties(
-        #     frequencies,
-        #     base_rho_g,
-        #     base_epsr_g,
-        #     base_mur_g,
-        #     freq_dependence,
-        # )
-        return new{T}(
-            base_rho_g,
-            base_epsr_g,
-            base_mur_g,
-            t,
-            rho_g,
-            eps_g,
-            mu_g,
-        )
+    function EarthLayer{T}(base_rho_g::T, base_epsr_g::T, base_mur_g::T, t::T,
+        rho_g::Vector{T}, eps_g::Vector{T}, mu_g::Vector{T}) where {T<:REALSCALAR}
+        new{T}(base_rho_g, base_epsr_g, base_mur_g, t, rho_g, eps_g, mu_g)
     end
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Constructs an [`EarthLayer`](@ref) instance with specified base properties and computes its frequency-dependent values.
+
+# Arguments
+
+- `frequencies`: Vector of frequency values \\[Hz\\].
+- `base_rho_g`: Base (DC) electrical resistivity of the layer \\[Ω·m\\].
+- `base_epsr_g`: Base (DC) relative permittivity of the layer \\[dimensionless\\].
+- `base_mur_g`: Base (DC) relative permeability of the layer \\[dimensionless\\].
+- `t`: Thickness of the layer \\[m\\].
+- `freq_dependence`: Instance of a subtype of [`AbstractFDEMFormulation`](@ref) defining the computation method for frequency-dependent properties.
+
+# Returns
+
+- An [`EarthLayer`](@ref) instance with computed frequency-dependent properties.
+
+# Examples
+
+```julia
+frequencies = [1e3, 1e4, 1e5]
+layer = $(FUNCTIONNAME)(frequencies, 100, 10, 1, 5, CPEarth())
+println(layer.rho_g) # Output: [100, 100, 100]
+println(layer.eps_g) # Output: [8.854e-11, 8.854e-11, 8.854e-11]
+println(layer.mu_g)  # Output: [1.2566e-6, 1.2566e-6, 1.2566e-6]
+```
+
+# See also
+
+- [`CPEarth`](@ref)
+"""
+@measurify function EarthLayer(
+    frequencies::Vector{T},
+    base_rho_g::T,
+    base_epsr_g::T,
+    base_mur_g::T,
+    t::T,
+    freq_dependence::AbstractFDEMFormulation,
+) where {T<:REALSCALAR}
+
+    rho_g, eps_g, mu_g = freq_dependence(frequencies, base_rho_g, base_epsr_g, base_mur_g)
+    return EarthLayer{T}(
+        base_rho_g,
+        base_epsr_g,
+        base_mur_g,
+        t,
+        rho_g,
+        eps_g,
+        mu_g,
+    )
 end
 
 """
@@ -140,76 +140,85 @@ struct EarthModel{T<:REALSCALAR}
     layers::Vector{EarthLayer{T}}
 
     @doc """
-    $(TYPEDSIGNATURES)
-
-    Constructs an [`EarthModel`](@ref) instance with a specified first earth layer. A semi-infinite air layer is always added before the first earth layer.
-
-    # Arguments
-
-    - `frequencies`: Vector of frequency values \\[Hz\\].
-    - `rho_g`: Base (DC) electrical resistivity of the first earth layer \\[Ω·m\\].
-    - `epsr_g`: Base (DC) relative permittivity of the first earth layer \\[dimensionless\\].
-    - `mur_g`: Base (DC) relative permeability of the first earth layer \\[dimensionless\\].
-    - `t`: Thickness of the first earth layer \\[m\\]. For homogeneous earth models (or the bottommost layer), set `t = Inf`.
-    - `freq_dependence`: Instance of a subtype of [`AbstractFDEMFormulation`](@ref) defining the computation method for frequency-dependent properties (default: [`CPEarth`](@ref)).
-    - `vertical_layers`: Boolean flag indicating whether the model should be treated as vertically-layered (default: `false`).
-    - `air_layer`: optional [`EarthLayer`](@ref) object representing the semi-infinite air layer (default: `EarthLayer(frequencies, Inf, 1.0, 1.0, Inf, freq_dependence)`).
-
-    # Returns
-
-    - An [`EarthModel`](@ref) instance with the specified attributes and computed frequency-dependent properties.
-
-    # Examples
-
-    ```julia
-    frequencies = [1e3, 1e4, 1e5]
-    earth_model = $(FUNCTIONNAME)(frequencies, 100, 10, 1, t=Inf)
-    println(length(earth_model.layers)) # Output: 2 (air + top layer)
-    println(earth_model.rho_eff) # Output: missing
-    ```
-
-    # See also
-
-    - [`EarthLayer`](@ref)
-    - [`add!`](@ref)
+    Constructs an [`EarthModel`](@ref) instance with specified attributes.
     """
-    function EarthModel(
-        frequencies::Vector{T},
-        rho_g::T,
-        epsr_g::T,
-        mur_g::T;
-        t::T=T(Inf),
-        freq_dependence::AbstractFDEMFormulation=CPEarth(),
-        vertical_layers::Bool=false,
-        air_layer::Union{EarthLayer{T},Nothing}=nothing,
-    ) where {T<:REALSCALAR}
-
-        # Validate inputs
-        @assert all(f -> f > 0, frequencies) "Frequencies must be positive"
-        @assert rho_g > 0 "Resistivity must be positive"
-        @assert epsr_g > 0 "Relative permittivity must be positive"
-        @assert mur_g > 0 "Relative permeability must be positive"
-        @assert t > 0 || isinf(t) "Layer thickness must be positive or infinite"
-
-        # Enforce rule for vertical model initialization
-        if vertical_layers && !isinf(t)
-            error("A vertically-layered model must be initialized with an infinite thickness (t=Inf).")
-        end
-
-        # Create air layer if not provided
-        if air_layer === nothing
-            air_layer = EarthLayer(frequencies, T(Inf), T(1.0), T(1.0), T(Inf), freq_dependence)
-        end
-
-        # Create top earth layer
-        top_layer = EarthLayer(frequencies, rho_g, epsr_g, mur_g, t, freq_dependence)
-
-        return new{T}(
-            freq_dependence,
-            vertical_layers,
-            [air_layer, top_layer]
-        )
+    function EarthModel{T}(fd::AbstractFDEMFormulation,
+        vl::Bool,
+        layers::Vector{EarthLayer{T}}) where {T<:REALSCALAR}
+        new{T}(fd, vl, layers)
     end
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Constructs an [`EarthModel`](@ref) instance with a specified first earth layer. A semi-infinite air layer is always added before the first earth layer.
+
+# Arguments
+
+- `frequencies`: Vector of frequency values \\[Hz\\].
+- `rho_g`: Base (DC) electrical resistivity of the first earth layer \\[Ω·m\\].
+- `epsr_g`: Base (DC) relative permittivity of the first earth layer \\[dimensionless\\].
+- `mur_g`: Base (DC) relative permeability of the first earth layer \\[dimensionless\\].
+- `t`: Thickness of the first earth layer \\[m\\]. For homogeneous earth models (or the bottommost layer), set `t = Inf`.
+- `freq_dependence`: Instance of a subtype of [`AbstractFDEMFormulation`](@ref) defining the computation method for frequency-dependent properties (default: [`CPEarth`](@ref)).
+- `vertical_layers`: Boolean flag indicating whether the model should be treated as vertically-layered (default: `false`).
+- `air_layer`: optional [`EarthLayer`](@ref) object representing the semi-infinite air layer (default: `EarthLayer(frequencies, Inf, 1.0, 1.0, Inf, freq_dependence)`).
+
+# Returns
+
+- An [`EarthModel`](@ref) instance with the specified attributes and computed frequency-dependent properties.
+
+# Examples
+
+```julia
+frequencies = [1e3, 1e4, 1e5]
+earth_model = $(FUNCTIONNAME)(frequencies, 100, 10, 1, t=Inf)
+println(length(earth_model.layers)) # Output: 2 (air + top layer)
+println(earth_model.rho_eff) # Output: missing
+```
+
+# See also
+
+- [`EarthLayer`](@ref)
+- [`add!`](@ref)
+"""
+@measurify function EarthModel(
+    frequencies::Vector{T},
+    rho_g::T,
+    epsr_g::T,
+    mur_g::T;
+    t::T=T(Inf),
+    freq_dependence::AbstractFDEMFormulation=CPEarth(),
+    vertical_layers::Bool=false,
+    air_layer::Union{EarthLayer{T},Nothing}=nothing,
+) where {T<:REALSCALAR}
+
+    # Validate inputs
+    @assert all(f -> f > 0, frequencies) "Frequencies must be positive"
+    @assert rho_g > 0 "Resistivity must be positive"
+    @assert epsr_g > 0 "Relative permittivity must be positive"
+    @assert mur_g > 0 "Relative permeability must be positive"
+    @assert t > 0 || isinf(t) "Layer thickness must be positive or infinite"
+
+    # Enforce rule for vertical model initialization
+    if vertical_layers && !isinf(t)
+        error("A vertically-layered model must be initialized with an infinite thickness (t=Inf).")
+    end
+
+    # Create air layer if not provided
+    if air_layer === nothing
+        air_layer = EarthLayer(frequencies, T(Inf), T(1.0), T(1.0), T(Inf), freq_dependence)
+    end
+
+    # Create top earth layer
+    top_layer = EarthLayer(frequencies, rho_g, epsr_g, mur_g, t, freq_dependence)
+
+    return EarthModel{T}(
+        freq_dependence,
+        vertical_layers,
+        [air_layer, top_layer]
+    )
 end
 
 """
@@ -289,7 +298,7 @@ println(length(vert_earth_model.layers)) # Output: 4
 
 - [`EarthLayer`](@ref)
 """
-function LineCableModels.add!(
+@measurify function LineCableModels.add!(
     model::EarthModel{T},
     frequencies::Vector{T},
     base_rho_g::T,
@@ -306,6 +315,8 @@ function LineCableModels.add!(
     @assert base_epsr_g > 0 "Relative permittivity must be positive"
     @assert base_mur_g > 0 "Relative permeability must be positive"
     @assert t > 0 || isinf(t) "Layer thickness must be positive or infinite"
+    @assert eltype(frequencies) === T "frequencies eltype must match model T"
+    @assert all(x -> x isa T, (base_rho_g, base_epsr_g, base_mur_g)) "scalars must match model T"
 
     # Enforce thickness rules
     if isinf(last(model.layers).t)
@@ -335,6 +346,7 @@ function LineCableModels.add!(
     model
 end
 
+include("EarthProps/convert.jl")
 include("EarthProps/dataframe.jl")
 include("EarthProps/io.jl")
 
