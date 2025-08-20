@@ -1,9 +1,8 @@
 module LineCableModels
 
-# Package-wide interfaces
+# Package-wide definitions
 include("globals.jl")
-
-# Useful macros
+include("logging.jl")
 include("macros.jl")
 
 # Submodule `Utils`
