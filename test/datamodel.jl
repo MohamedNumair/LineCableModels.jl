@@ -1,11 +1,9 @@
-using Test
-using LineCableModels
-using DataFrames
-using Plots
-using EzXML
+@testsnippet deps_datamodel begin
+    using Plots
+    using EzXML
+end
 
-@testset "DataModel module" begin
-
+@testitem "DataModel module" setup = [commons, deps_datamodel] begin
 
     println("\nSetting up materials and dimensions for DataModel test...")
     materials = MaterialsLibrary(add_defaults=true)
@@ -58,7 +56,7 @@ using EzXML
     @test df_listed[1, :alpha] == 0.9
 
     println("  Testing save/load cycle for MaterialsLibrary...")
-    mktempdir() do tmpdir
+    mktempdir(joinpath(@__DIR__)) do tmpdir
         output_file = joinpath(tmpdir, "materials_library_test.json")
         println("    Saving to: ", output_file)
 
@@ -464,7 +462,7 @@ using EzXML
     @test length(library) == initial_count # Should be back to original count
     @test haskey(library, test_cable_id)
 
-    mktempdir() do tmpdir # Create a temporary directory for the test file
+    mktempdir(joinpath(@__DIR__)) do tmpdir # Create a temporary directory for the test file
         output_file = joinpath(tmpdir, "cables_library_test.json")
         println("  Saving library to: ", output_file)
 
@@ -539,7 +537,7 @@ using EzXML
     @test cable_system.num_cables == 3
     @test cable_system.num_phases == 3
 
-    mktempdir() do tmpdir
+    mktempdir(joinpath(@__DIR__)) do tmpdir
         output_file = joinpath(tmpdir, "tutorial2_export_test.pscx")
         println("  Exporting PSCAD file to: ", output_file)
 
@@ -684,9 +682,9 @@ using EzXML
 
     println("  Testing preview...")
     # Reuse the fully constructed cable_system
-    @test preview(cable_system, zoom_factor=0.5, backend=gr) isa
+    @test preview(cable_system, zoom_factor=0.5, backend=gr, display_plot=false) isa
           Plots.Plot
-    @test preview(cable_system, zoom_factor=0.1, backend=gr) isa
+    @test preview(cable_system, zoom_factor=0.1, backend=gr, display_plot=false) isa
           Plots.Plot # Test option
 
     println("  Plotting functions executed without errors.")
