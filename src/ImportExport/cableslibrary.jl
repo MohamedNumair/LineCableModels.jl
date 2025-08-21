@@ -277,7 +277,7 @@ function _reconstruct_partsgroup(layer_data::Dict)
         error("Layer data missing '__julia_type__' key: $layer_data")
     end
     type_str = layer_data["__julia_type__"]
-    LayerType = _resolve_type(type_str)
+    LayerType = _resolve_type(type_str, @__MODULE__)
 
     # Use generic deserialization for the whole layer data first.
     # _deserialize_value now returns Dict{Symbol, Any} for plain dicts
@@ -508,7 +508,7 @@ function _reconstruct_cabledesign(
             end
 
             # Extract Type and necessary arguments for add!
-            LayerType = _resolve_type(layer_data["__julia_type__"])
+            LayerType = _resolve_type(layer_data["__julia_type__"], @__MODULE__)
             material_props = _deserialize_value(get(layer_data, "material_props", missing))
             ismissing(material_props) &&
                 error("Missing 'material_props' for conductor layer $i in $comp_id")
@@ -602,7 +602,7 @@ function _reconstruct_cabledesign(
                 continue
             end
 
-            LayerType = _resolve_type(layer_data["__julia_type__"])
+            LayerType = _resolve_type(layer_data["__julia_type__"], @__MODULE__)
             material_props = _deserialize_value(get(layer_data, "material_props", missing))
             ismissing(material_props) &&
                 error("Missing 'material_props' for insulator layer $i in $comp_id")
