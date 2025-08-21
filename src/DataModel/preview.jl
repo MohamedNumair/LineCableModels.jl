@@ -265,20 +265,6 @@ function LineCableModels.preview(
 
                 Shape(x_coords, y_coords)
             end
-            # arcshape(θ1, θ2, rin, rext, x0=0.0, y0=0.0, N=100) = begin
-            #     # Outer circle coordinates
-            #     outer_coords = Plots.partialcircle(θ1, θ2, N, rext)
-            #     x_outer = first.(outer_coords) .+ x0
-            #     y_outer = last.(outer_coords) .+ y0
-
-            #     # Inner circle coordinates (reversed to close the shape properly)
-            #     inner_coords = Plots.partialcircle(θ1, θ2, N, rin)
-            #     x_inner = reverse(first.(inner_coords)) .+ x0
-            #     y_inner = reverse(last.(inner_coords)) .+ y0
-
-            #     Shape(vcat(x_outer, x_inner), vcat(y_outer, y_inner))
-            # end
-
             shape = arcshape(0, 2π, radius_in, radius_ext, x0, y0)
             plot!(
                 plt,
@@ -379,6 +365,7 @@ function LineCableModels.preview(
     zoom_factor=0.25,
     backend=nothing,
     sz=(800, 600),
+    display_plot=true,
 )
     _resolve_backend(backend)
     plt = plot(size=sz,
@@ -449,11 +436,13 @@ function LineCableModels.preview(
 
     plot!(plt, xlim=(x_limits[1], x_limits[2]) .* zoom_factor)
 
-    if !_is_in_testset()
-        if _is_headless()
-            DisplayAs.Text(DisplayAs.PNG(plt))
-        else
-            display(plt)
+    if display_plot
+        if !_is_in_testset()
+            if _is_headless()
+                DisplayAs.Text(DisplayAs.PNG(plt))
+            else
+                display(plt)
+            end
         end
     end
 
