@@ -1,17 +1,10 @@
-using Test
-using LineCableModels
-using Measurements
+@testsnippet defs_materials begin
+    copper_props = Material(1.7241e-8, 1.0, 1.0, 20.0, 0.00393)
+    aluminum_props = Material(2.8264e-8, 1.0, 1.0, 20.0, 0.00429)
+    insulator_props = Material(1e14, 2.3, 1.0, 20.0, 0.0) # Basic insulator (like PE)
+end
 
-# Define a tolerance for floating-point comparisons
-const TEST_TOL = 1e-9
-
-# Define a standard material (e.g., copper) for tests that need it
-copper_props = Material(1.7241e-8, 1.0, 1.0, 20.0, 0.00393)
-aluminum_props = Material(2.8264e-8, 1.0, 1.0, 20.0, 0.00429)
-insulator_props = Material(1e14, 2.3, 1.0, 20.0, 0.0) # Basic insulator (like PE)
-
-@testset "BaseParams module" begin
-
+@testitem "BaseParams module" setup = [commons, defs_materials] begin
     @testset "Temperature correction" begin
         alpha = 0.004
         T0 = 20.0
@@ -382,5 +375,4 @@ insulator_props = Material(1e14, 2.3, 1.0, 20.0, 0.0) # Basic insulator (like PE
             TEST_TOL
         @test Measurements.uncertainty(R_m) > 0
     end
-
-end # BaseParams Module testset
+end
