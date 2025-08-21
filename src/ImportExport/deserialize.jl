@@ -13,22 +13,29 @@ into a Julia `Type` object. Assumes the type is loaded in the current environmen
 # Throws
 - `Error` if the type cannot be resolved.
 """
-function _resolve_type(type_str::String)
+# function _resolve_type(type_str::String)
+#     try
+#         # return Core.eval(Main, Meta.parse(type_str))
+#         # Alternative using getfield (might be slightly safer but less flexible with nested modules):
+#         parts = split(type_str, '.')
+#         current_module = Main
+#         for i in 1:length(parts)-1
+#             current_module = getfield(current_module, Symbol(parts[i]))
+#         end
+#         return getfield(current_module, Symbol(parts[end]))
+#     catch e
+#         @error "Could not resolve type '$type_str'. Ensure module structure is correct and type is loaded in Main."
+#         rethrow(e)
+#     end
+# end
+function _resolve_type(type_str::String, root_module::Module)
     try
-        return Core.eval(Main, Meta.parse(type_str))
-        # Alternative using getfield (might be slightly safer but less flexible with nested modules):
-        # parts = split(type_str, '.')
-        # current_module = Main
-        # for i in 1:length(parts)-1
-        #     current_module = getfield(current_module, Symbol(parts[i]))
-        # end
-        # return getfield(current_module, Symbol(parts[end]))
+        return Core.eval(root_module, Meta.parse(type_str))
     catch e
         @error "Could not resolve type '$type_str'. Ensure module structure is correct and type is loaded in Main."
         rethrow(e)
     end
 end
-
 """
 $(TYPEDSIGNATURES)
 
@@ -81,7 +88,7 @@ function _deserialize_value(value)
         if haskey(value, "__julia_type__")
             type_str = value["__julia_type__"]
             try
-                T = _resolve_type(type_str)
+                T = _resolve_type(type_str, @__MODULE__)
                 # Delegate object construction to _deserialize_obj
                 return _deserialize_obj(value, T)
             catch e
