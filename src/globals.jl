@@ -120,8 +120,26 @@ else
 end
 ```
 """
+# function _is_headless()::Bool
+#     return haskey(ENV, "CI") || !haskey(ENV, "DISPLAY")
+# end
 function _is_headless()::Bool
-    return haskey(ENV, "CI") || !haskey(ENV, "DISPLAY")
+    # 1. Check for common CI environment variables
+    if get(ENV, "CI", "false") == "true"
+        return true
+    end
+
+    # 2. Check if a display is available (primarily for Linux)
+    if !haskey(ENV, "DISPLAY") && Sys.islinux()
+        return true
+    end
+
+    # 3. Check for GR backend's specific headless setting
+    if get(ENV, "GKSwstype", "") in ("100", "nul", "nil")
+        return true
+    end
+
+    return false
 end
 
 function _display_path(file_name)
@@ -135,12 +153,34 @@ Checks if the code is running inside a `@testset` by checking if `Test` is loade
 in the current session and then calling `get_testset_depth()`.
 """
 function _is_in_testset()
-    if isdefined(Main, :Test)
-        # If Test is loaded, we can safely access its functions
-        return Main.Test.get_testset_depth() > 0
+    # Start with the current module
+    current_module = @__MODULE__
+
+    # Walk up the module tree (e.g., from the sandbox to Main)
+    while true
+        if isdefined(current_module, :Test) &&
+           isdefined(current_module.Test, :get_testset_depth)
+            # Found the Test module, check the test set depth
+            return current_module.Test.get_testset_depth() > 0
+        end
+
+        # Move to the parent module
+        parent = parentmodule(current_module)
+        if parent === current_module # Reached the top (Main)
+            break
+        end
+        current_module = parent
     end
+
     return false
 end
+# function _is_in_testset()
+#     if isdefined(Main, :Test)
+#         # If Test is loaded, we can safely access its functions
+#         return Main.Test.get_testset_depth() > 0
+#     end
+#     return false
+# end
 
 # """
 #     _get_args_T(args...)
