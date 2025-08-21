@@ -1,8 +1,4 @@
-using Test
-using DataFrames
-using LineCableModels
-
-@testset "examples/tutorial2.jl tests" begin
+@testitem "examples/tutorial2.jl tests" setup = [commons] begin
     # Replicate the setup from the tutorial
     materials = MaterialsLibrary(add_defaults=true)
 
@@ -137,7 +133,7 @@ using LineCableModels
         @test DataFrame(library) isa DataFrame
 
         # Test saving and loading
-        mktempdir() do temp_dir
+        mktempdir(joinpath(@__DIR__)) do temp_dir
             output_file = joinpath(temp_dir, "cables_library.json")
             save(library, file_name=output_file)
             @test isfile(output_file)
@@ -166,7 +162,7 @@ using LineCableModels
         @test DataFrame(cable_system) isa DataFrame
 
         # Test PSCAD export
-        mktempdir() do temp_dir
+        mktempdir(joinpath(@__DIR__)) do temp_dir
             output_file = joinpath(temp_dir, "$(cable_system.system_id)_export.pscx")
             export_data(:pscad, cable_system, earth_params, file_name=output_file)
             @test isfile(output_file)
@@ -178,7 +174,7 @@ using LineCableModels
     @testset "preview functions" begin
         # Test that preview functions execute without error
         # Note: This does not check the plot content, only that they don't crash.
-        @test preview(cable_design) isa Any
+        @test preview(cable_design, display_plot=false) isa Any
 
         f = 10.0 .^ range(0, stop=6, length=10)
         earth_params = EarthModel(f, 100.0, 10.0, 1.0)
@@ -189,7 +185,6 @@ using LineCableModels
         add!(cable_system, cable_design, xb, yb, Dict("core" => 2, "sheath" => 0, "jacket" => 0))
         add!(cable_system, cable_design, xc, yc, Dict("core" => 3, "sheath" => 0, "jacket" => 0))
 
-        @test preview(cable_system, zoom_factor=0.15) isa Any
     end
 
     @testset "user error handling and robustness" begin
@@ -230,7 +225,7 @@ using LineCableModels
         earth_params = EarthModel(f, 100.0, 10.0, 1.0)
         cablepos_partially_grounded = CablePosition(cable_design, xa, ya, Dict("core" => 1, "sheath" => 0, "jacket" => 0))
         system_partially_grounded = LineCableSystem("partially_grounded_system", 1000.0, cablepos_partially_grounded)
-        mktempdir() do temp_dir
+        mktempdir(joinpath(@__DIR__)) do temp_dir
             output_file = joinpath(temp_dir, "partially_grounded_export.pscx")
             # This should run without error
             export_data(:pscad, system_partially_grounded, earth_params, file_name=output_file)

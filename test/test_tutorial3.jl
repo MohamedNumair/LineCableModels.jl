@@ -1,10 +1,7 @@
-using Test
-using LineCableModels
-using DataFrames
+@testitem "examples/tutorial3.jl tests" setup = [commons] begin
 
-@testset "examples/tutorial3.jl tests" begin
 
-    mktempdir() do tmpdir
+    mktempdir(joinpath(@__DIR__)) do tmpdir
         # Materials
         materials = MaterialsLibrary(add_defaults=true)
         lead = Material(21.4e-8, 1.0, 0.999983, 20.0, 0.00400)

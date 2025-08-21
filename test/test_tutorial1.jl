@@ -1,17 +1,13 @@
-using Test
-using DataFrames
-using LineCableModels
+@testitem "examples/tutorial1.jl tests" setup = [commons] begin
 
-# Helpers
-function material_approx_equal(m::Material, rho, eps_r, mu_r, T0, alpha; atol=1e-12, rtol=1e-8)
-    return isapprox(m.rho, rho; atol=atol, rtol=rtol) &&
-           isapprox(m.eps_r, eps_r; atol=atol, rtol=rtol) &&
-           isapprox(m.mu_r, mu_r; atol=atol, rtol=rtol) &&
-           isapprox(m.T0, T0; atol=atol, rtol=rtol) &&
-           isapprox(m.alpha, alpha; atol=atol, rtol=rtol)
-end
-
-@testset "examples/tutorial1.jl tests" begin
+    # Helpers
+    function material_approx_equal(m::Material, rho, eps_r, mu_r, T0, alpha; atol=1e-12, rtol=1e-8)
+        return isapprox(m.rho, rho; atol=atol, rtol=rtol) &&
+               isapprox(m.eps_r, eps_r; atol=atol, rtol=rtol) &&
+               isapprox(m.mu_r, mu_r; atol=atol, rtol=rtol) &&
+               isapprox(m.T0, T0; atol=atol, rtol=rtol) &&
+               isapprox(m.alpha, alpha; atol=atol, rtol=rtol)
+    end
 
     @testset "initialize and inspect" begin
         materials = MaterialsLibrary()  # default initialization as in the tutorial
