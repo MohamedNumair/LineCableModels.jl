@@ -35,7 +35,7 @@ include("commondeps.jl")
 using Measurements
 using DataFrames
 using ..Utils
-import ..LineCableModels: _coerce_args_to_T, _coerce_scalar_to_T, _coerce_array_to_T
+import ..LineCableModels: coerce_to_T
 
 include("EarthProps/fdprops.jl")
 
@@ -103,7 +103,7 @@ println(layer.mu_g)  # Output: [1.2566e-6, 1.2566e-6, 1.2566e-6]
 
 - [`CPEarth`](@ref)
 """
-@measurify function EarthLayer(
+function EarthLayer(
     frequencies::Vector{T},
     base_rho_g::T,
     base_epsr_g::T,
@@ -121,6 +121,18 @@ println(layer.mu_g)  # Output: [1.2566e-6, 1.2566e-6, 1.2566e-6]
         rho_g,
         eps_g,
         mu_g,
+    )
+end
+
+function EarthLayer(frequencies::AbstractVector, base_rho_g, base_epsr_g, base_mur_g, t, freq_dependence)
+    T = resolve_T(frequencies, base_rho_g, base_epsr_g, base_mur_g, t)
+    return EarthLayer(
+        coerce_to_T(frequencies, T),
+        coerce_to_T(base_rho_g, T),
+        coerce_to_T(base_epsr_g, T),
+        coerce_to_T(base_mur_g, T),
+        coerce_to_T(t, T),
+        freq_dependence,
     )
 end
 
@@ -142,10 +154,10 @@ struct EarthModel{T<:REALSCALAR}
     @doc """
     Constructs an [`EarthModel`](@ref) instance with specified attributes.
     """
-    function EarthModel{T}(fd::AbstractFDEMFormulation,
-        vl::Bool,
+    function EarthModel{T}(freq_dependence::AbstractFDEMFormulation,
+        vertical_layers::Bool,
         layers::Vector{EarthLayer{T}}) where {T<:REALSCALAR}
-        new{T}(fd, vl, layers)
+        new{T}(freq_dependence, vertical_layers, layers)
     end
 end
 
@@ -183,7 +195,7 @@ println(earth_model.rho_eff) # Output: missing
 - [`EarthLayer`](@ref)
 - [`add!`](@ref)
 """
-@measurify function EarthModel(
+function EarthModel(
     frequencies::Vector{T},
     rho_g::T,
     epsr_g::T,
@@ -218,6 +230,29 @@ println(earth_model.rho_eff) # Output: missing
         freq_dependence,
         vertical_layers,
         [air_layer, top_layer]
+    )
+end
+
+function EarthModel(
+    frequencies::AbstractVector,
+    rho_g,
+    epsr_g,
+    mur_g;
+    t=Inf,
+    freq_dependence=CPEarth(),
+    vertical_layers=false,
+    air_layer=nothing,
+)
+    T = resolve_T(frequencies, rho_g, epsr_g, mur_g, t, freq_dependence, vertical_layers, air_layer)
+    return EarthModel(
+        coerce_to_T(frequencies, T),
+        coerce_to_T(rho_g, T),
+        coerce_to_T(epsr_g, T),
+        coerce_to_T(mur_g, T);
+        t=coerce_to_T(t, T),
+        freq_dependence=freq_dependence,
+        vertical_layers=vertical_layers,
+        air_layer=air_layer === nothing ? nothing : coerce_to_T(air_layer, T),
     )
 end
 
@@ -298,7 +333,7 @@ println(length(vert_earth_model.layers)) # Output: 4
 
 - [`EarthLayer`](@ref)
 """
-@measurify function LineCableModels.add!(
+function LineCableModels.add!(
     model::EarthModel{T},
     frequencies::Vector{T},
     base_rho_g::T,
@@ -344,6 +379,45 @@ println(length(vert_earth_model.layers)) # Output: 4
     push!(model.layers, new_layer)
 
     model
+end
+
+function LineCableModels.add!(model::EarthModel, frequencies::AbstractVector, base_rho_g, base_epsr_g, base_mur_g; t=Inf)
+
+    # Resolve the required type from ALL inputs (the model + the new layer)
+    T_new = resolve_T(model, frequencies, base_rho_g, base_epsr_g, base_mur_g, t)
+    T_old = eltype(model)
+
+    if T_new == T_old
+        # CASE 1: No promotion needed. The model already has the correct type.
+        # This is the fast path that mutates the existing model.
+        return LineCableModels.add!(
+            model, # Pass the original model
+            coerce_to_T(frequencies, T_new),
+            coerce_to_T(base_rho_g, T_new),
+            coerce_to_T(base_epsr_g, T_new),
+            coerce_to_T(base_mur_g, T_new);
+            t=coerce_to_T(t, T_new),
+        )
+    else
+        # CASE 2: Promotion is required (e.g., from Float64 to Measurement).
+        @warn """
+        Adding a `$T_new` layer to a `$T_old` EarthModel created a new object and did NOT modify the original in-place.
+        You MUST capture the returned value to avoid losing changes, e.g.  `earth_model = add!(earth_model, ...)`
+        """
+
+        # 1. Create a new model by coercing the original one to the new type.
+        promoted_model = coerce_to_T(model, T_new)
+
+        # 2. Call the inner add! method on the NEWLY CREATED model.
+        return LineCableModels.add!(
+            promoted_model,
+            coerce_to_T(frequencies, T_new),
+            coerce_to_T(base_rho_g, T_new),
+            coerce_to_T(base_epsr_g, T_new),
+            coerce_to_T(base_mur_g, T_new);
+            t=coerce_to_T(t, T_new),
+        )
+    end
 end
 
 include("EarthProps/convert.jl")

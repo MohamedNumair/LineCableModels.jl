@@ -2,6 +2,7 @@ module LineCableModels
 
 # Package-wide definitions
 include("globals.jl")
+include("typecoercion.jl")
 include("logging.jl")
 include("macros.jl")
 

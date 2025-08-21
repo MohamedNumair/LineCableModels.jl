@@ -319,12 +319,12 @@ end
         @test all(≈(ρM), earth.rho_g)
     end
 
-    # --- EarthModel: scalars Float64, freqs Measurement (down-mix) ---
+    # --- EarthModel: scalars Float64, freqs Measurement ---
     @testset "EarthModel: freqs Measurement, scalars Float64" begin
         model = EarthModel(freqsM, ρF, εF, μF; t=10.0)
         @test length(model.layers) == 2
         earth = model.layers[2]
-        Texp = promT(ρF, εF, μF)  # Float64
+        Texp = eltype(freqsM)
         @test earth.base_rho_g isa Texp
         @test eltype(earth.rho_g) === Texp
         @test all(≈(ρF), earth.rho_g)
@@ -344,14 +344,14 @@ end
         @test all(x -> value(x) ≈ 200.0 && uncertainty(x) ≈ 0.0, bottom_layer.rho_g)
     end
 
-    # --- add!: Float64 model, add Measurement layers (demote to Float64 nominal) ---
+    # --- add!: Float64 model, add Measurement layers ---
     @testset "add!: model T=Float64, add Measurement" begin
         modelF = EarthModel(freqsF, ρF, εF, μF; t=25.0)
-        add!(modelF, freqsF, ρM, εM, μM; t=12.0)  # uncertainty dropped by convert(Float64, ·)
+        modelF = add!(modelF, freqsF, ρM, εM, μM; t=12.0)
         bottom_layer = last(modelF.layers)
-        @test bottom_layer.base_rho_g isa Float64
+        @test bottom_layer.base_rho_g isa typeof(ρM)
         @test bottom_layer.base_rho_g ≈ value(ρM)
-        @test eltype(bottom_layer.rho_g) === Float64
+        @test eltype(bottom_layer.rho_g) === typeof(ρM)
         @test all(≈(value(ρM)), bottom_layer.rho_g)
         # model T=Float64, adding Measurement ⇒ MUST capture widened model
         modelF = EarthModel(freqsF, ρF, εF, μF; t=25.0)
@@ -364,7 +364,7 @@ end
         tM = measurement(7.5, 0.3)
         layer = EP.EarthLayer(freqsF, ρF, εF, μF, tM, EP.CPEarth())
         # If your method ties a single T across all args, this lifts everything to Measurement
-        @test layer.t === tM
+        @test isapprox(layer.t, tM)
         @test layer.base_rho_g isa promote_type(typeof(ρF), typeof(tM))
     end
 end

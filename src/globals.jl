@@ -23,7 +23,7 @@ const TOL = 1e-6
 using Reexport, ForceImport
 
 # Define aliases for the type constraints
-using Measurements: Measurement, value
+using Measurements: Measurement, value, uncertainty, measurement
 const BASE_FLOAT = Float64
 const REALSCALAR = Union{BASE_FLOAT,Measurement{BASE_FLOAT}}
 const COMPLEXSCALAR = Union{Complex{BASE_FLOAT},Complex{Measurement{BASE_FLOAT}}}
@@ -142,11 +142,31 @@ function _is_in_testset()
     return false
 end
 
-@inline _coerce_args_to_T(args...) =
+# """
+#     _get_args_T(args...)
+
+# Recursively determines the common type for arguments (including structs, arrays, tuples):
+# - If any field/element is a Measurement, returns `Measurement{BASE_FLOAT}`.
+# - Otherwise, returns `BASE_FLOAT`.
+# """
+# function _get_arg_T(args...)
+#     has_measurement(x) =
+#         x isa Measurement ||
+#         (x isa AbstractArray && eltype(x) <: Measurement) ||
+#         (x isa NamedTuple && any(has_measurement, values(x))) ||
+#         (x isa Tuple && any(has_measurement, x)) ||
+#         (_isstructtype(typeof(x)) && any(has_measurement, getfield.(Ref(x), fieldnames(typeof(x)))))
+#     any(has_measurement, args) ? Measurement{BASE_FLOAT} : BASE_FLOAT
+# end
+
+# # Helper to check if a type is a struct (not primitive, not array, not tuple)
+# _isstructtype(T::Type) = isconcretetype(T) && !ismutable(T) && !T <: AbstractArray && !T <: Tuple && !T <: Number
+
+_coerce_args_to_T(args...) =
     any(x -> x isa Measurement, args) ? Measurement{BASE_FLOAT} : BASE_FLOAT
 
 # Promote scalar to T if T is Measurement; otherwise take nominal if x is Measurement.
-@inline function _coerce_scalar_to_T(x, ::Type{T}) where {T}
+function _coerce_scalar_to_T(x, ::Type{T}) where {T}
     if T <: Measurement
         return x isa Measurement ? x : (zero(T) + x)
     else

@@ -112,7 +112,7 @@ println(mu)      # Output: [1.2566e-6, 1.2566e-6, 1.2566e-6]
 
 - [`EarthLayer`](@ref)
 """
-@measurify function (f::CPEarth)(frequencies::Vector{T}, base_rho_g::T, base_epsr_g::T,
+function (f::CPEarth)(frequencies::Vector{T}, base_rho_g::T, base_epsr_g::T,
     base_mur_g::T) where {T<:REALSCALAR}
 
     # Preallocate for performance
@@ -129,4 +129,12 @@ println(mu)      # Output: [1.2566e-6, 1.2566e-6, 1.2566e-6]
     return rho, epsilon, mu
 end
 
-
+function (f::CPEarth)(frequencies::AbstractVector, base_rho_g, base_epsr_g, base_mur_g)
+    T = resolve_T(frequencies, base_rho_g, base_epsr_g, base_mur_g)
+    return f(
+        coerce_to_T(frequencies, T),
+        coerce_to_T(base_rho_g, T),
+        coerce_to_T(base_epsr_g, T),
+        coerce_to_T(base_mur_g, T),
+    )
+end
