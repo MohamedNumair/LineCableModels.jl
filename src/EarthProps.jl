@@ -420,7 +420,7 @@ function LineCableModels.add!(model::EarthModel, frequencies::AbstractVector, ba
     end
 end
 
-include("EarthProps/convert.jl")
+include("EarthProps/typecoercion.jl")
 include("EarthProps/dataframe.jl")
 include("EarthProps/io.jl")
 

@@ -33,3 +33,19 @@ function coerce_to_T(layer::EarthLayer, ::Type{T}) where {T}
 end
 
 Base.eltype(::EarthModel{T}) where {T} = T
+
+function Base.convert(::Type{EarthModel{T}}, model::EarthModel) where {T}
+    # If the model is already the target type, return it without modification.
+    model isa EarthModel{T} && return model
+
+    # Delegate the actual conversion logic to the existing coerce_to_T function.
+    return coerce_to_T(model, T)
+end
+
+function Base.convert(::Type{EarthLayer{T}}, layer::EarthLayer) where {T}
+    # Avoid unnecessary work if the layer is already the correct type.
+    layer isa EarthLayer{T} && return layer
+
+    # Delegate the conversion logic to the specialized coerce_to_T function.
+    return coerce_to_T(layer, T)
+end
