@@ -13,29 +13,15 @@ into a Julia `Type` object. Assumes the type is loaded in the current environmen
 # Throws
 - `Error` if the type cannot be resolved.
 """
-# function _resolve_type(type_str::String)
-#     try
-#         # return Core.eval(Main, Meta.parse(type_str))
-#         # Alternative using getfield (might be slightly safer but less flexible with nested modules):
-#         parts = split(type_str, '.')
-#         current_module = Main
-#         for i in 1:length(parts)-1
-#             current_module = getfield(current_module, Symbol(parts[i]))
-#         end
-#         return getfield(current_module, Symbol(parts[end]))
-#     catch e
-#         @error "Could not resolve type '$type_str'. Ensure module structure is correct and type is loaded in Main."
-#         rethrow(e)
-#     end
-# end
-function _resolve_type(type_str::String, root_module::Module)
+function _resolve_type(type_str::String)
     try
-        return Core.eval(root_module, Meta.parse(type_str))
+        return Core.eval(@__MODULE__, Meta.parse(type_str))
     catch e
         @error "Could not resolve type '$type_str'. Ensure module structure is correct and type is loaded in Main."
         rethrow(e)
     end
 end
+
 """
 $(TYPEDSIGNATURES)
 
@@ -56,14 +42,14 @@ function _deserialize_value(value)
             type_marker = value["__type__"]
             if type_marker == "Measurement"
                 # Reconstruct Measurement
-                val = _deserialize_value(get(value, "value", nothing))
-                unc = _deserialize_value(get(value, "uncertainty", nothing))
-                if isa(val, Number) && isa(unc, Number)
-                    return val ± unc
+                uncval = get_as(value, "uncertainty", nothing, Measurement)
+                if isa(uncval, Measurement)
+                    return uncval
                 else
-                    @warn "Could not reconstruct Measurement from non-numeric parts: value=$(typeof(val)), uncertainty=$(typeof(unc)). Returning original Dict."
+                    @warn "Could not reconstruct Measurement from input: value=$(typeof(get_as(value, "value", nothing, BASE_FLOAT))), uncertainty=$(typeof(get_as(value, "uncertainty", nothing, BASE_FLOAT))). Returning original Dict."
                     return value # Return original dict if parts are invalid
                 end
+
             elseif type_marker == "SpecialFloat"
                 # Reconstruct Inf/NaN
                 val_str = get(value, "value", "")
@@ -78,6 +64,16 @@ function _deserialize_value(value)
                 end
                 @warn "Unknown SpecialFloat value: '$val_str'. Returning original Dict."
                 return value
+
+            elseif type_marker == "Float"
+                return get_as(value, "value", nothing, BASE_FLOAT)
+
+            elseif type_marker == "Int"
+                return get_as(value, "value", nothing, Int)
+
+            elseif type_marker == "Complex"
+                return get_as(value, "value", nothing, Complex)
+
             else
                 @warn "Unknown __type__ marker: '$type_marker'. Processing as regular dictionary."
                 # Fall through to regular dictionary processing
@@ -88,31 +84,56 @@ function _deserialize_value(value)
         if haskey(value, "__julia_type__")
             type_str = value["__julia_type__"]
             try
-                T = _resolve_type(type_str, @__MODULE__)
+                T = _resolve_type(type_str)
                 # Delegate object construction to _deserialize_obj
                 return _deserialize_obj(value, T)
             catch e
                 # Catch errors specifically from _deserialize_obj or _resolve_type
                 @error "Failed to resolve or deserialize type '$type_str': $e. Returning original Dict."
-                # Optionally print stack trace for debugging
-                # showerror(stderr, e, catch_backtrace())
-                # println(stderr)
+                showerror(stderr, e, catch_backtrace())
+                println(stderr)
                 return value # Return original dict on error
             end
         end
-
-        # If no special markers, process as a regular dictionary
-        # Recursively deserialize values, using SYMBOL keys
-        # *** FIX APPLIED HERE ***
         return Dict(Symbol(k) => _deserialize_value(v) for (k, v) in value)
 
     elseif value isa Vector
         # Recursively deserialize array elements
         return [_deserialize_value(v) for v in value]
+
     else
         # Basic JSON types (Number, String, Bool, Nothing) pass through
         return value
+
     end
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Retrieves a value from a dictionary by key, deserializes it, and coerces it to the specified type `T`. Returns a default value if the key is missing or the value is `missing`.
+
+# Arguments
+
+- `d`: The dictionary to query.
+- `key`: The key to look up (symbol or string).
+- `default`: The value to return if the key is not present.
+- `T`: The target type for coercion.
+
+# Returns
+
+- The value associated with `key` in `d`, deserialized and coerced to type `T`, or `default` if the key is missing or the value is `missing`.
+
+# Examples
+
+```julia
+result = $(FUNCTIONNAME)(Dict(:a => 1), :a, 0, Int)  # Returns 1
+result = $(FUNCTIONNAME)(Dict(), :b, 42, Int)        # Returns 42
+```
+"""
+get_as(d::AbstractDict, key::Union{Symbol,AbstractString}, default, ::Type{T}) where {T} = begin
+    v = get(d, key, default)
+    v === missing ? missing : coerce_to_T(_deserialize_value(v), T)
 end
 
 """
