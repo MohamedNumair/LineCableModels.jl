@@ -224,7 +224,7 @@ mean_diam, pitch, overlength = $(FUNCTIONNAME)(radius_in, radius_ext, lay_ratio)
 function calc_helical_params(radius_in::T, radius_ext::T, lay_ratio::T) where {T<:REALSCALAR}
     mean_diameter = 2 * (radius_in + (radius_ext - radius_in) / 2)
     pitch_length = lay_ratio * mean_diameter
-    overlength = pitch_length != 0 ? sqrt(1 + (π * mean_diameter / pitch_length)^2) : 1
+    overlength = !isapprox(pitch_length, 0.0) ? sqrt(1 + (π * mean_diameter / pitch_length)^2) : 1
 
     return mean_diameter, pitch_length, overlength
 end
@@ -738,21 +738,21 @@ println(gmr) # Expected output: ~0.0135 [m]
 ```
 """
 function calc_tubular_gmr(radius_ext::T, radius_in::T, mu_r::T) where {T<:REALSCALAR}
-    if radius_ext < radius_in
-        throw(ArgumentError("Invalid parameters: radius_ext must be >= radius_in."))
+    if (radius_ext < radius_in) || (radius_ext <= 0.0)
+        throw(ArgumentError("Invalid parameters: radius_ext must be >= radius_in and positive."))
     end
 
     # Constants
-    if abs(radius_ext - radius_in) < TOL
+    if isapprox(radius_in, radius_ext)
         # Tube collapses into a thin shell with infinitesimal thickness and the GMR is simply the radius
         gmr = radius_ext
     elseif abs(radius_in / radius_ext) < eps() && abs(radius_in) > TOL
         # Tube becomes infinitely thick up to floating point precision
         gmr = Inf
     else
-        term1 =
-            radius_in == 0 ? 0 :
-            (radius_in^4 / (radius_ext^2 - radius_in^2)^2) * log(radius_ext / radius_in)
+        is_solid = isapprox(radius_in, 0.0)
+        term1 = is_solid ? 0.0 :
+                (radius_in^4 / (radius_ext^2 - radius_in^2)^2) * log(radius_ext / radius_in)
         term2 = (3 * radius_in^2 - radius_ext^2) / (4 * (radius_ext^2 - radius_in^2))
         Lin = (μ₀ * mu_r / (2 * π)) * (term1 - term2)
 
@@ -812,20 +812,19 @@ gmr = 0.015
 radius_ext = 0.02
 radius_in = 0.01
 mu_r = $(FUNCTIONNAME)(gmr, radius_ext, radius_in)
-println(mu_r) # Expected output: ~1.5 [dimensionless]
+println(mu_r) # Expected output: ~1.7 [dimensionless]
 ```
 
 # See also
 - [`calc_tubular_gmr`](@ref)
 """
 function calc_equivalent_mu(gmr::T, radius_ext::T, radius_in::T) where {T<:REALSCALAR}
-    if radius_ext < radius_in
-        throw(ArgumentError("Invalid parameters: radius_ext must be >= radius_in."))
+    if (radius_ext < radius_in) || (radius_ext <= 0.0)
+        throw(ArgumentError("Invalid parameters: radius_ext must be >= radius_in and positive."))
     end
-
-    term1 =
-        radius_in == 0 ? 0 :
-        (radius_in^4 / (radius_ext^2 - radius_in^2)^2) * log(radius_ext / radius_in)
+    is_solid = isapprox(radius_in, 0.0) || isapprox(radius_in, radius_ext)
+    term1 = is_solid ? 0.0 :
+            (radius_in^4 / (radius_ext^2 - radius_in^2)^2) * log(radius_ext / radius_in)
     term2 = (3 * radius_in^2 - radius_ext^2) / (4 * (radius_ext^2 - radius_in^2))
     # Compute the log difference
     log_diff = log(gmr) - log(radius_ext)
@@ -969,20 +968,12 @@ equivalent_gmr = $(FUNCTIONNAME)(conductor, new_layer)  # Expected output: Updat
 
 - [`calc_gmd`](@ref)
 """
-function calc_equivalent_gmr(existing::AbstractCablePart, new_layer::AbstractCablePart)
+function calc_equivalent_gmr(existing::T, new_layer::U) where {T<:AbstractCablePart,U<:AbstractCablePart}
     beta = existing.cross_section / (existing.cross_section + new_layer.cross_section)
     current_conductor = existing isa ConductorGroup ? existing.layers[end] : existing
     gmd = calc_gmd(current_conductor, new_layer)
     return existing.gmr^(beta^2) * new_layer.gmr^((1 - beta)^2) *
            gmd^(2 * beta * (1 - beta))
-end
-
-function calc_equivalent_gmr(existing, new_layer)
-    T = resolve_T(existing, new_layer)
-    return calc_equivalent_gmr(
-        coerce_to_T(existing, T),
-        coerce_to_T(new_layer, T),
-    )
 end
 
 """
@@ -1033,7 +1024,7 @@ gmd = $(FUNCTIONNAME)(strip, tubular)  # Expected output: GMD value [m]
 - [`calc_wirearray_coords`](@ref)
 - [`calc_equivalent_gmr`](@ref)
 """
-function calc_gmd(co1::AbstractCablePart, co2::AbstractCablePart)
+function calc_gmd(co1::T, co2::U) where {T<:AbstractCablePart,U<:AbstractCablePart}
 
     if co1 isa WireArray
         coords1 = calc_wirearray_coords(co1.num_wires, co1.radius_wire, co1.radius_in)
@@ -1041,7 +1032,7 @@ function calc_gmd(co1::AbstractCablePart, co2::AbstractCablePart)
         r1 = co1.radius_wire
         s1 = pi * r1^2
     else
-        coords1 = [(0, 0)]
+        coords1 = [(0.0, 0.0)]
         n1 = 1
         r1 = co1.radius_ext
         s1 = co1.cross_section
@@ -1053,7 +1044,7 @@ function calc_gmd(co1::AbstractCablePart, co2::AbstractCablePart)
         r2 = co2.radius_wire
         s2 = pi * r2^2
     else
-        coords2 = [(0, 0)]
+        coords2 = [(0.0, 0.0)]
         n2 = 1
         r2 = co2.radius_ext
         s2 = co2.cross_section
