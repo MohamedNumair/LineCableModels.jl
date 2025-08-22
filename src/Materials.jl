@@ -75,5 +75,6 @@ Base.convert(::Type{Material{T}}, m::Material) where {T<:REALSCALAR} =
 include("Materials/materialslibrary.jl")
 include("Materials/dataframe.jl")
 include("Materials/io.jl")
+include("Materials/typecoercion.jl")
 
 end # module Materials
