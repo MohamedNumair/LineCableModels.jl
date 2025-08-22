@@ -85,3 +85,15 @@ coerce_to_T(nt::NamedTuple, ::Type{T}) where {T} =
 
 # Fallback for other types.
 coerce_to_T(x, ::Type{T}) where {T} = _coerce_elt_to_T(x, T)
+
+# Element-wise coercion for Measurements
+coerce_to_T(m::Measurement, ::Type{T}) where {T<:REALSCALAR} = Measurement(
+    coerce_to_T(m.value, T),
+    coerce_to_T(m.uncertainty, T)
+)
+
+# Element-wise coercion for Complex
+coerce_to_T(m::Complex, ::Type{T}) where {T<:REALSCALAR} = Complex(
+    coerce_to_T(real(m), T),
+    coerce_to_T(imag(m), T)
+)
