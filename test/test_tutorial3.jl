@@ -1,4 +1,4 @@
-@testitem "examples/tutorial3.jl tests" setup = [commons] begin
+@testitem "examples/tutorial3.jl tests" setup = [defaults] begin
 
 
     mktempdir(joinpath(@__DIR__)) do tmpdir
