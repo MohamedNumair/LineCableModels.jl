@@ -286,4 +286,6 @@ function percent_error(m::Number)
     end
 end
 
+@inline _nudge_float(x::AbstractFloat) = isfinite(x) && x == trunc(x) ? nextfloat(x) : x #redundant and I dont care
+
 end # module Utils
