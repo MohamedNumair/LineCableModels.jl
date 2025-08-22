@@ -199,7 +199,7 @@ function LineCableModels.preview(
 )
     if isnothing(plt)
         # Choose appropriate backend based on environment
-        _resolve_backend(backend)
+        LineCableModels._resolve_backend(backend)
         plt = plot(size=sz,
             aspect_ratio=:equal,
             legend=(0.875, 1.0),
@@ -316,8 +316,8 @@ function LineCableModels.preview(
     end
 
     if display_plot
-        if !_is_in_testset()
-            if _is_headless()
+        if !LineCableModels._is_in_testset()
+            if LineCableModels._is_headless()
                 DisplayAs.Text(DisplayAs.PNG(plt))
             else
                 display(plt)
@@ -367,7 +367,7 @@ function LineCableModels.preview(
     sz=(800, 600),
     display_plot=true,
 )
-    _resolve_backend(backend)
+    LineCableModels._resolve_backend(backend)
     plt = plot(size=sz,
         aspect_ratio=:equal,
         legend=(0.8, 0.9),
@@ -437,8 +437,8 @@ function LineCableModels.preview(
     plot!(plt, xlim=(x_limits[1], x_limits[2]) .* zoom_factor)
 
     if display_plot
-        if !_is_in_testset()
-            if _is_headless()
+        if !LineCableModels._is_in_testset()
+            if LineCableModels._is_headless()
                 DisplayAs.Text(DisplayAs.PNG(plt))
             else
                 display(plt)
@@ -447,42 +447,4 @@ function LineCableModels.preview(
     end
 
     return plt
-end
-
-"""
-$(TYPEDSIGNATURES)
-
-Selects the appropriate plotting backend based on the environment.
-
-# Arguments
-
-- `backend`: Optional explicit backend to use. If provided, this backend will be activated.
-
-# Returns
-
-Nothing. The function activates the chosen backend.
-
-# Notes
-
-Automatically selects GR for headless environments (CI or no DISPLAY) and PlotlyJS
-for interactive use when no backend is explicitly specified. This is particularly needed when running within CI environments.
-
-# Examples
-
-```julia
-_resolve_backend()           # Auto-selects based on environment
-_resolve_backend(pyplot)     # Explicitly use PyPlot backend
-```
-"""
-function _resolve_backend(backend=nothing)
-    if isnothing(backend) # Check if running in a headless environment 
-        if _is_headless() # Use GR for CI/headless environments
-            ENV["GKSwstype"] = "100"
-            gr()
-        else # Use PlotlyJS for interactive use 
-            plotlyjs()
-        end
-    else # Use the specified backend if provided 
-        backend()
-    end
 end
