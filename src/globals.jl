@@ -120,9 +120,6 @@ else
 end
 ```
 """
-# function _is_headless()::Bool
-#     return haskey(ENV, "CI") || !haskey(ENV, "DISPLAY")
-# end
 function _is_headless()::Bool
     # 1. Check for common CI environment variables
     if get(ENV, "CI", "false") == "true"
@@ -143,7 +140,7 @@ function _is_headless()::Bool
 end
 
 function _display_path(file_name)
-    return _is_headless() ? basename(file_name) : relpath(file_name) #abspath(file_name)
+    return LineCableModels._is_headless() ? basename(file_name) : relpath(file_name)
 end
 
 """
@@ -174,13 +171,44 @@ function _is_in_testset()
 
     return false
 end
-# function _is_in_testset()
-#     if isdefined(Main, :Test)
-#         # If Test is loaded, we can safely access its functions
-#         return Main.Test.get_testset_depth() > 0
-#     end
-#     return false
-# end
+
+"""
+$(TYPEDSIGNATURES)
+
+Selects the appropriate plotting backend based on the environment.
+
+# Arguments
+
+- `backend`: Optional explicit backend to use. If provided, this backend will be activated.
+
+# Returns
+
+Nothing. The function activates the chosen backend.
+
+# Notes
+
+Automatically selects GR for headless environments (CI or no DISPLAY) and PlotlyJS
+for interactive use when no backend is explicitly specified. This is particularly needed when running within CI environments.
+
+# Examples
+
+```julia
+LineCableModels._resolve_backend()           # Auto-selects based on environment
+LineCableModels._resolve_backend(pyplot)     # Explicitly use PyPlot backend
+```
+"""
+function _resolve_backend(backend=nothing)
+    if isnothing(backend) # Check if running in a headless environment 
+        if LineCableModels._is_headless() # Use GR for CI/headless environments
+            ENV["GKSwstype"] = "100"
+            gr()
+        else # Use PlotlyJS for interactive use 
+            plotlyjs()
+        end
+    else # Use the specified backend if provided 
+        backend()
+    end
+end
 
 # """
 #     _get_args_T(args...)
