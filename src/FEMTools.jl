@@ -39,7 +39,7 @@ using ..Materials
 using ..EarthProps
 using ..DataModel
 using ..Engine
-import ..LineCableModels: FormulationSet, _is_headless, _display_path
+import ..LineCableModels: FormulationSet, _display_path
 import ..DataModel: AbstractCablePart, AbstractConductorPart, AbstractInsulatorPart
 import ..Engine: AbstractFormulationSet, AbstractFormulationOptions, AbstractImpedanceFormulation, AbstractAdmittanceFormulation, compute!
 
