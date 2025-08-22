@@ -15,7 +15,7 @@ to customize which fields are needed for reconstruction.
 
 # Methods
 
-$(_CLEANMETHODLIST)
+$(LineCableModels._CLEANMETHODLIST)
 """
 function _serializable_fields end
 
@@ -106,51 +106,62 @@ using the `_serializable_fields` trait.
 # Returns
 - A JSON-compatible representation (Dict, Vector, Number, String, Bool, Nothing).
 =#
+# Helper: only used in serialization, never leaks to core math.
 function _serialize_value(value)
+
     if isnothing(value)
         return nothing
+
     elseif value isa Measurements.Measurement
-        # Explicitly mark Measurements for robust deserialization
+        v = Measurements.value(value)
+        u = Measurements.uncertainty(value)
         return Dict(
             "__type__" => "Measurement",
-            "value" => _serialize_value(Measurements.value(value)),
-            "uncertainty" => _serialize_value(Measurements.uncertainty(value)),
+            "value" => _serialize_value(v),
+            "uncertainty" => _serialize_value(u),
         )
+
     elseif value isa Number && !isfinite(value)
-        # Handle Inf and NaN
+        # Inf / -Inf / NaN stay tagged
         local val_str
         if isinf(value)
             val_str = value > 0 ? "Inf" : "-Inf"
-        elseif isnan(value)
-            val_str = "NaN"
         else
-            # Should not happen based on !isfinite, but defensive
-            @warn "Unhandled non-finite number: $value. Serializing as string."
-            return string(value)
+            # NaN
+            val_str = "NaN"
         end
         return Dict("__type__" => "SpecialFloat", "value" => val_str)
+
+    elseif value isa AbstractFloat
+        return Dict("__type__" => "Float", "value" => value)
+
+    elseif value isa Integer
+        return Dict("__type__" => "Int", "value" => value)
+
+    elseif value isa Complex
+        return Dict("__type__" => "Complex",
+            "re" => _serialize_value(real(value)),
+            "im" => _serialize_value(imag(value)),
+        )
+
     elseif value isa Number || value isa String || value isa Bool
-        # Basic JSON types pass through
         return value
+
     elseif value isa Symbol
-        # Convert Symbols to strings
         return string(value)
+
     elseif value isa AbstractDict
-        # Recursively serialize dictionary values
-        # Use string keys for JSON compatibility
         return Dict(string(k) => _serialize_value(v) for (k, v) in value)
+
     elseif value isa Union{AbstractVector,Tuple}
-        # Recursively serialize array/tuple elements
         return [_serialize_value(v) for v in value]
-    elseif !isprimitivetype(typeof(value)) && fieldcount(typeof(value)) > 0
-        # Handle custom structs using _serialize_obj
-        return _serialize_obj(value)
     else
-        # Fallback for unhandled types - serialize as string with a warning
-        @warn "Serializing unsupported type $(typeof(value)) to string: $value"
-        return string(value)
+        !isprimitivetype(typeof(value)) && fieldcount(typeof(value)) > 0
+        # Custom structs
+        return _serialize_obj(value)
     end
 end
+
 
 """
 $(TYPEDSIGNATURES)
