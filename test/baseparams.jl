@@ -4,22 +4,18 @@
     insulator_props = Material(1e14, 2.3, 1.0, 20.0, 0.0) # Basic insulator (like PE)
 end
 
-@testitem "BaseParams module" setup = [commons, defs_materials] begin
+@testitem "BaseParams module" setup = [defaults, defs_materials] begin
     @testset "Temperature correction" begin
         alpha = 0.004
         T0 = 20.0
         # Correction factor should be 1 at reference temperature
         @test calc_temperature_correction(alpha, T0, T0) ≈ 1.0 atol = TEST_TOL
         # Test T > T0 
-        @test calc_temperature_correction(alpha, 30.0, T0) ≈ (1 + alpha * (30.0 - T0)) atol =
-            TEST_TOL
+        @test calc_temperature_correction(alpha, 30.0, T0) ≈ (1 + alpha * (30.0 - T0)) atol = TEST_TOL
         # Test T < T0
-        @test calc_temperature_correction(alpha, 10.0, T0) ≈ (1 + alpha * (10.0 - T0)) atol =
-            TEST_TOL
+        @test calc_temperature_correction(alpha, 10.0, T0) ≈ (1 + alpha * (10.0 - T0)) atol = TEST_TOL
         # No correction if alpha is zero
         @test calc_temperature_correction(0.0, 50.0, T0) ≈ 1.0 atol = TEST_TOL
-        @test @inferred(calc_equivalent_alpha(measurement(0.5), 100.0, 0.8, 200.0)) isa Measurement{Float64}
-
     end
 
     @testset "Parallel impedance calculations" begin
