@@ -47,7 +47,6 @@ using DisplayAs: DisplayAs
 using ..Utils
 using ..Materials
 using ..EarthProps
-import ..LineCableModels: _is_headless, _is_in_testset, _CLEANMETHODLIST, _coerce_args_to_T, _coerce_array_to_T, _coerce_scalar_to_T
 
 # To handle radius-related operations
 abstract type AbstractRadius end
