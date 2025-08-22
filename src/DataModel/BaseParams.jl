@@ -146,7 +146,22 @@ println(Req) # Outputs: 3.3333333333333335
 - [`calc_helical_params`](@ref)
 """
 function calc_parallel_equivalent(Z1::T, Z2::T) where {T<:Union{REALSCALAR,COMPLEXSCALAR}}
-    return 1 / (1 / Z1 + 1 / Z2)
+
+    # Case 1: Inf / Inf -> NaN
+    # The parallel combination of an open circuit (Inf) and any finite impedance is the finite impedance.
+    if isinf(Z1)
+        return Z2
+    elseif isinf(Z2)
+        return Z1
+    end
+
+    # Case 2: 0 / 0 -> NaN
+    # The parallel combination of two short circuits (0) is a short circuit.
+    # The standard formula works fine if only one is zero, but not if both are.
+    if iszero(Z1) && iszero(Z2)
+        return zero(T)
+    end
+    return (Z1 * Z2) / (Z1 + Z2)
 end
 
 function calc_parallel_equivalent(Z1, Z2)
@@ -256,7 +271,7 @@ alpha = 0.00393
 T0 = 20
 T = 25
 resistance = $(FUNCTIONNAME)(thickness, width, rho, alpha, T0, T)
-# Output: ~8.62e-7 Ω
+# Output: ~0.0001758 Ω
 ```
 
 # See also  
@@ -312,7 +327,7 @@ where ``\\alpha`` is the temperature coefficient of the material resistivity, ``
 
 ```julia
     # Copper resistivity correction (alpha = 0.00393 [1/°C])
-    k = $(FUNCTIONNAME)(0.00393, 75.0, 20.0)  # Expected output: 1.2158
+    k = $(FUNCTIONNAME)(0.00393, 75.0, 20.0)  # Expected output: 1.2161
 ```
 """
 function calc_temperature_correction(alpha::T, Top::T, T0::T=T₀) where {T<:REALSCALAR}
@@ -482,7 +497,7 @@ function calc_wirearray_coords(
     radius_in::T,
     C::Tuple{T,T}=(0.0, 0.0),
 ) where {T<:REALSCALAR}
-    wire_coords = []  # Global coordinates of all wires
+    wire_coords = Tuple{T,T}[]  # Global coordinates of all wires
     lay_radius = num_wires == 1 ? 0 : radius_in + radius_wire
 
     # Calculate the angle between each wire
@@ -497,7 +512,7 @@ function calc_wirearray_coords(
 end
 
 function calc_wirearray_coords(num_wires::Int, radius_wire, radius_in; C=nothing)
-    T = resolve_T(radius_wire, radius_in)
+    T = C === nothing ? resolve_T(radius_wire, radius_in) : resolve_T(radius_wire, radius_in, C...)
     C_val = C === nothing ? coerce_to_T((0.0, 0.0), T) : coerce_to_T(C, T)
     return calc_wirearray_coords(
         num_wires,
