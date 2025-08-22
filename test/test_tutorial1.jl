@@ -1,4 +1,4 @@
-@testitem "examples/tutorial1.jl tests" setup = [commons] begin
+@testitem "examples/tutorial1.jl tests" setup = [defaults] begin
 
     # Helpers
     function material_approx_equal(m::Material, rho, eps_r, mu_r, T0, alpha; atol=1e-12, rtol=1e-8)
