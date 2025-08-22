@@ -277,7 +277,7 @@ function _reconstruct_partsgroup(layer_data::Dict)
         error("Layer data missing '__julia_type__' key: $layer_data")
     end
     type_str = layer_data["__julia_type__"]
-    LayerType = _resolve_type(type_str, @__MODULE__)
+    LayerType = _resolve_type(type_str)
 
     # Use generic deserialization for the whole layer data first.
     # _deserialize_value now returns Dict{Symbol, Any} for plain dicts
@@ -306,10 +306,9 @@ function _reconstruct_partsgroup(layer_data::Dict)
     end
 
     # Extract necessary fields using get with Symbol keys
-    _as_float(v) = v isa Number ? Float64(v) : v
-    radius_in = _as_float(get(deserialized_layer_dict, :radius_in, missing))
-    material_props = get(deserialized_layer_dict, :material_props, missing)
-    temperature = _as_float(get(deserialized_layer_dict, :temperature, T₀)) # Use default T₀ if missing
+    radius_in = get_as(deserialized_layer_dict, :radius_in, missing, BASE_FLOAT)
+    material_props = get_as(deserialized_layer_dict, :material_props, missing, BASE_FLOAT)
+    temperature = get_as(deserialized_layer_dict, :temperature, T₀, BASE_FLOAT)
 
     # Check for essential properties common to most first layers
     ismissing(radius_in) &&
@@ -321,23 +320,16 @@ function _reconstruct_partsgroup(layer_data::Dict)
         "'material_props' did not deserialize to a Material object for first layer type $LayerType. Got: $(typeof(material_props))",
     )
 
-    material_props = Material(
-        _as_float(material_props.rho),
-        _as_float(material_props.eps_r),
-        _as_float(material_props.mu_r),
-        _as_float(material_props.T0),
-        _as_float(material_props.alpha),
-    )
 
     # Type-specific reconstruction using POSITIONAL constructors + Keywords
     # This requires knowing the exact constructor signatures.
     try
 
         if LayerType == WireArray
-            radius_wire = _as_float(get(deserialized_layer_dict, :radius_wire, missing))
-            num_wires = get(deserialized_layer_dict, :num_wires, missing) # Should be Int
-            lay_ratio = _as_float(get(deserialized_layer_dict, :lay_ratio, missing))
-            lay_direction = get(deserialized_layer_dict, :lay_direction, 1) # Default lay_direction
+            radius_wire = get_as(deserialized_layer_dict, :radius_wire, missing, BASE_FLOAT)
+            num_wires = get_as(deserialized_layer_dict, :num_wires, missing, Int)
+            lay_ratio = get_as(deserialized_layer_dict, :lay_ratio, missing, BASE_FLOAT)
+            lay_direction = get_as(deserialized_layer_dict, :lay_direction, 1, Int) # Default lay_direction
             # Validate required fields
             any(ismissing, (radius_wire, num_wires, lay_ratio)) && error(
                 "Missing required field(s) (radius_wire, num_wires, lay_ratio) for WireArray first layer.",
@@ -355,14 +347,14 @@ function _reconstruct_partsgroup(layer_data::Dict)
                 lay_direction=lay_direction_int,
             )
         elseif LayerType == Tubular
-            radius_ext = _as_float(get(deserialized_layer_dict, :radius_ext, missing))
+            radius_ext = get_as(deserialized_layer_dict, :radius_ext, missing, BASE_FLOAT)
             ismissing(radius_ext) && error("Missing 'radius_ext' for Tubular first layer.")
             return Tubular(
                 radius_in, radius_ext, material_props; temperature=temperature)
         elseif LayerType == Strip
-            radius_ext = _as_float(get(deserialized_layer_dict, :radius_ext, missing))
-            width = _as_float(get(deserialized_layer_dict, :width, missing))
-            lay_ratio = _as_float(get(deserialized_layer_dict, :lay_ratio, missing))
+            radius_ext = get_as(deserialized_layer_dict, :radius_ext, missing, BASE_FLOAT)
+            width = get_as(deserialized_layer_dict, :width, missing, BASE_FLOAT)
+            lay_ratio = get_as(deserialized_layer_dict, :lay_ratio, missing, BASE_FLOAT)
             lay_direction = get(deserialized_layer_dict, :lay_direction, 1)
             any(ismissing, (radius_ext, width, lay_ratio)) && error(
                 "Missing required field(s) (radius_ext, width, lay_ratio) for Strip first layer.",
@@ -379,7 +371,7 @@ function _reconstruct_partsgroup(layer_data::Dict)
                 lay_direction=lay_direction_int,
             )
         elseif LayerType == Insulator
-            radius_ext = _as_float(get(deserialized_layer_dict, :radius_ext, missing))
+            radius_ext = get_as(deserialized_layer_dict, :radius_ext, missing, BASE_FLOAT)
             ismissing(radius_ext) &&
                 error("Missing 'radius_ext' for Insulator first layer.")
             return Insulator(
@@ -389,7 +381,7 @@ function _reconstruct_partsgroup(layer_data::Dict)
                 temperature=temperature,
             )
         elseif LayerType == Semicon
-            radius_ext = _as_float(get(deserialized_layer_dict, :radius_ext, missing))
+            radius_ext = get_as(deserialized_layer_dict, :radius_ext, missing, BASE_FLOAT)
             ismissing(radius_ext) && error("Missing 'radius_ext' for Semicon first layer.")
             return Semicon(radius_in, radius_ext, material_props; temperature=temperature)
         else
@@ -465,8 +457,6 @@ function _reconstruct_cabledesign(
 
     reconstructed_components = CableComponent[] # Store fully built components
 
-    _as_float(v) = v isa Number ? Float64(v) : v
-    _as_int(v) = v isa Number ? Int(v) : v
 
     for (idx, comp_data) in enumerate(components_data)
         if !(comp_data isa AbstractDict)
@@ -508,51 +498,37 @@ function _reconstruct_cabledesign(
             end
 
             # Extract Type and necessary arguments for add!
-            LayerType = _resolve_type(layer_data["__julia_type__"], @__MODULE__)
-            material_props = _deserialize_value(get(layer_data, "material_props", missing))
-            ismissing(material_props) &&
-                error("Missing 'material_props' for conductor layer $i in $comp_id")
-            !(material_props isa Material) && error(
-                "'material_props' did not deserialize to Material for conductor layer $i in $comp_id. Got: $(typeof(material_props))",
-            )
-            material_props = Material(
-                _as_float(material_props.rho),
-                _as_float(material_props.eps_r),
-                _as_float(material_props.mu_r),
-                _as_float(material_props.T0),
-                _as_float(material_props.alpha),
-            )
+            LayerType = _resolve_type(layer_data["__julia_type__"])
+            material_props = get_as(layer_data, "material_props", missing, BASE_FLOAT)
+            material_props isa Material || error("'material_props' must deserialize to Material, got $(typeof(material_props))")
 
             # Prepare args and kwargs based on LayerType for add!
             args = []
             kwargs = Dict{Symbol,Any}()
-            kwargs[:temperature] = _as_float(_deserialize_value(get(layer_data, "temperature", T₀)))
+            kwargs[:temperature] = get_as(layer_data, "temperature", T₀, BASE_FLOAT)
             if haskey(layer_data, "lay_direction") # Only add if present
-                kwargs[:lay_direction] =
-                    _as_int(_deserialize_value(get(layer_data, "lay_direction", 1)))
+                kwargs[:lay_direction] = get_as(layer_data, "lay_direction", 1, Int)
             end
 
             # Extract type-specific arguments needed by add!
             try
                 if LayerType == WireArray
-                    radius_wire =
-                        _as_float(_deserialize_value(get(layer_data, "radius_wire", missing)))
-                    num_wires = _as_int(get(layer_data, "num_wires", missing)) # Should be Int
-                    lay_ratio = _as_float(_deserialize_value(get(layer_data, "lay_ratio", missing)))
+                    radius_wire = get_as(layer_data, "radius_wire", missing, BASE_FLOAT)
+                    num_wires = get_as(layer_data, "num_wires", missing, Int)
+                    lay_ratio = get_as(layer_data, "lay_ratio", missing, BASE_FLOAT)
                     any(ismissing, (radius_wire, num_wires, lay_ratio)) && error(
                         "Missing required field(s) for WireArray layer $i in $comp_id",
                     )
-                    num_wires_int = isa(num_wires, Int) ? num_wires : Int(num_wires)
-                    args = [radius_wire, num_wires_int, lay_ratio, material_props]
+                    args = [radius_wire, num_wires, lay_ratio, material_props]
                 elseif LayerType == Tubular
-                    radius_ext = _as_float(_deserialize_value(get(layer_data, "radius_ext", missing)))
+                    radius_ext = get_as(layer_data, "radius_ext", missing, BASE_FLOAT)
                     ismissing(radius_ext) &&
                         error("Missing 'radius_ext' for Tubular layer $i in $comp_id")
                     args = [radius_ext, material_props]
                 elseif LayerType == Strip
-                    radius_ext = _as_float(_deserialize_value(get(layer_data, "radius_ext", missing)))
-                    width = _as_float(_deserialize_value(get(layer_data, "width", missing)))
-                    lay_ratio = _as_float(_deserialize_value(get(layer_data, "lay_ratio", missing)))
+                    radius_ext = get_as(layer_data, "radius_ext", missing, BASE_FLOAT)
+                    width = get_as(layer_data, "width", missing, BASE_FLOAT)
+                    lay_ratio = get_as(layer_data, "lay_ratio", missing, BASE_FLOAT)
                     any(ismissing, (radius_ext, width, lay_ratio)) &&
                         error("Missing required field(s) for Strip layer $i in $comp_id")
                     args = [radius_ext, width, lay_ratio, material_props]
@@ -602,32 +578,20 @@ function _reconstruct_cabledesign(
                 continue
             end
 
-            LayerType = _resolve_type(layer_data["__julia_type__"], @__MODULE__)
-            material_props = _deserialize_value(get(layer_data, "material_props", missing))
-            ismissing(material_props) &&
-                error("Missing 'material_props' for insulator layer $i in $comp_id")
-            !(material_props isa Material) && error(
-                "'material_props' did not deserialize to Material for insulator layer $i in $comp_id. Got: $(typeof(material_props))",
-            )
+            LayerType = _resolve_type(layer_data["__julia_type__"])
+            material_props = get_as(layer_data, "material_props", missing, BASE_FLOAT)
+            material_props isa Material || error("'material_props' must deserialize to Material, got $(typeof(material_props))")
 
-            material_props = Material(
-                _as_float(material_props.rho),
-                _as_float(material_props.eps_r),
-                _as_float(material_props.mu_r),
-                _as_float(material_props.T0),
-                _as_float(material_props.alpha),
-            )
 
             args = []
             kwargs = Dict{Symbol,Any}()
-            kwargs[:temperature] = _as_float(_deserialize_value(get(layer_data, "temperature", T₀)))
-            # lay_direction is not typically used for insulators
+            kwargs[:temperature] = get_as(layer_data, "temperature", T₀, BASE_FLOAT)
 
             try
                 # All insulator types (Semicon, Insulator) take radius_ext, material_props
                 # for the add! method.
                 if LayerType in [Semicon, Insulator]
-                    radius_ext = _as_float(_deserialize_value(get(layer_data, "radius_ext", missing)))
+                    radius_ext = get_as(layer_data, "radius_ext", missing, BASE_FLOAT)
                     ismissing(radius_ext) &&
                         error("Missing 'radius_ext' for $LayerType layer $i in $comp_id")
                     args = [radius_ext, material_props]
