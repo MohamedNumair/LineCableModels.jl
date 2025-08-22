@@ -1,24 +1,4 @@
-"""
-Unit tests for calc_equivalent_alpha in module LineCableModels.DataModel.BaseParams
-
-Feature Definition:
--------------------
-Function: calc_equivalent_alpha
-Purpose: Calculates the equivalent temperature coefficient of resistance (alpha) for two conductors in parallel, using cross-weighted-resistance averaging.
-
-Test Scenarios (per architectural pattern):
--------------------------------------------
-1. Basic Functionality: Typical valid engineering values for copper and aluminum.
-2. Mathematical Edge Cases: Zero resistance, very large resistance, Inf/NaN alphas (if mathematically valid).
-3. Type Stability & Promotion: Mixed Float64, Int, and Measurements{Float64}.
-4. Uncertainty Quantification: Propagation of uncertainties using Measurements.jl.
-
-Test Plan:
-----------
-Objectives: Verify numerical correctness, type stability, and uncertainty propagation of calc_equivalent_alpha. Do NOT test for error handling or thrown exceptions.
-Tools: Test.jl, TestItems.jl, Measurements.jl. Use TEST_TOL for floating-point comparisons.
-"""
-@testitem "calc_equivalent_alpha unit tests" setup = [commons] begin
+@testitem "calc_equivalent_alpha unit tests" setup = [defaults] begin
 
     @testset "calc_equivalent_alpha: Basic Functionality (Copper & Aluminum)" begin
         alpha1 = 0.00393  # Copper
