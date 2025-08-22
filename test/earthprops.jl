@@ -4,7 +4,7 @@
     const EP = LCM.EarthProps
 end
 
-@testitem "EarthProps module" setup = [commons, defs_earthprops] begin
+@testitem "EarthProps module" setup = [defaults, defs_earthprops] begin
 
     @testset "FDEM Formulations" begin
         @testset "CPEarth" begin
