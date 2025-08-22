@@ -1,4 +1,4 @@
-@testitem "examples/tutorial2.jl tests" setup = [commons] begin
+@testitem "examples/tutorial2.jl tests" setup = [defaults] begin
     # Replicate the setup from the tutorial
     materials = MaterialsLibrary(add_defaults=true)
 
