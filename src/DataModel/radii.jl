@@ -29,12 +29,12 @@ This function serves as a high-level interface to the radius resolution system. 
 - [`AbstractCablePart`](@ref)
 """
 function _resolve_radius(param_in, param_ext, object_type=Any)
-    # Convert inputs to normalized form (numbers)
-    normalized_in = _parse_inputs_radius(param_in, object_type)
-    normalized_ext = _parse_inputs_radius(param_ext, object_type)
+  # Convert inputs to normalized form (numbers)
+  normalized_in = _parse_inputs_radius(param_in, object_type)
+  normalized_ext = _parse_inputs_radius(param_ext, object_type)
 
-    # Call the specialized implementation with normalized values
-    return _do_resolve_radius(normalized_in, normalized_ext, object_type)
+  # Call the specialized implementation with normalized values
+  return _do_resolve_radius(normalized_in, normalized_ext, object_type)
 end
 
 """
@@ -61,7 +61,7 @@ radius = $(FUNCTIONNAME)(Thickness(5.0), ...)  # From thickness object
 
 # Methods
 
-$(_CLEANMETHODLIST)
+$(LineCableModels._CLEANMETHODLIST)
 
 # See also
 
@@ -75,18 +75,18 @@ _parse_inputs_radius(x::Number, object_type::Type{T}) where {T} = x
 _parse_inputs_radius(d::Diameter, object_type::Type{T}) where {T} = d.value / 2
 _parse_inputs_radius(p::Thickness, object_type::Type{T}) where {T} = p
 _parse_inputs_radius(x, object_type::Type{T}) where {T} =
-    _parse_input_radius(x)
+  _parse_input_radius(x)
 
 function _parse_inputs_radius(p::AbstractCablePart, object_type::Type{T}) where {T}
 
-    # Get the current outermost radius
-    radius_in = getfield(p, :radius_ext)
+  # Get the current outermost radius
+  radius_in = getfield(p, :radius_ext)
 
-    # Check if we need to preserve uncertainty
-    existing_obj = typeof(p)
+  # Check if we need to preserve uncertainty
+  existing_obj = typeof(p)
 
-    # Keep or strip uncertainty based on type match
-    return (existing_obj == object_type) ? radius_in : strip_uncertainty(radius_in)
+  # Keep or strip uncertainty based on type match
+  return (existing_obj == object_type) ? radius_in : strip_uncertainty(radius_in)
 end
 
 """
@@ -124,15 +124,15 @@ inner, outer, thickness = $(FUNCTIONNAME)(0.01, Thickness(0.005), ...)
 """
 
 function _do_resolve_radius(radius_in::Number, radius_ext::Number, ::Type{T}) where {T}
-    return radius_in, radius_ext, radius_ext - radius_in  # Return inner, outer, thickness
+  return radius_in, radius_ext, radius_ext - radius_in  # Return inner, outer, thickness
 end
 
 function _do_resolve_radius(radius_in::Number, thickness::Thickness, ::Type{T}) where {T}
-    radius_ext = radius_in + thickness.value
-    return radius_in, radius_ext, thickness.value
+  radius_ext = radius_in + thickness.value
+  return radius_in, radius_ext, thickness.value
 end
 
 function _do_resolve_radius(radius_in::Number, radius_wire::Number, ::Type{WireArray})
-    thickness = 2 * radius_wire
-    return radius_in, radius_in + thickness, thickness
+  thickness = 2 * radius_wire
+  return radius_in, radius_in + thickness, thickness
 end
