@@ -3,7 +3,7 @@
     using EzXML
 end
 
-@testitem "DataModel module" setup = [commons, deps_datamodel] begin
+@testitem "DataModel module" setup = [defaults, deps_datamodel] begin
 
     println("\nSetting up materials and dimensions for DataModel test...")
     materials = MaterialsLibrary(add_defaults=true)
