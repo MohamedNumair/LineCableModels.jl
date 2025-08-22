@@ -46,7 +46,7 @@ using ..Utils
 using ..Materials
 using ..EarthProps
 using ..DataModel
-import ..LineCableModels: add!, load!, export_data, save, _is_headless, _display_path, _CLEANMETHODLIST
+import ..LineCableModels: add!, load!, export_data, save, _display_path
 
 
 include("ImportExport/serialize.jl")
