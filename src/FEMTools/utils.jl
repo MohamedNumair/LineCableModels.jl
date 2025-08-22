@@ -177,7 +177,7 @@ end
 # 4	     Detailed debugging
 # 5	     Full internal tracing
 function map_verbosity_to_getdp(verbosity::Int)
-    if _is_headless()       # Prevent huge logs in CI/CD deploys
+    if LineCableModels._is_headless()       # Prevent huge logs in CI/CD deploys
         @info "Running in headless mode, suppressing GetDP output"
         return 0            # Gmsh Silent level
     elseif verbosity >= 2   # Debug
@@ -199,7 +199,7 @@ end
 # 5      Status messages
 # 99     Debug
 function map_verbosity_to_gmsh(verbosity::Int)
-    if _is_headless()       # Prevent huge logs in CI/CD deploys
+    if LineCableModels._is_headless()       # Prevent huge logs in CI/CD deploys
         @info "Running in headless mode, suppressing Gmsh output"
         return 0            # Gmsh Silent level
     elseif verbosity >= 2   # Debug
