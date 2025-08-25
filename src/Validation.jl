@@ -6,7 +6,7 @@ The [`Validation`](@ref) module implements a trait‑driven, two‑stage input c
 # Overview
 
 - Centralized constructor input handling: `sanitize` → `parse` → rule application.
-- Trait hooks configure per‑type behavior (`has_radii`, `required_fields`,  `keyword_fields`, etc.).
+- Trait hooks configure per‑type behavior (`has_radii`, `has_temperature`, `required_fields`, `keyword_fields`, `coercive_fields`, etc.).
 - Rules are small value objects (`Rule` subtypes) applied to a normalized `NamedTuple`.
 
 # Dependencies
@@ -417,7 +417,7 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Trait hook enabling the annular radii rule bundle on fields `:radius_in` and `:radius_ext` (normalized numbers required, finiteness, non-negativity, and the ordering constraint `:radius_in` < `:radius_ext`). It does not indicate the mere existence of radii; it opts in to the annular/coaxial shell geometry checks.
+Trait hook enabling the annular radii rule bundle on fields `:radius_in` and `:radius_ext` (normalized numbers required, finiteness, non‑negativity, and the ordering constraint `:radius_in` < `:radius_ext`). It does **not** indicate the mere existence of radii; it opts in to the annular/coaxial shell geometry checks.
 
 # Arguments
 
@@ -430,7 +430,7 @@ Trait hook enabling the annular radii rule bundle on fields `:radius_in` and `:r
 # Examples
 
 ```julia
-Validation.has_radii(Tubular)  # true/false
+Validation.has_radii(Tubular)
 ```
 """
 has_radii(::Type) = false       # Default = false/empty. Components extend these.
@@ -483,7 +483,7 @@ required_fields(::Type) = ()
 """
 $(TYPEDSIGNATURES)
 
-Trait hook listing optional keyword fields to be merged to positionals in `sanitize`.
+Trait hook listing optional keyword fields considered by `sanitize`.
 
 # Arguments
 
@@ -491,14 +491,14 @@ Trait hook listing optional keyword fields to be merged to positionals in `sanit
 
 # Returns
 
-- Tuple of field names that are optional.
+- Tuple of optional keyword field names.
 """
 keyword_fields(::Type) = ()
 
 """
 $(TYPEDSIGNATURES)
 
-Trait hook listing coercive fields (`<:AbstractFloat`) that must be converted to the target type during [`validate!`])(@ref). Defaults to all fields (required and keyword optionals). Overrides should be implemented per type.
+Trait hook listing **coercive** fields: values that participate in numeric promotion and will be converted to the promoted type by the convenience constructor. Defaults to all fields (`required_fields ∪ keyword_fields`). Types may override to exclude integers or categorical fields.
 
 # Arguments
 
@@ -506,7 +506,7 @@ Trait hook listing coercive fields (`<:AbstractFloat`) that must be converted to
 
 # Returns
 
-- Tuple of field names that are coercive.
+- Tuple of field names that are coerced.
 """
 coercive_fields(::Type{T}) where {T} = (required_fields(T)..., keyword_fields(T)...)
 
@@ -540,7 +540,7 @@ is_radius_input(::Type{T}, x) where {T} = (x isa Number) && !(x isa Complex)
 """
 $(TYPEDSIGNATURES)
 
-Field‑aware acceptance predicate used by `sanitize` to distinguish inner vs. outer radius policies. The default forwards to the scalar predicate [`is_radius_input(::Type{T}, x)`](@ref) when no field‑specific method is defined.
+Field‑aware acceptance predicate used by `sanitize` to distinguish inner vs. outer radius policies. The default forwards to [`is_radius_input(::Type{T}, x)`](@ref) when no field‑specific method is defined.
 
 # Arguments
 
