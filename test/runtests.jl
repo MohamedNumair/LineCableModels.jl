@@ -9,4 +9,10 @@ using TestItemRunner
     using DataFrames
 end
 
-@run_package_tests
+@testsnippet defs_materials begin
+    copper_props = Material(1.7241e-8, 1.0, 1.0, 20.0, 0.00393)
+    aluminum_props = Material(2.8264e-8, 1.0, 1.0, 20.0, 0.00429)
+    insulator_props = Material(1e14, 2.3, 1.0, 20.0, 0.0)
+    semicon_props = Material(1000.0, 1000.0, 1.0, 20.0, 0.0)
+end
+@run_package_tests verbose = true

@@ -24,36 +24,26 @@ $(EXPORTS)
 """
 module ImportExport
 
-# Export public API
-export export_data
-export save
-export load!
-export get
-export delete!
-
 # Load common dependencies
 using ..LineCableModels
-include("commondeps.jl")
+include("utils/commondeps.jl")
 
 # Module-specific dependencies
 using Measurements
-using EzXML # For PSCAD export
-using Dates # For PSCAD export
+using EzXML, Dates # For PSCAD export
 using JSON3
 using Serialization # For .jls format
-import Base: get
 using ..Utils
 using ..Materials
 using ..EarthProps
 using ..DataModel
-import ..LineCableModels: add!, load!, export_data, save, _display_path
+import ..LineCableModels: load!, export_data, save
 
-
-include("ImportExport/serialize.jl")
-include("ImportExport/deserialize.jl")
-include("ImportExport/cableslibrary.jl")
-include("ImportExport/materialslibrary.jl")
-include("ImportExport/pscad.jl")
+include("importexport/serialize.jl")
+include("importexport/deserialize.jl")
+include("importexport/cableslibrary.jl")
+include("importexport/materialslibrary.jl")
+include("importexport/pscad.jl")
 
 
 end # module ImportExport
