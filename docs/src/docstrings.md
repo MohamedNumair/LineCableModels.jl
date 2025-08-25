@@ -2,14 +2,14 @@
 
 The following docstring standards are generally adopted across the codebase.
 
-## 1. General Docstring principles
+## General Docstring principles
 
 1. **Placement:** Docstrings must immediately precede the code entity (struct, function, module, constant) they describe.
 2. **Delimiter:** Use triple double quotes (`"""Docstring content"""`) for all docstrings, *except* for individual struct field documentation.
 3. **Conciseness:** Avoid redundancy. Information should be presented clearly and concisely in the appropriate section.
 4. **Tone:** Use formal, precise scientific language suitable for technical documentation. Avoid contractions, colloquialisms, and ambiguous phrasing.
 
-## 2. Physical unit formatting
+## Physical unit formatting
 
 All variables corresponding to physical quantities must be annotated with their SI units and according to the following rules:
 
@@ -20,11 +20,11 @@ All variables corresponding to physical quantities must be annotated with their 
     - **Correct:** `\\[m\\]`, `\\[Hz\\]`, `\\[Ω\\]`, `\\[H/m\\]`, `\\[dimensionless\\]`
     - **Incorrect:** `[m]`, `\[m]`, `m` (as a standalone unit identifier)
 5. **Exception for example comments:** Inside ` ```julia` code blocks within the `# Examples` section, use *regular* (non-escaped) square brackets for units within comments.
-    - **Correct:** ````julia result = calculation(10.0) # Output in [m]````
-    - **Incorrect:** ````julia result = calculation(10.0) # Output in \\[m\\]````
+    - **Correct:** ````julia result = calculation(10.0) # Output in \\[m\\]````
+    - **Incorrect:** ````julia result = calculation(10.0) # Output in \\\\[m\\\\]````
 6. **Common units:** Use standard SI abbreviations (e.g., `m`, `s`, `kg`, `A`, `K`, `mol`, `cd`, `Hz`, `N`, `Pa`, `J`, `W`, `C`, `V`, `F`, `Ω`, `S`, `T`, `H`, `lm`, `lx`, `Bq`, `Gy`, `Sv`, `°C`). Use the Unicode middle dot `·` for multiplication where appropriate (e.g., `\\[Ω·m\\]`).
 
-## 3. Mathematical formulation formatting
+## Mathematical formulation formatting
 
 1. **Requirement:** Mathematical formulas rendered using LaTeX are MANDATORY *only* for functions/methods whose names start with the prefix `calc_`.
 2. **Location:** For `calc_` functions, the LaTeX formula MUST be placed within a ````math ...```` block inside the `# Notes` section.
@@ -33,11 +33,11 @@ All variables corresponding to physical quantities must be annotated with their 
     - **Correct:** `\\mu_r`, ```math \\frac{a}{b}```
     - **Incorrect:** `\mu_r`, ```math \frac{a}{b}```
 
-## 4. Documentation templates
+## Documentation templates
 
 The subsections below contain templates for different types of code elements.
 
-### 4.1. Structs
+### Structs
 
 - **Main docstring:** Use `$(TYPEDEF)` for the signature and `$(TYPEDFIELDS)` to list the fields automatically. Provide a concise description of the struct purpose.
 
@@ -59,7 +59,7 @@ The subsections below contain templates for different types of code elements.
   - Use single-line double quotes: `"Description with units \\[unit\\] or \\[dimensionless\\] if applicable."`
   - Do NOT use `""" """` block quotes or inline comments (`#`) for documenting struct fields.
 
-### 4.2. Constructors (inside or outside structs)
+### Constructors (inside or outside structs)
 
 - ALL constructors MUST be documented using the `@doc` macro placed immediately before the `function` keyword or the compact assignment form (`TypeName(...) = ...`). This applies even to default constructors if explicitly defined.
 - **Format:** Use `$(TYPEDSIGNATURES)`. Include standard sections (`Arguments`, `Returns`, `Examples`).
@@ -90,7 +90,7 @@ The subsections below contain templates for different types of code elements.
     end
     ````
 
-### 4.3. Functions / methods
+### Functions / methods
 
 - **Format:** Start with `$(TYPEDSIGNATURES)`. Follow the section order described.
   
@@ -148,7 +148,7 @@ The subsections below contain templates for different types of code elements.
 - **Examples:** Use the `$(FUNCTIONNAME)` macro instead of hardcoding the function name. Use meaningful, realistic input values. Include expected output or behavior in a comment, using *non-escaped* brackets for units (`[unit]`).
 - **See also:** Only link to other functions *within this package* using `[`function_name`](@ref)`. Do not link to Base Julia functions or functions from external packages unless absolutely necessary for context. Only include if the linked function provides relevant context or alternatives.
 
-### 4.4. Modules
+### Modules
 
 - **Format:** The first line must be the module name indented by four spaces. Use `$(IMPORTS)` and `$(EXPORTS)` literals.
 
@@ -175,7 +175,7 @@ The subsections below contain templates for different types of code elements.
     end
     ````
 
-### 4.5. Constants
+### Constants
 
 - **Format:** Use a single-line docstring with double quotes (`"..."`). Include a brief description, the symbol of the constant if standard (e.g., `μ₀`), its value, and its units using the `\\[unit\\]` format.
 
@@ -184,7 +184,7 @@ The subsections below contain templates for different types of code elements.
     const μ₀ = 4π * 1e-7
     ```
 
-## 5. Common mistakes to avoid
+## Common mistakes to avoid
 
 Double-check the docstrings to avoid these common errors:
 
