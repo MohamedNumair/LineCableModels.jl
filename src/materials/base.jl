@@ -1,4 +1,7 @@
-import Base: show, get, delete!, length, setindex!, iterate, keys, values, haskey, getindex, convert
+import Base: show, get, delete!, length, setindex!, iterate, keys, values, haskey, getindex, convert, eltype
+
+eltype(::Material{T}) where {T} = T
+eltype(::Type{Material{T}}) where {T} = T
 
 # Implement the AbstractDict interface
 length(lib::MaterialsLibrary) = length(lib.data)

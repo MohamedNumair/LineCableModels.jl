@@ -98,7 +98,8 @@ $(TYPEDSIGNATURES)
 Add a new conductor part to a [`ConductorGroup`](@ref), validating raw inputs,
 normalizing proxies, and **promoting** the group’s numeric type if required.
 
-Behavior:
+# Behavior:
+
 1. Apply part-level keyword defaults.
 2. Default `radius_in` to `group.radius_ext` if absent.
 3. Compute `Tnew = resolve_T(group, radius_in, args..., values(kwargs)...)`.
