@@ -184,3 +184,6 @@ function add!(
     # Call the main function
     return add!(design, component)
 end
+
+include("cabledesign/base.jl")
+include("cabledesign/dataframe.jl")
