@@ -12,19 +12,19 @@ properties that represent the composite behavior of the entire assembly, stored 
 
 $(TYPEDFIELDS)
 """
-mutable struct InsulatorGroup <: AbstractInsulatorPart
+mutable struct InsulatorGroup{T<:REALSCALAR} <: AbstractInsulatorPart{T}
     "Inner radius of the insulator group \\[m\\]."
-    radius_in::Number
+    radius_in::T
     "Outer radius of the insulator group \\[m\\]."
-    radius_ext::Number
+    radius_ext::T
     "Cross-sectional area of the entire insulator group \\[m²\\]."
-    cross_section::Number
+    cross_section::T
     "Shunt capacitance per unit length of the insulator group \\[F/m\\]."
-    shunt_capacitance::Number
+    shunt_capacitance::T
     "Shunt conductance per unit length of the insulator group \\[S·m\\]."
-    shunt_conductance::Number
+    shunt_conductance::T
     "Vector of insulator layer components."
-    layers::Vector{AbstractInsulatorPart}
+    layers::Vector{AbstractInsulatorPart{T}}
 
     @doc """
     $(TYPEDSIGNATURES)
@@ -49,9 +49,9 @@ mutable struct InsulatorGroup <: AbstractInsulatorPart
     println(insulator_group.shunt_capacitance) # Output: Capacitance in [F/m]
     ```
     """
-    function InsulatorGroup(initial_insulator::AbstractInsulatorPart)
+    function InsulatorGroup{T}(initial_insulator::AbstractInsulatorPart{T}) where {T}
         # Initialize object
-        return new(
+        return new{T}(
             initial_insulator.radius_in,
             initial_insulator.radius_ext,
             initial_insulator.cross_section,

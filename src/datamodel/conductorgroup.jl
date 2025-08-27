@@ -14,25 +14,25 @@ properties that represent the composite behavior of the entire assembly.
 
 $(TYPEDFIELDS)
 """
-mutable struct ConductorGroup <: AbstractConductorPart
+mutable struct ConductorGroup{T<:REALSCALAR} <: AbstractConductorPart{T}
     "Inner radius of the conductor group \\[m\\]."
-    radius_in::Number
+    radius_in::T
     "Outer radius of the conductor group \\[m\\]."
-    radius_ext::Number
+    radius_ext::T
     "Cross-sectional area of the entire conductor group \\[m²\\]."
-    cross_section::Number
+    cross_section::T
     "Number of individual wires in the conductor group \\[dimensionless\\]."
-    num_wires::Number
+    num_wires::Int
     "Number of turns per meter of each wire strand \\[1/m\\]."
-    num_turns::Number
+    num_turns::T
     "DC resistance of the conductor group \\[Ω\\]."
-    resistance::Number
+    resistance::T
     "Temperature coefficient of resistance \\[1/°C\\]."
-    alpha::Number
+    alpha::T
     "Geometric mean radius of the conductor group \\[m\\]."
-    gmr::Number
+    gmr::T
     "Vector of conductor layer components."
-    layers::Vector{AbstractConductorPart}
+    layers::Vector{AbstractConductorPart{T}}
 
     @doc """
     $(TYPEDSIGNATURES)
@@ -57,7 +57,7 @@ mutable struct ConductorGroup <: AbstractConductorPart
     println(conductor_group.resistance)  # Output: Resistance in \\[Ω\\]
     ```
     """
-    function ConductorGroup(central_conductor::AbstractConductorPart)
+    function ConductorGroup{T}(central_conductor::AbstractConductorPart{T}) where {T}
         num_wires = 0
         num_turns = 0.0
 
@@ -69,7 +69,7 @@ mutable struct ConductorGroup <: AbstractConductorPart
         end
 
         # Initialize object
-        return new(
+        return new{T}(
             central_conductor.radius_in,
             central_conductor.radius_ext,
             central_conductor.cross_section,

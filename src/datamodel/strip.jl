@@ -5,7 +5,7 @@ Represents a flat conductive strip with defined geometric and material propertie
 
 $(TYPEDFIELDS)
 """
-struct Strip{T<:REALSCALAR,U<:Int} <: AbstractConductorPart
+struct Strip{T<:REALSCALAR,U<:Int} <: AbstractConductorPart{T}
     "Internal radius of the strip \\[m\\]."
     radius_in::T
     "External radius of the strip \\[m\\]."
@@ -125,6 +125,8 @@ Validation.has_radii(::Type{Strip}) = true
 Validation.has_temperature(::Type{Strip}) = true
 Validation.required_fields(::Type{Strip}) = _REQ_STRIP
 Validation.keyword_fields(::Type{Strip}) = _OPT_STRIP
+Validation.keyword_defaults(::Type{Strip}) = _DEFS_STRIP
+
 Validation.coercive_fields(::Type{Strip}) = (:radius_in, :radius_ext, :width, :lay_ratio, :material_props, :temperature)  # not :lay_direction
 # accept proxies for radii
 
