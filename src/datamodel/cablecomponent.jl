@@ -115,3 +115,6 @@ mutable struct CableComponent
         )
     end
 end
+
+include("cablecomponent/base.jl")
+
