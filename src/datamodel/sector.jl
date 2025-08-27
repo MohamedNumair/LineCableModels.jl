@@ -154,12 +154,14 @@ function _calculate_sector_polygon_points(params; num_arc_points=20)
 
     poly_points = Point2f[]
     get_angle(p1, p2) = atan(p1[2] - p2[2], p1[1] - p2[1])
-
+    
     # Start at F, go to A (Base)
     push!(poly_points, nodes.F)
     if params.r_corner > 1e-9
         start_angle = get_angle(nodes.F, centers.Base)
+        @debug "Arc from F to A: start_angle=$start_angle"
         end_angle = get_angle(nodes.A, centers.Base)
+        @debug "Arc from F to A: end_angle=$end_angle"
         append!(poly_points, _generate_arc_points(centers.Base, params.r_corner, start_angle, end_angle, num_arc_points)[2:end])
     else
         push!(poly_points, Point2f(0, params.r_back - params.d_sector), nodes.A)
@@ -171,7 +173,9 @@ function _calculate_sector_polygon_points(params; num_arc_points=20)
     # Arc B to C (Right Side)
     if params.r_corner > 1e-9
         start_angle = get_angle(nodes.B, centers.RightSide)
+        @debug "Arc from B to C: start_angle=$start_angle"
         end_angle = get_angle(nodes.C, centers.RightSide)
+        @debug "Arc from B to C: end_angle=$end_angle"
         append!(poly_points, _generate_arc_points(centers.RightSide, params.r_corner, start_angle, end_angle, num_arc_points)[2:end])
     else
         push!(poly_points, nodes.C)
@@ -185,7 +189,9 @@ function _calculate_sector_polygon_points(params; num_arc_points=20)
     # Arc D to E (Left Side)
     if params.r_corner > 1e-9
         start_angle = get_angle(nodes.D, centers.LeftSide)
+        @debug "Arc from D to E: start_angle=$start_angle"
         end_angle = get_angle(nodes.E, centers.LeftSide)
+        @debug "Arc from D to E: end_angle=$end_angle"
         append!(poly_points, _generate_arc_points(centers.LeftSide, params.r_corner, start_angle, end_angle, num_arc_points)[2:end])
     else
         push!(poly_points, nodes.E)
