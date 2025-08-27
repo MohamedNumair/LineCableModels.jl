@@ -45,7 +45,7 @@ struct Sector{T<:REALSCALAR,U<:Int} <: AbstractConductorPart
     "Geometric mean radius (GMR) of the sector (approximated) \\[m\\]."
     gmr::T
     "Calculated vertices defining the polygon shape."
-    vertices::Vector{Point{2, T}}
+    vertices::Vector{Point{2,T}}
 end
 
 
@@ -143,9 +143,54 @@ function _calculate_sector_geometry(p::SectorParams)
     return (Nodes=nodes, Centers=centers, Params=p)
 end
 
-function _generate_arc_points(center, radius, start_angle, end_angle, num_points)
-    angle_range = range(start_angle, stop=end_angle, length=num_points)
-    return [Point2f(center[1] + radius * cos(a), center[2] + radius * sin(a)) for a in angle_range]
+# function _generate_arc_points(center, radius, start_angle, end_angle, num_points)
+#     while end_angle < start_angle
+#         @debug "end_angle < start_angle: $(rad2deg(end_angle)) < $(rad2deg(start_angle))"
+#         end_angle += 2pi
+#         @debug "Adjusted end_angle to be greater than start_angle: $(rad2deg(end_angle)) > $(rad2deg(start_angle))"
+#     end
+#     while end_angle - start_angle > pi
+#         @debug "overshoot! end_angle - start_angle > π: $(rad2deg(end_angle - start_angle)) > 180"
+#         end_angle -= 2pi
+#         @debug "Adjusted end_angle to be less than start_angle: $(rad2deg(end_angle)) < $(rad2deg(start_angle))"
+#     end
+#     # if end_angle < start_angle
+#     #     end_angle += 2pi
+#     # end
+
+#     angle_range = range(start_angle, stop=end_angle, length=num_points)
+#     return [Point2f(center[1] + radius * cos(a), center[2] + radius * sin(a)) for a in angle_range]
+# end
+
+
+function _generate_arc_points(center, radius, start_angle, end_angle, num_points; prefer_long_arc::Bool=false)
+    # normalize to [0, 2π)
+    s = mod(start_angle, 2pi)
+    e = mod(end_angle, 2pi)
+
+    # signed difference in (-2π, 2π)
+    raw_delta = e - s
+
+    # reduce to shortest signed angle in (-π, π]
+    if raw_delta <= -pi
+        delta_short = raw_delta + 2pi
+    elseif raw_delta > pi
+        delta_short = raw_delta - 2pi
+    else
+        delta_short = raw_delta
+    end
+
+    # choose which arc to take
+    delta = prefer_long_arc ? (delta_short > 0 ? delta_short - 2pi : delta_short + 2pi) : delta_short
+
+    # If delta is extremely close to 0 (points equal), return single point
+    if abs(delta) < 1e-12
+        return [Point2f(center[1] + radius * cos(s), center[2] + radius * sin(s))]
+    end
+
+    # build angles from start (s) to s+delta uniformly (preserving sign)
+    angles = range(s, stop = s + delta, length = num_points)
+    return [Point2f(center[1] + radius * cos(a), center[2] + radius * sin(a)) for a in angles]
 end
 
 function _calculate_sector_polygon_points(params; num_arc_points=20)
@@ -153,16 +198,19 @@ function _calculate_sector_polygon_points(params; num_arc_points=20)
     nodes, centers = geom.Nodes, geom.Centers
 
     poly_points = Point2f[]
-    get_angle(p1, p2) = atan(p1[2] - p2[2], p1[1] - p2[1])
-    
+    get_angle(p1, p2) = atan((p1[2] - p2[2]), (p1[1] - p2[1]))
     # Start at F, go to A (Base)
     push!(poly_points, nodes.F)
     if params.r_corner > 1e-9
+        @debug "F coords are $(nodes.F)"
+        @debug "center coords are $(centers.Base)"
         start_angle = get_angle(nodes.F, centers.Base)
-        @debug "Arc from F to A: start_angle=$start_angle"
+
+        @debug "Arc from F to A: start_angle=$(rad2deg(start_angle))"
         end_angle = get_angle(nodes.A, centers.Base)
-        @debug "Arc from F to A: end_angle=$end_angle"
-        append!(poly_points, _generate_arc_points(centers.Base, params.r_corner, start_angle, end_angle, num_arc_points)[2:end])
+
+        @debug "Arc from F to A: end_angle=$(rad2deg(end_angle))"
+        append!(poly_points, _generate_arc_points(centers.Base, params.r_corner, start_angle, end_angle, num_arc_points, prefer_long_arc=true)[2:end])
     else
         push!(poly_points, Point2f(0, params.r_back - params.d_sector), nodes.A)
     end
@@ -173,9 +221,9 @@ function _calculate_sector_polygon_points(params; num_arc_points=20)
     # Arc B to C (Right Side)
     if params.r_corner > 1e-9
         start_angle = get_angle(nodes.B, centers.RightSide)
-        @debug "Arc from B to C: start_angle=$start_angle"
+        @debug "Arc from B to C: start_angle=$(rad2deg(start_angle))"
         end_angle = get_angle(nodes.C, centers.RightSide)
-        @debug "Arc from B to C: end_angle=$end_angle"
+        @debug "Arc from B to C: end_angle=$(rad2deg(end_angle))"
         append!(poly_points, _generate_arc_points(centers.RightSide, params.r_corner, start_angle, end_angle, num_arc_points)[2:end])
     else
         push!(poly_points, nodes.C)
@@ -189,9 +237,9 @@ function _calculate_sector_polygon_points(params; num_arc_points=20)
     # Arc D to E (Left Side)
     if params.r_corner > 1e-9
         start_angle = get_angle(nodes.D, centers.LeftSide)
-        @debug "Arc from D to E: start_angle=$start_angle"
+        @debug "Arc from D to E: start_angle=$(rad2deg(start_angle))"
         end_angle = get_angle(nodes.E, centers.LeftSide)
-        @debug "Arc from D to E: end_angle=$end_angle"
+        @debug "Arc from D to E: end_angle=$(rad2deg(end_angle))"
         append!(poly_points, _generate_arc_points(centers.LeftSide, params.r_corner, start_angle, end_angle, num_arc_points)[2:end])
     else
         push!(poly_points, nodes.E)
