@@ -23,8 +23,8 @@ module DataModel
 
 # Export public API
 export Thickness, Diameter  # Type definitions
-export WireArray, Strip, Tubular  # Conductor types
-export Semicon, Insulator  # Insulator types
+export WireArray, Strip, Tubular, SectorParams, Sector  # Conductor types
+export Semicon, Insulator, SectorInsulator  # Insulator types
 export ConductorGroup, InsulatorGroup  # Group types
 export CableComponent, CableDesign  # Cable design types
 export CablePosition, LineCableSystem  # System types
@@ -45,6 +45,8 @@ using ..Utils
 using ..Materials
 using ..EarthProps
 using ..Validation
+using GeometryBasics: Point2f
+using PolygonOps
 import ..Validation: sanitize, validate!, has_radii, has_temperature, extra_rules, IntegerField, Positive, Finite, Normalized, IsA
 
 # TODO: Develop and integrate input type normalization
@@ -61,10 +63,12 @@ include("datamodel/wirearray.jl")
 include("datamodel/strip.jl")
 include("datamodel/tubular.jl")
 include("datamodel/conductorgroup.jl")
+include("datamodel/sector.jl")
 
 #Insulators
 include("datamodel/insulator.jl")
 include("datamodel/semicon.jl")
+include("datamodel/sectorinsulator.jl")
 include("datamodel/insulatorgroup.jl")
 
 # Submodule `BaseParams`
