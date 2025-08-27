@@ -70,7 +70,7 @@ end
 
 # --- Geometric Helper Functions (internal) --- 
 #NB: This return another full sector not just the insulation -
-#---- Parameter calculations are handled by the equivalent radius difference
+#---- Parameter calculations are handled by the equivalent area difference (as in the constructor)
 #---- Plots.jl handling can be done 
 #---- FEM handling not done yet 
 
