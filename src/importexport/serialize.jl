@@ -66,6 +66,17 @@ _serializable_fields(::Strip) = (
     :temperature,
     :lay_direction,
 )
+_serializable_fields(::SectorParams) = (:n_sectors,
+    :r_back,
+    :d_sector,
+    :r_corner,
+    :theta_cond_deg
+)
+_serializable_fields(::Sector) = (:params,
+    :rotation_angle_deg,
+    :material_props,
+    :temperature
+)
 
 # Layer Types (Insulator Parts)
 _serializable_fields(::Insulator) = (
@@ -79,6 +90,11 @@ _serializable_fields(::Semicon) = (
     :radius_ext,
     :material_props,
     :temperature,
+)
+_serializable_fields(::SectorInsulator) = (:inner_sector,
+    :thickness,
+    :material_props,
+    :temperature
 )
 
 # Group Types - Only serialize the layers needed for reconstruction.
