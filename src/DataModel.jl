@@ -84,7 +84,7 @@ include("datamodel/linecablesystem.jl")
 # Helpers & overrides
 include("datamodel/helpers.jl")
 include("datamodel/preview.jl")
-include("datamodel/dataframe.jl")
-include("datamodel/base.jl")
+include("datamodel/io.jl")
+include("datamodel/typecoercion.jl")
 
 end # module DataModel
