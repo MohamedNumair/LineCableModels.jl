@@ -5,7 +5,7 @@ Represents a flat conductive strip with defined geometric and material propertie
 
 $(TYPEDFIELDS)
 """
-struct Strip{T<:REALSCALAR,U<:Int} <: AbstractConductorPart{T}
+struct Strip{T<:REALSCALAR} <: AbstractConductorPart{T}
     "Internal radius of the strip \\[m\\]."
     radius_in::T
     "External radius of the strip \\[m\\]."
@@ -21,7 +21,7 @@ struct Strip{T<:REALSCALAR,U<:Int} <: AbstractConductorPart{T}
     "Pitch length of the strip's helical path \\[m\\]."
     pitch_length::T
     "Twisting direction of the strip (1 = unilay, -1 = contralay) \\[dimensionless\\]."
-    lay_direction::U
+    lay_direction::Int
     "Material properties of the strip."
     material_props::Material{T}
     "Temperature at which the properties are evaluated \\[°C\\]."
@@ -77,8 +77,8 @@ function Strip(
     lay_ratio::T,
     material_props::Material{T},
     temperature::T,
-    lay_direction::U,
-) where {T<:REALSCALAR,U<:Int}
+    lay_direction::Int,
+) where {T<:REALSCALAR}
 
     thickness = radius_ext - radius_in
     rho = material_props.rho
