@@ -242,3 +242,5 @@ function add!(
     system.num_phases = count(x -> x > 0, assigned_phases)
     system
 end
+
+include("linecablesystem/dataframe.jl")
