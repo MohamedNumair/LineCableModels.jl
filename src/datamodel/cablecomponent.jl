@@ -13,17 +13,17 @@ $(TYPEDFIELDS)
 
 	In applications, the [`CableComponent`](@ref) type is mapped to the main cable structures described in manufacturer datasheets, e.g., core, sheath, armor and jacket.
 """
-mutable struct CableComponent
+mutable struct CableComponent{T<:REALSCALAR}
     "Cable component identification (e.g. core/sheath/armor)."
     id::String
     "The conductor group containing all conductive parts."
-    conductor_group::ConductorGroup
+    conductor_group::ConductorGroup{T}
     "Effective properties of the equivalent coaxial conductor."
-    conductor_props::Material
+    conductor_props::Material{T}
     "The insulator group containing all insulating parts."
-    insulator_group::InsulatorGroup
+    insulator_group::InsulatorGroup{T}
     "Effective properties of the equivalent coaxial insulator."
-    insulator_props::Material
+    insulator_props::Material{T}
 
     @doc """
     $(TYPEDSIGNATURES)
@@ -69,44 +69,40 @@ mutable struct CableComponent
     - [`calc_sigma_lossfact`](@ref)
     - [`calc_solenoid_correction`](@ref)
     """
-    function CableComponent(
+    function CableComponent{T}(
         id::String,
-        conductor_group::ConductorGroup,
-        insulator_group::InsulatorGroup)
-        # Validate the geometry
+        conductor_group::ConductorGroup{T},
+        insulator_group::InsulatorGroup{T},
+    ) where {T<:REALSCALAR}
+
+        # 1) Geometry interface check
         if conductor_group.radius_ext != insulator_group.radius_in
-            error("Conductor outer radius must match insulator inner radius.")
+            throw(ArgumentError("Conductor outer radius must match insulator inner radius."))
         end
 
-        # Use pre-calculated values from the groups
-        radius_in_con = conductor_group.radius_in
-        radius_ext_con = conductor_group.radius_ext
-        radius_ext_ins = insulator_group.radius_ext
+        # Radii
+        r1 = conductor_group.radius_in
+        r2 = conductor_group.radius_ext
+        r3 = insulator_group.radius_ext
 
-        # Equivalent conductor properties
-        rho_con =
-            calc_equivalent_rho(conductor_group.resistance, radius_ext_con, radius_in_con)
-        mu_con = calc_equivalent_mu(conductor_group.gmr, radius_ext_con, radius_in_con)
-        alpha_con = conductor_group.alpha
-        conductor_props =
-            Material(rho_con, 0.0, mu_con, conductor_group.layers[1].temperature, alpha_con)
+        # 2) Conductor equivalents
+        ρ_con = calc_equivalent_rho(conductor_group.resistance, r2, r1)
+        μ_con = calc_equivalent_mu(conductor_group.gmr, r2, r1)
+        α_con = conductor_group.alpha
+        θ_con = conductor_group.layers[1].temperature
+        conductor_props = Material{T}(ρ_con, T(0), μ_con, θ_con, α_con)
 
-        # Insulator properties
+        # 3) Insulator equivalents (use already-aggregated C and G)
         C_eq = insulator_group.shunt_capacitance
         G_eq = insulator_group.shunt_conductance
-        eps_ins = calc_equivalent_eps(C_eq, radius_ext_ins, radius_ext_con)
-        rho_ins = 1 / calc_sigma_lossfact(G_eq, radius_ext_con, radius_ext_ins)
-        correction_mu_ins = calc_solenoid_correction(
-            conductor_group.num_turns,
-            radius_ext_con,
-            radius_ext_ins,
-        )
-        mu_ins = correction_mu_ins
-        insulator_props =
-            Material(rho_ins, eps_ins, mu_ins, insulator_group.layers[1].temperature, 0.0)
+        ε_ins = calc_equivalent_eps(C_eq, r3, r2)
+        σ_ins = calc_sigma_lossfact(G_eq, r2, r3)
+        ρ_ins = inv(σ_ins)               # safe if σ_ins ≠ 0 (your tests cover zero?)
+        μ_ins = calc_solenoid_correction(conductor_group.num_turns, r2, r3)
+        θ_ins = insulator_group.layers[1].temperature
+        insulator_props = Material{T}(ρ_ins, ε_ins, μ_ins, θ_ins, T(0))
 
-        # Initialize object
-        return new(
+        return new{T}(
             id,
             conductor_group,
             conductor_props,
@@ -114,6 +110,35 @@ mutable struct CableComponent
             insulator_props,
         )
     end
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Loose constructor that **keeps the public API unchanged**. It infers the scalar
+type `T` from the two groups, coerces them if necessary, and calls the strict kernel.
+
+# Arguments
+- `id`: Cable component identification.
+- `conductor_group`: The conductor group (any `ConductorGroup{S}`).
+- `insulator_group`: The insulator group (any `InsulatorGroup{R}`).
+
+# Returns
+- A `CableComponent{T}` where `T` is the resolved scalar type.
+"""
+function CableComponent(
+    id::String,
+    conductor_group::ConductorGroup,
+    insulator_group::InsulatorGroup,
+)
+    # Resolve target T from the two groups (honors Measurements, etc.)
+    T = resolve_T(conductor_group, insulator_group)
+
+    # Coerce groups to T (identity if already T)
+    cgT = coerce_to_T(conductor_group, T)
+    igT = coerce_to_T(insulator_group, T)
+
+    return CableComponent{T}(id, cgT, igT)
 end
 
 include("cablecomponent/base.jl")

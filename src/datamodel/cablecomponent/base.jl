@@ -1,5 +1,7 @@
 import Base: get, show, delete!, length, setindex!, iterate, keys, values, haskey, getindex, eltype
 
+eltype(::CableComponent{T}) where {T} = T
+eltype(::Type{CableComponent{T}}) where {T} = T
 
 """
 $(TYPEDSIGNATURES)
