@@ -67,9 +67,7 @@ end
 """
 $(TYPEDSIGNATURES)
 
-**Weakly-typed constructor** that keeps the public API unchanged. Infers the scalar type
-from the `component` (and nominal data if present), coerces values to that type,
-and calls the typed kernel.
+**Weakly-typed constructor** that infers the scalar type from the `component` (and nominal data if present), coerces values to that type, and calls the typed kernel.
 """
 function CableDesign(
     cable_id::String,
