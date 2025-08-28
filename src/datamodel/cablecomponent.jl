@@ -116,8 +116,7 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Weakly-typed constructor that **keeps the public API unchanged**. It infers the scalar
-type `T` from the two groups, coerces them if necessary, and calls the strict kernel.
+Weakly-typed constructor that infers the scalar type `T` from the two groups, coerces them if necessary, and calls the strict kernel.
 
 # Arguments
 - `id`: Cable component identification.
