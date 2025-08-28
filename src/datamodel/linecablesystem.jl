@@ -244,3 +244,4 @@ function add!(
 end
 
 include("linecablesystem/dataframe.jl")
+include("linecablesystem/base.jl")
