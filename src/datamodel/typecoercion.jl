@@ -45,7 +45,6 @@ end
 @inline coerce_to_T(p::AbstractInsulatorPart{S}, ::Type{T}) where {S,T} =
     _rebuild_part_typed_core(p, T)
 @inline coerce_to_T(g::InsulatorGroup{T}, ::Type{T}) where {T} = g
-
 @inline function coerce_to_T(g::InsulatorGroup{S}, ::Type{T}) where {S,T}
     n = length(g.layers)
     layersT = Vector{AbstractInsulatorPart{T}}(undef, n)
@@ -62,9 +61,17 @@ end
     )
 end
 
+@inline coerce_to_T(c::CableComponent{T}, ::Type{T}) where {T} = c
+@inline function coerce_to_T(c::CableComponent{S}, ::Type{T}) where {S,T}
+    CableComponent{T}(
+        c.id,
+        coerce_to_T(c.conductor_group, T),
+        coerce_to_T(c.insulator_group, T),
+    )
+end
+
 "Identity: no allocation when already at `T`."
 @inline coerce_to_T(n::NominalData{T}, ::Type{T}) where {T} = n
-
 # Cross-T rebuild: fieldwise coercion, preserving `nothing`
 @inline function coerce_to_T(n::NominalData{S}, ::Type{T}) where {S,T}
     names = fieldnames(typeof(n))                  # e.g. (:designation_code, :U0, :U, ...)
@@ -77,7 +84,6 @@ end
 end
 
 @inline coerce_to_T(d::CableDesign{T}, ::Type{T}) where {T} = d
-
 @inline function coerce_to_T(d::CableDesign{S}, ::Type{T}) where {S,T}
     compsT = Vector{CableComponent{T}}(undef, length(d.components))
     @inbounds for i in eachindex(d.components)
@@ -85,4 +91,24 @@ end
     end
     ndT = isnothing(d.nominal_data) ? nothing : coerce_to_T(d.nominal_data, T)
     CableDesign{T}(d.cable_id, compsT; nominal_data=ndT)
+end
+
+@inline coerce_to_T(p::CablePosition{T}, ::Type{T}) where {T} = p
+@inline function coerce_to_T(p::CablePosition{S}, ::Type{T}) where {S,T}
+    CablePosition{T}(
+        coerce_to_T(p.design_data, T),
+        coerce_to_T(p.horz, T),
+        coerce_to_T(p.vert, T),
+        p.conn,                      # keep Int mapping as-is
+    )
+end
+
+@inline coerce_to_T(sys::LineCableSystem{T}, ::Type{T}) where {T} = sys
+@inline function coerce_to_T(sys::LineCableSystem{S}, ::Type{T}) where {S,T}
+    cablesT = Vector{CablePosition{T}}(undef, length(sys.cables))
+    @inbounds for i in eachindex(sys.cables)
+        cablesT[i] = coerce_to_T(sys.cables[i], T)
+    end
+    # counts will be recomputed once positions are populated; preserve them now
+    LineCableSystem{T}(sys.system_id, coerce_to_T(sys.line_length, T), cablesT)
 end
