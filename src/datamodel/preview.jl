@@ -297,7 +297,8 @@ function preview(
             # Create a shape with a hole by passing a list of polygons
             plot!(
                 plt,
-                Shape([outer_vertices, inner_vertices]),
+                #Shape([outer_vertices, inner_vertices]),
+                Shape(outer_vertices),
                 linecolor=:black,
                 color=color,
                 label=display_legend ? label : "",
@@ -346,13 +347,13 @@ function preview(
     end
 
     if display_plot
-        if !is_in_testset()
-            if is_headless()
-                DisplayAs.Text(DisplayAs.PNG(plt))
-            else
+#        if !is_in_testset()
+#            if is_headless()
+#                DisplayAs.Text(DisplayAs.PNG(plt))
+#            else
                 display(plt)
-            end
-        end
+ #           end
+  #      end
     end
 
     return plt

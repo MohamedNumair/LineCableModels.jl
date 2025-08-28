@@ -30,6 +30,7 @@ export CableComponent, CableDesign  # Cable design types
 export CablePosition, LineCableSystem  # System types
 export CablesLibrary, NominalData  # Support types
 export trifoil_formation, flat_formation  # Formation helpers
+using Statistics
 
 # Load common dependencies
 using ..LineCableModels
@@ -45,7 +46,7 @@ using ..Utils
 using ..Materials
 using ..EarthProps
 using ..Validation
-using GeometryBasics: Point2f
+using GeometryBasics
 using PolygonOps
 import ..Validation: sanitize, validate!, has_radii, has_temperature, extra_rules, IntegerField, Positive, Finite, Normalized, IsA
 
