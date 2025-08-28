@@ -1,7 +1,7 @@
 module LineCableModels
 
 # Package-wide definitions
-include("globals.jl")
+include("consts.jl")
 include("utils/logging.jl")
 
 # Submodule `Utils`
