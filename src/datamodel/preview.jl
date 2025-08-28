@@ -1,4 +1,5 @@
 import ..LineCableModels: preview
+import ..Utils: is_in_testset
 
 """
 $(TYPEDSIGNATURES)
@@ -289,7 +290,7 @@ function preview(
                 for sublayer in layer.layers
                     _plot_layer!(
                         sublayer,
-                        first_layer ? lowercase(string(typeof(layer))) : "",
+                        first_layer ? lowercase(string(nameof(typeof(layer)))) : "",
                         x0=x_offset,
                         y0=y_offset,
                     )
@@ -299,7 +300,7 @@ function preview(
                 # Plot standard conductor layer
                 _plot_layer!(
                     layer,
-                    lowercase(string(typeof(layer))),
+                    lowercase(string(nameof(typeof(layer)))),
                     x0=x_offset,
                     y0=y_offset,
                 )
@@ -310,7 +311,7 @@ function preview(
         for layer in component.insulator_group.layers
             _plot_layer!(
                 layer,
-                lowercase(string(typeof(layer))),
+                lowercase(string(nameof(typeof(layer)))),
                 x0=x_offset,
                 y0=y_offset,
             )
