@@ -47,9 +47,6 @@ using ..EarthProps
 using ..Validation
 import ..Validation: sanitize, validate!, has_radii, has_temperature, extra_rules, IntegerField, Positive, Finite, Normalized, IsA, required_fields, coercive_fields, keyword_fields, keyword_defaults, _kwdefaults_nt
 
-# TODO: Develop and integrate input type normalization
-# Issue URL: https://github.com/Electa-Git/LineCableModels.jl/issues/10
-
 # Abstract types & constructors
 include("datamodel/types.jl")
 include("datamodel/macros.jl")
