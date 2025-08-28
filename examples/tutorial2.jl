@@ -426,14 +426,18 @@ system_df = DataFrame(cable_system)
 plt4 = preview(cable_system, zoom_factor=0.15)
 
 #=
-## PSCAD export
+## PSCAD & ATPDraw export
 
-The final step showcases how to export the model for electromagnetic transient simulations in PSCAD.
+The final step showcases how to export the model for electromagnetic transient simulations in EMT-type software.
 =#
 
 # Export to PSCAD input file:
-output_file = fullfile("$(cable_system.system_id)_export.pscx")
+output_file = fullfile("pscad_export.pscx")
 export_file = export_data(:pscad, cable_system, earth_params, file_name=output_file);
+
+# Export to ATPDraw project file (XML):
+output_file = fullfile("atp_export.xml")
+export_file = export_data(:atp, cable_system, earth_params, file_name=output_file);
 
 #=
 ## Conclusion
