@@ -16,4 +16,5 @@ end
     insulator_props = Material(1e14, 2.3, 1.0, 20.0, 0.0)
     semicon_props = Material(1000.0, 1000.0, 1.0, 20.0, 0.0)
 end
+
 @run_package_tests verbose = true
