@@ -52,10 +52,11 @@ struct Material{T<:REALSCALAR}
     T0::T
     "Temperature coefficient of resistivity \\[1/°C\\]."
     alpha::T
-end
 
-@inline function Material{T}(rho::T, eps_r::T, mu_r::T, T0::T, alpha::T) where {T<:REALSCALAR}
-    new{T}(rho, eps_r, mu_r, T0, alpha)
+    @inline function Material{T}(rho::T, eps_r::T, mu_r::T, T0::T, alpha::T) where {T<:REALSCALAR}
+        return new{T}(rho, eps_r, mu_r, T0, alpha)
+    end
+
 end
 
 """

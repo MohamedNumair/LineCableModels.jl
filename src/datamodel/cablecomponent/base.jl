@@ -1,4 +1,4 @@
-import Base: get, show, delete!, length, setindex!, iterate, keys, values, haskey, getindex
+import Base: get, show, delete!, length, setindex!, iterate, keys, values, haskey, getindex, eltype
 
 
 """

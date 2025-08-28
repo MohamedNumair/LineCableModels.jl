@@ -61,3 +61,15 @@ end
         layersT,
     )
 end
+
+"Identity: no allocation when already at `T`."
+@inline coerce_to_T(n::NominalData{T}, ::Type{T}) where {T} = n
+
+"Cross-T rebuild: fieldwise coercion to `T`, preserving `nothing`."
+@inline function coerce_to_T(n::NominalData{S}, ::Type{T}) where {S,T}
+    NT = NamedTuple{fieldnames(typeof(n))}(
+        (getfield(n, k) === nothing ? nothing : coerce_to_T(getfield(n, k), T)
+         for k in fieldnames(typeof(n)))...
+    )
+    return NominalData{T}(; NT...)
+end
