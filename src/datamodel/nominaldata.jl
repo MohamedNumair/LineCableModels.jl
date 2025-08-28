@@ -1,4 +1,4 @@
-# NominalData — parametric, tight + loose constructors, identity-preserving coercion
+# NominalData — parametric, tight + Weakly-typed constructors, identity-preserving coercion
 
 using ..Utils: resolve_T, coerce_to_T
 
@@ -58,7 +58,7 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Loose constructor that keeps the public API unchanged. It infers the target scalar
+Weakly-typed constructor that keeps the public API unchanged. It infers the target scalar
 type `T` from the **provided numeric kwargs** (ignoring `nothing` and the string
 designation), coerces numerics to `T`, and calls the tight kernel.
 

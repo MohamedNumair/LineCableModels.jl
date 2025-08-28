@@ -75,8 +75,9 @@ mutable struct CableComponent{T<:REALSCALAR}
         insulator_group::InsulatorGroup{T},
     ) where {T<:REALSCALAR}
 
-        # 1) Geometry interface check
-        if conductor_group.radius_ext != insulator_group.radius_in
+        # Geometry interface check (exact or approximately equal)
+        if !(conductor_group.radius_ext == insulator_group.radius_in ||
+             isapprox(conductor_group.radius_ext, insulator_group.radius_in))
             throw(ArgumentError("Conductor outer radius must match insulator inner radius."))
         end
 
@@ -115,7 +116,7 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Loose constructor that **keeps the public API unchanged**. It infers the scalar
+Weakly-typed constructor that **keeps the public API unchanged**. It infers the scalar
 type `T` from the two groups, coerces them if necessary, and calls the strict kernel.
 
 # Arguments

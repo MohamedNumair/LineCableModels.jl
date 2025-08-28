@@ -1,7 +1,5 @@
 import ..LineCableModels: add!
 
-
-
 """
 $(TYPEDEF)
 
@@ -9,18 +7,20 @@ Represents the design of a cable, including its unique identifier, nominal data,
 
 $(TYPEDFIELDS)
 """
-mutable struct CableDesign
+mutable struct CableDesign{T<:REALSCALAR}
     "Unique identifier for the cable design."
     cable_id::String
     "Informative reference data."
-    nominal_data::NominalData
+    nominal_data::Union{Nothing,NominalData{T}}
     "Vector of cable components."
-    components::Vector{CableComponent}
+    components::Vector{CableComponent{T}}
 
     @doc """
     $(TYPEDSIGNATURES)
 
-    Constructs a [`CableDesign`](@ref) instance.
+    **Strict numeric kernel**: constructs a `CableDesign{T}` from one component
+    (typed) and optional nominal data (typed or `nothing`). Assumes all inputs
+    are already at scalar type `T`.
 
     # Arguments
 
@@ -47,39 +47,49 @@ mutable struct CableDesign
     - [`ConductorGroup`](@ref)
     - [`InsulatorGroup`](@ref)
     """
-    function CableDesign(
+    @inline function CableDesign{T}(
         cable_id::String,
-        component::CableComponent;
-        nominal_data::NominalData=NominalData(),
-    )
-        return new(cable_id, nominal_data, [component])
+        component::CableComponent{T};
+        nominal_data::Union{Nothing,NominalData{T}}=nothing,
+    ) where {T<:REALSCALAR}
+        new{T}(cable_id, nominal_data, CableComponent{T}[component])
+    end
+
+    @inline function CableDesign{T}(
+        cable_id::String,
+        components::Vector{CableComponent{T}};
+        nominal_data::Union{Nothing,NominalData{T}}=nothing,
+    ) where {T<:REALSCALAR}
+        new{T}(cable_id, nominal_data, components)
     end
 end
 
 """
 $(TYPEDSIGNATURES)
 
-Constructs a [`CableDesign`](@ref) instance from conductor and insulator groups.
+**Weakly-typed constructor** that keeps the public API unchanged. Infers the scalar type
+from the `component` (and nominal data if present), coerces values to that type,
+and calls the typed kernel.
+"""
+function CableDesign(
+    cable_id::String,
+    component::CableComponent;
+    nominal_data::NominalData=NominalData(),
+)
+    # Resolve T from component and nominal_data (ignoring `nothing` fields in the latter)
+    T = resolve_T(component, nominal_data)
 
-# Arguments
+    compT = coerce_to_T(component, T)
+    ndT = coerce_to_T(nominal_data, T)  # identity if already T
 
-- `cable_id`: Unique identifier for the cable design.
-- `conductor_group`: The [`ConductorGroup`](@ref) for the component.
-- `insulator_group`: The [`InsulatorGroup`](@ref) for the component.
-- `component_id`: ID for the cable component. Default: "core".
-- `nominal_data`: Reference data for the cable design. Default: `NominalData()`.
+    return CableDesign{T}(cable_id, compT; nominal_data=ndT)
+end
 
-# Returns
+"""
+$(TYPEDSIGNATURES)
 
-- A [`CableDesign`](@ref) object with the specified properties.
-
-# Examples
-
-```julia
-conductor_group = ConductorGroup(central_conductor)
-insulator_group = InsulatorGroup(main_insulator)
-design = $(FUNCTIONNAME)("example", conductor_group, insulator_group)
-```
+Constructs a [`CableDesign`](@ref) instance **from conductor and insulator groups**.
+Convenience wrapper that builds the component with reduced boilerplate.
 """
 function CableDesign(
     cable_id::String,
@@ -89,100 +99,47 @@ function CableDesign(
     nominal_data::NominalData=NominalData(),
 )
     component = CableComponent(component_id, conductor_group, insulator_group)
-    return CableDesign(cable_id, nominal_data, [component])
+    return CableDesign(cable_id, component; nominal_data)
 end
 
+function add!(design::CableDesign{T}, component::CableComponent) where {T}
+    Tnew = resolve_T(design, component)
 
-"""
-$(TYPEDSIGNATURES)
-
-Adds a cable component to an existing [`CableDesign`](@ref).
-
-# Arguments
-
-- `design`: A [`CableDesign`](@ref) object where the component will be added.
-- `component`: A [`CableComponent`](@ref) to add to the design.
-
-# Returns
-
-- The modified [`CableDesign`](@ref) object.
-
-# Notes
-
-If a component with the same ID already exists, it will be overwritten, and a warning will be logged.
-
-# Examples
-
-```julia
-conductor_group = ConductorGroup(wire_array)
-insulator_group = InsulatorGroup(insulation)
-component = CableComponent("sheath", conductor_group, insulator_group)
-$(FUNCTIONNAME)(design, component)
-```
-
-# See also
-
-- [`CableDesign`](@ref)
-- [`CableComponent`](@ref)
-"""
-function add!(
-    design::CableDesign,
-    component::CableComponent,
-)
-    # Check for existing component with same ID
-    existing_idx = findfirst(comp -> comp.id == component.id, design.components)
-
-    if !isnothing(existing_idx)
-        @warn "Component with ID '$(component.id)' already exists in the CableDesign and will be overwritten."
-        design.components[existing_idx] = component
+    if Tnew === T
+        compT = coerce_to_T(component, T)
+        if (idx = findfirst(c -> c.id == compT.id, design.components)) !== nothing
+            @warn "Component with ID '$(compT.id)' already exists and will be overwritten."
+            design.components[idx] = compT
+        else
+            push!(design.components, compT)
+        end
+        return design
     else
-        # Add new component to the vector
-        push!(design.components, component)
+        @warn """
+        Adding a `$Tnew` component to a `CableDesign{$T}` returns a **promoted** design.
+        Capture the result:  design = add!(design, component)
+        """
+        # promote whole design, then insert coerced component
+        promoted = coerce_to_T(design, Tnew)
+        compT = coerce_to_T(component, Tnew)
+        if (idx = findfirst(c -> c.id == compT.id, promoted.components)) !== nothing
+            promoted.components[idx] = compT
+        else
+            push!(promoted.components, compT)
+        end
+        return promoted
     end
-
-    return design
 end
 
-"""
-$(TYPEDSIGNATURES)
-
-Adds a cable component to an existing [`CableDesign`](@ref) using separate conductor and insulator groups. Performs as a convenience wrapper to construct the [`CableComponent`](@ref) object with reduced boilerplate.
-
-# Arguments
-
-- `design`: A [`CableDesign`](@ref) object where the component will be added.
-- `component_id`: ID for the new component.
-- `conductor_group`: A [`ConductorGroup`](@ref) for the component.
-- `insulator_group`: An [`InsulatorGroup`](@ref) for the component.
-
-# Returns
-
-- The modified [`CableDesign`](@ref) object.
-
-# Examples
-
-```julia
-conductor_group = ConductorGroup(wire_array)
-insulator_group = InsulatorGroup(insulation)
-$(FUNCTIONNAME)(design, "shield", conductor_group, insulator_group)
-```
-
-# See also
-
-- [`CableDesign`](@ref)
-- [`CableComponent`](@ref)
-"""
+# --- add!(design, by groups): wraps the above ---
 function add!(
-    design::CableDesign,
+    design::CableDesign{T},
     component_id::String,
     conductor_group::ConductorGroup,
     insulator_group::InsulatorGroup,
-)
-    # Create new component
-    component = CableComponent(component_id, conductor_group, insulator_group)
-
-    # Call the main function
-    return add!(design, component)
+) where {T}
+    comp = CableComponent(component_id, conductor_group, insulator_group)
+    add!(design, comp)  # may return the same or a promoted design
 end
 
 include("cabledesign/base.jl")

@@ -62,7 +62,7 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Loose constructor that infers the target scalar type `T` from the arguments,
+Weakly-typed constructor that infers the target scalar type `T` from the arguments,
 coerces values to `T`, and calls the strict numeric kernel.
 
 # Arguments

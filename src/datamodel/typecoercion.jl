@@ -65,11 +65,24 @@ end
 "Identity: no allocation when already at `T`."
 @inline coerce_to_T(n::NominalData{T}, ::Type{T}) where {T} = n
 
-"Cross-T rebuild: fieldwise coercion to `T`, preserving `nothing`."
+# Cross-T rebuild: fieldwise coercion, preserving `nothing`
 @inline function coerce_to_T(n::NominalData{S}, ::Type{T}) where {S,T}
-    NT = NamedTuple{fieldnames(typeof(n))}(
-        (getfield(n, k) === nothing ? nothing : coerce_to_T(getfield(n, k), T)
-         for k in fieldnames(typeof(n)))...
-    )
-    return NominalData{T}(; NT...)
+    names = fieldnames(typeof(n))                  # e.g. (:designation_code, :U0, :U, ...)
+    vals = map(names) do k                        # map over tuple of names → returns a tuple
+        v = getfield(n, k)
+        v === nothing ? nothing : coerce_to_T(v, T)
+    end
+    NT = NamedTuple{names}(vals)                   # correct: pass a SINGLE tuple, not varargs
+    return NominalData{T}(; NT...)                 # call typed kernel via keyword splat
+end
+
+@inline coerce_to_T(d::CableDesign{T}, ::Type{T}) where {T} = d
+
+@inline function coerce_to_T(d::CableDesign{S}, ::Type{T}) where {S,T}
+    compsT = Vector{CableComponent{T}}(undef, length(d.components))
+    @inbounds for i in eachindex(d.components)
+        compsT[i] = coerce_to_T(d.components[i], T)
+    end
+    ndT = isnothing(d.nominal_data) ? nothing : coerce_to_T(d.nominal_data, T)
+    CableDesign{T}(d.cable_id, compsT; nominal_data=ndT)
 end
