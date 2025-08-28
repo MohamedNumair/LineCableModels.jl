@@ -6,8 +6,6 @@ let current_id = 100000000
     global _next_id = () -> (id = current_id; current_id += 1; string(id))
 end
 
-export_data(format::Symbol, args...; kwargs...) = export_data(Val(format), args...; kwargs...)
-
 """
 $(TYPEDSIGNATURES)
 
@@ -40,10 +38,23 @@ function export_data(::Val{:pscad},
     cable_system::LineCableSystem,
     earth_props::EarthModel;
     base_freq=f₀,
-    file_name::String="$(cable_system.system_id)_export.pscx",
+    file_name::Union{String,Nothing}=nothing,
 )::Union{String,Nothing}
 
-    file_name = isabspath(file_name) ? file_name : joinpath(@__DIR__, file_name)
+    if isnothing(file_name)
+        # caller didn't supply a name -> derive from cable_system if present
+        file_name = joinpath(@__DIR__, "$(cable_system.system_id)_export.pscx")
+    else
+        # caller supplied a path/name -> respect directory, but prepend system_id to basename
+        requested = isabspath(file_name) ? file_name : joinpath(@__DIR__, file_name)
+        if isnothing(cable_system)
+            file_name = requested
+        else
+            dir = dirname(requested)
+            base = basename(requested)
+            file_name = joinpath(dir, "$(cable_system.system_id)_$base")
+        end
+    end
 
     # Sets attributes on an existing EzXML.Node from a dictionary.
     function _set_attributes!(element::EzXML.Node, attrs::Dict{String,String})
