@@ -41,6 +41,7 @@ using ...DataModel
 using ...Engine
 import ...DataModel: AbstractCablePart, AbstractConductorPart, AbstractInsulatorPart
 import ..Engine: AbstractFormulationSet, AbstractFormulationOptions, AbstractImpedanceFormulation, AbstractAdmittanceFormulation, compute!
+import ...Utils: display_path
 
 # FEM specific dependencies
 using Gmsh
