@@ -164,10 +164,11 @@
         # Test PSCAD export
         mktempdir(joinpath(@__DIR__)) do temp_dir
             output_file = joinpath(temp_dir, "$(cable_system.system_id)_export.pscx")
-            export_data(:pscad, cable_system, earth_params, file_name=output_file)
-            @test isfile(output_file)
+            result_path = export_data(:pscad, cable_system, earth_params, file_name=output_file)
+            @test !isnothing(result_path)
+            @test isfile(result_path)
             # Check if file has content
-            @test filesize(output_file) > 0
+            @test filesize(result_path) > 0
         end
     end
 
@@ -227,10 +228,10 @@
         system_partially_grounded = LineCableSystem("partially_grounded_system", 1000.0, cablepos_partially_grounded)
         mktempdir(joinpath(@__DIR__)) do temp_dir
             output_file = joinpath(temp_dir, "partially_grounded_export.pscx")
-            # This should run without error
-            export_data(:pscad, system_partially_grounded, earth_params, file_name=output_file)
-            @test isfile(output_file)
-            @test filesize(output_file) > 0
+            result_path = export_data(:pscad, system_partially_grounded, earth_params, file_name=output_file)
+            @test !isnothing(result_path)
+            @test isfile(result_path)
+            @test filesize(result_path) > 0
         end
     end
 end
