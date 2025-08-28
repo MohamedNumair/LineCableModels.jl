@@ -5,7 +5,7 @@ Represents an insulating layer surrounding a sector-shaped conductor.
 
 $(TYPEDFIELDS)
 """
-struct SectorInsulator{T<:REALSCALAR} <: AbstractInsulatorPart
+struct SectorInsulator{T<:REALSCALAR} <: AbstractInsulatorPart{T}
     "Inner radius (not applicable, defined by inner sector) \\[m\\]."
     radius_in::T
     "Outer radius (equivalent back radius of outer boundary) \\[m\\]."

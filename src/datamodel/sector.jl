@@ -25,7 +25,7 @@ Represents a single sector-shaped conductor with defined geometric and material 
 
 $(TYPEDFIELDS)
 """
-struct Sector{T<:REALSCALAR,U<:Int} <: AbstractConductorPart
+struct Sector{T<:REALSCALAR} <: AbstractConductorPart{T}
     "Inner radius (not applicable, typically 0 for the central point) \\[m\\]."
     radius_in::T
     "Outer radius (equivalent back radius) \\[m\\]."
@@ -74,7 +74,7 @@ function Sector(
     r_equiv = sqrt(cross_section / π)
     gmr = r_equiv * exp(-0.25 * material_props.mu_r) # GMR of an equivalent solid round conductor
 
-    return Sector{T,Int}(
+    return Sector{T}(
         zero(T),
         params.r_back,
         params,
