@@ -51,7 +51,23 @@ mutable struct CableComponent{T<:REALSCALAR}
 
     # Returns
 
-    - A [`CableComponent`](@ref) instance with calculated equivalent properties.
+    A [`CableComponent`](@ref) instance with calculated equivalent properties:
+
+    - `id::String`: Cable component identification.
+    - `conductor_group::ConductorGroup{T}`: The conductor group containing all conductive parts.
+    - `conductor_props::Material{T}`: Effective properties of the equivalent coaxial conductor.
+        * `rho`: Resistivity \\[Ω·m\\].
+        * `eps_r`: Relative permittivity \\[dimensionless\\].
+        * `mu_r`: Relative permeability \\[dimensionless\\].
+        * `T0`: Reference temperature \\[°C\\].
+        * `alpha`: Temperature coefficient of resistivity \\[1/°C\\].
+    - `insulator_group::InsulatorGroup{T}`: The insulator group containing all insulating parts.
+    - `insulator_props::Material{T}`: Effective properties of the equivalent coaxial insulator.
+        * `rho`: Resistivity \\[Ω·m\\].
+        * `eps_r`: Relative permittivity \\[dimensionless\\].
+        * `mu_r`: Relative permeability \\[dimensionless\\].
+        * `T0`: Reference temperature \\[°C\\].
+        * `alpha`: Temperature coefficient of resistivity \\[1/°C\\].
 
     # Examples
 
