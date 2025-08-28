@@ -509,11 +509,17 @@ end
     earth_params_pscad = EarthModel(f_pscad, 100.0, 10.0, 1.0) # 100 Ω·m, εr=10, μr=1
 
     # Use outermost radius for trifoil calculation spacing
-    outermost_radius = cable_design.components[end].insulator_group.radius_ext
-    center_dist = outermost_radius
+    r = cable_design.components[end].insulator_group.radius_ext
+
+    s = 2r + 0.01
 
     x0, y0 = 0.0, -1.0 # System center 1 m underground
-    xa, ya, xb, yb, xc, yc = trifoil_formation(x0, y0, center_dist)
+    xa, ya, xb, yb, xc, yc = trifoil_formation(x0, y0, s)
+
+    d_ab = hypot(xa - xb, ya - yb)
+    d_bc = hypot(xb - xc, yb - yc)
+    d_ca = hypot(xc - xa, yc - ya)
+    @assert min(d_ab, d_bc, d_ca) ≥ 2r
 
     cable_system_id = "tutorial2_pscad_test"
     cablepos =
@@ -541,15 +547,17 @@ end
         output_file = joinpath(tmpdir, "tutorial2_export_test.pscx")
         println("  Exporting PSCAD file to: ", output_file)
 
-        # Test export function call
-        @test isfile(export_data(:pscad, cable_system, earth_params_pscad, file_name=output_file))
+        # Run export and use returned path (exporter may prefix basename with system_id)
+        result_path = export_data(:pscad, cable_system, earth_params_pscad, file_name=output_file)
 
-        # Basic file checks
-        @test isfile(output_file)
-        @test filesize(output_file) > 200
+        # Basic file checks (use returned path)
+        @test result_path != nothing
+        @test isfile(result_path)
+        @test filesize(result_path) > 200
 
         # Basic XML content checks
-        xml_content = read(output_file, String)
+        xml_content = read(result_path, String)
+
         @test occursin("<?xml version=", xml_content) # Check for XML declaration
         @test occursin("<project ", xml_content) # Check for root project tag
         @test occursin("</project>", xml_content) # Check for closing root tag
@@ -557,7 +565,7 @@ end
         println("  Performing XML structure checks via XPath...")
         local xml_doc
         try
-            xml_doc = readxml(output_file)
+            xml_doc = readxml(result_path)
         catch parse_err
             println("Failed to parse generated XML: $(parse_err)")
             println("Skipping XPath validation due to parsing error.")
