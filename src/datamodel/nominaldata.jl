@@ -58,9 +58,7 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Weakly-typed constructor that keeps the public API unchanged. It infers the target scalar
-type `T` from the **provided numeric kwargs** (ignoring `nothing` and the string
-designation), coerces numerics to `T`, and calls the tight kernel.
+Weakly-typed constructor that infers the target scalar type `T` from the **provided numeric kwargs** (ignoring `nothing` and the string designation), coerces numerics to `T`, and calls the strict kernel.
 
 If no numeric kwargs are provided, it defaults to `Float64`.
 """
