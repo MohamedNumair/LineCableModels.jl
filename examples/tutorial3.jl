@@ -241,8 +241,8 @@ save(library, file_name=library_file);
 Define a constant frequency earth model:
 =#
 
-f = 1e-3 # Near DC frequency for the analysis
-earth_params = EarthModel([f], 100.0, 10.0, 1.0)  # 100 Ω·m resistivity, εr=10, μr=1
+f = [1e-3] # Near DC frequency for the analysis
+earth_params = EarthModel(f, 100.0, 10.0, 1.0)  # 100 Ω·m resistivity, εr=10, μr=1
 
 # Earth model base (DC) properties:
 earthmodel_df = DataFrame(earth_params)
@@ -277,15 +277,16 @@ system_df = DataFrame(cable_system)
 plt4 = preview(cable_system, zoom_factor=0.15)
 
 #=
-## PSCAD export
-
-This step showcases how to export the model for electromagnetic transient simulations in PSCAD.
-
+## PSCAD & ATPDraw export
 Export to PSCAD input file:
 =#
 
-output_file = fullfile("$(cable_system.system_id)_export.pscx")
+output_file = fullfile("pscad_export.pscx")
 export_file = export_data(:pscad, cable_system, earth_params, file_name=output_file);
+
+# Export to ATPDraw project file (XML):
+output_file = fullfile("atp_export.xml")
+export_file = export_data(:atp, cable_system, earth_params, file_name=output_file);
 
 #=
 ## FEM calculations
@@ -296,11 +297,11 @@ problem = LineParametersProblem(
     cable_system,
     temperature=20.0,  # Operating temperature
     earth_props=earth_params,
-    frequencies=[f],   # Frequency for the analysis
+    frequencies=f,   # Frequency for the analysis
 );
 
 # Estimate domain size based on skin depth in the earth
-domain_radius = calc_domain_size(earth_params, [f]);
+domain_radius = calc_domain_size(earth_params, f);
 
 # Define custom mesh transitions around each cable
 mesh_transition1 = MeshTransition(
@@ -362,13 +363,13 @@ if !opts.mesh_only
     Z = line_params.Z[1, 1, 1]
     Y = line_params.Y[1, 1, 1]
     R = real(Z) * 1000
-    L = imag(Z) / (2π * f) * 1e6
-    C = imag(Y) / (2π * f) * 1e9
+    L = imag(Z) / (2π * f[1]) * 1e6
+    C = imag(Y) / (2π * f[1]) * 1e9
     println("R = $(@sprintf("%.6g", R)) Ω/km")
     println("L = $(@sprintf("%.6g", L)) mH/km")
     println("C = $(@sprintf("%.6g", C)) μF/km")
 end
 
-
-output_file = fullfile("$(cable_system.system_id)_export.xml")
-export_data(Val(:atp), line_params, cable_system, problem, file_name=output_file)
+# Export ZY matrices to ATPDraw
+output_file = fullfile("ZY_export.xml")
+export_file = export_data(:atp, line_params, f; file_name=output_file, cable_system=cable_system)
