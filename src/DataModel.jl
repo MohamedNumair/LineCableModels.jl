@@ -30,7 +30,6 @@ export CableComponent, CableDesign  # Cable design types
 export CablePosition, LineCableSystem  # System types
 export CablesLibrary, NominalData  # Support types
 export trifoil_formation, flat_formation  # Formation helpers
-using Statistics
 
 # Load common dependencies
 using ..LineCableModels

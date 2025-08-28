@@ -347,13 +347,13 @@ function preview(
     end
 
     if display_plot
-#        if !is_in_testset()
-#            if is_headless()
-#                DisplayAs.Text(DisplayAs.PNG(plt))
-#            else
+        if !is_in_testset()
+            if is_headless()
+                DisplayAs.Text(DisplayAs.PNG(plt))
+            else
                 display(plt)
- #           end
-  #      end
+            end
+        end
     end
 
     return plt
