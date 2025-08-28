@@ -25,7 +25,7 @@ end
     # Retrieve the reloaded design
     cable_design = collect(values(cables_library.data))[1]
     x0, y0 = 0.0, -1.0
-    xa, ya, xb, yb, xc, yc = trifoil_formation(x0, y0, 0.035);
+    xa, ya, xb, yb, xc, yc = trifoil_formation(x0, y0, 0.035)
 
     # Initialize the `LineCableSystem` with the first cable (phase A):
     cablepos = CablePosition(cable_design, xa, ya,
@@ -38,17 +38,17 @@ end
     add!(cable_system, cable_design, xc, yc,
         Dict("core" => 3, "sheath" => 0, "jacket" => 0))
 
-    freqs = sort(abs.(randn(3)))
-    earth_params_atp = EarthModel(freqs, 100.0, 10.0, 1.0)
+    freqs = [50.0]
+    earth_props = EarthModel(freqs, 100.0, 10.0, 1.0)
     num_phases = cable_system.num_phases
 
     # Create minimal mock objects for the other required arguments
     problem_atp = LineParametersProblem(
         cable_system,
         temperature=20.0,  # Operating temperature
-        earth_props=earth_params_atp,
+        earth_props=earth_props,
         frequencies=freqs,   # Frequency for the analysis
-        );
+    )
 
 end
 
