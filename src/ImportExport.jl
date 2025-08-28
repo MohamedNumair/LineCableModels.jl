@@ -8,7 +8,7 @@ The [`ImportExport`](@ref) module provides methods for serializing and deseriali
 This module provides functionality for:
 
 - Saving and loading cable designs and material libraries to/from JSON and other formats.
-- Exporting cable system models to PSCAD format.
+- Exporting cable system models to PSCAD and ATP formats.
 - Serializing custom types with special handling for measurements and complex numbers.
 
 The module implements a generic serialization framework with automatic type reconstruction
@@ -47,13 +47,28 @@ using ..Utils
 using ..Materials
 using ..EarthProps
 using ..DataModel
-import ..LineCableModels: load!, export_data, save
+import ..LineCableModels: load!, save
+import ..Utils: display_path, _CLEANMETHODLIST
+
+
+
+"""
+$(TYPEDSIGNATURES)
+
+Export [`LineCableModels`](@ref) data for use in different EMT-type programs.
+
+# Methods
+
+$(_CLEANMETHODLIST)
+"""
+# function export_data end
+export_data(backend::Symbol, args...; kwargs...) = export_data(Val(backend), args...; kwargs...)
 
 include("importexport/serialize.jl")
 include("importexport/deserialize.jl")
 include("importexport/cableslibrary.jl")
 include("importexport/materialslibrary.jl")
 include("importexport/pscad.jl")
-include("ImportExport/atp.jl")
+include("importexport/atp.jl")
 
 end # module ImportExport
