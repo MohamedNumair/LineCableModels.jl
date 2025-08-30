@@ -10,7 +10,7 @@ end
         @testset "CPEarth" begin
             cp_formulation = EP.CPEarth()
             @test cp_formulation isa EP.AbstractFDEMFormulation
-            @test LCM.get_description(cp_formulation) == "Constant properties (CP)"
+            @test LCM.Commons.get_description(cp_formulation) == "Constant properties (CP)"
         end
     end
 
@@ -28,10 +28,10 @@ end
             @test all(r -> r == base_rho_g, rho)
 
             @test length(epsilon) == length(frequencies)
-            @test all(e -> isapprox(e, LCM.ε₀ * base_epsr_g), epsilon)
+            @test all(e -> isapprox(e, LCM.Commons.ε₀ * base_epsr_g), epsilon)
 
             @test length(mu) == length(frequencies)
-            @test all(m -> isapprox(m, LCM.μ₀ * base_mur_g), mu)
+            @test all(m -> isapprox(m, LCM.Commons.μ₀ * base_mur_g), mu)
         end
 
         @testset "Measurement inputs" begin
@@ -45,12 +45,12 @@ end
             @test all(r -> r == rho_m, rho)
 
             @test length(epsilon) == length(frequencies)
-            @test all(e -> e.val ≈ (LCM.ε₀ * epsr_m).val, epsilon)
-            @test all(e -> e.err ≈ (LCM.ε₀ * epsr_m).err, epsilon)
+            @test all(e -> e.val ≈ (LCM.Commons.ε₀ * epsr_m).val, epsilon)
+            @test all(e -> e.err ≈ (LCM.Commons.ε₀ * epsr_m).err, epsilon)
 
             @test length(mu) == length(frequencies)
-            @test all(m -> m.val ≈ (LCM.μ₀ * mur_m).val, mu)
-            @test all(m -> m.err ≈ (LCM.μ₀ * mur_m).err, mu)
+            @test all(m -> m.val ≈ (LCM.Commons.μ₀ * mur_m).val, mu)
+            @test all(m -> m.err ≈ (LCM.Commons.μ₀ * mur_m).err, mu)
         end
     end
 
