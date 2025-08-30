@@ -1,4 +1,3 @@
-import ...LineCableModels: FormulationSet
 
 @kwdef struct FEMOptions <: AbstractFormulationOptions
     "Build mesh only and preview (no solving)"
