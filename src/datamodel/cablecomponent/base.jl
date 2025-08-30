@@ -1,7 +1,6 @@
-import Base: get, show, delete!, length, setindex!, iterate, keys, values, haskey, getindex, eltype
 
-eltype(::CableComponent{T}) where {T} = T
-eltype(::Type{CableComponent{T}}) where {T} = T
+Base.eltype(::CableComponent{T}) where {T} = T
+Base.eltype(::Type{CableComponent{T}}) where {T} = T
 
 """
 $(TYPEDSIGNATURES)
@@ -18,7 +17,7 @@ Defines the display representation of a [`CableComponent`](@ref) object for REPL
 
 - Nothing. Modifies `io` by writing text representation of the object.
 """
-function show(io::IO, ::MIME"text/plain", component::CableComponent)
+function Base.show(io::IO, ::MIME"text/plain", component::CableComponent)
     # Calculate total number of parts across both groups
     total_parts =
         length(component.conductor_group.layers) + length(component.insulator_group.layers)
