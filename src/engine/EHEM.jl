@@ -14,15 +14,12 @@ module EHEM
 # Export public API
 export EnforceLayer
 
-# Load common dependencies
-using ...LineCableModels
-include("../utils/commondeps.jl")
-
 # Module-specific dependencies
-using Measurements
-using ...Utils
-import ...LineCableModels: get_description
+using ...Commons
+using ...EarthProps: EarthModel
+import ...Commons: get_description
 import ..Engine: AbstractEHEMFormulation
+using Measurements
 
 """
 $(TYPEDEF)
