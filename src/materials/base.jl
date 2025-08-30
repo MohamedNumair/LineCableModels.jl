@@ -1,16 +1,14 @@
-import Base: show, get, delete!, length, setindex!, iterate, keys, values, haskey, getindex, convert, eltype
-
-eltype(::Material{T}) where {T} = T
-eltype(::Type{Material{T}}) where {T} = T
+Base.eltype(::Material{T}) where {T} = T
+Base.eltype(::Type{Material{T}}) where {T} = T
 
 # Implement the AbstractDict interface
-length(lib::MaterialsLibrary) = length(lib.data)
-setindex!(lib::MaterialsLibrary, value::Material, key::String) = (lib.data[key] = value)
-iterate(lib::MaterialsLibrary, state...) = iterate(lib.data, state...)
-keys(lib::MaterialsLibrary) = keys(lib.data)
-values(lib::MaterialsLibrary) = values(lib.data)
-haskey(lib::MaterialsLibrary, key::String) = haskey(lib.data, key)
-getindex(lib::MaterialsLibrary, key::String) = getindex(lib.data, key)
+Base.length(lib::MaterialsLibrary) = length(lib.data)
+Base.setindex!(lib::MaterialsLibrary, value::Material, key::String) = (lib.data[key] = value)
+Base.iterate(lib::MaterialsLibrary, state...) = iterate(lib.data, state...)
+Base.keys(lib::MaterialsLibrary) = keys(lib.data)
+Base.values(lib::MaterialsLibrary) = values(lib.data)
+Base.haskey(lib::MaterialsLibrary, key::String) = haskey(lib.data, key)
+Base.getindex(lib::MaterialsLibrary, key::String) = getindex(lib.data, key)
 
 
 """
@@ -42,7 +40,7 @@ $(FUNCTIONNAME)(library, "copper")
 
 - [`add!`](@ref)
 """
-function delete!(library::MaterialsLibrary, name::String)
+function Base.delete!(library::MaterialsLibrary, name::String)
     if !haskey(library, name)
         @error "Material '$name' not found in the library; cannot delete."
         throw(KeyError(name))
@@ -80,7 +78,7 @@ material = $(FUNCTIONNAME)(library, "copper")
 - [`add!`](@ref)
 - [`delete!`](@ref)
 """
-function get(library::MaterialsLibrary, name::String, default=nothing)
+function Base.get(library::MaterialsLibrary, name::String, default=nothing)
     material = get(library.data, name, default)
     if material === nothing
         @warn "Material '$name' not found in the library; returning default."
@@ -103,7 +101,7 @@ Defines the display representation of a [`Material`](@ref) object for REPL or te
 
 - Nothing. Modifies `io` by writing text representation of the material.
 """
-function show(io::IO, ::MIME"text/plain", material::Material)
+function Base.show(io::IO, ::MIME"text/plain", material::Material)
     print(io, "Material with properties: [")
 
     # Define fields to display
@@ -135,7 +133,7 @@ Defines the display representation of a [`MaterialsLibrary`](@ref) object for RE
 
 - Nothing. Modifies `io` by writing text representation of the library.
 """
-function show(io::IO, ::MIME"text/plain", library::MaterialsLibrary)
+function Base.show(io::IO, ::MIME"text/plain", library::MaterialsLibrary)
     num_materials = length(library)
     material_word = num_materials == 1 ? "material" : "materials"
     print(io, "MaterialsLibrary with $num_materials $material_word")
@@ -172,7 +170,7 @@ Defines the display representation of a [`MaterialsLibrary`](@ref) object for RE
 
 - Nothing. Modifies `io` by writing text representation of the library.
 """
-function show(io::IO, ::MIME"text/plain", dict::Dict{String,Material})
+function Base.show(io::IO, ::MIME"text/plain", dict::Dict{String,Material})
     num_materials = length(dict)
     material_word = num_materials == 1 ? "material" : "materials"
     print(io, "Dict{String, Material} with $num_materials $material_word")
@@ -194,6 +192,6 @@ function show(io::IO, ::MIME"text/plain", dict::Dict{String,Material})
     end
 end
 
-convert(::Type{Material{T}}, m::Material) where {T<:REALSCALAR} =
+Base.convert(::Type{Material{T}}, m::Material) where {T<:REALSCALAR} =
     Material{T}(convert(T, m.rho), convert(T, m.eps_r), convert(T, m.mu_r),
         convert(T, m.T0), convert(T, m.alpha))
