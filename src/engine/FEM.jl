@@ -26,22 +26,19 @@ export MeshTransition, calc_domain_size
 export compute!, preview_results
 export FormulationSet, Electrodynamics, Darwin
 
-# Load common dependencies
-using ...LineCableModels
-include("../utils/commondeps.jl")
-
 # Module-specific dependencies
-using Measurements
-using LinearAlgebra
-using Colors
-using ...Utils
+using ...Commons
+import ...Commons: FormulationSet
 using ...Materials
 using ...EarthProps
 using ...DataModel
 using ...Engine
 import ...DataModel: AbstractCablePart, AbstractConductorPart, AbstractInsulatorPart
 import ..Engine: AbstractFormulationSet, AbstractFormulationOptions, AbstractImpedanceFormulation, AbstractAdmittanceFormulation, compute!
-import ...Utils: display_path
+using ...Utils: display_path, set_logger!, is_headless, to_nominal
+using Measurements
+using LinearAlgebra
+using Colors
 
 # FEM specific dependencies
 using Gmsh
