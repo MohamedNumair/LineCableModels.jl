@@ -15,7 +15,7 @@ to customize which fields are needed for reconstruction.
 
 # Methods
 
-$(_CLEANMETHODLIST)
+$(METHODLIST)
 """
 function _serializable_fields end
 
