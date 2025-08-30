@@ -1,9 +1,7 @@
-import ..LineCableModels: get_description
-
 """
 $(TYPEDEF)
 
-Abstract type representing different frequency-dependent earth models (FDEM). Used in the multi-dispatch implementation of [`_calc_earth_properties`](@ref).
+Abstract type representing different frequency-dependent earth models (FDEM). Used in the multi-dispatch implementations in modules [`LineCableModels.EarthProps`](@ref) and [`LineCableModels.Engine`](@ref).
 
 # Currently available formulations
 
