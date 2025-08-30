@@ -1,26 +1,99 @@
+@inline function _resolve_dotted_in(path::String, root::Module)
+    cur = root
+    for p in split(path, '.')
+        s = Symbol(p)
+        if isdefined(cur, s)
+            cur = getfield(cur, s)
+        else
+            return nothing
+        end
+    end
+    return cur isa Type ? cur : nothing
+end
+
+function _module_candidates()
+    pkg = parentmodule(@__MODULE__)  # e.g., LineCableModels
+    cands = Module[@__MODULE__]
+    pkg !== nothing && push!(cands, pkg)
+    push!(cands, Main)
+    if pkg !== nothing
+        for name in (:DataModel, :Materials, :Engine, :EarthProps, :ImportExport)
+            if isdefined(pkg, name)
+                mod = getfield(pkg, name)
+                mod isa Module && push!(cands, mod)
+            end
+        end
+    end
+    return cands
+end
+
+
 """
 $(TYPEDSIGNATURES)
 
 Resolves a fully qualified type name string (e.g., \"Module.Type\")
-into a Julia `Type` object. Assumes the type is loaded in the current environment.
+into a Julia `Type` object. 
+
+Resolution order:
+1) If fully-qualified (contains '.') and not parametric, walk modules (no eval).
+2) If bare name (no '.' and not parametric), search candidate modules.
+3) Fallback: parse + eval in `Main` (handles parametric types like `Vector{Float64}`).
 
 # Arguments
+
 - `type_str`: The string representation of the type.
 
 # Returns
+
 - The corresponding Julia `Type` object.
 
 # Throws
+
 - `Error` if the type cannot be resolved.
 """
 function _resolve_type(type_str::String)
+    pkg = parentmodule(@__MODULE__)
     try
-        return Core.eval(@__MODULE__, Meta.parse(type_str))
+        # 1) Fully-qualified, non-parametric: try walking
+        if occursin('.', type_str) && !occursin('{', type_str)
+            if (T = _resolve_dotted_in(type_str, Main)) !== nothing
+                return T
+            end
+            if pkg !== nothing
+                if (T = _resolve_dotted_in(type_str, pkg)) !== nothing
+                    return T
+                end
+            end
+        end
+
+        # 2) Bare name, non-parametric: search candidate modules
+        if !occursin('.', type_str) && !occursin('{', type_str)
+            sym = Symbol(type_str)
+            for m in _module_candidates()
+                if isdefined(m, sym)
+                    val = getfield(m, sym)
+                    if val isa Type
+                        return val
+                    end
+                end
+            end
+        end
+
+        # 3) General case: parse + eval in package root (or Main as fallback)
+        return Base.eval(pkg === nothing ? Main : pkg, Meta.parse(type_str))
     catch e
-        @error "Could not resolve type '$type_str'. Ensure module structure is correct and type is loaded in Main."
+        @error "Could not resolve type '$type_str'" exception = (e, catch_backtrace())
         rethrow(e)
     end
 end
+# function _resolve_type(type_str::String)
+#     try
+#         return Core.eval(@__MODULE__, Meta.parse(type_str))
+#     catch e
+#         @error "Could not resolve type '$type_str'. Ensure module structure is correct and type is loaded in Main."
+#         rethrow(e)
+#     end
+# end
 
 """
 $(TYPEDSIGNATURES)
