@@ -1,6 +1,7 @@
 @testsnippet deps_datamodel begin
     using Plots
     using EzXML
+
 end
 
 @testitem "DataModel module" setup = [defaults, deps_datamodel] begin
