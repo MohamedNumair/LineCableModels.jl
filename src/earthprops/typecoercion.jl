@@ -1,5 +1,3 @@
-import ..Utils: coerce_to_T
-
 """
 $(TYPEDSIGNATURES)
 
