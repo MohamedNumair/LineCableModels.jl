@@ -45,15 +45,12 @@ export calc_equivalent_eps
 export calc_equivalent_lossfact
 export calc_sigma_lossfact
 
-# Load common dependencies
-include("../utils/commondeps.jl")
-using ...LineCableModels
-
 # Module-specific dependencies
 using Measurements
-using ...Utils
-using ..DataModel: ConductorGroup, WireArray
+using ...Commons
 import ..DataModel: AbstractCablePart
+using ...Utils: resolve_T, coerce_to_T
+
 
 """
 $(TYPEDSIGNATURES)
@@ -929,6 +926,7 @@ function calc_shunt_conductance(radius_in, radius_ext, rho)
     )
 end
 
+
 """
 $(TYPEDSIGNATURES)
 
@@ -969,10 +967,28 @@ equivalent_gmr = $(FUNCTIONNAME)(conductor, new_layer)  # Expected output: Updat
 """
 function calc_equivalent_gmr(existing::T, new_layer::U) where {T<:AbstractCablePart,U<:AbstractCablePart}
     beta = existing.cross_section / (existing.cross_section + new_layer.cross_section)
-    current_conductor = existing isa ConductorGroup ? existing.layers[end] : existing
+
+    DM = parentmodule(@__MODULE__) # DataModel
+    if isdefined(DM, :ConductorGroup)
+        CG = getfield(DM, :ConductorGroup)
+        if existing isa CG
+            current_conductor = existing.layers[end]
+        else
+            current_conductor = existing
+        end
+    end
+
+    # current_conductor = existing isa ConductorGroup ? existing.layers[end] : existing
     gmd = calc_gmd(current_conductor, new_layer)
     return existing.gmr^(beta^2) * new_layer.gmr^((1 - beta)^2) *
            gmd^(2 * beta * (1 - beta))
+end
+
+# evil hackery to detect WireArray types 
+@inline function _is_wirearray(x)
+    DM = parentmodule(@__MODULE__) # DataModel
+    return isdefined(DM, :WireArray) &&
+           (x isa getfield(DM, :WireArray)) # no compile-time ref to WireArray
 end
 
 """
@@ -1025,7 +1041,7 @@ gmd = $(FUNCTIONNAME)(strip, tubular)  # Expected output: GMD value [m]
 """
 function calc_gmd(co1::T, co2::U) where {T<:AbstractCablePart,U<:AbstractCablePart}
 
-    if co1 isa WireArray
+    if _is_wirearray(co1) #co1 isa WireArray
         coords1 = calc_wirearray_coords(co1.num_wires, co1.radius_wire, co1.radius_in)
         n1 = co1.num_wires
         r1 = co1.radius_wire
@@ -1037,7 +1053,8 @@ function calc_gmd(co1::T, co2::U) where {T<:AbstractCablePart,U<:AbstractCablePa
         s1 = co1.cross_section
     end
 
-    if co2 isa WireArray
+    # if co2 isa WireArray
+    if _is_wirearray(co2)
         coords2 = calc_wirearray_coords(co2.num_wires, co2.radius_wire, co2.radius_in)
         n2 = co2.num_wires
         r2 = co2.radius_wire
@@ -1064,7 +1081,7 @@ function calc_gmd(co1::T, co2::U) where {T<:AbstractCablePart,U<:AbstractCablePa
             else
                 # This means two concentric structures (solid/strip or tubular, tubular/strip or tubular, strip/strip or tubular)
                 # In all cases the GMD is the outermost radius
-                max(r1, r2)
+                # max(r1, r2)
                 log_dij = log(max(r1, r2))
             end
             log_sum += (s1 * s2) * log_dij
