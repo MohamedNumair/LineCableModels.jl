@@ -1,40 +1,62 @@
 module LineCableModels
 
-# Package-wide definitions
-include("consts.jl")
-include("utils/logging.jl")
+## Public API
+# -------------------------------------------------------------------------
+# Core generics:
+export add!, FormulationSet, set_logger!
+
+# Materials:
+export Material, MaterialsLibrary
+
+# Data model (design + system):
+export Thickness, Diameter, WireArray, Strip, Tubular, Semicon, Insulator
+export ConductorGroup, InsulatorGroup
+export CableComponent, CableDesign, NominalData
+export CablesLibrary
+export CablePosition, LineCableSystem
+export trifoil_formation, flat_formation, preview
+
+# Earth properties:
+export EarthModel
+
+# Engine:
+export LineParametersProblem, compute!
+
+# Import/Export:
+export export_data, save, load!
+# -------------------------------------------------------------------------
+
+import DocStringExtensions: DocStringExtensions
+
+# Submodule `Commons`
+include("Commons.jl")
+using .Commons: IMPORTS, EXPORTS, add!, FormulationSet
 
 # Submodule `Utils`
 include("Utils.jl")
-@force using .Utils
+using .Utils: set_logger!
 
 # Submodule `Validation`
 include("Validation.jl")
-@force using .Validation
 
 # Submodule `Materials`
 include("Materials.jl")
-@force using .Materials
-@reexport using .Materials
+using .Materials: Material, MaterialsLibrary
 
 # Submodule `EarthProps`
 include("EarthProps.jl")
-@force using .EarthProps
-@reexport using .EarthProps
+using .EarthProps: EarthModel
 
 # Submodule `DataModel`
 include("DataModel.jl")
-@force using .DataModel
-@reexport using .DataModel
+using .DataModel: Thickness, Diameter, WireArray, Strip, Tubular, Semicon, Insulator, ConductorGroup, InsulatorGroup, CableComponent, CableDesign, NominalData, CablesLibrary, CablePosition, LineCableSystem, trifoil_formation, flat_formation, preview
 
 # Submodule `Engine`
 include("Engine.jl")
-@force using .Engine
-@reexport using .Engine
+using .Engine: LineParametersProblem, compute!
 
 # Submodule `ImportExport`
 include("ImportExport.jl")
-@force using .ImportExport
-@reexport using .ImportExport
+using .ImportExport: export_data, load!, save
 
 end
