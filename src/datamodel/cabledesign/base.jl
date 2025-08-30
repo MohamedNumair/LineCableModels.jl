@@ -1,7 +1,7 @@
-import Base: get, show, delete!, length, setindex!, iterate, keys, values, haskey, getindex, eltype
 
-eltype(::CableDesign{T}) where {T} = T
-eltype(::Type{CableDesign{T}}) where {T} = T
+
+Base.eltype(::CableDesign{T}) where {T} = T
+Base.eltype(::Type{CableDesign{T}}) where {T} = T
 
 
 """
@@ -19,7 +19,7 @@ Defines the display representation of a [`CableDesign`](@ref) object for REPL or
 
 - Nothing. Modifies `io` by writing text representation of the object.
 """
-function show(io::IO, ::MIME"text/plain", design::CableDesign)
+function Base.show(io::IO, ::MIME"text/plain", design::CableDesign)
     # Print header with cable ID and count of components
     print(io, "$(length(design.components))-element CableDesign \"$(design.cable_id)\"")
 
