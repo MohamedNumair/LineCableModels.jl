@@ -23,18 +23,14 @@ module EarthProps
 # Export public API
 export CPEarth,
     EarthLayer,
-    EarthModel,
-    DataFrame
-
-# Load common dependencies
-using ..LineCableModels
-include("utils/commondeps.jl")
+    EarthModel
 
 # Module-specific dependencies
+using ..Commons
+using ..Utils: resolve_T
+import ..Commons: get_description, add!
+import ..Utils: coerce_to_T
 using Measurements
-using DataFrames
-using ..Utils
-import ..LineCableModels: add!
 
 include("earthprops/fdprops.jl")
 
