@@ -1,6 +1,3 @@
-import ..Utils: coerce_to_T
-using ..Validation: required_fields, keyword_fields, coercive_fields
-
 @inline function _rebuild_part_typed_core(p, ::Type{T}) where {T}
     C0 = typeof(p).name.wrapper                       # concrete parametric type (e.g., WireArray)
     order = (required_fields(C0)..., keyword_fields(C0)...)  # positional order for tight kernel
