@@ -30,28 +30,32 @@ export CableComponent, CableDesign  # Cable design types
 export CablePosition, LineCableSystem  # System types
 export CablesLibrary, NominalData  # Support types
 export trifoil_formation, flat_formation  # Formation helpers
-
-# Load common dependencies
-using ..LineCableModels
-include("utils/commondeps.jl")
+export preview
 
 # Module-specific dependencies
+using ..Commons
+import ..Commons: add!
+using ..Utils: resolve_T, to_certain, to_nominal, resolve_backend, is_headless, is_in_testset
+import ..Utils: coerce_to_T, to_lower
+using ..Materials: Material
+import ..Validation: Validation, sanitize, validate!, has_radii, has_temperature, extra_rules, IntegerField, Positive, Finite, Normalized, IsA, required_fields, coercive_fields, keyword_fields, keyword_defaults, _kwdefaults_nt, is_radius_input, Nonneg, OneOf
 using Measurements
 using DataFrames
 using Colors
 using Plots
 using DisplayAs: DisplayAs
-using ..Utils
-using ..Materials
-using ..EarthProps
-using ..Validation
-import ..Validation: sanitize, validate!, has_radii, has_temperature, extra_rules, IntegerField, Positive, Finite, Normalized, IsA, required_fields, coercive_fields, keyword_fields, keyword_defaults, _kwdefaults_nt
 
-# Abstract types & constructors
+# Abstract types & interfaces
 include("datamodel/types.jl")
+include("datamodel/interfaces.jl")
+
+# Submodule `BaseParams`
+include("datamodel/BaseParams.jl")
+using .BaseParams
+
+# Constructors
 include("datamodel/macros.jl")
 include("datamodel/validation.jl")
-include("datamodel/radii.jl")
 
 # Conductors
 include("datamodel/wirearray.jl")
@@ -64,10 +68,6 @@ include("datamodel/insulator.jl")
 include("datamodel/semicon.jl")
 include("datamodel/insulatorgroup.jl")
 
-# Submodule `BaseParams`
-include("datamodel/BaseParams.jl")
-@force using .BaseParams
-@reexport using .BaseParams
 
 # Groups
 include("datamodel/nominaldata.jl")
