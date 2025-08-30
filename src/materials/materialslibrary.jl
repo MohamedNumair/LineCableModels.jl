@@ -1,5 +1,3 @@
-import ..LineCableModels: add!
-
 """
 $(TYPEDEF)
 
