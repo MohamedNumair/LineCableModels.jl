@@ -4,6 +4,8 @@ using LoggingExtras: TeeLogger, FileLogger
 using Dates
 using Printf
 
+
+
 struct TimestampLogger <: AbstractLogger
     logger::AbstractLogger
 end
@@ -20,7 +22,7 @@ function Logging.handle_message(logger::TimestampLogger, level, message, _module
         filepath, line; kwargs...)
 end
 
-function setup_logging!(verbosity::Int, logfile::Union{String,Nothing}=nothing)
+function set_logger!(verbosity::Int, logfile::Union{String,Nothing}=nothing)
     level = verbosity >= 2 ? Logging.Debug :
             verbosity == 1 ? Logging.Info : Logging.Warn
 
@@ -46,5 +48,5 @@ end
 
 function __init__()
     # Set a default logging level when the package is loaded at runtime.
-    setup_logging!(0)
+    set_logger!(0)
 end
