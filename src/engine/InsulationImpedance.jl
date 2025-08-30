@@ -14,15 +14,12 @@ module InsulationImpedance
 # Export public API
 export Standard
 
-# Load common dependencies
-using ...LineCableModels
-include("../utils/commondeps.jl")
 
 # Module-specific dependencies
-using Measurements
-using ...Utils
-import ...LineCableModels: get_description
+using ...Commons
+import ...Commons: get_description
 import ..Engine: InsulationImpedanceFormulation
+using Measurements
 
 struct Standard <: InsulationImpedanceFormulation end
 get_description(::Standard) = "Standard inductance"
