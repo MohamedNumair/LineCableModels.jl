@@ -24,15 +24,12 @@ module Materials
 # Export public API
 export Material, MaterialsLibrary
 
-# Load common dependencies
-using ..LineCableModels
-include("utils/commondeps.jl")
-
-
 # Module-specific dependencies
+using ..Commons
+using ..Utils: resolve_T
 using Measurements
-using DataFrames
-using ..Utils
+import ..Commons: add!
+import ..Utils: coerce_to_T
 
 """
 $(TYPEDEF)
