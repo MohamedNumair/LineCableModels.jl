@@ -25,11 +25,12 @@ HVDC cables are constructed around a central conductor enclosed by a triple-extr
 =#
 
 # Load the package and set up the environment:
-using DataFrames
 using LineCableModels
+using LineCableModels.Engine.FEM
+using DataFrames
 using Printf
 fullfile(filename) = joinpath(@__DIR__, filename); #hide
-setup_logging!(0); #hide
+set_logger!(0); #hide
 
 # Initialize library and the required materials for this design:
 materials = MaterialsLibrary(add_defaults=true)
