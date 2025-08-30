@@ -1,4 +1,3 @@
-import Base: eltype
 
-eltype(::InsulatorGroup{T}) where {T} = T
-eltype(::Type{InsulatorGroup{T}}) where {T} = T
+Base.eltype(::InsulatorGroup{T}) where {T} = T
+Base.eltype(::Type{InsulatorGroup{T}}) where {T} = T
