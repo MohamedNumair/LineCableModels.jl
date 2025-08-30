@@ -1,6 +1,3 @@
-# Make Material fieldwise-coercible with specialized dispatch
-import ..Utils: coerce_to_T
-
 # Identity: no allocation if already at T
 @inline coerce_to_T(m::Material{T}, ::Type{T}) where {T} = m
 
