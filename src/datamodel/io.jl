@@ -1,5 +1,4 @@
 
-import Base: show
 
 """
 $(TYPEDSIGNATURES)
@@ -16,7 +15,7 @@ Defines the display representation of an [`AbstractCablePart`](@ref) object for 
 
 - Nothing. Modifies `io` by writing text representation of the object.
 """
-function show(io::IO, ::MIME"text/plain", part::T) where {T<:AbstractCablePart}
+function Base.show(io::IO, ::MIME"text/plain", part::T) where {T<:AbstractCablePart}
     # Start output with type name
     print(io, "$(nameof(T)): [")
 
@@ -65,7 +64,7 @@ Defines the display representation of a [`ConductorGroup`](@ref) or [`InsulatorG
 
 - Nothing. Modifies `io` by writing text representation of the object.
 """
-function show(io::IO, ::MIME"text/plain", group::Union{ConductorGroup,InsulatorGroup})
+function Base.show(io::IO, ::MIME"text/plain", group::Union{ConductorGroup,InsulatorGroup})
 
     print(io, "$(length(group.layers))-element $(nameof(typeof(group))): [")
     _print_fields(
