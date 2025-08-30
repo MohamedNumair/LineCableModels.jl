@@ -44,7 +44,6 @@ mutable struct CablesLibrary
     end
 end
 
-import ..LineCableModels: add!
 
 """
 Stores a cable design in a [`CablesLibrary`](@ref) object.
