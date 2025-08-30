@@ -75,7 +75,7 @@ $(FUNCTIONNAME)(Tuple{Int, ComplexF64})   # true
 
 # Methods
 
-$(_CLEANMETHODLIST)
+$(METHODLIST)
 """
 function _hascomplex_type end
 _hascomplex_type(::Type{<:Complex}) = true
@@ -199,7 +199,7 @@ $(FUNCTIONNAME)(missing, Float64)                     # missing
 
 # Methods
 
-$(_CLEANMETHODLIST)
+$(METHODLIST)
 """
 function _coerce_elt_to_T end
 _coerce_elt_to_T(x::Number, ::Type{R}) where {R<:AbstractFloat} = convert(R, x)
@@ -250,7 +250,7 @@ $(FUNCTIONNAME)((; a=1.0, b=2.0), Float32)            # (a = 1.0f0, b = 2.0f0)
 ```
 # Methods
 
-$(_CLEANMETHODLIST)
+$(METHODLIST)
 
 # See also
 
