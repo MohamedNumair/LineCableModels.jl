@@ -1,4 +1,3 @@
-import ..LineCableModels: FormulationSet
 
 """
 $(TYPEDEF)
