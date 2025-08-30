@@ -1,5 +1,3 @@
-import ..LineCableModels: add!
-
 """
 $(TYPEDEF)
 
@@ -88,6 +86,8 @@ mutable struct ConductorGroup{T<:REALSCALAR} <: AbstractConductorPart{T}
         )
     end
 end
+
+
 
 # Outer helper that infers T from the central part
 ConductorGroup(con::AbstractConductorPart{T}) where {T} = ConductorGroup{T}(con)
