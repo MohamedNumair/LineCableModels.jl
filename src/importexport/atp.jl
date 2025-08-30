@@ -390,7 +390,7 @@ function export_data(::Val{:atp},
         end
     end
 
-    @info ("ZY export called",
+    @debug ("ZY export called",
         :method => "ZY",
         :cable_system_isnothing => isnothing(cable_system),
         :cable_system_type => (isnothing(cable_system) ? :nothing : typeof(cable_system)),
