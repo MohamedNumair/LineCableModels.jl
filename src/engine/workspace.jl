@@ -62,7 +62,7 @@ Initializes and populates the [`CoaxialWorkspace`](@ref) by normalizing a
 function init_workspace(problem::LineParametersProblem, formulation::CoaxialFormulation)
 
     opts = formulation.options
-    setup_logging!(opts.verbosity, opts.logfile)
+    set_logger!(opts.verbosity, opts.logfile)
 
     system = problem.system
     n_frequencies = length(problem.frequencies)
