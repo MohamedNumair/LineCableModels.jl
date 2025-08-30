@@ -7,6 +7,16 @@ using TestItemRunner
     using Measurements
     using Measurements: measurement, uncertainty, value
     using DataFrames
+    using LineCableModels
+    using LineCableModels.Commons
+    using LineCableModels.Utils
+    using LineCableModels.Materials
+    using LineCableModels.DataModel
+    using LineCableModels.EarthProps
+    using LineCableModels.DataModel.BaseParams
+    using LineCableModels.Engine
+    using LineCableModels.Engine.FEM
+    using LineCableModels.ImportExport
 end
 
 @testsnippet defs_materials begin
@@ -20,7 +30,8 @@ end
 @testsnippet cable_system_export begin
 
     cables_library = CablesLibrary()
-    cables_library = load!(cables_library, file_name=joinpath(@__DIR__, "./cable_test.json"))
+    @show file_name = joinpath(@__DIR__, "cable_test.json")
+    cables_library = load!(cables_library, file_name=file_name)
 
     # Retrieve the reloaded design
     cable_design = collect(values(cables_library.data))[1]
