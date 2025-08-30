@@ -24,11 +24,8 @@ module Validation
 export validate!, has_radii, has_temperature, extra_rules,
     sanitize, parse, is_radius_input, required_fields, keyword_fields, keyword_defaults, coercive_fields, Finite, Nonneg, Positive, IntegerField, Less, LessEq, IsA, Normalized, OneOf
 
-# Load common dependencies
-using ..LineCableModels
-using ..Utils
-
-include("utils/commondeps.jl")
+# Module-specific dependencies
+using ..Commons
 
 """
 $(TYPEDEF)
