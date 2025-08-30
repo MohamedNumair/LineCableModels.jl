@@ -14,15 +14,11 @@ module EarthAdmittance
 # Export public API
 # export 
 
-# Load common dependencies
-using ...LineCableModels
-include("../utils/commondeps.jl")
-
 # Module-specific dependencies
-using Measurements
-using ...Utils
-import ...LineCableModels: get_description
+using ...Commons
+import ...Commons: get_description
 import ..Engine: EarthAdmittanceFormulation
+using Measurements
 
 struct Papadopoulos <: EarthAdmittanceFormulation end
 get_description(::Papadopoulos) = "Papadopoulos (homogeneous earth)"
