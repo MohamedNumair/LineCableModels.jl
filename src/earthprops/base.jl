@@ -1,9 +1,8 @@
-import Base: show, eltype, convert
 
-eltype(::EarthModel{T}) where {T} = T
-eltype(::EarthLayer{T}) where {T} = T
+Base.eltype(::EarthModel{T}) where {T} = T
+Base.eltype(::EarthLayer{T}) where {T} = T
 
-function convert(::Type{EarthModel{T}}, model::EarthModel) where {T}
+function Base.convert(::Type{EarthModel{T}}, model::EarthModel) where {T}
     # If the model is already the target type, return it without modification.
     model isa EarthModel{T} && return model
 
@@ -11,7 +10,7 @@ function convert(::Type{EarthModel{T}}, model::EarthModel) where {T}
     return coerce_to_T(model, T)
 end
 
-function convert(::Type{EarthLayer{T}}, layer::EarthLayer) where {T}
+function Base.convert(::Type{EarthLayer{T}}, layer::EarthLayer) where {T}
     # Avoid unnecessary work if the layer is already the correct type.
     layer isa EarthLayer{T} && return layer
 
@@ -35,7 +34,7 @@ Defines the display representation of a [`EarthModel`](@ref) object for REPL or 
 
 - Nothing. Modifies `io` to format the output.
 """
-function show(io::IO, ::MIME"text/plain", model::EarthModel)
+function Base.show(io::IO, ::MIME"text/plain", model::EarthModel)
     # Determine model type based on num_layers and vertical_layers flag
     num_layers = length(model.layers)
     model_type = num_layers == 2 ? "homogeneous" : "multilayer"
