@@ -22,7 +22,7 @@
     # Test Core and Main Insulation construction
     @testset "core and main insulation" begin
         material_al = get(materials, "aluminum")
-        @test material_al isa LineCableModels.Material
+        @test material_al isa LineCableModels.Materials.Material
         core = ConductorGroup(WireArray(0.0, Diameter(d_w), 1, 0.0, material_al))
         add!(core, WireArray, Diameter(d_w), 6, 15.0, material_al)
         add!(core, WireArray, Diameter(d_w), 12, 13.5, material_al)
