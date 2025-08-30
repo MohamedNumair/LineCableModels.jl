@@ -29,27 +29,21 @@ export export_data
 export read_data
 export save
 export load!
-export get
-export delete!
 
-# Load common dependencies
-using ..LineCableModels
-include("utils/commondeps.jl")
 
 # Module-specific dependencies
+using ..Commons
+using ..Utils: display_path, to_nominal, resolve_T, coerce_to_T
+using ..Materials: Material, MaterialsLibrary
+using ..EarthProps: EarthModel
+using ..DataModel: CablesLibrary, CableDesign, CableComponent, ConductorGroup, InsulatorGroup, WireArray, Strip, Tubular, Semicon, Insulator, LineCableSystem, NominalData
+using ..Engine: LineParameters
 using Measurements
-using EzXML # For PSCAD export
-using Dates # For PSCAD export
+using EzXML
+using Dates
 using Printf # For ATP export
 using JSON3
 using Serialization # For .jls format
-using ..Utils
-using ..Materials
-using ..EarthProps
-using ..DataModel
-import ..LineCableModels: load!, save
-import ..Utils: display_path, _CLEANMETHODLIST
-
 
 
 """
@@ -59,7 +53,7 @@ Export [`LineCableModels`](@ref) data for use in different EMT-type programs.
 
 # Methods
 
-$(_CLEANMETHODLIST)
+$(METHODLIST)
 """
 # function export_data end
 export_data(backend::Symbol, args...; kwargs...) = export_data(Val(backend), args...; kwargs...)
