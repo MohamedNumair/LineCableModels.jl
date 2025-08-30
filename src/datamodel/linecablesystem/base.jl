@@ -1,11 +1,10 @@
-import Base: show, eltype
 
-eltype(::CablePosition{T}) where {T} = T
-eltype(::Type{CablePosition{T}}) where {T} = T
-eltype(::LineCableSystem{T}) where {T} = T
-eltype(::Type{LineCableSystem{T}}) where {T} = T
+Base.eltype(::CablePosition{T}) where {T} = T
+Base.eltype(::Type{CablePosition{T}}) where {T} = T
+Base.eltype(::LineCableSystem{T}) where {T} = T
+Base.eltype(::Type{LineCableSystem{T}}) where {T} = T
 
-function show(io::IO, ::MIME"text/plain", system::LineCableSystem)
+function Base.show(io::IO, ::MIME"text/plain", system::LineCableSystem)
     # Print top level info
     println(
         io,
