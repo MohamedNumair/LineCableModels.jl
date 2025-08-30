@@ -34,10 +34,10 @@ This tutorial covers:
 =#
 
 # Load the package and set up the environment:
-using DataFrames
 using LineCableModels
+using DataFrames
 fullfile(filename) = joinpath(@__DIR__, filename); #hide
-setup_logging!(0); #hide
+set_logger!(0); #hide
 
 # Initialize materials library with default values:
 materials = MaterialsLibrary(add_defaults=true)
