@@ -1,4 +1,3 @@
-import ..LineCableModels: add!
 
 """
 $(TYPEDEF)
@@ -33,10 +32,8 @@ struct CablePosition{T<:REALSCALAR}
 
     - A [`CablePosition`](@ref) object with the assigned cable design, coordinates, and phase mapping.
 
-    #=
     !!! note "Phase mapping"
          The `conn` argument is a `Dict` that maps the cable components to their respective phases. The values (1, 2, 3) represent the phase numbers (A, B, C) in a three-phase system. Components mapped to phase 0 will be Kron-eliminated (grounded). Components set to the same phase will be bundled into an equivalent phase.
-    =#
 
     # Examples
 
