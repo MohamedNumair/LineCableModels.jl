@@ -26,23 +26,22 @@ module Engine
 
 # Export public API
 export LineParametersProblem, LineParameters
-export CoaxialFormulation, FormulationSet
+export CoaxialFormulation
 
 export compute!
 
-# Load common dependencies
-using ..LineCableModels
-include("utils/commondeps.jl")
-
 # Module-specific dependencies
+using Reexport, ForceImport
 using Measurements
 using LinearAlgebra
 using SpecialFunctions
+using ..Commons
+import ..Commons: get_description, FormulationSet
 
 using ..Utils
 using ..Materials
-using ..EarthProps
-using ..DataModel
+using ..EarthProps: EarthModel
+using ..DataModel: LineCableSystem
 
 include("engine/types.jl")
 
@@ -87,9 +86,13 @@ include("engine/base.jl")
 
 # Submodule `FEM`
 include("engine/FEM.jl")
-@force using .FEM
+# @force using .FEM
+
+# # include all .jl files from src/legacy if the folder exists
+# isdir(joinpath(@__DIR__, "legacy")) && map(f -> endswith(f, ".jl") && include(joinpath(@__DIR__, "legacy", f)),
+#     sort(readdir(joinpath(@__DIR__, "legacy"))))
 
 @reexport using .InternalImpedance, .InsulationImpedance, .EarthImpedance,
-    .InsulationAdmittance, .EarthAdmittance, .EHEM, .FEM
+    .InsulationAdmittance, .EarthAdmittance, .EHEM
 
 end # module Engine
