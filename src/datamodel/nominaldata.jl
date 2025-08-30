@@ -1,6 +1,3 @@
-# NominalData — parametric, tight + Weakly-typed constructors, identity-preserving coercion
-
-using ..Utils: resolve_T, coerce_to_T
 
 """
 $(TYPEDEF)
