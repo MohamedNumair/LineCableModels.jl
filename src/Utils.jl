@@ -20,7 +20,8 @@ $(EXPORTS)
 module Utils
 
 # Export public API
-export resolve_T, coerce_to_T, _CLEANMETHODLIST, resolve_backend, is_headless
+export resolve_T, coerce_to_T, resolve_backend, is_headless, is_in_testset, display_path
+export set_logger!
 
 export to_nominal,
     to_certain,
@@ -30,11 +31,8 @@ export to_nominal,
     to_lower,
     percent_error
 
-# Load common dependencies
-using ..LineCableModels
-include("utils/commondeps.jl")
-
 # Module-specific dependencies
+using ..Commons
 using Measurements: Measurement, value, uncertainty, measurement
 using Statistics
 using Plots
@@ -398,8 +396,7 @@ function resolve_backend(backend=nothing)
         backend()
     end
 end
-
-include("utils/docstringextension.jl")
+include("utils/logging.jl")
 include("utils/typecoercion.jl")
 include("utils/macros.jl")
 
