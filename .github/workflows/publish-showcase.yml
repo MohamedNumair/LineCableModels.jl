@@ -16,8 +16,8 @@ jobs:
 
       - uses: quarto-dev/quarto-actions/setup@v2
 
-      - name: Render showcase
-        run: quarto render docs/showcase/slides
+      - name: Render showcase (no execution)
+        run: quarto render docs/showcase/slides --no-execute
 
       - name: Deploy to GitHub Pages (subdir)
         uses: peaceiris/actions-gh-pages@v3
