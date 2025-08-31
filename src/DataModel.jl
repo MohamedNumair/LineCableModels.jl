@@ -46,6 +46,7 @@ using Plots
 using DisplayAs: DisplayAs
 using GeometryBasics
 using PolygonOps
+using LinearAlgebra
 
 # Abstract types & interfaces
 include("datamodel/types.jl")
