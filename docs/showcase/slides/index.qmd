@@ -2,21 +2,6 @@
 title: "Julia Showcase (Hello World)"
 engine: julia
 format: revealjs
-# Thebe config to make code blocks live via Binder
-include-in-header:
-  text: |
-    <script type="text/x-thebe-config">
-    {
-      "requestKernel": true,
-      "binderOptions": {
-        "repo": "Electa-Git/LineCableModels.jl",
-        "ref": "HEAD",
-        "repoProvider": "github"
-      },
-      "kernelOptions": { "name": "julia-1.11", "path": "." },
-      "selector": "[data-executable]"
-    }
-    </script>
 ---
 
 # Hello
@@ -29,44 +14,21 @@ println("Hello, world from Julia $(VERSION)")
 
 ---
 
-# Live cell (click “Activate”)
+# A simple computation
 
-After the deck loads, hit **Activate** (Thebe) → Binder spins up a Julia kernel → run:
+This is rendered at build time (if execution is enabled):
 
 ```{julia}
-#| thebe: true
-#| eval: false
-# Minimal "computation" to prove execution
 sum(i^2 for i in 1:10), prod(i for i in 1:5)
 ```
 
 ---
 
-# Activate Kernel (if needed)
+# Your package hook (static)
 
-If you don’t see Thebe’s Activate control, click the button below:
-
-<button id="thebe-activate" style="padding:8px 12px; font-size:0.9rem;">Activate (start Binder)</button>
-<script>
-  window.addEventListener('DOMContentLoaded', () => {
-    const btn = document.getElementById('thebe-activate');
-    if (btn && window.thebe) {
-      btn.addEventListener('click', async () => {
-        try { await thebe.bootstrap(); btn.textContent = 'Activated'; } catch (e) { console.error(e); btn.textContent = 'Activation failed'; }
-      });
-    }
-  });
-  </script>
-
----
-
-# Your package hook (optional live)
-
-Uncomment and replace with your package to smoke-test imports.
+Uncomment and replace with your package to smoke-test imports locally:
 
 ```{julia}
-#| thebe: true
-#| eval: false
 # using YourPackage
 # YourPackage.versioninfo()
 "ready"
@@ -80,30 +42,14 @@ Uncomment and replace with your package to smoke-test imports.
 
 ---
 
-# Pluto Widget (live)
+# Pluto (live, new tab)
 
-If Thebe feels limited for UI widgets, here is a Pluto cell embedded via Binder. First load can take a minute.
+Open these Pluto notebooks on Binder (first launch can take a few minutes):
 
-<iframe
-  class="pluto-frame" 
-  src="https://mybinder.org/v2/gh/Electa-Git/LineCableModels.jl/HEAD?urlpath=pluto/open?path=docs/showcase/pluto/hello.jl"
-  loading="lazy"
-></iframe>
-
-If the frame doesn't load, open in a new tab:
-
-[Open Pluto on Binder](https://mybinder.org/v2/gh/Electa-Git/LineCableModels.jl/HEAD?urlpath=pluto/open?path=docs/showcase/pluto/hello.jl)
+- Hello demo: https://mybinder.org/v2/gh/Electa-Git/LineCableModels.jl/HEAD?urlpath=pluto/open?path=docs/showcase/pluto/hello.jl
+- Plot demo: https://mybinder.org/v2/gh/Electa-Git/LineCableModels.jl/HEAD?urlpath=pluto/open?path=docs/showcase/pluto/plot.jl
+- Showcase: https://mybinder.org/v2/gh/Electa-Git/LineCableModels.jl/HEAD?urlpath=pluto/open?path=docs/showcase/pluto/showcase.jl
 
 ---
 
-# Pluto Plot (live)
-
-Interactive plot using Plots.jl inside Pluto.
-
-<iframe
-  class="pluto-frame"
-  src="https://mybinder.org/v2/gh/Electa-Git/LineCableModels.jl/HEAD?urlpath=pluto/open?path=docs/showcase/pluto/plot.jl"
-  loading="lazy"
-></iframe>
-
-[Open Pluto Plot on Binder](https://mybinder.org/v2/gh/Electa-Git/LineCableModels.jl/HEAD?urlpath=pluto/open?path=docs/showcase/pluto/plot.jl)
+---

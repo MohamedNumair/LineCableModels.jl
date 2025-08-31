@@ -7,8 +7,6 @@ metadata:
 
 format:
   revealjs:
-    thebe: true
-    code-tools: true
     theme: [default, assets/corporate.scss]
     slide-number: true
     controls: true

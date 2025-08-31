@@ -1,0 +1,75 @@
+/* Brand colors from LaTeX beamer template */
+:root {
+  --etch-dark: #006145;   /* etchdark RGB(0,97,69) */
+  --etch-light: #34ca71;  /* etchlight RGB(52,202,113) */
+  --pes-groen: #4e7738;   /* pesgroen */
+  --text: #0f1a14;
+}
+
+/* Base typography */
+html, body {
+  font-family: "Inter", "Segoe UI", Roboto, Arial, sans-serif;
+  color: var(--text);
+}
+
+/* Headings use the light accent */
+main h1, main h2, main h3 {
+  color: var(--etch-light) !important;
+  letter-spacing: 0.2px;
+}
+
+/* Links and interactive accents */
+a { color: var(--etch-light) !important; }
+a:hover { color: var(--pes-groen) !important; }
+
+/* Cells and output subtle separation */
+pluto-cell {
+  border-left: 3px solid rgba(0,97,69,0.15);
+}
+
+/* Code blocks */
+pluto-output pre, pluto-input pre, .cm-editor {
+  border-radius: 6px !important;
+}
+
+/* Requested layout overrides */
+/* occupy full width */
+body main {
+  max-width: calc(100% - 2em) !important;
+  margin-left: 1em !important;
+  margin-right: 1em !important;
+}
+
+/* larger images in arrays when expanded */
+pluto-tree img {
+  max-width: none !important;
+  max-height: none !important;
+}
+
+/* somewhat larger images in arrays when collapsed */
+pluto-tree.collapsed img {
+  max-width: 15rem !important;
+  max-height: 15rem !important;
+}
+
+/* move cell popup menu to the left of its button */
+pluto-input > .open.input_context_menu > ul {
+  margin-left: -200px;
+  margin-right: 20px;
+}
+pluto-input > .open.input_context_menu > ul,
+pluto-input > .open.input_context_menu {
+  z-index: 31 !important;
+}
+
+/* popup max size + responsive */
+pluto-popup {
+  --max-size: 451px;
+  width: min(90vw,var(--max-size));
+}
+
+/* package terminal height */
+pkg-terminal > .scroller {
+  max-height: 70vh;
+}
+
