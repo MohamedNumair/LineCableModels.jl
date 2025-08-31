@@ -70,7 +70,7 @@ include("datamodel/sector.jl")
 include("datamodel/insulator.jl")
 include("datamodel/semicon.jl")
 include("datamodel/insulatorgroup.jl")
-include("datamodel/insulatorgroup.jl")
+include("datamodel/SectorInsulator.jl")
 
 
 # Groups
