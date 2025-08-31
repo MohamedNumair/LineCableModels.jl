@@ -90,9 +90,7 @@ If Thebe feels limited for UI widgets, here is a Pluto cell embedded via Binder.
   loading="lazy"
 ></iframe>
 
-If the frame doesn't load, open in a new tab:
-
-[Open Pluto on Binder](https://mybinder.org/v2/gh/Electa-Git/LineCableModels.jl/HEAD?urlpath=pluto/open?path=docs/showcase/pluto/hello.jl)
+<a class="pluto-link" href="https://mybinder.org/v2/gh/Electa-Git/LineCableModels.jl/HEAD?urlpath=pluto/open?path=docs/showcase/pluto/hello.jl" target="_blank" rel="noopener">Open Pluto on Binder</a>
 
 ---
 
@@ -106,4 +104,4 @@ Interactive plot using Plots.jl inside Pluto.
   loading="lazy"
 ></iframe>
 
-[Open Pluto Plot on Binder](https://mybinder.org/v2/gh/Electa-Git/LineCableModels.jl/HEAD?urlpath=pluto/open?path=docs/showcase/pluto/plot.jl)
+<a class="pluto-link" href="https://mybinder.org/v2/gh/Electa-Git/LineCableModels.jl/HEAD?urlpath=pluto/open?path=docs/showcase/pluto/plot.jl" target="_blank" rel="noopener">Open Pluto Plot on Binder</a>

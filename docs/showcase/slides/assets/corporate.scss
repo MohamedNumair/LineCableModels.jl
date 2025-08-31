@@ -11,10 +11,18 @@ $presentation-heading-color: #e8edf2;
 
 /* Showcase embeds */
 .pluto-frame {
-  width: 100%;
-  height: 560px;
+  width: min(100%, 80vw);
+  height: 60vh;           /* at most 80% via max-height below */
+  max-height: 80vh;
+  max-width: 80vw;
+  margin: 0 auto;         /* center */
   border: 1px solid rgba(255,255,255,0.15);
   border-radius: 10px;
   background: rgba(255,255,255,0.02);
   box-shadow: 0 4px 24px rgba(0,0,0,0.35);
+}
+
+.pluto-link {
+  display: inline-block;
+  margin-top: 0.6rem;
 }
