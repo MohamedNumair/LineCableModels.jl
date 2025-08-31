@@ -8,11 +8,11 @@ include-in-header:
     {
       "requestKernel": true,
       "binderOptions": {
-        "repo": "{{< meta repo_nwo >}}",
+        "repo": "Electa-Git/LineCableModels.jl",
         "ref": "HEAD",
         "repoProvider": "github"
       },
-      "kernelOptions": { "name": "julia", "path": "." },
+      "kernelOptions": { "name": "julia-1.10", "path": "." },
       "selector": ".thebe-cell"
     }
     </script>
@@ -45,6 +45,24 @@ After the deck loads, hit **Activate** (Thebe) → Binder spins up a Julia kerne
 # Minimal "computation" to prove execution
 sum(i^2 for i in 1:10), prod(i for i in 1:5)
 ```
+
+---
+
+# Activate Kernel (if needed)
+
+If you don’t see Thebe’s Activate control, click the button below:
+
+<button id="thebe-activate" style="padding:8px 12px; font-size:0.9rem;">Activate (start Binder)</button>
+<script>
+  window.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('thebe-activate');
+    if (btn && window.thebe) {
+      btn.addEventListener('click', async () => {
+        try { await thebe.bootstrap(); btn.textContent = 'Activated'; } catch (e) { console.error(e); btn.textContent = 'Activation failed'; }
+      });
+    }
+  });
+  </script>
 
 ---
 
