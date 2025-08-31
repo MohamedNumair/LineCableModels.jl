@@ -86,11 +86,10 @@ include("engine/base.jl")
 
 # Submodule `FEM`
 include("engine/FEM.jl")
-# @force using .FEM
 
-# # include all .jl files from src/legacy if the folder exists
-# isdir(joinpath(@__DIR__, "legacy")) && map(f -> endswith(f, ".jl") && include(joinpath(@__DIR__, "legacy", f)),
-#     sort(readdir(joinpath(@__DIR__, "legacy"))))
+# include all .jl files from src/legacy if the folder exists
+isdir(joinpath(@__DIR__, "legacy")) && map(f -> endswith(f, ".jl") && include(joinpath(@__DIR__, "legacy", f)),
+    sort(readdir(joinpath(@__DIR__, "legacy"))))
 
 @reexport using .InternalImpedance, .InsulationImpedance, .EarthImpedance,
     .InsulationAdmittance, .EarthAdmittance, .EHEM
