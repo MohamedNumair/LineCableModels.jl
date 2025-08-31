@@ -131,14 +131,20 @@ function cleanup_files(paths::Dict{Symbol,String}, opts::NamedTuple)
     end
 end
 
-function read_results_file(fem_formulation::Union{AbstractImpedanceFormulation,AbstractAdmittanceFormulation}, workspace::FEMWorkspace; file::Union{String,Nothing}=nothing)
+function read_results_file(
+    fem_formulation::Union{AbstractImpedanceFormulation,AbstractAdmittanceFormulation},
+    workspace::FEMWorkspace;
+    file::Union{String,Nothing}=nothing,
+)
 
-    results_path = joinpath(workspace.paths[:results_dir], lowercase(fem_formulation.resolution_name))
+    results_path =
+        joinpath(workspace.paths[:results_dir], lowercase(fem_formulation.resolution_name))
 
     if isnothing(file)
-        file = fem_formulation isa AbstractImpedanceFormulation ? "Z.dat" :
-               fem_formulation isa AbstractAdmittanceFormulation ? "Y.dat" :
-               throw(ArgumentError("Invalid formulation type: $(typeof(fem_formulation))"))
+        file =
+            fem_formulation isa AbstractImpedanceFormulation ? "Z.dat" :
+            fem_formulation isa AbstractAdmittanceFormulation ? "Y.dat" :
+            throw(ArgumentError("Invalid formulation type: $(typeof(fem_formulation))"))
     end
 
     filepath = joinpath(results_path, file)
@@ -147,7 +153,8 @@ function read_results_file(fem_formulation::Union{AbstractImpedanceFormulation,A
 
     # Read all lines from file
     lines = readlines(filepath)
-    n_rows = sum([length(c.design_data.components) for c in workspace.problem_def.system.cables])
+    n_rows =
+        sum([length(c.design_data.components) for c in workspace.problem_def.system.cables])
 
     # Pre-allocate result matrix
     matrix = zeros(ComplexF64, n_rows, n_rows)
@@ -211,10 +218,15 @@ function map_verbosity_to_gmsh(verbosity::Int)
     end
 end
 
-function calc_domain_size(earth_params::EarthModel, f::Vector{<:Float64}; min_radius=5.0, max_radius=5000.0)
+function calc_domain_size(
+    earth_params::EarthModel,
+    f::Vector{<:Float64};
+    min_radius=5.0,
+    max_radius=5000.0,
+)
     # Find the earth layer with the highest resistivity to determine the domain size
     if isempty(earth_params.layers)
-        error("EarthModel has no layers defined.")
+        Base.error("EarthModel has no layers defined.")
     end
 
     # Find the index of the layer with the maximum resistivity at the first frequency
@@ -231,7 +243,8 @@ end
 function archive_frequency_results(workspace::FEMWorkspace, frequency::Float64)
     try
         results_dir = workspace.paths[:results_dir]
-        freq_dir = joinpath(dirname(results_dir), "results_f=$(round(frequency, sigdigits=6))")
+        freq_dir =
+            joinpath(dirname(results_dir), "results_f=$(round(frequency, sigdigits=6))")
 
         if isdir(results_dir)
             mv(results_dir, freq_dir, force=true)
@@ -251,15 +264,112 @@ function archive_frequency_results(workspace::FEMWorkspace, frequency::Float64)
     end
 end
 
+# Run a command, capture stdout+stderr, never throw. Returns (ok::Bool, log::String).
+_run_cmd_capture(cmd::Cmd) = begin
+    io = IOBuffer()
+    ok = success(pipeline(cmd; stdout=io, stderr=io))
+    return ok, String(take!(io))
+end
+
+# Heuristic: does text look like a plain version (e.g., "3.5.0", "3.6")?
+_looks_like_version(s::AbstractString) =
+    occursin(r"^\s*\d+(?:\.\d+){0,2}\s*$", s)
+
+# Parse version from the `-info` output (line like "Version          : 3.5.0")
+function _parse_info_version(info::AbstractString)
+    m = match(r"(?mi)^\s*Version\s*:\s*([0-9]+(?:\.[0-9]+){0,2})\s*$", info)
+    return m === nothing ? nothing : m.captures[1]
+end
+
+function _probe_getdp(exe::AbstractString)
+    tried = String[]
+
+    # 1) Preferred: rich banner via -info
+    infocmd = Cmd(`$exe -info`; windows_verbatim=true)
+    push!(tried, string(infocmd))
+    ok, info = _run_cmd_capture(infocmd)
+    @debug "Probe (-info)" cmd = string(infocmd) ok = ok out_first_200 = first(
+        info,
+        min(lastindex(info), 200),
+    )
+
+    if ok
+        ver = _parse_info_version(info)
+        base = splitpath(exe)[end]
+        mentions_getdp =
+            occursin(r"getdp\.info"i, info) || occursin(r"\bGetDP\b"i, info) ||
+            occursin(r"getdp"i, base)
+        if ver !== nothing && mentions_getdp
+            return true, "info:$ver", tried
+        end
+    end
+
+    # 2) Fallback: version-only
+    vcmd = Cmd(`$exe -version`; windows_verbatim=true)
+    push!(tried, string(vcmd))
+    vok, vout = _run_cmd_capture(vcmd)
+    @debug "Probe (-version)" cmd = string(vcmd) ok = vok out = vout
+
+    if vok && _looks_like_version(vout)
+        base = splitpath(exe)[end]
+        if occursin(r"getdp"i, base)
+            return true, "version:$vout", tried
+        end
+    end
+
+    return false, "no identifying output", tried
+end
+
 # Internal helper to find the executable path 
 function _resolve_getdp_path(opts::NamedTuple)
     user_path = get(opts, :getdp_executable, nothing)
-    if user_path isa String && isfile(user_path)
-        return user_path
+    @debug "Resolving GetDP path" opts = opts user_path = user_path
+
+    # 1) User override
+    user_path = get(opts, :getdp_executable, nothing)
+    if user_path isa String
+        @debug "User-specified path" path = user_path exists = isfile(user_path)
+        if isfile(user_path)
+            ok, info, tried = _probe_getdp(user_path)
+            if ok
+                @debug "Using user-specified GetDP executable" path = user_path info = info
+                return user_path
+            else
+                @warn "User-specified executable failed identity check" path = user_path tried_cmds = tried info = info
+            end
+        else
+            @warn "User-specified path is not a file" path = user_path
+        end
+    else
+        @debug "No user-specified GetDP path"
     end
+
+    # 2) Fallback: query GetDP for its executable path
     fallback_path = GetDP.get_getdp_executable()
+    @debug "GetDP.get_getdp_executable() returned" path = fallback_path exists = isfile(
+        fallback_path,
+    )
+
     if isfile(fallback_path)
-        return fallback_path
+        ok, info, tried = _probe_getdp(fallback_path)
+        if ok
+            @debug "Using dependency-provided GetDP executable" path = fallback_path info = info
+            return fallback_path
+        else
+            @warn "Dependency-provided executable failed identity check" path = fallback_path tried_cmds = tried info = info
+        end
     end
-    error("GetDP executable not found.")
+
+    # 3) Last-resort diagnostics
+    path_env = get(ENV, "PATH", "(unset)")
+    gmsh_on_path = Sys.which("gmsh")
+    gmsh_ver =
+        gmsh_on_path === nothing ? "(n/a)" :
+        (last(_run_cmd_capture(Cmd(`$(gmsh_on_path) -version`; windows_verbatim=true))))
+    @debug "Diagnostics before error" PATH = path_env gmsh = gmsh_on_path gmsh_version = gmsh_ver
+
+    Base.error(
+        "GetDP executable not found or not identifiable. " *
+        "Provide :getdp_executable in opts or ensure GetDP.jl package is properly deployed and returns a valid binary.",
+    )
 end
