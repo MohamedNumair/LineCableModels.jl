@@ -1,0 +1,11 @@
+/*-- scss:defaults --*/
+$font-family-sans-serif: "Inter", "Segoe UI", Roboto, Arial, sans-serif;
+$body-bg: #0b132b;            // dark brand bg
+$body-color: #e8edf2;
+$link-color: #00a3c4;         // accent
+$presentation-heading-color: #e8edf2;
+
+/*-- scss:rules --*/
+.reveal .footer { font-size: .75rem; opacity: .8; }
+.reveal .slide-logo { max-height: 1.2rem; right: 1rem; bottom: 1rem; position: fixed; }
+

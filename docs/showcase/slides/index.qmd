@@ -1,0 +1,65 @@
+---
+title: "Julia Showcase (Hello World)"
+format: revealjs
+# Thebe config to make code blocks live via Binder
+include-in-header:
+  text: |
+    <script type="text/x-thebe-config">
+    {
+      "requestKernel": true,
+      "binderOptions": {
+        "repo": "{{< meta repo_nwo >}}",
+        "ref": "HEAD",
+        "repoProvider": "github"
+      },
+      "kernelOptions": { "name": "julia", "path": "." },
+      "selector": ".thebe-cell"
+    }
+    </script>
+    <script src="https://unpkg.com/thebe@0.8.2/lib/index.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/thebe@0.8.2/lib/thebe.css">
+    <script>
+      window.addEventListener('DOMContentLoaded', () => {
+        if (window.thebe) {
+          try { thebe.bootstrap(); } catch (e) { console.warn('Thebe bootstrap deferred', e); }
+        }
+      });
+    </script>
+---
+
+# Hello
+
+Rendered at build time (no Binder needed):
+
+```{julia}
+println("Hello, world from Julia $(VERSION)")
+```
+
+---
+
+# Live cell (click “Activate”)
+
+After the deck loads, hit **Activate** (Thebe) → Binder spins up a Julia kernel → run:
+
+```{julia} #| class: thebe-cell
+# Minimal "computation" to prove execution
+sum(i^2 for i in 1:10), prod(i for i in 1:5)
+```
+
+---
+
+# Your package hook (optional live)
+
+Uncomment and replace with your package to smoke-test imports.
+
+```{julia} #| class: thebe-cell
+# using YourPackage
+# YourPackage.versioninfo()
+"ready"
+```
+
+---
+
+# Footer
+
+© 2025 YourCorp
