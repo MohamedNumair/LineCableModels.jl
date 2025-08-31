@@ -37,7 +37,7 @@ function SectorInsulator(
 ) where {T<:REALSCALAR}
 
     # 1. Calculate the outer vertices by offsetting the inner sector's geometry
-    outer_vertices = _calculate_offset_polygon(inner_sector.params, thickness, inner_sector.rotation_angle_deg)
+    outer_vertices = _calculate_offset_polygon(inner_sector.vertices, thickness)
 
     # 2. Calculate areas
     inner_area = inner_sector.cross_section
@@ -69,23 +69,46 @@ function SectorInsulator(
 end
 
 # --- Geometric Helper Functions (internal) --- 
-#NB: This return another full sector not just the insulation -
-#---- Parameter calculations are handled by the equivalent area difference (as in the constructor)
-#---- Plots.jl handling can be done 
-#---- FEM handling not done yet 
+# REVISED: This function now takes vertices and thickness to compute a geometric offset.
+function _calculate_offset_polygon(vertices::Vector{Point{2, T}}, thickness::T) where {T<:REALSCALAR}
+    num_vertices = length(vertices)
+    if num_vertices < 3
+        error("Polygon must have at least 3 vertices.")
+    end
 
-function _calculate_offset_polygon(inner_params::SectorParams, thickness::Real, rotation_angle_deg::Real)
-    # Create a new set of parameters for the outer boundary by adding the thickness
-    outer_params = SectorParams(
-        inner_params.n_sectors,
-        inner_params.r_back + thickness,
-        inner_params.d_sector + thickness,
-        inner_params.r_corner + thickness, # Offset corner radius as well
-        inner_params.theta_cond_deg
-    )
+    new_vertices = similar(vertices)
 
-    base_vertices = _calculate_sector_polygon_points(outer_params)
-    rotation_angle_rad = deg2rad(rotation_angle_deg)
-    rotated_vertices = [_rotate_point(p, rotation_angle_rad) for p in base_vertices]
-    return rotated_vertices
+    for i in 1:num_vertices
+        p_prev = vertices[i == 1 ? num_vertices : i - 1]
+        p_curr = vertices[i]
+        p_next = vertices[i == num_vertices ? 1 : i + 1]
+
+        v1 = p_curr - p_prev
+        v2 = p_next - p_curr
+
+        # Normalize the vectors
+        v1_norm = v1 / norm(v1)
+        v2_norm = v2 / norm(v2)
+
+        # Normal vectors (rotated 90 degrees clockwise for outward direction)
+        n1 = Point(v1_norm[2], -v1_norm[1])
+        n2 = Point(v2_norm[2], -v2_norm[1])
+
+        # Bisector of the normals
+        bisector = (n1 + n2) / norm(n1 + n2)
+
+        # Angle between the two vectors to calculate the correct offset distance
+        angle = acos(clamp(v1_norm ⋅ v2_norm, -1.0, 1.0))
+        
+        # Miter length
+        offset_distance = thickness / sin((π - angle) / 2)
+
+        if isinf(offset_distance) # The vectors are parallel
+            new_vertices[i] = p_curr + n1 * thickness
+        else
+            new_vertices[i] = p_curr + bisector * offset_distance
+        end
+    end
+
+    return new_vertices
 end
