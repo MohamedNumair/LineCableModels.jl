@@ -300,7 +300,7 @@ function preview(
                 #Shape([outer_vertices, inner_vertices]),
                 Shape(outer_vertices),
                 linecolor=:black,
-                color=color,
+                color=:transparent,
                 label=display_legend ? label : "",
             )
 
