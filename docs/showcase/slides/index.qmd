@@ -1,5 +1,6 @@
 ---
 title: "Julia Showcase (Hello World)"
+engine: julia
 format: revealjs
 # Thebe config to make code blocks live via Binder
 include-in-header:
@@ -12,7 +13,7 @@ include-in-header:
         "ref": "HEAD",
         "repoProvider": "github"
       },
-      "kernelOptions": { "name": "julia-1.10", "path": "." },
+      "kernelOptions": { "name": "julia-1.11", "path": "." },
       "selector": ".thebe-cell"
     }
     </script>
