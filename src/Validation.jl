@@ -690,10 +690,10 @@ $(FUNCTIONNAME)(Y)  # => (temperature = 25.0,)
     elseif defs isa Tuple
         keys = keyword_fields(T)
         length(keys) == length(defs) ||
-            error("[$(String(nameof(T)))] keyword_defaults length $(length(defs)) ≠ keyword_fields length $(length(keys))")
+            Base.error("[$(String(nameof(T)))] keyword_defaults length $(length(defs)) ≠ keyword_fields length $(length(keys))")
         return NamedTuple{keys}(defs)
     else
-        error("[$(String(nameof(T)))] keyword_defaults must be NamedTuple or Tuple; got $(typeof(defs))")
+        Base.error("[$(String(nameof(T)))] keyword_defaults must be NamedTuple or Tuple; got $(typeof(defs))")
     end
 end
 
