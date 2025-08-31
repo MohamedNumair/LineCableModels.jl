@@ -85,12 +85,14 @@ Uncomment and replace with your package to smoke-test imports.
 If Thebe feels limited for UI widgets, here is a Pluto cell embedded via Binder. First load can take a minute.
 
 <iframe
-  class="pluto-frame"
+  class="pluto-frame" 
   src="https://mybinder.org/v2/gh/Electa-Git/LineCableModels.jl/HEAD?urlpath=pluto/open?path=docs/showcase/pluto/hello.jl"
   loading="lazy"
 ></iframe>
 
-<a class="pluto-link" href="https://mybinder.org/v2/gh/Electa-Git/LineCableModels.jl/HEAD?urlpath=pluto/open?path=docs/showcase/pluto/hello.jl" target="_blank" rel="noopener">Open Pluto on Binder</a>
+If the frame doesn't load, open in a new tab:
+
+[Open Pluto on Binder](https://mybinder.org/v2/gh/Electa-Git/LineCableModels.jl/HEAD?urlpath=pluto/open?path=docs/showcase/pluto/hello.jl)
 
 ---
 
@@ -104,4 +106,4 @@ Interactive plot using Plots.jl inside Pluto.
   loading="lazy"
 ></iframe>
 
-<a class="pluto-link" href="https://mybinder.org/v2/gh/Electa-Git/LineCableModels.jl/HEAD?urlpath=pluto/open?path=docs/showcase/pluto/plot.jl" target="_blank" rel="noopener">Open Pluto Plot on Binder</a>
+[Open Pluto Plot on Binder](https://mybinder.org/v2/gh/Electa-Git/LineCableModels.jl/HEAD?urlpath=pluto/open?path=docs/showcase/pluto/plot.jl)
