@@ -14,7 +14,7 @@ include-in-header:
         "repoProvider": "github"
       },
       "kernelOptions": { "name": "julia-1.11", "path": "." },
-      "selector": ".thebe-cell"
+      "selector": "[data-executable]"
     }
     </script>
     <script src="https://unpkg.com/thebe@0.8.2/lib/index.js"></script>
@@ -42,7 +42,8 @@ println("Hello, world from Julia $(VERSION)")
 
 After the deck loads, hit **Activate** (Thebe) → Binder spins up a Julia kernel → run:
 
-```{julia} #| class: thebe-cell
+```{julia}
+#| thebe: true
 # Minimal "computation" to prove execution
 sum(i^2 for i in 1:10), prod(i for i in 1:5)
 ```
@@ -71,7 +72,8 @@ If you don’t see Thebe’s Activate control, click the button below:
 
 Uncomment and replace with your package to smoke-test imports.
 
-```{julia} #| class: thebe-cell
+```{julia}
+#| thebe: true
 # using YourPackage
 # YourPackage.versioninfo()
 "ready"
