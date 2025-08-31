@@ -20,7 +20,7 @@ Tp = $(FUNCTIONNAME)(Tubular, (radius_in=0.01, radius_ext=0.02, material_props=m
 ```
 """
 @inline _promotion_T(::Type{C}, ntv, _order::Tuple) where {C} =
-    resolve_T((getfield(ntv, k) for k in coercive_fields(C))...)
+	resolve_T((getfield(ntv, k) for k in coercive_fields(C))...)
 
 """
 $(TYPEDSIGNATURES)
@@ -45,12 +45,12 @@ args = $(FUNCTIONNAME)(Tubular, ntv, Float64, (:radius_in, :radius_ext, :materia
 ```
 """
 @inline _coerced_args(::Type{C}, ntv, Tp, order::Tuple) where {C} =
-    tuple((
-        let k = s, v = getfield(ntv, s)
-            (s in coercive_fields(C)) ? coerce_to_T(v, Tp) : v
-        end
-        for s in order
-    )...)
+	tuple((
+		let k = s, v = getfield(ntv, s)
+			(s in coercive_fields(C)) ? coerce_to_T(v, Tp) : v
+		end
+		for s in order
+	)...)
 
 """
 $(TYPEDSIGNATURES)
@@ -82,10 +82,11 @@ syms = $(FUNCTIONNAME)(@__MODULE__, :( :a, :b ))
 syms = $(FUNCTIONNAME)(@__MODULE__, :_REQ_TUBULAR)
 ```
 """
-_ctor_materialize(mod, x) = x === :(()) ? () :
-                            x isa Expr && x.head === :tuple ? x.args :
-                            x isa Symbol ? Base.eval(mod, x) :
-                            error("@_ctor: expected tuple literal or const tuple, got $(x)")
+_ctor_materialize(mod, x) =
+	x === :(()) ? () :
+	x isa Expr && x.head === :tuple ? x.args :
+	x isa Symbol ? Base.eval(mod, x) :
+	Base.error("@_ctor: expected tuple literal or const tuple, got $(x)")
 
 using MacroTools: postwalk
 """
@@ -141,42 +142,43 @@ const _DEFS_TUBULAR = (T₀,)
 
 - `ErrorException` if `length(OPT) != length(DEFS)`.
 """
-macro _ctor(T, REQ, OPT=:(()), DEFS=:(()))
-    mod = __module__
-    req = Symbol.(_ctor_materialize(mod, REQ))
-    opt = Symbol.(_ctor_materialize(mod, OPT))
-    dfx = _ctor_materialize(mod, DEFS)
-    length(opt) == length(dfx) || error("@_ctor: OPT and DEFS length mismatch")
+macro _ctor(T, REQ, OPT = :(()), DEFS = :(()))
+	mod = __module__
+	req = Symbol.(_ctor_materialize(mod, REQ))
+	opt = Symbol.(_ctor_materialize(mod, OPT))
+	dfx = _ctor_materialize(mod, DEFS)
+	length(opt) == length(dfx) || Base.error("@_ctor: OPT and DEFS length mismatch")
 
-    # A) signature defaults (escape defaults)
-    sig_kws = [Expr(:kw, opt[i], esc(dfx[i])) for i in eachindex(opt)]
-    #    forwarding kwargs (variables, not defaults)
-    pass_kws = [Expr(:kw, s, s) for s in opt]
+	# A) signature defaults (escape defaults)
+	sig_kws = [Expr(:kw, opt[i], esc(dfx[i])) for i in eachindex(opt)]
+	#    forwarding kwargs (variables, not defaults)
+	pass_kws = [Expr(:kw, s, s) for s in opt]
 
-    # B) flat order tuple
-    order_syms = (req..., opt...)
-    order = Expr(:tuple, (QuoteNode.(order_syms))...)
+	# B) flat order tuple
+	order_syms = (req..., opt...)
+	order = Expr(:tuple, (QuoteNode.(order_syms))...)
 
-    ex = isempty(sig_kws) ? quote
-        function $(T)($(req...))
-            ntv = validate!($(T), $(req...))
-            Tp = _promotion_T($(T), ntv, $order)
-            local __args__ = _coerced_args($(T), ntv, Tp, $order)
-            return $(T)(__args__...)
-        end
-    end : quote
-        function $(T)($(req...); $(sig_kws...))
-            ntv = validate!($(T), $(req...); $(pass_kws...))   # C) pass vars
-            Tp = _promotion_T($(T), ntv, $order)
-            local __args__ = _coerced_args($(T), ntv, Tp, $order)
-            return $(T)(__args__...)
-        end
-    end
+	ex =
+		isempty(sig_kws) ? quote
+			function $(T)($(req...))
+				ntv = validate!($(T), $(req...))
+				Tp = _promotion_T($(T), ntv, $order)
+				local __args__ = _coerced_args($(T), ntv, Tp, $order)
+				return $(T)(__args__...)
+			end
+		end : quote
+			function $(T)($(req...); $(sig_kws...))
+				ntv = validate!($(T), $(req...); $(pass_kws...))   # C) pass vars
+				Tp = _promotion_T($(T), ntv, $order)
+				local __args__ = _coerced_args($(T), ntv, Tp, $order)
+				return $(T)(__args__...)
+			end
+		end
 
-    # hygiene stays as you had it
-    free = Set{Symbol}([:validate!, :_promotion_T, :_coerced_args, T])
-    ex2 = postwalk(ex) do node
-        node isa Symbol && (node in free) ? esc(node) : node
-    end
-    return ex2
+	# hygiene stays as you had it
+	free = Set{Symbol}([:validate!, :_promotion_T, :_coerced_args, T])
+	ex2 = postwalk(ex) do node
+		node isa Symbol && (node in free) ? esc(node) : node
+	end
+	return ex2
 end
