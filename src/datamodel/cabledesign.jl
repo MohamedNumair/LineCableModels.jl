@@ -142,7 +142,7 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Builds a simplified CableDesign by replacing each component with a
+Builds a simplified [`CableDesign`](@ref) by replacing each component with a
 homogeneous equivalent and leverages shorthand constructors:
 
 - `ConductorGroup(component::CableComponent{T}) = ConductorGroup(Tubular(component))`
