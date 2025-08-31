@@ -159,3 +159,61 @@ end
 
 include("cablecomponent/base.jl")
 
+"""
+$(TYPEDSIGNATURES)
+
+Constructs the equivalent coaxial conductor as a `Tubular` directly from a
+`CableComponent`, reusing the rigorously tested positional constructor.
+
+# Arguments
+
+- `component`: The `CableComponent` providing geometry and material.
+
+# Returns
+
+- `Tubular{T}` with radii from `component.conductor_group` and material from
+  `component.conductor_props` at the group temperature (fallback to `T0`).
+"""
+function Tubular(component::CableComponent{T}) where {T}
+    cg = component.conductor_group
+    temp = !isempty(cg.layers) ? cg.layers[1].temperature : component.conductor_props.T0
+    return Tubular(cg.radius_in, cg.radius_ext, component.conductor_props, temp)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Constructs the equivalent coaxial insulation as an `Insulator` directly from a
+`CableComponent`, calling the strict positional constructor.
+
+# Arguments
+
+- `component`: The `CableComponent` providing geometry and material.
+
+# Returns
+
+- `Insulator{T}` with radii from `component.insulator_group` and material from
+  `component.insulator_props` at the group temperature (fallback to `T0`).
+"""
+function Insulator(component::CableComponent{T}) where {T}
+    ig = component.insulator_group
+    temp = !isempty(ig.layers) ? ig.layers[1].temperature : component.insulator_props.T0
+    return Insulator(ig.radius_in, ig.radius_ext, component.insulator_props, temp)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Shorthand to build a `ConductorGroup` from a `CableComponent` by wrapping its
+equivalent `Tubular` part.
+"""
+ConductorGroup(component::CableComponent{T}) where {T} = ConductorGroup(Tubular(component))
+
+"""
+$(TYPEDSIGNATURES)
+
+Shorthand to build an `InsulatorGroup` from a `CableComponent` by wrapping its
+equivalent `Insulator` part.
+"""
+InsulatorGroup(component::CableComponent{T}) where {T} = InsulatorGroup(Insulator(component))
+
