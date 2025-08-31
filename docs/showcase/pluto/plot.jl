@@ -1182,3 +1182,50 @@ version = "1.9.2+0"
 # ╠═dfe372ba-082c-4fe1-8f4e-0f32c295594b
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
+### A Pluto.jl notebook ###
+# v0.19.43
+
+using Markdown
+using InteractiveUtils
+
+# ╔═╡ aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
+begin
+    import Pkg
+    try
+        using HypertextLiteral
+    catch
+        Pkg.add("HypertextLiteral"); using HypertextLiteral
+    end
+    css = read("docs/showcase/pluto/corporate.css", String)
+    @htl("<style>$(css)</style>")
+end
+
+# ╔═╡ bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
+md"""
+# Pluto Plot Demo
+Interactively change N and see the curve update.
+"""
+
+# ╔═╡ cccccccc-cccc-cccc-cccc-cccccccccccc
+begin
+    import Pkg
+    try
+        using PlutoUI, Plots
+    catch
+        Pkg.add(["PlutoUI","Plots"]); using PlutoUI, Plots
+    end
+    nothing
+end
+
+# ╔═╡ dddddddd-dddd-dddd-dddd-dddddddddddd
+@bind N Slider(10:10:200; default=50, show_value=true)
+
+# ╔═╡ eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee
+x = 0:0.01:2π
+
+# ╔═╡ ffffffff-ffff-ffff-ffff-ffffffffffff
+y = @. sin(N * x) * exp(-0.2x)
+
+# ╔═╡ 99999999-9999-9999-9999-999999999999
+plot(x, y, lw=2, color=:cyan, bg=:transparent, legend=false,
+     xlabel="x", ylabel="y", title="y = sin(Nx) * exp(-0.2x)")

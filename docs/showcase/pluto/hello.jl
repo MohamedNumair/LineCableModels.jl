@@ -331,3 +331,50 @@ version = "17.4.0+2"
 # ╠═161e535b-b177-4fd3-9968-68e9ebe3909e
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
+### A Pluto.jl notebook ###
+# v0.19.43
+
+using Markdown
+using InteractiveUtils
+
+# ╔═╡ 11111111-1111-1111-1111-111111111111
+begin
+    import Pkg
+    try
+        using HypertextLiteral
+    catch
+        Pkg.add("HypertextLiteral"); using HypertextLiteral
+    end
+    # Inject corporate CSS
+    css = read("docs/showcase/pluto/corporate.css", String)
+    @htl("<style>$(css)</style>")
+end
+
+# ╔═╡ 22222222-2222-2222-2222-222222222222
+md"""
+# Pluto Demo (Hello)
+Adjust N and recompute a couple of expressions.
+"""
+
+# ╔═╡ 33333333-3333-3333-3333-333333333333
+begin
+    import Pkg
+    try
+        using PlutoUI
+    catch
+        Pkg.add("PlutoUI"); using PlutoUI
+    end
+    nothing
+end
+
+# ╔═╡ 44444444-4444-4444-4444-444444444444
+@bind N Slider(1:50; default=10, show_value=true)
+
+# ╔═╡ 55555555-5555-5555-5555-555555555555
+sum_squares = sum(i^2 for i in 1:N)
+
+# ╔═╡ 66666666-6666-6666-6666-666666666666
+prod_small = prod(1:5)
+
+# ╔═╡ 77777777-7777-7777-7777-777777777777
+md"sum(i^2 for i in 1:N) = $(sum_squares)\n\nprod(1:5) = $(prod_small)"
