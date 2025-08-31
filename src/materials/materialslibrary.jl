@@ -5,9 +5,9 @@ Stores a collection of predefined materials for cable modeling, indexed by mater
 
 $(TYPEDFIELDS)
 """
-mutable struct MaterialsLibrary <: AbstractDict{String,Material}
-    "Dictionary mapping material names to [`Material`](@ref) objects."
-    data::Dict{String,Material}  # Key: Material name, Value: Material object
+mutable struct MaterialsLibrary <: AbstractDict{String, Material}
+	"Dictionary mapping material names to [`Material`](@ref) objects."
+	data::Dict{String, Material}  # Key: Material name, Value: Material object
 end
 
 """
@@ -35,15 +35,15 @@ library = $(FUNCTIONNAME)()
 - [`Material`](@ref)
 - [`_add_default_materials!`](@ref)
 """
-function MaterialsLibrary(; add_defaults::Bool=true)::MaterialsLibrary
-    library = MaterialsLibrary(Dict{String,Material}())
+function MaterialsLibrary(; add_defaults::Bool = true)::MaterialsLibrary
+	library = MaterialsLibrary(Dict{String, Material}())
 
-    if add_defaults
-        @info "Initializing default materials database..."
-        _add_default_materials!(library)
-    end
+	if add_defaults
+		@info "Initializing default materials database..."
+		_add_default_materials!(library)
+	end
 
-    return library
+	return library
 end
 
 """
@@ -71,35 +71,35 @@ $(FUNCTIONNAME)(library)
 - [`add!`](@ref)
 """
 function _add_default_materials!(library::MaterialsLibrary)
-    add!(library, "air", Material(Inf, 1.0, 1.0, 20.0, 0.0))
-    add!(library, "pec", Material(eps(), 1.0, 1.0, 20.0, 0.0))
-    add!(
-        library,
-        "copper",
-        Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393),
-    )
-    add!(
-        library,
-        "aluminum",
-        Material(2.8264e-8, 1.0, 1.000022, 20.0, 0.00429),
-    )
-    add!(library, "xlpe", Material(1.97e14, 2.5, 1.0, 20.0, 0.0))
-    add!(library, "pe", Material(1.97e14, 2.3, 1.0, 20.0, 0.0))
-    add!(
-        library,
-        "semicon1",
-        Material(1000.0, 1000.0, 1.0, 20.0, 0.0),
-    )
-    add!(
-        library,
-        "semicon2",
-        Material(500.0, 1000.0, 1.0, 20.0, 0.0),
-    )
-    add!(
-        library,
-        "polyacrylate",
-        Material(5.3e3, 32.3, 1.0, 20.0, 0.0),
-    )
+	add!(library, "air", Material(Inf, 1.0, 1.0, 20.0, 0.0))
+	add!(library, "pec", Material(eps(), 1.0, 1.0, 20.0, 0.0))
+	add!(
+		library,
+		"copper",
+		Material(1.7241e-8, 1.0, 0.999994, 20.0, 0.00393),
+	)
+	add!(
+		library,
+		"aluminum",
+		Material(2.8264e-8, 1.0, 1.000022, 20.0, 0.00429),
+	)
+	add!(library, "xlpe", Material(1.97e14, 2.5, 1.0, 20.0, 0.0))
+	add!(library, "pe", Material(1.97e14, 2.3, 1.0, 20.0, 0.0))
+	add!(
+		library,
+		"semicon1",
+		Material(1000.0, 1000.0, 1.0, 20.0, 0.0),
+	)
+	add!(
+		library,
+		"semicon2",
+		Material(500.0, 1000.0, 1.0, 20.0, 0.0),
+	)
+	add!(
+		library,
+		"polyacrylate",
+		Material(5.3e3, 32.3, 1.0, 20.0, 0.0),
+	)
 end
 
 
@@ -131,14 +131,14 @@ $(FUNCTIONNAME)(library, "copper", material)
 ```
 """
 function add!(
-    library::MaterialsLibrary,
-    name::AbstractString,
-    material::Material,
+	library::MaterialsLibrary,
+	name::AbstractString,
+	material::Material,
 )
-    if haskey(library, name)
-        error("Material $name already exists in the library.")
-    end
-    library[String(name)] = material
-    library
+	if haskey(library, name)
+		Base.error("Material $name already exists in the library.")
+	end
+	library[String(name)] = material
+	library
 end
 
