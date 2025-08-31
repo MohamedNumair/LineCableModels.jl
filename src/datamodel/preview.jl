@@ -275,6 +275,35 @@ function preview(
                 color=color,
                 label=display_legend ? label : "",
             )
+                elseif layer isa Sector
+            vertices = layer.vertices
+            material_props = layer.material_props
+            color = _get_material_color(material_props)
+
+            plot!(
+                plt,
+                Shape(vertices),
+                linecolor=:black,
+                color=color,
+                label=display_legend ? label : "",
+            )
+        elseif layer isa SectorInsulator
+            outer_vertices = layer.outer_vertices
+            # The inner boundary is the conductor's vertices. It must be reversed for the hole to be drawn correctly.
+            inner_vertices = reverse(layer.inner_sector.vertices)
+            material_props = layer.material_props
+            color = _get_material_color(material_props)
+
+            # Create a shape with a hole by passing a list of polygons
+            plot!(
+                plt,
+                #Shape([outer_vertices, inner_vertices]),
+                Shape(outer_vertices),
+                linecolor=:black,
+                color=color,
+                label=display_legend ? label : "",
+            )
+
         end
     end
 

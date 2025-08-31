@@ -23,8 +23,8 @@ module DataModel
 
 # Export public API
 export Thickness, Diameter  # Type definitions
-export WireArray, Strip, Tubular  # Conductor types
-export Semicon, Insulator  # Insulator types
+export WireArray, Strip, Tubular, SectorParams, Sector  # Conductor types
+export Semicon, Insulator, SectorInsulator  # Insulator types
 export ConductorGroup, InsulatorGroup  # Group types
 export CableComponent, CableDesign  # Cable design types
 export CablePosition, LineCableSystem  # System types
@@ -44,6 +44,8 @@ using DataFrames
 using Colors
 using Plots
 using DisplayAs: DisplayAs
+using GeometryBasics
+using PolygonOps
 
 # Abstract types & interfaces
 include("datamodel/types.jl")
@@ -62,10 +64,12 @@ include("datamodel/wirearray.jl")
 include("datamodel/strip.jl")
 include("datamodel/tubular.jl")
 include("datamodel/conductorgroup.jl")
+include("datamodel/sector.jl")
 
 # Insulators
 include("datamodel/insulator.jl")
 include("datamodel/semicon.jl")
+include("datamodel/insulatorgroup.jl")
 include("datamodel/insulatorgroup.jl")
 
 
