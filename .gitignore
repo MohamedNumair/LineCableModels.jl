@@ -42,8 +42,6 @@ confidential/
 !.vscode/extensions.json
 !.vscode/tasks.json
 onelab
-showcase
-!showcase/*.jl
 papers
 sprint
 */fem_output
