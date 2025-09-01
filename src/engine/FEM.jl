@@ -39,6 +39,7 @@ using ...Utils: display_path, set_logger!, is_headless, to_nominal
 using Measurements
 using LinearAlgebra
 using Colors
+using GeometryBasics
 
 # FEM specific dependencies
 using Gmsh
