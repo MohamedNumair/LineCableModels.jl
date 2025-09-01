@@ -275,7 +275,9 @@ function preview(
                 color=color,
                 label=display_legend ? label : "",
             )
-                elseif layer isa Sector
+        elseif layer isa Sector
+            #TODO: support the nominal length (using lay ratio)
+            #TODO: Fix the offset to be taken into account
             vertices = layer.vertices
             material_props = layer.material_props
             color = _get_material_color(material_props)
