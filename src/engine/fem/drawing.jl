@@ -641,6 +641,7 @@ function draw_transition_region(
 end
 
 function draw_polygon(vertices::Vector{<:Point})
+	@warn "I am drawing a polygon for a Point vertices using your new defined method"
     # Create points
     points = [gmsh.model.occ.add_point(v[1], v[2], 0.0) for v in vertices]
 
@@ -654,9 +655,13 @@ function draw_polygon(vertices::Vector{<:Point})
     # Synchronize to make the new entity available for calculations
     gmsh.model.occ.synchronize()
 
-    # Calculate a center of mass for placing a marker
-    com = gmsh.model.get_center_of_mass(2, surface_tag)
-    marker = [com[1], com[2], com[3]]
+    # Workaround: calculate the centroid of the vertices as a marker
+    if isempty(vertices)
+        error("Cannot calculate centroid of empty vertex list.")
+    end
+    avg_x = sum(v[1] for v in vertices) / length(vertices)
+    avg_y = sum(v[2] for v in vertices) / length(vertices)
+    marker = [avg_x, avg_y, 0.0]
 
     return surface_tag, marker
 end
