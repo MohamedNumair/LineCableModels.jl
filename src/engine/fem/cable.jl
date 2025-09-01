@@ -408,13 +408,14 @@ function _make_cablepart!(workspace::FEMWorkspace, part::Sector,
 
     # The vertices in the Sector object are already rotated and relative to the cable's origin.
     # We just need to translate them to the cable's position in the system.
-    translated_vertices = [(v[1] + x_center, v[2] + y_center) for v in part.vertices]
+    translated_vertices = [GeometryBasics.Point(v[1] + x_center, v[2] + y_center) for v in part.vertices]
 
     # Calculate mesh size for this part
     num_elements = workspace.formulation.elements_per_length_conductor
     mesh_size = _calc_mesh_size(part.radius_in, part.radius_ext, part.material_props, num_elements, workspace)
 
     # Create the polygon in Gmsh
+    @debug "the translated vertices are $translated_vertices \n they are of type $(typeof(translated_vertices))"
     surface_tag, marker = draw_polygon(translated_vertices)
 
     # --- The rest of this function is similar to the other _make_cablepart! methods ---
@@ -456,8 +457,8 @@ function _make_cablepart!(workspace::FEMWorkspace, part::SectorInsulator,
     y_center = to_nominal(cable_position.vert)
 
     # Translate the vertices for both outer and inner boundaries
-    outer_vertices_translated = [(v[1] + x_center, v[2] + y_center) for v in part.outer_vertices]
-    inner_vertices_translated = [(v[1] + x_center, v[2] + y_center) for v in part.inner_sector.vertices]
+    outer_vertices_translated = [GeometryBasics.Point(v[1] + x_center, v[2] + y_center) for v in part.outer_vertices]
+    inner_vertices_translated = [GeometryBasics.Point(v[1] + x_center, v[2] + y_center) for v in part.inner_sector.vertices]
 
     # Calculate mesh size for this part
     num_elements = workspace.formulation.elements_per_length_insulator
