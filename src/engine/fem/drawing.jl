@@ -640,6 +640,64 @@ function draw_transition_region(
 	return tags, all_mesh_points, markers
 end
 
+function draw_polygon(vertices::Vector{<:Point})
+    # Create points
+    points = [gmsh.model.occ.add_point(v[1], v[2], 0.0) for v in vertices]
+
+    # Create lines
+    lines = [gmsh.model.occ.add_line(points[i], points[i % length(points) + 1]) for i in 1:length(points)]
+
+    # Create curve loop and surface
+    curve_loop = gmsh.model.occ.add_curve_loop(lines)
+    surface_tag = gmsh.model.occ.add_plane_surface([curve_loop])
+    
+    # Synchronize to make the new entity available for calculations
+    gmsh.model.occ.synchronize()
+
+    # Calculate a center of mass for placing a marker
+    com = gmsh.model.get_center_of_mass(2, surface_tag)
+    marker = [com[1], com[2], com[3]]
+
+    return surface_tag, marker
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Draw a polygon with a hole.
+
+# Arguments
+- `outer_vertices`: A vector of (x,y) coordinates for the outer boundary.
+- `inner_vertices`: A vector of (x,y) coordinates for the inner boundary (the hole).
+
+# Returns
+- A tuple containing the Gmsh surface tag and a marker point `[x, y, z]`.
+"""
+function draw_polygon_with_hole(outer_vertices::Vector{<:Point}, inner_vertices::Vector{<:Point})
+    # Create outer boundary
+    outer_points = [gmsh.model.occ.add_point(v[1], v[2], 0.0) for v in outer_vertices]
+    outer_lines = [gmsh.model.occ.add_line(outer_points[i], outer_points[i % length(outer_points) + 1]) for i in 1:length(outer_points)]
+    outer_loop = gmsh.model.occ.add_curve_loop(outer_lines)
+
+    # Create inner boundary (hole)
+    inner_points = [gmsh.model.occ.add_point(v[1], v[2], 0.0) for v in inner_vertices]
+    inner_lines = [gmsh.model.occ.add_line(inner_points[i], inner_points[i % length(inner_points) + 1]) for i in 1:length(inner_points)]
+    inner_loop = gmsh.model.occ.add_curve_loop(inner_lines)
+
+    # Create surface with hole
+    surface_tag = gmsh.model.occ.add_plane_surface([outer_loop, inner_loop])
+    
+    # Synchronize to make the new entity available for calculations
+    gmsh.model.occ.synchronize()
+
+    # A marker point must be inside the insulator, but outside the conductor.
+    # A point halfway between the inner and outer boundaries along one of the vertices should work.
+    marker_point = (outer_vertices[1] + inner_vertices[1]) / 2
+    marker = [marker_point[1], marker_point[2], 0.0]
+
+    return surface_tag, marker
+end
+
 function get_system_centroid(cable_system::LineCableSystem, cable_idx::Vector{<:Integer})
 	# Check if cable_idx is empty
 	if isempty(cable_idx)
