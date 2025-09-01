@@ -310,5 +310,5 @@ function _resolve_getdp_path(opts::NamedTuple)
     end
 
     Base.error("GetDP executable not found or not working (invocation with -info failed). " *
-          "Provide :getdp_executable in opts or ensure GetDP.jl is properly deployed.")
+               "Provide :getdp_executable in opts or ensure GetDP.jl is properly deployed.")
 end
