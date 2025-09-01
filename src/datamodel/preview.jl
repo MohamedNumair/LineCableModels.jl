@@ -277,8 +277,8 @@ function preview(
             )
         elseif layer isa Sector
             #TODO: support the nominal length (using lay ratio)
-            #TODO: Fix the offset to be taken into account
             vertices = layer.vertices
+            vertices = [(v[1] + x0, v[2] + y0) for v in vertices]
             material_props = layer.material_props
             color = _get_material_color(material_props)
 
@@ -290,9 +290,10 @@ function preview(
                 label=display_legend ? label : "",
             )
         elseif layer isa SectorInsulator
-            outer_vertices = layer.outer_vertices
-            # The inner boundary is the conductor's vertices. It must be reversed for the hole to be drawn correctly.
-            inner_vertices = reverse(layer.inner_sector.vertices)
+            outer_vertices =  [(v[1] + x0, v[2] + y0) for v in layer.outer_vertices] 
+            # (Not used for now) The inner boundary is the conductor's vertices. It must be reversed for the hole to be drawn correctly.
+            inner_vertices = [(v[1] + x0, v[2] + y0) for v in layer.inner_sector.vertices]
+            inner_vertices = reverse(inner_vertices)
             material_props = layer.material_props
             color = _get_material_color(material_props)
 
