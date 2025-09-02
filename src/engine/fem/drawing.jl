@@ -641,7 +641,7 @@ function draw_transition_region(
 end
 
 function draw_polygon(vertices::Vector{<:Point})
-	@warn "I am drawing a polygon for a Point vertices using your new defined method"
+	@debug "Drawing a polygon for a Point vertices"
     # Create points
     points = [gmsh.model.occ.add_point(v[1], v[2], 0.0) for v in vertices]
 
@@ -655,7 +655,7 @@ function draw_polygon(vertices::Vector{<:Point})
     # Synchronize to make the new entity available for calculations
     gmsh.model.occ.synchronize()
 
-    # Workaround: calculate the centroid of the vertices as a marker
+    # calculate the centroid of the vertices as a marker
     if isempty(vertices)
         error("Cannot calculate centroid of empty vertex list.")
     end
