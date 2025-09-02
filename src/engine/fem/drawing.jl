@@ -678,14 +678,43 @@ Draw a polygon with a hole.
 # Returns
 - A tuple containing the Gmsh surface tag and a marker point `[x, y, z]`.
 """
-function draw_polygon_with_hole(outer_vertices::Vector{<:Point}, inner_vertices::Vector{<:Point})
+function draw_polygon_with_hole(outer_vertices::Vector{<:Point}, inner_vertices::Vector{<:Point}, max_edge_length::Number)
+    
+    function densify_vertices(vertices::Vector{<:Point}, max_len::Number)
+        new_vertices = Point[]
+        if isempty(vertices)
+            return new_vertices
+        end
+        for i in 1:length(vertices)
+            p1 = vertices[i]
+            p2 = vertices[i % length(vertices) + 1]
+            
+            push!(new_vertices, p1)
+            
+            edge_vec = p2 - p1
+            edge_len = norm(edge_vec)
+            
+            if edge_len > max_len
+                num_segments = ceil(Int, edge_len / max_len)
+                for j in 1:(num_segments - 1)
+                    intermediate_point = p1 + (j / num_segments) * edge_vec
+                    push!(new_vertices, intermediate_point)
+                end
+            end
+        end
+        return new_vertices
+    end
+
+    new_outer_vertices = densify_vertices(outer_vertices, max_edge_length)
+    new_inner_vertices = densify_vertices(inner_vertices, max_edge_length)
+
     # Create outer boundary
-    outer_points = [gmsh.model.occ.add_point(v[1], v[2], 0.0) for v in outer_vertices]
+    outer_points = [gmsh.model.occ.add_point(v[1], v[2], 0.0) for v in new_outer_vertices]
     outer_lines = [gmsh.model.occ.add_line(outer_points[i], outer_points[i % length(outer_points) + 1]) for i in 1:length(outer_points)]
     outer_loop = gmsh.model.occ.add_curve_loop(outer_lines)
 
     # Create inner boundary (hole)
-    inner_points = [gmsh.model.occ.add_point(v[1], v[2], 0.0) for v in inner_vertices]
+    inner_points = [gmsh.model.occ.add_point(v[1], v[2], 0.0) for v in new_inner_vertices]
     inner_lines = [gmsh.model.occ.add_line(inner_points[i], inner_points[i % length(inner_points) + 1]) for i in 1:length(inner_points)]
     inner_loop = gmsh.model.occ.add_curve_loop(inner_lines)
 

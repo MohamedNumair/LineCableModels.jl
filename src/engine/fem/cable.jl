@@ -465,7 +465,7 @@ function _make_cablepart!(workspace::FEMWorkspace, part::SectorInsulator,
     mesh_size = _calc_mesh_size(part.radius_in, part.radius_ext, part.material_props, num_elements, workspace)
 
     # Create the polygon with a hole using our new drawing primitive
-    surface_tag, marker = draw_polygon_with_hole(outer_vertices_translated, inner_vertices_translated)
+    surface_tag, marker = draw_polygon_with_hole(outer_vertices_translated, inner_vertices_translated, mesh_size)
 
     # --- The rest is similar to the Sector method ---
 
