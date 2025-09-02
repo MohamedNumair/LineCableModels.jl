@@ -800,4 +800,52 @@ function get_air_gap_markers(num_wires::Int, radius_wire::Number, radius_in::Num
 	return markers
 end
 
+function draw_polygon(vertices::Vector{<:Point}, max_edge_length::Number)
+    if isempty(vertices)
+        error("Cannot draw a polygon with no vertices.")
+    end
+
+    new_vertices = Point[]
+    for i in 1:length(vertices)
+        p1 = vertices[i]
+        p2 = vertices[i % length(vertices) + 1]
+        
+        push!(new_vertices, p1)
+        
+        edge_vec = p2 - p1
+        edge_len = norm(edge_vec)
+        
+        if edge_len > max_edge_length
+            num_segments = ceil(Int, edge_len / max_edge_length)
+            for j in 1:(num_segments - 1)
+                intermediate_point = p1 + (j / num_segments) * edge_vec
+                push!(new_vertices, intermediate_point)
+            end
+        end
+    end
+
+    # Create points
+    points = [gmsh.model.occ.add_point(v[1], v[2], 0.0) for v in new_vertices]
+
+    # Create lines
+    lines = [gmsh.model.occ.add_line(points[i], points[i % length(points) + 1]) for i in 1:length(points)]
+
+    # Create curve loop and surface
+    curve_loop = gmsh.model.occ.add_curve_loop(lines)
+    surface_tag = gmsh.model.occ.add_plane_surface([curve_loop])
+    
+    # Synchronize to make the new entity available for calculations
+    gmsh.model.occ.synchronize()
+
+    # calculate the centroid of the original vertices as a marker
+    if isempty(vertices)
+        error("Cannot calculate centroid of empty vertex list.")
+    end
+    avg_x = sum(v[1] for v in vertices) / length(vertices)
+    avg_y = sum(v[2] for v in vertices) / length(vertices)
+    marker = [avg_x, avg_y, 0.0]
+
+    return surface_tag, marker
+end
+
 
