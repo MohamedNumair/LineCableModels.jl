@@ -359,10 +359,8 @@ formulation = FormulationSet(:FEM,
 # Run the FEM model
 @time workspace, line_params = compute!(problem, formulation);
 
-# Display primary core results
-if !opts.mesh_only
-    display(per_km(line_params, 1; mode=:RLCG, freq=f, tol=1e-9))
-end
+# Display computation results
+per_km(line_params, 1; mode=:RLCG, freq=f, tol=1e-9)
 
 # Export ZY matrices to ATPDraw
 output_file = fullfile("ZY_export.xml")
