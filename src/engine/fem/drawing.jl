@@ -678,35 +678,35 @@ Draw a polygon with a hole.
 # Returns
 - A tuple containing the Gmsh surface tag and a marker point `[x, y, z]`.
 """
-function draw_polygon_with_hole(outer_vertices::Vector{<:Point}, inner_vertices::Vector{<:Point}, max_edge_length::Number)
-    
-    function densify_vertices(vertices::Vector{<:Point}, max_len::Number)
-        new_vertices = Point[]
-        if isempty(vertices)
-            return new_vertices
-        end
-        for i in 1:length(vertices)
-            p1 = vertices[i]
-            p2 = vertices[i % length(vertices) + 1]
-            
-            push!(new_vertices, p1)
-            
-            edge_vec = p2 - p1
-            edge_len = norm(edge_vec)
-            
-            if edge_len > max_len
-                num_segments = ceil(Int, edge_len / max_len)
-                for j in 1:(num_segments - 1)
-                    intermediate_point = p1 + (j / num_segments) * edge_vec
-                    push!(new_vertices, intermediate_point)
-                end
-            end
-        end
+function _densify_vertices(vertices::Vector{<:Point}, max_len::Number)
+    new_vertices = Point[]
+    if isempty(vertices)
         return new_vertices
     end
+    for i in 1:length(vertices)
+        p1 = vertices[i]
+        p2 = vertices[i % length(vertices) + 1]
+        
+        push!(new_vertices, p1)
+        
+        edge_vec = p2 - p1
+        edge_len = norm(edge_vec)
+        
+        if edge_len > max_len
+            num_segments = ceil(Int, edge_len / max_len)
+            for j in 1:(num_segments - 1)
+                intermediate_point = p1 + (j / num_segments) * edge_vec
+                push!(new_vertices, intermediate_point)
+            end
+        end
+    end
+    return new_vertices
+end
 
-    new_outer_vertices = densify_vertices(outer_vertices, max_edge_length)
-    new_inner_vertices = densify_vertices(inner_vertices, max_edge_length)
+function draw_polygon_with_hole(outer_vertices::Vector{<:Point}, inner_vertices::Vector{<:Point}, max_edge_length::Number)
+    
+    new_outer_vertices = _densify_vertices(outer_vertices, max_edge_length)
+    new_inner_vertices = _densify_vertices(inner_vertices, max_edge_length)
 
     # Create outer boundary
     outer_points = [gmsh.model.occ.add_point(v[1], v[2], 0.0) for v in new_outer_vertices]
@@ -834,24 +834,7 @@ function draw_polygon(vertices::Vector{<:Point}, max_edge_length::Number)
         error("Cannot draw a polygon with no vertices.")
     end
 
-    new_vertices = Point[]
-    for i in 1:length(vertices)
-        p1 = vertices[i]
-        p2 = vertices[i % length(vertices) + 1]
-        
-        push!(new_vertices, p1)
-        
-        edge_vec = p2 - p1
-        edge_len = norm(edge_vec)
-        
-        if edge_len > max_edge_length
-            num_segments = ceil(Int, edge_len / max_edge_length)
-            for j in 1:(num_segments - 1)
-                intermediate_point = p1 + (j / num_segments) * edge_vec
-                push!(new_vertices, intermediate_point)
-            end
-        end
-    end
+    new_vertices = _densify_vertices(vertices, max_edge_length)
 
     # Create points
     points = [gmsh.model.occ.add_point(v[1], v[2], 0.0) for v in new_vertices]
