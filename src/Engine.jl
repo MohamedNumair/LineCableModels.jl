@@ -1,5 +1,5 @@
 """
-    LineCableModels.Engine
+	LineCableModels.Engine
 
 The [`Engine`](@ref) module provides the main functionalities of the [`LineCableModels.jl`](index.md) package. This module implements data structures, methods and functions for calculating frequency-dependent electrical parameters (Z/Y matrices) of line and cable systems with uncertainty quantification. 
 
@@ -25,16 +25,17 @@ $(EXPORTS)
 module Engine
 
 # Export public API
-export LineParametersProblem, LineParameters, SeriesImpedance, ShuntAdmittance, per_km, per_m, mtransform, krone
-export CoaxialFormulation
+export LineParametersProblem,
+	LineParameters, SeriesImpedance, ShuntAdmittance, per_km, per_m, kronify
+export EMTFormulation
 
 export compute!
 
 # Module-specific dependencies
 using Reexport, ForceImport
 using Measurements
-using LinearAlgebra
-using SpecialFunctions
+# using LinearAlgebra
+# using SpecialFunctions
 using ..Commons
 import ..Commons: get_description, FormulationSet
 
@@ -69,6 +70,10 @@ include("engine/InsulationAdmittance.jl")
 include("engine/EarthAdmittance.jl")
 @force using .EarthAdmittance
 
+# Submodule `Transforms`
+include("engine/Transforms.jl")
+@force using .Transforms
+
 # Submodule `EHEM`
 include("engine/EHEM.jl")
 @force using .EHEM
@@ -80,12 +85,12 @@ include("engine/helpers.jl")
 include("engine/workspace.jl")
 
 # include all .jl files from src/legacy if the folder exists
-isdir(joinpath(@__DIR__, "legacy")) && map(f -> endswith(f, ".jl") && include(joinpath(@__DIR__, "legacy", f)),
-    sort(readdir(joinpath(@__DIR__, "legacy"))))
+isdir(joinpath(@__DIR__, "legacy")) &&
+	map(f -> endswith(f, ".jl") && include(joinpath(@__DIR__, "legacy", f)),
+		sort(readdir(joinpath(@__DIR__, "legacy"))))
 
 # Computation methods
 include("engine/solver.jl")
-include("engine/mode_decomp.jl")
 
 # Override I/O methods
 include("engine/base.jl")
@@ -93,7 +98,8 @@ include("engine/base.jl")
 # Submodule `FEM`
 include("engine/FEM.jl")
 
-@reexport using .InternalImpedance, .InsulationImpedance, .EarthImpedance,
-    .InsulationAdmittance, .EarthAdmittance, .EHEM
+@reexport using .InternalImpedance,
+	.InsulationImpedance, .EarthImpedance,
+	.InsulationAdmittance, .EarthAdmittance, .EHEM
 
 end # module Engine
