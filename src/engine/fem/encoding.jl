@@ -299,7 +299,13 @@ function register_physical_group!(
 	# Find or create the ID
 	if !haskey(workspace.physical_groups, physical_group_tag)
 		# New material - assign next available ID
-		workspace.physical_groups[physical_group_tag] = material
+		workspace.physical_groups[physical_group_tag] = Material(
+			to_nominal(material.rho),
+			to_nominal(material.eps_r),
+			to_nominal(material.mu_r),
+			to_nominal(material.T0),
+			to_nominal(material.alpha),
+		)
 	end
 
 end
