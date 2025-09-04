@@ -13,13 +13,13 @@ Represents the frequency-dependent line parameters (series impedance and shunt a
 
 $(TYPEDFIELDS)
 """
-struct LineParameters{T <: REALSCALAR}
+struct LineParameters{T <: COMPLEXSCALAR, U <: REALSCALAR}
 	"Series impedance matrices \\[Ω/m\\]."
-	Z::SeriesImpedance{Complex{T}}
+	Z::SeriesImpedance{T}
 	"Shunt admittance matrices \\[S/m\\]."
-	Y::ShuntAdmittance{Complex{T}}
+	Y::ShuntAdmittance{T}
 	"Frequencies \\[Hz\\]."
-	f::Vector{T}
+	f::Vector{U}
 
 	@doc """
 	$(TYPEDSIGNATURES)
@@ -43,39 +43,50 @@ struct LineParameters{T <: REALSCALAR}
 	```
 	"""
 	function LineParameters(
-		Z::SeriesImpedance{Complex{T}},
-		Y::ShuntAdmittance{Complex{T}},
-		f::Vector{T},
-	) where {T <: REALSCALAR}
+		Z::SeriesImpedance{T},
+		Y::ShuntAdmittance{T},
+		f::AbstractVector{U},
+	) where {T <: COMPLEXSCALAR, U <: REALSCALAR}
 		size(Z, 1) == size(Z, 2) || throw(DimensionMismatch("Z must be square"))
 		size(Y, 1) == size(Y, 2) || throw(DimensionMismatch("Y must be square"))
 		size(Z, 3) == size(Y, 3) == length(f) ||
 			throw(DimensionMismatch("Z and Y must have same dimensions (n×n×nfreq)"))
-		new{T}(Z, Y, f)
+		new{T, U}(Z, Y, Vector{U}(f))
 	end
 end
 
 SeriesImpedance(A::AbstractArray{T, 3}) where {T} = SeriesImpedance{T}(Array(A))
 ShuntAdmittance(A::AbstractArray{T, 3}) where {T} = ShuntAdmittance{T}(Array(A))
 
-# Convenience ctor for LineParameters from raw arrays
+# --- Outer convenience constructors -------------------------------------------
+
+"""
+$(TYPEDSIGNATURES)
+
+Construct from 3D arrays and frequency vector. Arrays are wrapped
+into `SeriesImpedance` and `ShuntAdmittance` automatically.
+"""
 function LineParameters(
-	Z::Array{T, 3},
-	Y::Array{T, 3},
-	f::AbstractVector{<:Real},
-) where {T <: COMPLEXSCALAR}
-	size(Z) == size(Y) || throw(DimensionMismatch("Z and Y must have same dims"))
-	Fr = typeof(real(zero(T)))
-	fr = if Fr === BASE_FLOAT
-		Vector{Fr}(f)
-	else
-		eltype(f) <: Measurement ? Vector{Fr}(f) : measurement.(f, zero.(f))
-	end
-	return LineParameters{T}(
-		SeriesImpedance{T}(Z),
-		ShuntAdmittance{T}(Y),
-		fr,
-	)
+	Z::AbstractArray{Tc, 3},
+	Y::AbstractArray{Tc, 3},
+	f::AbstractVector{U},
+) where {Tc <: COMPLEXSCALAR, U <: REALSCALAR}
+	return LineParameters(SeriesImpedance(Z), ShuntAdmittance(Y), f)
 end
 
+"""
+$(TYPEDSIGNATURES)
 
+Backward-compatible constructor without frequencies. A dummy equally-spaced
+`Vector{BASE_FLOAT}` is used with length `size(Z,3)`.
+"""
+function LineParameters(
+	Z::AbstractArray{Tc, 3},
+	Y::AbstractArray{Tc, 3},
+) where {Tc <: COMPLEXSCALAR}
+	nfreq = size(Z, 3)
+	(size(Y, 3) == nfreq) || throw(DimensionMismatch("Z and Y must have same nfreq"))
+	# Provide a placeholder frequency vector to preserve legacy call sites
+	f = collect(BASE_FLOAT.(1:nfreq))
+	return LineParameters(SeriesImpedance(Z), ShuntAdmittance(Y), f)
+end
