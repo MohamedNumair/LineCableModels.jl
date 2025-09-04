@@ -709,23 +709,17 @@ function run_solver!(workspace::FEMWorkspace)
     formulation = workspace.formulation
 
     # Preallocate result matrices
-    n_phases = sum(length(c.design_data.components) for c in problem.system.cables)
-    n_frequencies = length(problem.frequencies)
+    n_phases = workspace.n_phases
+    n_frequencies = workspace.n_frequencies
 
-    idx = 0
-    phase_map = Vector{Int}(undef, n_phases)
-    for (cable_idx, cable) in enumerate(problem.system.cables)
-        for (comp_idx, component) in enumerate(cable.design_data.components)
-            idx += 1
-            phase_map[idx] = cable.conn[comp_idx]
-        end
-    end
-    Nph = count(!=(0), phase_map)
+    phase_map = workspace.phase_map
+    cable_map = workspace.cable_map
+    n_phases_reduced = count(!=(0), phase_map)
 
     Z = zeros(ComplexF64, n_phases, n_phases, n_frequencies)
     Y = zeros(ComplexF64, n_phases, n_phases, n_frequencies)
-    Zr = zeros(ComplexF64, Nph, Nph, n_frequencies)
-    Yr = zeros(ComplexF64, Nph, Nph, n_frequencies)
+    Zr = zeros(ComplexF64, n_phases_reduced, n_phases_reduced, n_frequencies)
+    Yr = zeros(ComplexF64, n_phases_reduced, n_phases_reduced, n_frequencies)
     # Solve for each frequency
     for (freq_idx, frequency) in enumerate(problem.frequencies)
         @info "Solving frequency $freq_idx/$n_frequencies: $frequency Hz"
@@ -733,10 +727,15 @@ function run_solver!(workspace::FEMWorkspace)
         try
             _do_run_solver!(frequency, freq_idx, workspace, Z, Y)
             Zf = Z[:, :, freq_idx]
-            Zr[:, :, freq_idx] = _do_kron(Zf, phase_map)
-            Yf = Y[:, :, freq_idx]
+            workspace.Zprim[:, :, freq_idx] = Zf
+            Zf_sorted, phase_map_sorted = reorder_M(Zf, phase_map)
+            Zr[:, :, freq_idx] = krone(Zf_sorted, phase_map_sorted)
             w = 2 * pi * frequency
-            Pr = _do_kron(inv(Yf / (1im * w)), phase_map)
+            Yf = Y[:, :, freq_idx]
+            workspace.Yprim[:, :, freq_idx] = Yf
+            Pf = inv(Yf / (1im * w))
+            Pf_sorted, phase_map_sorted = reorder_M(Pf, phase_map)
+            Pr = krone(Pf_sorted, phase_map_sorted)
             Yr[:, :, freq_idx] = (1im * w) * inv(Pr)
         catch e
             @error "Solver failed for frequency $frequency Hz" exception = e
