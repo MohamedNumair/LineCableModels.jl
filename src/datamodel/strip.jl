@@ -5,33 +5,33 @@ Represents a flat conductive strip with defined geometric and material propertie
 
 $(TYPEDFIELDS)
 """
-struct Strip{T<:REALSCALAR} <: AbstractConductorPart{T}
-    "Internal radius of the strip \\[m\\]."
-    radius_in::T
-    "External radius of the strip \\[m\\]."
-    radius_ext::T
-    "Thickness of the strip \\[m\\]."
-    thickness::T
-    "Width of the strip \\[m\\]."
-    width::T
-    "Ratio defining the lay length of the strip (twisting factor) \\[dimensionless\\]."
-    lay_ratio::T
-    "Mean diameter of the strip's helical path \\[m\\]."
-    mean_diameter::T
-    "Pitch length of the strip's helical path \\[m\\]."
-    pitch_length::T
-    "Twisting direction of the strip (1 = unilay, -1 = contralay) \\[dimensionless\\]."
-    lay_direction::Int
-    "Material properties of the strip."
-    material_props::Material{T}
-    "Temperature at which the properties are evaluated \\[°C\\]."
-    temperature::T
-    "Cross-sectional area of the strip \\[m²\\]."
-    cross_section::T
-    "Electrical resistance of the strip \\[Ω/m\\]."
-    resistance::T
-    "Geometric mean radius of the strip \\[m\\]."
-    gmr::T
+struct Strip{T <: REALSCALAR} <: AbstractConductorPart{T}
+	"Internal radius of the strip \\[m\\]."
+	radius_in::T
+	"External radius of the strip \\[m\\]."
+	radius_ext::T
+	"Thickness of the strip \\[m\\]."
+	thickness::T
+	"Width of the strip \\[m\\]."
+	width::T
+	"Ratio defining the lay length of the strip (twisting factor) \\[dimensionless\\]."
+	lay_ratio::T
+	"Mean diameter of the strip's helical path \\[m\\]."
+	mean_diameter::T
+	"Pitch length of the strip's helical path \\[m\\]."
+	pitch_length::T
+	"Twisting direction of the strip (1 = unilay, -1 = contralay) \\[dimensionless\\]."
+	lay_direction::Int
+	"Material properties of the strip."
+	material_props::Material{T}
+	"Temperature at which the properties are evaluated \\[°C\\]."
+	temperature::T
+	"Cross-sectional area of the strip \\[m²\\]."
+	cross_section::T
+	"Electrical resistance of the strip \\[Ω/m\\]."
+	resistance::T
+	"Geometric mean radius of the strip \\[m\\]."
+	gmr::T
 end
 
 """
@@ -71,55 +71,55 @@ println(strip.resistance)    # Output: Resistance value [Ω/m]
 - [`calc_helical_params`](@ref)
 """
 function Strip(
-    radius_in::T,
-    radius_ext::T,
-    width::T,
-    lay_ratio::T,
-    material_props::Material{T},
-    temperature::T,
-    lay_direction::Int,
-) where {T<:REALSCALAR}
+	radius_in::T,
+	radius_ext::T,
+	width::T,
+	lay_ratio::T,
+	material_props::Material{T},
+	temperature::T,
+	lay_direction::Int,
+) where {T <: REALSCALAR}
 
-    thickness = radius_ext - radius_in
-    rho = material_props.rho
-    T0 = material_props.T0
-    alpha = material_props.alpha
+	thickness = radius_ext - radius_in
+	rho = material_props.rho
+	T0 = material_props.T0
+	alpha = material_props.alpha
 
-    mean_diameter, pitch_length, overlength = calc_helical_params(
-        radius_in,
-        radius_ext,
-        lay_ratio,
-    )
+	mean_diameter, pitch_length, overlength = calc_helical_params(
+		radius_in,
+		radius_ext,
+		lay_ratio,
+	)
 
-    cross_section = thickness * width
+	cross_section = thickness * width
 
-    R_strip =
-        calc_strip_resistance(thickness, width, rho, alpha, T0, temperature) *
-        overlength
+	R_strip =
+		calc_strip_resistance(thickness, width, rho, alpha, T0, temperature) *
+		overlength
 
-    gmr = calc_tubular_gmr(radius_ext, radius_in, material_props.mu_r)
+	gmr = calc_tubular_gmr(radius_ext, radius_in, material_props.mu_r)
 
-    # Initialize object
-    return Strip(
-        radius_in,
-        radius_ext,
-        thickness,
-        width,
-        lay_ratio,
-        mean_diameter,
-        pitch_length,
-        lay_direction,
-        material_props,
-        temperature,
-        cross_section,
-        R_strip,
-        gmr,
-    )
+	# Initialize object
+	return Strip(
+		radius_in,
+		radius_ext,
+		thickness,
+		width,
+		lay_ratio,
+		mean_diameter,
+		pitch_length,
+		lay_direction,
+		material_props,
+		temperature,
+		cross_section,
+		R_strip,
+		gmr,
+	)
 end
 
-const _REQ_STRIP = (:radius_in, :radius_ext, :width, :lay_ratio, :material_props,)
-const _OPT_STRIP = (:temperature, :lay_direction,)
-const _DEFS_STRIP = (T₀, 1,)
+const _REQ_STRIP = (:radius_in, :radius_ext, :width, :lay_ratio, :material_props)
+const _OPT_STRIP = (:temperature, :lay_direction)
+const _DEFS_STRIP = (T₀, 1)
 
 Validation.has_radii(::Type{Strip}) = true
 Validation.has_temperature(::Type{Strip}) = true
@@ -127,7 +127,8 @@ Validation.required_fields(::Type{Strip}) = _REQ_STRIP
 Validation.keyword_fields(::Type{Strip}) = _OPT_STRIP
 Validation.keyword_defaults(::Type{Strip}) = _DEFS_STRIP
 
-Validation.coercive_fields(::Type{Strip}) = (:radius_in, :radius_ext, :width, :lay_ratio, :material_props, :temperature)  # not :lay_direction
+Validation.coercive_fields(::Type{Strip}) =
+	(:radius_in, :radius_ext, :width, :lay_ratio, :material_props, :temperature)  # not :lay_direction
 # accept proxies for radii
 
 Validation.is_radius_input(::Type{Strip}, ::Val{:radius_in}, x::AbstractCablePart) = true
@@ -135,13 +136,20 @@ Validation.is_radius_input(::Type{Strip}, ::Val{:radius_in}, x::Thickness) = tru
 Validation.is_radius_input(::Type{Strip}, ::Val{:radius_ext}, x::Thickness) = true
 Validation.is_radius_input(::Type{Strip}, ::Val{:radius_ext}, x::Diameter) = true
 
-Validation.extra_rules(::Type{Strip}) = (IsA{Material}(:material_props), OneOf(:lay_direction, (-1, 1)), Finite(:lay_ratio), Nonneg(:lay_ratio), Finite(:width), Positive(:width),)
+Validation.extra_rules(::Type{Strip}) = (
+	IsA{Material}(:material_props),
+	OneOf(:lay_direction, (-1, 1)),
+	Finite(:lay_ratio),
+	Nonneg(:lay_ratio),
+	Finite(:width),
+	Positive(:width),
+)
 
 # normalize proxies -> numbers
 Validation.parse(::Type{Strip}, nt) = begin
-    rin, rex = _normalize_radii(Strip, nt.radius_in, nt.radius_ext)
-    (; nt..., radius_in=rin, radius_ext=rex)
+	rin, rex = _normalize_radii(Strip, nt.radius_in, nt.radius_ext)
+	(; nt..., radius_in = rin, radius_ext = rex)
 end
 
 # This macro expands to a weakly-typed constructor for Strip
-@_ctor Strip _REQ_STRIP _OPT_STRIP _DEFS_STRIP
+@construct Strip _REQ_STRIP _OPT_STRIP _DEFS_STRIP
