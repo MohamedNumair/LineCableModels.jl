@@ -5,25 +5,25 @@ Represents a semiconducting layer with defined geometric, material, and electric
 
 $(TYPEDFIELDS)
 """
-struct Semicon{T<:REALSCALAR} <: AbstractInsulatorPart{T}
-    "Internal radius of the semiconducting layer \\[m\\]."
-    radius_in::T
-    "External radius of the semiconducting layer \\[m\\]."
-    radius_ext::T
-    "Material properties of the semiconductor."
-    material_props::Material{T}
-    "Operating temperature of the semiconductor \\[°C\\]."
-    temperature::T
-    "Cross-sectional area of the semiconducting layer \\[m²\\]."
-    cross_section::T
-    "Electrical resistance of the semiconducting layer \\[Ω/m\\]."
-    resistance::T
-    "Geometric mean radius of the semiconducting layer \\[m\\]."
-    gmr::T
-    "Shunt capacitance per unit length of the semiconducting layer \\[F/m\\]."
-    shunt_capacitance::T
-    "Shunt conductance per unit length of the semiconducting layer \\[S·m\\]."
-    shunt_conductance::T
+struct Semicon{T <: REALSCALAR} <: AbstractInsulatorPart{T}
+	"Internal radius of the semiconducting layer \\[m\\]."
+	radius_in::T
+	"External radius of the semiconducting layer \\[m\\]."
+	radius_ext::T
+	"Material properties of the semiconductor."
+	material_props::Material{T}
+	"Operating temperature of the semiconductor \\[°C\\]."
+	temperature::T
+	"Cross-sectional area of the semiconducting layer \\[m²\\]."
+	cross_section::T
+	"Electrical resistance of the semiconducting layer \\[Ω/m\\]."
+	resistance::T
+	"Geometric mean radius of the semiconducting layer \\[m\\]."
+	gmr::T
+	"Shunt capacitance per unit length of the semiconducting layer \\[F/m\\]."
+	shunt_capacitance::T
+	"Shunt conductance per unit length of the semiconducting layer \\[S·m\\]."
+	shunt_conductance::T
 end
 
 """
@@ -55,40 +55,40 @@ println(semicon_layer.shunt_conductance)  # Expected output: Conductance in [S·
 ```
 """
 function Semicon(
-    radius_in::T,
-    radius_ext::T,
-    material_props::Material{T},
-    temperature::T,
-) where {T<:REALSCALAR}
+	radius_in::T,
+	radius_ext::T,
+	material_props::Material{T},
+	temperature::T,
+) where {T <: REALSCALAR}
 
-    rho = material_props.rho
-    T0 = material_props.T0
-    alpha = material_props.alpha
-    epsr_r = material_props.eps_r
+	rho = material_props.rho
+	T0 = material_props.T0
+	alpha = material_props.alpha
+	epsr_r = material_props.eps_r
 
-    cross_section = π * (radius_ext^2 - radius_in^2)
+	cross_section = π * (radius_ext^2 - radius_in^2)
 
-    resistance =
-        calc_tubular_resistance(radius_in, radius_ext, rho, alpha, T0, temperature)
-    gmr = calc_tubular_gmr(radius_ext, radius_in, material_props.mu_r)
-    shunt_capacitance = calc_shunt_capacitance(radius_in, radius_ext, epsr_r)
-    shunt_conductance = calc_shunt_conductance(radius_in, radius_ext, rho)
+	resistance =
+		calc_tubular_resistance(radius_in, radius_ext, rho, alpha, T0, temperature)
+	gmr = calc_tubular_gmr(radius_ext, radius_in, material_props.mu_r)
+	shunt_capacitance = calc_shunt_capacitance(radius_in, radius_ext, epsr_r)
+	shunt_conductance = calc_shunt_conductance(radius_in, radius_ext, rho)
 
-    # Initialize object
-    return Semicon(
-        radius_in,
-        radius_ext,
-        material_props,
-        temperature,
-        cross_section,
-        resistance,
-        gmr,
-        shunt_capacitance,
-        shunt_conductance,
-    )
+	# Initialize object
+	return Semicon(
+		radius_in,
+		radius_ext,
+		material_props,
+		temperature,
+		cross_section,
+		resistance,
+		gmr,
+		shunt_capacitance,
+		shunt_conductance,
+	)
 end
 
-const _REQ_SEMICON = (:radius_in, :radius_ext, :material_props,)
+const _REQ_SEMICON = (:radius_in, :radius_ext, :material_props)
 const _OPT_SEMICON = (:temperature,)
 const _DEFS_SEMICON = (T₀,)
 
@@ -108,9 +108,9 @@ Validation.extra_rules(::Type{Semicon}) = (IsA{Material}(:material_props),)
 
 # normalize proxies -> numbers
 Validation.parse(::Type{Semicon}, nt) = begin
-    rin, rex = _normalize_radii(Semicon, nt.radius_in, nt.radius_ext)
-    (; nt..., radius_in=rin, radius_ext=rex)
+	rin, rex = _normalize_radii(Semicon, nt.radius_in, nt.radius_ext)
+	(; nt..., radius_in = rin, radius_ext = rex)
 end
 
 # This macro expands to a weakly-typed constructor for Semicon
-@_ctor Semicon _REQ_SEMICON _OPT_SEMICON _DEFS_SEMICON
+@construct Semicon _REQ_SEMICON _OPT_SEMICON _DEFS_SEMICON
