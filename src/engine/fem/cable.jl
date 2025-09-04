@@ -163,11 +163,15 @@ function _make_cablepart!(workspace::FEMWorkspace, part::AbstractCablePart,
         next_radius_in = to_nominal(next_part.radius_in)
         next_radius_ext = to_nominal(next_part.radius_ext)
         mesh_size_next = _calc_mesh_size(next_radius_in, next_radius_ext, next_part.material_props, num_elements, workspace)
+        if next_part isa Insulator
+            mesh_size = min(mesh_size_current, mesh_size_next)
+        else
+            mesh_size = max(mesh_size_current, mesh_size_next)
+        end
     else
-        mesh_size_next = mesh_size_current
+        mesh_size = mesh_size_current
     end
 
-    mesh_size = min(mesh_size_current, mesh_size_next)
     num_points_circumference = workspace.formulation.points_per_circumference
 
     # Create annular shape and assign marker
@@ -188,6 +192,8 @@ function _make_cablepart!(workspace::FEMWorkspace, part::AbstractCablePart,
 
     # Add physical groups to the workspace
     register_physical_group!(workspace, physical_group_tag, part.material_props)
+
+
 
 end
 
@@ -267,15 +273,16 @@ function _make_cablepart!(workspace::FEMWorkspace, part::WireArray,
         next_radius_in = to_nominal(next_part.radius_in)
         next_radius_ext = to_nominal(next_part.radius_ext)
         mesh_size_next = _calc_mesh_size(next_radius_in, next_radius_ext, next_part.material_props, num_elements, workspace)
+        mesh_size = max(mesh_size_current, mesh_size_next)
     else
-        mesh_size_next = mesh_size_current
+        mesh_size = mesh_size_current
     end
 
     # A single wire without air gaps
     is_single_wire = (num_wires == 1) && (isnothing(next_part) || !(next_part isa WireArray))
 
 
-    mesh_size = min(mesh_size_current, mesh_size_next)
+
     num_points_circumference = workspace.formulation.points_per_circumference
 
     # Calculate wire positions

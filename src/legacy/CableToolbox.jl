@@ -12,22 +12,23 @@ using Statistics
 using DataFrames
 using Plots
 using Plots.PlotMeasures
+import ...Utils: to_nominal
 
-# Export toolbox functions
-export compute_impedance_matrix, compute_admittance_matrix, compute_ZY_summary
-export calc_outer_skin_effect_impedance,
-    calc_inner_skin_effect_impedance,
-    calc_mutual_skin_effect_impedance,
-    calc_outer_insulation_impedance,
-    calc_outer_potential_coefficient
-export transform_loop_impedance, perform_bundle_reduction, apply_fortescue_transform
-export calc_self_impedance_papadopoulos,
-    calc_mutual_impedance_papadopoulos,
-    calc_self_potential_coeff_papadopoulos,
-    calc_mutual_potential_coeff_papadopoulos,
-    compute_frequency_dependent_soil_props
-export remove_small_values,
-    print_matrices, print_sym_components, uncertain_from_interval, uncertain_from_percent
+# # Export toolbox functions
+# export compute_impedance_matrix, compute_admittance_matrix, compute_ZY_summary
+# export calc_outer_skin_effect_impedance,
+#     calc_inner_skin_effect_impedance,
+#     calc_mutual_skin_effect_impedance,
+#     calc_outer_insulation_impedance,
+#     calc_outer_potential_coefficient
+# export transform_loop_impedance, perform_bundle_reduction, apply_fortescue_transform
+# export calc_self_impedance_papadopoulos,
+#     calc_mutual_impedance_papadopoulos,
+#     calc_self_potential_coeff_papadopoulos,
+#     calc_mutual_potential_coeff_papadopoulos,
+#     compute_frequency_dependent_soil_props
+# export remove_small_values,
+#     print_matrices, print_sym_components, uncertain_from_interval, uncertain_from_percent
 
 """
 	@uncertain_bessel(function_name(order, x))
@@ -1016,129 +1017,6 @@ function calc_mutual_potential_coeff_papadopoulos(
     return Pg_mutual
 end
 
-"""
-	compute_frequency_dependent_soil_props(soil, FD_flag, f_total)
-
-Computes the frequency-dependent soil properties for multiple soil layers. The returned
-dictionary contains the relative permittivity, conductivity, and absolute permittivity for
-each soil layer across all frequency samples.
-
-# Arguments
-- `soil`: A dictionary containing the base properties of the soil (including optional layers).
-- `FD_flag`: A flag to select the type of frequency-dependent model:
-  - `0`: Constant soil properties (default).
-- `f_total`: Vector of frequencies for which the soil properties will be computed.
-
-# Returns
-- `Dict{Symbol,Any}`: A dictionary with frequency-dependent soil properties:
-  - `:erg_total`: Relative permittivity for each layer and frequency.
-  - `:sigma_g_total`: Conductivity for each layer and frequency.
-  - `:e_g_total`: Absolute permittivity for each layer and frequency.
-  - `:m_g_total`: Permeability (constant for all frequencies).
-
-# Category: Frequency-dependent (FD) soil properties
-
-"""
-function compute_frequency_dependent_soil_props(
-    soil,
-    FD_flag::Int,
-    f_total::Vector{Float64},
-)
-
-    # Initialize the output soil structure
-    soilFD = Dict{Symbol,Any}()
-
-    # Constants
-    e0 = 8.854187817e-12  # Farads/meter
-    siz = length(f_total)
-
-    # Initialize number of layers
-    num_layers = 1
-    if haskey(soil, :layer)
-        num_layers += length(soil[:layer])
-    end
-
-    # Initialize matrices for soil properties across frequencies
-    erg_total = fill(measurement(0.0, 0.0), siz, num_layers)  # Relative permittivity of soil layers
-    sigma_g_total = fill(measurement(0.0, 0.0), siz, num_layers)  # Conductivity of soil layers
-    e_g_total = fill(measurement(0.0, 0.0), siz, num_layers)  # Absolute permittivity of soil layers
-
-    for l ∈ 1:num_layers
-        # Extract soil properties for each layer (or final layer if no more layers)
-        if l == num_layers
-            epsr = soil[:erg]      # Relative permittivity of earth
-            m_g = soil[:m_g]       # Permeability of earth
-            sigma_g = soil[:sigma_g]  # Conductivity of earth
-        else
-            epsr = soil[:layer][l][:erg]  # Relative permittivity of earth for this layer
-            m_g = soil[:layer][l][:m_g]   # Permeability of earth for this layer
-            sigma_g = soil[:layer][l][:sigma_g]  # Conductivity of earth for this layer
-        end
-
-        # For FD_flag == 0, the parameters are constant over frequencies
-        if FD_flag == 0
-            erg_total[:, l] .= epsr .* ones(siz)
-            sigma_g_total[:, l] .= sigma_g .* ones(siz)
-        else
-            Base.error("Currently only constant properties (CP) soil models are available.") #TODO: port CIGRE and Longmire-Smith models
-                                                                                             #Issue URL: https://github.com/Electa-Git/LineCableModels.jl/issues/15
-        end
-
-        # Calculate absolute permittivity (ε = ε₀ * εr)
-        e_g_total[:, l] .= e0 .* erg_total[:, l]
-    end
-
-    # Add frequency-dependent soil properties to the output dictionary
-    soilFD[:erg_total] = erg_total
-    soilFD[:sigma_g_total] = sigma_g_total
-    soilFD[:e_g_total] = e_g_total
-    soilFD[:m_g_total] = fill(soil[:m_g], siz, num_layers)  # Permeability is constant
-
-    return soilFD
-end
-
-
-"""
-	remove_small_values(data)
-
-Cleans up the impedance/admittance values by replacing values smaller than machine epsilon
-with zero.
-
-# Arguments
-- `data`: Input scalar, 2D matrix, or nD array to clean.
-
-# Returns
-- `Complex{Measurements.Measurement{Float64}}`: Cleaned data with small values replaced by zero.
-
-# Category: Misc
-
-"""
-function remove_small_values(data)
-    eps_value = eps(Float64)
-
-    if isa(data, Complex{Measurements.Measurement{Float64}})
-        # Handle scalar case
-        return Complex(
-            abs(Measurements.value(real(data))) < eps_value ?
-            Measurements.measurement(0.0, 0.0) : real(data),
-            abs(Measurements.value(imag(data))) < eps_value ?
-            Measurements.measurement(0.0, 0.0) : imag(data),
-        )
-    elseif isa(data, AbstractArray)
-        # Handle any-dimensional array case
-        return Complex{Measurements.Measurement{Float64}}[
-            Complex(
-                abs(Measurements.value(real(x))) < eps_value ?
-                Measurements.measurement(0.0, 0.0) : real(x),
-                abs(Measurements.value(imag(x))) < eps_value ?
-                Measurements.measurement(0.0, 0.0) : imag(x),
-            ) for x in data
-        ]
-    else
-        Base.error("Unsupported data type.")
-    end
-end
-
 
 """
 	compute_impedance_matrix(freq, soilFD, Geom, Ncables, Nph, ph_order, h, d)
@@ -1160,7 +1038,7 @@ Computes the full impedance matrix for a multi-conductor system over a range of 
 
 # Category: Cable constants matrices
 """
-function compute_impedance_matrix(freq, sigma_g_total, e_g_total, m_g_total, Geom, Ncables, Nph, ph_order, h, d)
+function compute_impedance_matrix(freq, sigma_g_total, e_g_total, m_g_total, Geom, Ncables, Nph, ph_order, h, d, ws)
 
     freq_siz = length(freq)
     # Preallocate the 3D array for impedance with size Nph x Nph x freq_siz
@@ -1190,7 +1068,7 @@ function compute_impedance_matrix(freq, sigma_g_total, e_g_total, m_g_total, Geo
         Zg_self = calc_self_impedance_papadopoulos(
             h[ph_order.!=0],
             outermost_radii,
-            0 * e_g,
+            e_g,
             m_g,
             sigma_g,
             f,
@@ -1200,7 +1078,7 @@ function compute_impedance_matrix(freq, sigma_g_total, e_g_total, m_g_total, Geo
         Zg_mutual = calc_mutual_impedance_papadopoulos(
             h[ph_order.!=0],
             d[ph_order.!=0, ph_order.!=0],
-            0 * e_g,
+            e_g,
             m_g,
             sigma_g,
             f,
@@ -1300,11 +1178,11 @@ function compute_impedance_matrix(freq, sigma_g_total, e_g_total, m_g_total, Geo
         end
 
         # Combine all impedance matrices into a full system impedance matrix
-        Zfull = reduce(vcat, [reduce(hcat, Z[i, :]) for i ∈ 1:Ncables])
-
+        Zprim = reduce(vcat, [reduce(hcat, Z[i, :]) for i ∈ 1:Ncables])
         # Perform bundle and Kron reduction
-        Zph = perform_bundle_reduction(Zfull, ph_order)
-        Zphase[:, :, k] = (Zph + transpose(Zph)) / 2.0 # enforce symmetry
+        ws.Zprim[:, :, k] = eltype(ws) <: Measurement ? Zprim : to_nominal.(Zprim)
+        Zph = perform_bundle_reduction(Zprim, ph_order)
+        Zphase[:, :, k] = Zph #(Zph + transpose(Zph)) / 2.0 # enforce symmetry
 
     end
 
@@ -1333,7 +1211,7 @@ frequencies.
 # Category: Cable constants matrices
 
 """
-function compute_admittance_matrix(freq, sigma_g_total, e_g_total, m_g_total, Geom, Ncables, Nph, ph_order, h, d)
+function compute_admittance_matrix(freq, sigma_g_total, e_g_total, m_g_total, Geom, Ncables, Nph, ph_order, h, d, ws)
 
     freq_siz = length(freq)
 
@@ -1363,7 +1241,7 @@ function compute_admittance_matrix(freq, sigma_g_total, e_g_total, m_g_total, Ge
         Pg_self = calc_self_potential_coeff_papadopoulos(
             h[ph_order.!=0],
             outermost_radii,
-            0 * e_g,
+            e_g,
             m_g,
             sigma_g,
             f,
@@ -1373,7 +1251,7 @@ function compute_admittance_matrix(freq, sigma_g_total, e_g_total, m_g_total, Ge
         Pg_mutual = calc_mutual_potential_coeff_papadopoulos(
             h[ph_order.!=0],
             d[ph_order.!=0, ph_order.!=0],
-            0 * e_g,
+            e_g,
             m_g,
             sigma_g,
             f,
@@ -1438,7 +1316,9 @@ function compute_admittance_matrix(freq, sigma_g_total, e_g_total, m_g_total, Ge
         # Compute the reduced admittance matrix
         w = 2 * pi * f
         Yph = 1im * w * inv(Pphase)
-        Yphase[:, :, k] = (Yph + transpose(Yph)) / 2.0 # enforce symmetry
+        Yprim = 1im * w * inv(Pfull)
+        ws.Yprim[:, :, k] = eltype(ws) <: Measurement ? Yprim : to_nominal.(Yprim)
+        Yphase[:, :, k] = Yph #(Yph + transpose(Yph)) / 2.0 # enforce symmetry
 
     end
 
@@ -1510,118 +1390,7 @@ function apply_fortescue_transform(
     return Z012
 end
 
-"""
-	print_matrices(Z, freq_range)
 
-Formats and prints a 3D matrix `Z`, which represents frequency-dependent impedance/admittance 
-values, in a clean and human-readable way. Each frequency's matrix is printed with rows and columns 
-formatted neatly for easy reading, and the real and imaginary parts are shown with 6 decimal places.
-
-# Arguments
-- `Z::Array{Complex{Measurement{T}}, 3}`: A 3D array where the first two dimensions represent the rows and columns 
-  of the matrix, and the third dimension corresponds to different frequency samples.
-- `frequencies::Vector{T}`: A vector of frequencies corresponding to the third dimension of `Z`.
-
-# Category: Misc
-
-"""
-function print_matrices(Z, freq_range)
-    num_freqs = size(Z, 3)  # 3rd dimension is the number of frequencies
-
-    for k in 1:num_freqs
-        Zprint = remove_small_values(Z[:, :, k])
-        println("  - Phase-based quantities for frequency f = $(freq_range[k]) Hz:")
-        println("[")  # Open matrix bracket
-
-        for i in 1:size(Z, 1)
-
-            row_values = [
-                imag(Zprint[i, j]) >= 0 ?
-                @sprintf(
-                    "%.6E ± %.6E + %.6E ± %.6Eim",
-                    real(Measurements.value(Zprint[i, j])),
-                    Measurements.uncertainty(real(Zprint[i, j])),
-                    imag(Measurements.value(Zprint[i, j])),
-                    Measurements.uncertainty(imag(Zprint[i, j]))
-                ) :
-                @sprintf(
-                    "%.6E ± %.6E - %.6E ± %.6Eim",
-                    real(Measurements.value(Zprint[i, j])),
-                    Measurements.uncertainty(real(Zprint[i, j])),
-                    abs(imag(Measurements.value(Zprint[i, j]))),
-                    Measurements.uncertainty(imag(Zprint[i, j]))
-                )
-                for j in 1:size(Z, 2)
-            ]
-
-            if i < size(Z, 1)
-                println("   ", join(row_values, ", "), ";")  # Add semicolon at the end of each row except the last
-            else
-                println("   ", join(row_values, ", "))  # No semicolon for the last row
-            end
-        end
-
-        println("]")  # Close matrix bracket
-        println("\n")  # Linebreak between frequency matrices
-    end
-end
-
-"""
-	print_sym_components(Z, freq_range)
-
-Formats and prints the diagonal elements of a 3D matrix `Z`, which represents the sequence impedance/admittance 
-values, in a clean and human-readable way.
-
-# Arguments
-- `Z::Array{Complex{Measurement{T}}, 3}`: A 3D array where the first two dimensions represent the rows and columns 
-  of the matrix, and the third dimension corresponds to different frequency samples.
-- `frequencies::Vector{T}`: A vector of frequencies corresponding to the third dimension of `Z`.
-
-# Category: Misc
-
-"""
-function print_sym_components(Z, freq_range)
-    num_freqs = size(Z, 3)  # 3rd dimension is the number of frequencies
-
-    for k in 1:num_freqs
-        Zprint = diag(remove_small_values(Z[:, :, k]))
-        println(
-            "  - Symmetrical components ordered as 012 for frequency f = $(freq_range[k]) Hz:",
-        )
-        println("[")  # Open matrix bracket
-
-        for i in axes(Zprint, 1)
-
-            row_values = [
-                imag(Zprint[i, j]) >= 0 ?
-                @sprintf(
-                    "%.6E ± %.6E + %.6E ± %.6Eim",
-                    real(Measurements.value(Zprint[i, j])),
-                    Measurements.uncertainty(real(Zprint[i, j])),
-                    imag(Measurements.value(Zprint[i, j])),
-                    Measurements.uncertainty(imag(Zprint[i, j]))
-                ) :
-                @sprintf(
-                    "%.6E ± %.6E - %.6E ± %.6Eim",
-                    real(Measurements.value(Zprint[i, j])),
-                    Measurements.uncertainty(real(Zprint[i, j])),
-                    abs(imag(Measurements.value(Zprint[i, j]))),
-                    Measurements.uncertainty(imag(Zprint[i, j]))
-                )
-                for j in axes(Zprint, 2)
-            ]
-
-            if i < size(Z, 1)
-                println("   ", join(row_values, ", "), ";")  # Add semicolon at the end of each row except the last
-            else
-                println("   ", join(row_values, ", "))  # No semicolon for the last row
-            end
-        end
-
-        println("]")  # Close matrix bracket
-        println("\n")  # Linebreak between frequency matrices
-    end
-end
 
 """
 	uncertain_from_interval(max, min)

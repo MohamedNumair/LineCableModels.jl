@@ -51,6 +51,10 @@ $(TYPEDFIELDS)
     n_phases::Int
     "Number of cables in the system."
     n_cables::Int
+    "Full component-based Z matrix (before bundling/reduction)."
+    Zprim::Array{Complex{T},3}
+    "Full component-based Y matrix (before bundling/reduction)."
+    Yprim::Array{Complex{T},3}
 end
 
 """
@@ -62,29 +66,30 @@ Initializes and populates the [`CoaxialWorkspace`](@ref) by normalizing a
 function init_workspace(problem::LineParametersProblem{T}, formulation::CoaxialFormulation) where {T}
 
     opts = formulation.options
-    # set_logger!(opts.verbosity, opts.logfile)
 
     system = problem.system
     n_frequencies = length(problem.frequencies)
-    n_components = sum(length(cable.design_data.components) for cable in system.cables)
+    n_phases = sum(length(cable.design_data.components) for cable in system.cables)
 
     # Pre-allocate 1D arrays
     freq = Vector{T}(undef, n_frequencies)
-    horz = Vector{T}(undef, n_components)
-    vert = Vector{T}(undef, n_components)
-    r_in = Vector{T}(undef, n_components)
-    r_ext = Vector{T}(undef, n_components)
-    r_ins_in = Vector{T}(undef, n_components)
-    r_ins_ext = Vector{T}(undef, n_components)
-    rho_cond = Vector{T}(undef, n_components)
-    mu_cond = Vector{T}(undef, n_components)
-    eps_cond = Vector{T}(undef, n_components)
-    rho_ins = Vector{T}(undef, n_components)
-    mu_ins = Vector{T}(undef, n_components)
-    eps_ins = Vector{T}(undef, n_components)
-    tan_ins = Vector{T}(undef, n_components)   # Loss tangent for insulator
-    phase_map = Vector{Int}(undef, n_components)
-    cable_map = Vector{Int}(undef, n_components)
+    horz = Vector{T}(undef, n_phases)
+    vert = Vector{T}(undef, n_phases)
+    r_in = Vector{T}(undef, n_phases)
+    r_ext = Vector{T}(undef, n_phases)
+    r_ins_in = Vector{T}(undef, n_phases)
+    r_ins_ext = Vector{T}(undef, n_phases)
+    rho_cond = Vector{T}(undef, n_phases)
+    mu_cond = Vector{T}(undef, n_phases)
+    eps_cond = Vector{T}(undef, n_phases)
+    rho_ins = Vector{T}(undef, n_phases)
+    mu_ins = Vector{T}(undef, n_phases)
+    eps_ins = Vector{T}(undef, n_phases)
+    tan_ins = Vector{T}(undef, n_phases)   # Loss tangent for insulator
+    phase_map = Vector{Int}(undef, n_phases)
+    cable_map = Vector{Int}(undef, n_phases)
+    Zprim = zeros(Complex{T}, n_phases, n_phases, n_frequencies)
+    Yprim = zeros(Complex{T}, n_phases, n_phases, n_frequencies)
 
     # Fill arrays, ensuring type promotion
     freq .= problem.frequencies
@@ -139,7 +144,7 @@ function init_workspace(problem::LineParametersProblem{T}, formulation::CoaxialF
         rho_cond=rho_cond, mu_cond=mu_cond, eps_cond=eps_cond,
         rho_ins=rho_ins, mu_ins=mu_ins, eps_ins=eps_ins, tan_ins=tan_ins,
         phase_map=phase_map, cable_map=cable_map, earth=earth,
-        temp=temp, n_frequencies=n_frequencies, n_phases=n_components,
-        n_cables=system.num_cables,
+        temp=temp, n_frequencies=n_frequencies, n_phases=n_phases,
+        n_cables=system.num_cables, Zprim=Zprim, Yprim=Yprim
     )
 end

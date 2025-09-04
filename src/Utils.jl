@@ -33,14 +33,16 @@ export to_nominal,
 
 # Module-specific dependencies
 using ..Commons
-using Measurements: Measurement, value, uncertainty, measurement
+using Measurements: Measurement, value, uncertainty, measurement, ±, Measurements
 using Statistics
 using Plots
+using LinearAlgebra
 
 """
 $(TYPEDSIGNATURES)
 
-Extracts the nominal value from a measurement or returns the original value.
+Returns the nominal (deterministic) value of inputs that may contain
+`Measurements.Measurement` numbers, recursively handling Complex and arrays.
 
 # Arguments
 
@@ -48,7 +50,10 @@ Extracts the nominal value from a measurement or returns the original value.
 
 # Returns
 
-- The nominal value if `x` is a `Measurement`, otherwise returns `x` unchanged.
+- Measurement → its `value`
+- Complex → `complex(to_nominal(real(z)), to_nominal(imag(z)))`
+- AbstractArray → broadcasts `to_nominal` elementwise
+- Anything else → returned unchanged
 
 # Examples
 
@@ -59,9 +64,10 @@ $(FUNCTIONNAME)(1.0)  # Output: 1.0
 $(FUNCTIONNAME)(5.2 ± 0.3)  # Output: 5.2
 ```
 """
-function to_nominal(x)
-    return x isa Measurement ? value(x) : x
-end
+to_nominal(x::Measurement) = value(x)
+to_nominal(z::Complex) = complex(to_nominal(real(z)), to_nominal(imag(z)))
+to_nominal(A::AbstractArray) = to_nominal.(A)
+to_nominal(x) = x
 
 """
 $(TYPEDSIGNATURES)
@@ -396,6 +402,58 @@ function resolve_backend(backend=nothing)
         backend()
     end
 end
+
+"""
+Apply `f` to every square block of `M` defined by `map`, in-place.
+
+- `M`: n×n or n×n×nf (any eltype).
+- `map`: length-n; equal ids => same block (non-contiguous ok).
+- `f`: function like `f(B::AbstractMatrix, args...) -> k×k Matrix`.
+- `args...`: extra positional args passed to `f`.
+- `slice_positions`: positions in `args` that should be indexed as `args[i][idx]`
+   per block (useful for `phase_map`).
+
+Returns `M`.
+"""
+function block_transform!(M,
+    map::AbstractVector{<:Integer},
+    f::F,
+    args...; slice_positions=Int[]) where {F}
+    n = size(M, 1)
+    (size(M, 2) == n && length(map) == n) || throw(ArgumentError("shape mismatch"))
+    groups = unique(map)                     # preserve first-seen order
+    blocks = [findall(==(g), map) for g in groups]
+
+    # helper to build per-block args (slice selected ones)
+    make_args(idx) = ntuple(i -> (i in slice_positions ? args[i][idx] : args[i]), length(args))
+
+    if ndims(M) == 2
+        for idx in blocks
+            Bv = @view M[idx, idx]
+            R = f(Matrix(Bv), make_args(idx)...)  #  f decides what to do
+            size(R) == size(Bv) || throw(ArgumentError("f must return $(size(Bv))"))
+            @inbounds Bv .= R
+        end
+    elseif ndims(M) == 3
+        _, _, nf = size(M)
+        for k in 1:nf
+            for idx in blocks
+                Bv = @view M[idx, idx, k]
+                R = f(Matrix(Bv), make_args(idx)...)
+                size(R) == size(Bv) || throw(ArgumentError("f must return $(size(Bv))"))
+                @inbounds Bv .= R
+            end
+        end
+    else
+        throw(ArgumentError("M must be 2D or 3D"))
+    end
+    return M
+end
+
+# Non-mutating
+block_transform(M, cmap, f, args...; slice_positions=Int[]) =
+    block_transform!(copy(M), cmap, f, args...; slice_positions=slice_positions)
+
 include("utils/logging.jl")
 include("utils/typecoercion.jl")
 include("utils/macros.jl")

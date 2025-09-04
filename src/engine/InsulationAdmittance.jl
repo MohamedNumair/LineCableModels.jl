@@ -12,7 +12,7 @@ $(EXPORTS)
 module InsulationAdmittance
 
 # Export public API
-export Lossless
+export PureCapacitance
 
 # Module-specific dependencies
 using ...Commons
@@ -20,7 +20,7 @@ import ...Commons: get_description
 import ..Engine: InsulationAdmittanceFormulation
 using Measurements
 
-struct Lossless <: InsulationAdmittanceFormulation end
-get_description(::Lossless) = "Lossless dielectric"
+struct PureCapacitance <: InsulationAdmittanceFormulation end
+get_description(::PureCapacitance) = "Pure capacitance (lossless dielectric)"
 
 end # module InsulationAdmittance

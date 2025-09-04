@@ -569,9 +569,9 @@ function calc_inductance_trifoil(
     r_ext_scr::T,
     rho_scr::T,
     mu_r_scr::T,
-    S::T;
-    rho_e::T=100.0,
-    f::T=f₀,
+    S::T,
+    rho_e::T,
+    f::T,
 ) where {T<:REALSCALAR}
 
     ω = 2 * π * f
@@ -643,9 +643,9 @@ function calc_inductance_trifoil(
         coerce_to_T(r_ext_scr, T),
         coerce_to_T(rho_scr, T),
         coerce_to_T(mu_r_scr, T),
-        coerce_to_T(S, T);
-        rho_e=coerce_to_T(rho_e, T),
-        f=coerce_to_T(f, T)
+        coerce_to_T(S, T),
+        coerce_to_T(rho_e, T),
+        coerce_to_T(f, T)
     )
 end
 

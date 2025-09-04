@@ -33,9 +33,10 @@ using ...Materials
 using ...EarthProps
 using ...DataModel
 using ...Engine
+import ...Engine: krone, reorder_M, reorder_indices
 import ...DataModel: AbstractCablePart, AbstractConductorPart, AbstractInsulatorPart
 import ..Engine: AbstractFormulationSet, AbstractFormulationOptions, AbstractImpedanceFormulation, AbstractAdmittanceFormulation, compute!
-using ...Utils: display_path, set_logger!, is_headless, to_nominal
+using ...Utils: display_path, set_logger!, is_headless, to_nominal, block_transform!
 using Measurements
 using LinearAlgebra
 using Colors
@@ -201,5 +202,6 @@ include("fem/visualization.jl")   # Visualization functions
 include("fem/space.jl")           # Domain creation functions
 include("fem/cable.jl")           # Cable geometry creation functions
 include("fem/solver.jl")          # Solver functions
+include("fem/base.jl")            # Base namespace extensions
 
 end # module FEM
