@@ -1,8 +1,8 @@
-struct SeriesImpedance{T}
+struct SeriesImpedance{T} <: AbstractArray{T,3}
     values::Array{T,3}   # n×n×nfreq, units: Ω/m
 end
 
-struct ShuntAdmittance{T}
+struct ShuntAdmittance{T} <: AbstractArray{T,3}
     values::Array{T,3}   # n×n×nfreq, units: S/m
 end
 
