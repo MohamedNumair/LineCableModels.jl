@@ -35,7 +35,7 @@ export preview, simplify
 # Module-specific dependencies
 using ..Commons
 import ..Commons: add!
-using ..Utils: resolve_T, to_certain, to_nominal, resolve_backend, is_headless, is_in_testset
+using ..Utils: resolve_T, to_certain, to_nominal, resolve_backend, is_headless, is_in_testset, to_lower, to_upper
 import ..Utils: coerce_to_T, to_lower
 using ..Materials: Material
 import ..Validation: Validation, sanitize, validate!, has_radii, has_temperature, extra_rules, IntegerField, Positive, Finite, Normalized, IsA, required_fields, coercive_fields, keyword_fields, keyword_defaults, _kwdefaults_nt, is_radius_input, Nonneg, OneOf
