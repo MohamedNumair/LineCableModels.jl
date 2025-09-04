@@ -20,7 +20,8 @@ export trifoil_formation, flat_formation, preview, simplify
 export EarthModel
 
 # Engine:
-export LineParametersProblem, compute!, SeriesImpedance, ShuntAdmittance, per_km, per_m, mtransform
+export LineParametersProblem,
+	compute!, SeriesImpedance, ShuntAdmittance, per_km, per_m, kronify
 
 # Import/Export:
 export export_data, save, load!
@@ -49,11 +50,14 @@ using .EarthProps: EarthModel
 
 # Submodule `DataModel`
 include("DataModel.jl")
-using .DataModel: Thickness, Diameter, WireArray, Strip, Tubular, Semicon, Insulator, ConductorGroup, InsulatorGroup, CableComponent, CableDesign, NominalData, CablesLibrary, CablePosition, LineCableSystem, trifoil_formation, flat_formation, preview, simplify
+using .DataModel: Thickness, Diameter, WireArray, Strip, Tubular, Semicon, Insulator,
+	ConductorGroup, InsulatorGroup, CableComponent, CableDesign, NominalData, CablesLibrary,
+	CablePosition, LineCableSystem, trifoil_formation, flat_formation, preview, simplify
 
 # Submodule `Engine`
 include("Engine.jl")
-using .Engine: LineParametersProblem, compute!, SeriesImpedance, ShuntAdmittance, per_km, per_m, mtransform
+using .Engine: LineParametersProblem, compute!, SeriesImpedance, ShuntAdmittance, per_km,
+	per_m, kronify
 
 # Submodule `ImportExport`
 include("ImportExport.jl")
