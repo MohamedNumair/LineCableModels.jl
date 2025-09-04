@@ -8,7 +8,6 @@ Base.eltype(::Type{LineParameters{T}}) where {T} = T
 Base.eltype(::CoaxialWorkspace{T}) where {T} = T
 Base.eltype(::Type{CoaxialWorkspace{T}}) where {T} = T
 
-
 abstract type UnitLen end
 struct PerMeter <: UnitLen end
 struct PerKilometer <: UnitLen end
@@ -113,7 +112,7 @@ function Base.show(io::IO, ::MIME"text/plain", rv::ResultsView)
     _, _, nf = size(lp.Z)
 
     print(io, "LineParameters ResultsView  |  mode = ")
-    print(io, rv.mode isa AsZY ? "ZY" : @sprintf("RLCG @ ω=%.6g", rv.mode.ω))
+    print(io, rv.mode isa AsZY ? "ZY" : @sprintf("RLCG @ f=%.6g Hz", rv.mode.ω / (2 * pi)))
     print(io, "  |  units per ", ulabel, "  |  tol = ", tol, "\n")
 
     @views for k in 1:nf
