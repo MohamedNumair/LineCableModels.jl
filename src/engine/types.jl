@@ -18,6 +18,9 @@ abstract type AbstractAdmittanceFormulation <: AbstractFormulationSet end
 abstract type InsulationAdmittanceFormulation <: AbstractAdmittanceFormulation end
 abstract type EarthAdmittanceFormulation <: AbstractAdmittanceFormulation end
 
+abstract type AbstractTransformFormulation <: AbstractFormulationSet end
+
+
 """
 $(TYPEDEF)
 
@@ -27,4 +30,4 @@ Abstract type representing different equivalent homogeneous earth models (EHEM).
 
 - [`EnforceLayer`](@ref): Effective parameters defined according to a specific earth layer.
 """
-abstract type AbstractEHEMFormulation end
+abstract type AbstractEHEMFormulation <: AbstractFormulationSet end
