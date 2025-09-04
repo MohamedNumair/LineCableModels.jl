@@ -229,8 +229,9 @@ function calc_domain_size(
         Base.error("EarthModel has no layers defined.")
     end
 
-    # Find the index of the layer with the maximum resistivity at the first frequency
-    max_rho_idx = argmax([layer.rho_g[1] for layer in earth_params.layers])
+    inds = 2:length(earth_params.layers)
+    max_rho_idx = inds[argmax([earth_params.layers[i].rho_g[1] for i in inds])]
+
     target_layer = earth_params.layers[max_rho_idx]
 
     rho_g = target_layer.rho_g[1]
