@@ -25,7 +25,7 @@ $(EXPORTS)
 module Engine
 
 # Export public API
-export LineParametersProblem, LineParameters, SeriesImpedance, ShuntAdmittance, per_km, per_m
+export LineParametersProblem, LineParameters, SeriesImpedance, ShuntAdmittance, per_km, per_m, mtransform, krone
 export CoaxialFormulation
 
 export compute!
@@ -85,6 +85,7 @@ isdir(joinpath(@__DIR__, "legacy")) && map(f -> endswith(f, ".jl") && include(jo
 
 # Computation methods
 include("engine/solver.jl")
+include("engine/mode_decomp.jl")
 
 # Override I/O methods
 include("engine/base.jl")
