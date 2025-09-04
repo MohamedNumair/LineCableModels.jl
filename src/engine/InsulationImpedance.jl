@@ -12,7 +12,7 @@ $(EXPORTS)
 module InsulationImpedance
 
 # Export public API
-export Standard
+export PureInductance
 
 
 # Module-specific dependencies
@@ -21,8 +21,8 @@ import ...Commons: get_description
 import ..Engine: InsulationImpedanceFormulation
 using Measurements
 
-struct Standard <: InsulationImpedanceFormulation end
-get_description(::Standard) = "Standard inductance"
+struct PureInductance <: InsulationImpedanceFormulation end
+get_description(::PureInductance) = "Pure inductance (lossless dielectric)"
 
 function calc_outer_insulation_impedance(
     radius_ex::Measurement{T},
