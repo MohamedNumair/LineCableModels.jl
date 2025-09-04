@@ -40,8 +40,8 @@ function _compute_impedance_matrix_from_ws(ws)
 
     # Ancillary parameters
     Ncables = ws.n_cables
-    Nph = count(!=(0), phase_map)
-    ph_order = ws.phase_map
+    n_phases_reduced = count(!=(0), phase_map)
+    phase_map = ws.phase_map
     hvec = vert
     dmat = abs.(horz .- horz')
 
@@ -71,15 +71,16 @@ function _compute_impedance_matrix_from_ws(ws)
         m_g_total,
         Geom,
         Ncables,
-        Nph,
-        ph_order,
+        n_phases_reduced,
+        phase_map,
         hvec,
         dmat,
+        ws,
     )
     if !is_meas_input
         # Convert Complex{Measurement} → Complex{Float64} by taking nominal parts
-        to_nom = LineCableModels.Utils.to_nominal
-        Zphase = map(z -> complex(to_nom(real(z)), to_nom(imag(z))), Zphase)
+        # to_nom = ..Utils.to_nominal
+        Zphase = map(z -> complex(to_nominal(real(z)), to_nominal(imag(z))), Zphase)
     end
     return Zphase
 end
@@ -117,8 +118,7 @@ function _compute_admittance_matrix_from_ws(ws)
 
     # Ancillary parameters
     Ncables = ws.n_cables
-    Nph = count(!=(0), phase_map)
-    ph_order = ws.phase_map
+    n_phases_reduced = count(!=(0), phase_map)
     hvec = vert
     dmat = abs.(horz .- horz')
 
@@ -148,15 +148,15 @@ function _compute_admittance_matrix_from_ws(ws)
         m_g_total,
         Geom,
         Ncables,
-        Nph,
-        ph_order,
+        n_phases_reduced,
+        phase_map,
         hvec,
         dmat,
+        ws,
     )
     if !is_meas_input
         # Convert Complex{Measurement} → Complex{Float64} by taking nominal parts
-        to_nom = LineCableModels.Utils.to_nominal
-        Yphase = map(z -> complex(to_nom(real(z)), to_nom(imag(z))), Yphase)
+        Yphase = map(z -> complex(to_nominal(real(z)), to_nominal(imag(z))), Yphase)
     end
     return Yphase
 end
