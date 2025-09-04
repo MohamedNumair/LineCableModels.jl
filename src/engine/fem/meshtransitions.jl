@@ -54,13 +54,15 @@ end
 function MeshTransition(
 	cable_system::LineCableSystem,
 	cable_indices::Vector{Int};
-	r_min::Float64,
-	r_length::Float64,
-	mesh_factor_min::Float64,
-	mesh_factor_max::Float64,
+	r_min::Number,
+	r_length::Number,
+	mesh_factor_min::Number,
+	mesh_factor_max::Number,
 	n_regions::Int = 3,
 	earth_layer::Union{Int, Nothing} = nothing,
 )
+	(r_min, r_length, mesh_factor_min, mesh_factor_max) =
+		to_nominal.((r_min, r_length, mesh_factor_min, mesh_factor_max))
 
 	# Validate cable indices
 	all(1 <= idx <= length(cable_system.cables) for idx in cable_indices) ||
@@ -69,7 +71,8 @@ function MeshTransition(
 	isempty(cable_indices) && Base.error("Cable indices cannot be empty")
 
 	# Get centroid and bounding radius
-	cx, cy, bounding_radius, _ = get_system_centroid(cable_system, cable_indices)
+	cx, cy, bounding_radius, _ =
+		to_nominal.(get_system_centroid(cable_system, cable_indices))
 
 	# Calculate parameters
 	if r_min < bounding_radius
