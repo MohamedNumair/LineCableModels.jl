@@ -1,5 +1,5 @@
 """
-    LineCableModels.Engine.FEM
+	LineCableModels.Engine.FEM
 
 The [`FEM`](@ref) module provides functionality for generating geometric meshes for cable cross-sections, assigning physical properties, and preparing the system for electromagnetic simulation within the [`LineCableModels.jl`](index.md) package.
 
@@ -33,9 +33,10 @@ using ...Materials
 using ...EarthProps
 using ...DataModel
 using ...Engine
-import ...Engine: krone, reorder_M, reorder_indices
+import ...Engine: kronify, reorder_M, reorder_indices
 import ...DataModel: AbstractCablePart, AbstractConductorPart, AbstractInsulatorPart
-import ..Engine: AbstractFormulationSet, AbstractFormulationOptions, AbstractImpedanceFormulation, AbstractAdmittanceFormulation, compute!
+import ..Engine: AbstractFormulationSet, AbstractFormulationOptions,
+	AbstractImpedanceFormulation, AbstractAdmittanceFormulation, compute!
 using ...Utils: display_path, set_logger!, is_headless, to_nominal, block_transform!
 using Measurements
 using LinearAlgebra
@@ -73,12 +74,12 @@ Core entity data structure containing common properties for all entity types.
 $(TYPEDFIELDS)
 """
 struct CoreEntityData
-    "Encoded physical tag \\[dimensionless\\]."
-    physical_group_tag::Int
-    "Name of the elementary surface."
-    elementary_name::String
-    "Target mesh size \\[m\\]."
-    mesh_size::Float64
+	"Encoded physical tag \\[dimensionless\\]."
+	physical_group_tag::Int
+	"Name of the elementary surface."
+	elementary_name::String
+	"Target mesh size \\[m\\]."
+	mesh_size::Float64
 end
 
 """
@@ -88,11 +89,11 @@ Entity data structure for cable parts.
 
 $(TYPEDFIELDS)
 """
-struct CablePartEntity{T<:AbstractCablePart} <: AbstractEntityData
-    "Core entity data."
-    core::CoreEntityData
-    "Reference to original cable part."
-    cable_part::T
+struct CablePartEntity{T <: AbstractCablePart} <: AbstractEntityData
+	"Core entity data."
+	core::CoreEntityData
+	"Reference to original cable part."
+	cable_part::T
 end
 
 """
@@ -103,10 +104,10 @@ Entity data structure for domain surfaces external to cable parts.
 $(TYPEDFIELDS)
 """
 struct SurfaceEntity <: AbstractEntityData
-    "Core entity data."
-    core::CoreEntityData
-    "Material properties of the domain."
-    material::Material
+	"Core entity data."
+	core::CoreEntityData
+	"Material properties of the domain."
+	material::Material
 end
 
 """
@@ -117,10 +118,10 @@ Entity data structure for domain curves (boundaries and layer interfaces).
 $(TYPEDFIELDS)
 """
 struct CurveEntity <: AbstractEntityData
-    "Core entity data."
-    core::CoreEntityData
-    "Material properties of the domain."
-    material::Material
+	"Core entity data."
+	core::CoreEntityData
+	"Material properties of the domain."
+	material::Material
 end
 
 """
@@ -130,11 +131,11 @@ Entity container that associates Gmsh entity with metadata.
 
 $(TYPEDFIELDS)
 """
-struct GmshObject{T<:AbstractEntityData}
-    "Gmsh entity tag (will be defined after boolean fragmentation)."
-    tag::Int32
-    "Entity-specific data."
-    data::T
+struct GmshObject{T <: AbstractEntityData}
+	"Gmsh entity tag (will be defined after boolean fragmentation)."
+	tag::Int32
+	"Entity-specific data."
+	data::T
 end
 
 """
@@ -164,27 +165,27 @@ domain_data = SurfaceEntity(core_data, material)
 entity = $(FUNCTIONNAME)(1, domain_data)
 ```
 """
-function GmshObject(tag::Integer, data::T) where {T<:AbstractEntityData}
-    return GmshObject{T}(Int32(tag), data)
+function GmshObject(tag::Integer, data::T) where {T <: AbstractEntityData}
+	return GmshObject{T}(Int32(tag), data)
 end
 
 mutable struct Darwin <: AbstractImpedanceFormulation
-    problem::GetDP.Problem
-    resolution_name::String
+	problem::GetDP.Problem
+	resolution_name::String
 
-    function Darwin()
-        return new(GetDP.Problem(), "Darwin")
-    end
+	function Darwin()
+		return new(GetDP.Problem(), "Darwin")
+	end
 
 end
 
 mutable struct Electrodynamics <: AbstractAdmittanceFormulation
-    problem::GetDP.Problem
-    resolution_name::String
+	problem::GetDP.Problem
+	resolution_name::String
 
-    function Electrodynamics()
-        return new(GetDP.Problem(), "Electrodynamics")
-    end
+	function Electrodynamics()
+		return new(GetDP.Problem(), "Electrodynamics")
+	end
 end
 
 # Include auxiliary files
