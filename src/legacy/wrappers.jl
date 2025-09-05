@@ -79,7 +79,6 @@ function _compute_impedance_matrix_from_ws(ws)
 	)
 	if !is_meas_input
 		# Convert Complex{Measurement} → Complex{Float64} by taking nominal parts
-		# to_nom = ..Utils.to_nominal
 		Zphase = map(z -> complex(to_nominal(real(z)), to_nominal(imag(z))), Zphase)
 	end
 	return Zphase
