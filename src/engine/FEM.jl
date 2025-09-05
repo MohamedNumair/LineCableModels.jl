@@ -28,17 +28,18 @@ export FormulationSet, Electrodynamics, Darwin
 
 # Module-specific dependencies
 using ...Commons
-import ...Commons: FormulationSet
 using ...Materials
 using ...EarthProps
 using ...DataModel
 using ...Engine
-import ...Engine: kronify, reorder_M, reorder_indices, merge_bundles!
+import ...Engine: kronify, reorder_M, reorder_indices, merge_bundles!, FormulationSet,
+	AbstractFormulationSet, AbstractImpedanceFormulation, AbstractAdmittanceFormulation,
+	compute!
+import ...Engine: AbstractFormulationOptions, LineParamOptions, build_options, _COMMON_SYMS
 import ...DataModel: AbstractCablePart, AbstractConductorPart, AbstractInsulatorPart
-import ..Engine: AbstractFormulationSet, AbstractFormulationOptions,
-	AbstractImpedanceFormulation, AbstractAdmittanceFormulation, compute!
 using ...Utils:
-	display_path, set_logger!, is_headless, to_nominal, symtrans!, symtrans, line_transpose!
+	display_path, set_verbosity!, is_headless, to_nominal, symtrans!, symtrans,
+	line_transpose!
 using Measurements
 using LinearAlgebra
 using Colors
@@ -188,6 +189,8 @@ mutable struct Electrodynamics <: AbstractAdmittanceFormulation
 		return new(GetDP.Problem(), "Electrodynamics")
 	end
 end
+
+include("fem/lineparamopts.jl")   # Line parameter options
 
 # Include auxiliary files
 include("fem/meshtransitions.jl") # Mesh transition objects

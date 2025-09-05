@@ -1,33 +1,37 @@
 
-@kwdef struct FEMOptions <: AbstractFormulationOptions
-	"Build mesh only and preview (no solving)"
-	mesh_only::Bool = false
-	"Force mesh regeneration even if file exists"
-	force_remesh::Bool = false
-	"Skip user confirmation for overwriting results"
-	force_overwrite::Bool = false
-	"Generate field visualization outputs"
-	plot_field_maps::Bool = true
-	"Archive temporary files after each frequency run"
-	keep_run_files::Bool = false
-	"Reduce bundle conductors to equivalent single conductor"
-	reduce_bundle::Bool = true
-	"Eliminate grounded conductors from the system (Kron reduction)"
-	kron_reduction::Bool = true
-	"Enforce ideal transposition (or cross-bonding)"
-	ideal_transposition::Bool = true
-	"Base path for output files"
-	save_path::String = joinpath(".", "fem_output")
-	"Path to GetDP executable"
-	getdp_executable::Union{String, Nothing} = nothing
-	"Verbosity level"
-	verbosity::Int = 0
-	"Log file path"
-	logfile::Union{String, Nothing} = nothing
-end
+# @kwdef struct FEMOptions <: AbstractFormulationOptions
+# 	"Build mesh only and preview (no solving)"
+# 	mesh_only::Bool = false
+# 	"Force mesh regeneration even if file exists"
+# 	force_remesh::Bool = false
+# 	"Skip user confirmation for overwriting results"
+# 	force_overwrite::Bool = false
+# 	"Generate field visualization outputs"
+# 	plot_field_maps::Bool = true
+# 	"Archive temporary files after each frequency run"
+# 	keep_run_files::Bool = false
+# 	"Reduce bundle conductors to equivalent single conductor"
+# 	reduce_bundle::Bool = true
+# 	"Eliminate grounded conductors from the system (Kron reduction)"
+# 	kron_reduction::Bool = true
+# 	"Enforce ideal transposition transposition/snaking"
+# 	ideal_transposition::Bool = true
+# 	"Temperature correction"
+# 	temperature_correction::Bool = true
+# 	"Base path for output files"
+# 	save_path::String = joinpath(".", "fem_output")
+# 	"Path to GetDP executable"
+# 	getdp_executable::Union{String, Nothing} = nothing
+# 	"Verbosity level"
+# 	verbosity::Int = 0
+# 	"Log file path"
+# 	logfile::Union{String, Nothing} = nothing
+# end
 
-# The one-line constructor to "promote" a NamedTuple
-FEMOptions(opts::NamedTuple) = FEMOptions(; opts...)
+# # The one-line constructor to "promote" a NamedTuple
+# FEMOptions(opts::NamedTuple) = FEMOptions(; opts...)
+
+
 
 """
 $(TYPEDEF)
@@ -156,13 +160,14 @@ function FormulationSet(::Val{:FEM}; impedance::AbstractImpedanceFormulation = D
 	mesh_algorithm::Int = 5,
 	mesh_max_retries::Int = 20,
 	materials::MaterialsLibrary = MaterialsLibrary(),
-	options::NamedTuple = (;),
+	options = (;),
 )
 	# Resolve solver path
 	validated_path = _resolve_getdp_path(options)
 
 	# Create a new NamedTuple with the validated path overwriting any user value
 	final_opts = merge(options, (getdp_executable = validated_path,))
+	fem_opts = build_options(FEMOptions, final_opts; strict = true)
 
 	return FEMFormulation(; impedance = impedance,
 		admittance = admittance,
@@ -180,6 +185,6 @@ function FormulationSet(::Val{:FEM}; impedance::AbstractImpedanceFormulation = D
 		mesh_algorithm = mesh_algorithm,
 		mesh_max_retries = mesh_max_retries,
 		materials = materials,
-		options = FEMOptions(; final_opts...),
+		options = fem_opts,
 	)
 end
