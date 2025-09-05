@@ -27,7 +27,7 @@ module Engine
 # Export public API
 export LineParametersProblem,
 	LineParameters, SeriesImpedance, ShuntAdmittance, per_km, per_m, kronify
-export EMTFormulation
+export EMTFormulation, FormulationSet, LineParamOptions
 
 export compute!
 
@@ -37,7 +37,7 @@ using Measurements
 # using LinearAlgebra
 # using SpecialFunctions
 using ..Commons
-import ..Commons: get_description, FormulationSet
+import ..Commons: get_description
 
 using ..Utils
 using ..Materials
@@ -47,6 +47,7 @@ using ..DataModel: LineCableSystem
 include("engine/types.jl")
 
 # Problem definitions
+include("engine/lineparamopts.jl")
 include("engine/problemdefs.jl")
 include("engine/lineparams.jl")
 
