@@ -33,11 +33,12 @@ using ...Materials
 using ...EarthProps
 using ...DataModel
 using ...Engine
-import ...Engine: kronify, reorder_M, reorder_indices
+import ...Engine: kronify, reorder_M, reorder_indices, merge_bundles!
 import ...DataModel: AbstractCablePart, AbstractConductorPart, AbstractInsulatorPart
 import ..Engine: AbstractFormulationSet, AbstractFormulationOptions,
 	AbstractImpedanceFormulation, AbstractAdmittanceFormulation, compute!
-using ...Utils: display_path, set_logger!, is_headless, to_nominal, block_transform!
+using ...Utils:
+	display_path, set_logger!, is_headless, to_nominal, symtrans!, symtrans, line_transpose!
 using Measurements
 using LinearAlgebra
 using Colors
