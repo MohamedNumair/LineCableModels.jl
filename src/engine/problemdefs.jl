@@ -154,27 +154,27 @@ T₀ = $T₀
 	end
 end
 
-
-
-@kwdef struct EMTOptions <: AbstractFormulationOptions
-	"Skip user confirmation for overwriting results"
-	force_overwrite::Bool = false
-	"Reduce bundle conductors to equivalent single conductor"
-	reduce_bundle::Bool = true
-	"Eliminate grounded conductors from the system (Kron reduction)"
-	kron_reduction::Bool = true
-	"Enforce ideal transposition (or cross-bonding)"
-	ideal_transposition::Bool = true
-	"Save path for output files"
-	save_path::String = joinpath(".", "lineparams_output")
-	"Verbosity level"
-	verbosity::Int = 0
-	"Log file path"
-	logfile::Union{String, Nothing} = nothing
-end
+# @kwdef struct EMTOptions <: AbstractFormulationOptions
+# 	"Skip user confirmation for overwriting results"
+# 	force_overwrite::Bool = false
+# 	"Reduce bundle conductors to equivalent single conductor"
+# 	reduce_bundle::Bool = true
+# 	"Eliminate grounded conductors from the system (Kron reduction)"
+# 	kron_reduction::Bool = true
+# 	"Enforce ideal transposition/snaking"
+# 	ideal_transposition::Bool = true
+# 	"Temperature correction"
+# 	temperature_correction::Bool = true
+# 	"Save path for output files"
+# 	save_path::String = joinpath(".", "lineparams_output")
+# 	"Verbosity level"
+# 	verbosity::Int = 0
+# 	"Log file path"
+# 	logfile::Union{String, Nothing} = nothing
+# end
 
 # The one-line constructor to "promote" a NamedTuple
-EMTOptions(opts::NamedTuple) = EMTOptions(; opts...)
+# EMTOptions(opts::NamedTuple) = EMTOptions(; opts...)
 
 """
 $(TYPEDEF)
@@ -253,11 +253,12 @@ function FormulationSet(::Val{:EMT};
 	earth_admittance::EarthAdmittanceFormulation = EarthAdmittance.Papadopoulos(),
 	modal_transform::AbstractTransformFormulation = Transforms.Fortescue(),
 	equivalent_earth::Union{AbstractEHEMFormulation, Nothing} = nothing,
-	options::NamedTuple = (;),
+	options = (;),
 )
+	emt_opts = build_options(EMTOptions, options; strict = true)
 	return EMTFormulation(; internal_impedance, insulation_impedance, earth_impedance,
 		insulation_admittance, earth_admittance, modal_transform, equivalent_earth,
-		options = EMTOptions(; options...),
+		options = emt_opts,
 	)
 end
 
