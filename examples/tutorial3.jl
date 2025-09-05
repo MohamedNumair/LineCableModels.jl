@@ -368,7 +368,7 @@ output_file = fullfile("ZY_export.xml")
 export_file = export_data(:atp, p; file_name = output_file, cable_system = cable_system);
 
 # Obtain the symmetrical components via Fortescue transformation
-Tv, p012 = Fortescue(tol = 1e-5)(p)
+Tv, p012 = Fortescue(tol = 1e-5)(p);
 
 # Inspect the transformed matrices
 per_km(p012, 1; mode = :ZY, tol = 1e-9)
