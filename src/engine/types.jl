@@ -7,7 +7,6 @@ abstract type ProblemDefinition end
 
 # Formulation abstract types
 abstract type AbstractFormulationSet end
-abstract type AbstractFormulationOptions end
 
 abstract type AbstractImpedanceFormulation <: AbstractFormulationSet end
 abstract type InternalImpedanceFormulation <: AbstractImpedanceFormulation end
@@ -20,6 +19,14 @@ abstract type EarthAdmittanceFormulation <: AbstractAdmittanceFormulation end
 
 abstract type AbstractTransformFormulation <: AbstractFormulationSet end
 
+"""
+	FormulationSet(...)
+
+Constructs a specific formulation object based on the provided keyword arguments.
+The system will infer the correct formulation type.
+"""
+FormulationSet(engine::Symbol; kwargs...) = FormulationSet(Val(engine); kwargs...)
+
 
 """
 $(TYPEDEF)
@@ -31,3 +38,7 @@ Abstract type representing different equivalent homogeneous earth models (EHEM).
 - [`EnforceLayer`](@ref): Effective parameters defined according to a specific earth layer.
 """
 abstract type AbstractEHEMFormulation <: AbstractFormulationSet end
+
+abstract type AbstractFormulationOptions end
+
+
