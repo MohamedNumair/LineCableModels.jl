@@ -21,7 +21,7 @@ module Utils
 
 # Export public API
 export resolve_T, coerce_to_T, resolve_backend, is_headless, is_in_testset, display_path
-export set_logger!
+export set_verbosity!
 
 export to_nominal,
 	to_certain,
