@@ -24,7 +24,7 @@ Depth = 2:3
 using LineCableModels
 using DataFrames
 fullfile(filename) = joinpath(@__DIR__, filename); #hide
-set_logger!(0); #hide
+set_verbosity!(0); #hide
 
 #=
 The [`MaterialsLibrary`](@ref) is a container for storing electromagnetic properties of 
@@ -96,7 +96,7 @@ materials_df = DataFrame(materials)
 
 # ##  Saving the materials library to JSON
 output_file = fullfile("materials_library.json")
-save(materials, file_name=output_file);
+save(materials, file_name = output_file);
 
 
 # ##  Retrieving materials for use
@@ -107,7 +107,7 @@ save(materials, file_name=output_file);
 
 # Initialize a new [`MaterialsLibrary`](@ref) and load from the JSON file:
 materials_from_json = MaterialsLibrary()
-load!(materials_from_json, file_name=output_file)
+load!(materials_from_json, file_name = output_file)
 
 # Retrieve a material and display the object:
 copper = get(materials_from_json, "copper_corrected")
