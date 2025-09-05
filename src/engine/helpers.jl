@@ -83,3 +83,4 @@ function _get_earth_data(
 		for layer in earth_model.layers
 	]
 end
+
