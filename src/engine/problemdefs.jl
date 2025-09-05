@@ -159,6 +159,12 @@ end
 @kwdef struct EMTOptions <: AbstractFormulationOptions
 	"Skip user confirmation for overwriting results"
 	force_overwrite::Bool = false
+	"Reduce bundle conductors to equivalent single conductor"
+	reduce_bundle::Bool = true
+	"Eliminate grounded conductors from the system (Kron reduction)"
+	kron_reduction::Bool = true
+	"Enforce ideal transposition (or cross-bonding)"
+	ideal_transposition::Bool = true
 	"Save path for output files"
 	save_path::String = joinpath(".", "lineparams_output")
 	"Verbosity level"
@@ -188,6 +194,8 @@ struct EMTFormulation <: AbstractFormulationSet
 	insulation_admittance::InsulationAdmittanceFormulation
 	"Earth admittance formulation."
 	earth_admittance::EarthAdmittanceFormulation
+	"Modal transformation method."
+	modal_transform::AbstractTransformFormulation
 	"Equivalent homogeneous earth model (EHEM) formulation."
 	equivalent_earth::Union{AbstractEHEMFormulation, Nothing}
 	"Solver options for EMT-type computations."
@@ -201,12 +209,13 @@ struct EMTFormulation <: AbstractFormulationSet
 	# Arguments
 
 	- `internal_impedance`: Internal impedance formulation.
-	- `earth_impedance`: Earth impedance formulation.
 	- `insulation_impedance`: Insulation impedance formulation.
+	- `earth_impedance`: Earth impedance formulation.
+	- `insulation_admittance`: Insulation admittance formulation.
 	- `earth_admittance`: Earth admittance formulation.
-	- `internal_admittance`: Internal admittance formulation.
+	- `modal_transform`: Modal transformation method.
 	- `equivalent_earth`: Equivalent homogeneous earth model (EHEM) formulation.
-	- `options`: Solver options for coaxial computations.
+	- `options`: Solver options for EMT-type computations.
 
 	# Returns
 
@@ -224,27 +233,30 @@ struct EMTFormulation <: AbstractFormulationSet
 		earth_impedance::EarthImpedanceFormulation,
 		insulation_admittance::InsulationAdmittanceFormulation,
 		earth_admittance::EarthAdmittanceFormulation,
+		modal_transform::AbstractTransformFormulation,
 		equivalent_earth::Union{AbstractEHEMFormulation, Nothing},
 		options::EMTOptions,
 	)
 		return new(
 			internal_impedance, insulation_impedance, earth_impedance,
-			insulation_admittance, earth_admittance, equivalent_earth, options,
+			insulation_admittance, earth_admittance, modal_transform, equivalent_earth,
+			options,
 		)
 	end
 end
 
 function FormulationSet(::Val{:EMT};
 	internal_impedance::InternalImpedanceFormulation = InternalImpedance.ScaledBessel(),
-	insulation_impedance::InsulationImpedanceFormulation = InsulationImpedance.Standard(),
+	insulation_impedance::InsulationImpedanceFormulation = InsulationImpedance.PureInductance(),
 	earth_impedance::EarthImpedanceFormulation = EarthImpedance.Papadopoulos(),
-	insulation_admittance::InsulationAdmittanceFormulation = InsulationAdmittance.Lossless(),
+	insulation_admittance::InsulationAdmittanceFormulation = InsulationAdmittance.PureCapacitance(),
 	earth_admittance::EarthAdmittanceFormulation = EarthAdmittance.Papadopoulos(),
+	modal_transform::AbstractTransformFormulation = Transforms.Fortescue(),
 	equivalent_earth::Union{AbstractEHEMFormulation, Nothing} = nothing,
 	options::NamedTuple = (;),
 )
 	return EMTFormulation(; internal_impedance, insulation_impedance, earth_impedance,
-		insulation_admittance, earth_admittance, equivalent_earth,
+		insulation_admittance, earth_admittance, modal_transform, equivalent_earth,
 		options = EMTOptions(; options...),
 	)
 end
