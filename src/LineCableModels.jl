@@ -3,7 +3,7 @@ module LineCableModels
 ## Public API
 # -------------------------------------------------------------------------
 # Core generics:
-export add!, FormulationSet, set_logger!
+export add!, set_verbosity!
 
 # Materials:
 export Material, MaterialsLibrary
@@ -21,6 +21,7 @@ export EarthModel
 
 # Engine:
 export LineParametersProblem,
+	FormulationSet,
 	compute!, SeriesImpedance, ShuntAdmittance, per_km, per_m, kronify
 
 # Import/Export:
@@ -31,11 +32,11 @@ import DocStringExtensions: DocStringExtensions
 
 # Submodule `Commons`
 include("Commons.jl")
-using .Commons: IMPORTS, EXPORTS, add!, FormulationSet
+using .Commons: IMPORTS, EXPORTS, add!
 
 # Submodule `Utils`
 include("Utils.jl")
-using .Utils: set_logger!
+using .Utils: set_verbosity!
 
 # Submodule `Validation`
 include("Validation.jl")
@@ -57,7 +58,7 @@ using .DataModel: Thickness, Diameter, WireArray, Strip, Tubular, Semicon, Insul
 # Submodule `Engine`
 include("Engine.jl")
 using .Engine: LineParametersProblem, compute!, SeriesImpedance, ShuntAdmittance, per_km,
-	per_m, kronify
+	per_m, kronify, FormulationSet
 
 # Submodule `ImportExport`
 include("ImportExport.jl")
