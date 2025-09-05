@@ -91,6 +91,7 @@ isdir(joinpath(@__DIR__, "legacy")) &&
 
 # Computation methods
 include("engine/solver.jl")
+include("engine/reduction.jl")
 
 # Override I/O methods
 include("engine/base.jl")
@@ -100,6 +101,6 @@ include("engine/FEM.jl")
 
 @reexport using .InternalImpedance,
 	.InsulationImpedance, .EarthImpedance,
-	.InsulationAdmittance, .EarthAdmittance, .EHEM
+	.InsulationAdmittance, .EarthAdmittance, .EHEM, .Transforms
 
 end # module Engine
