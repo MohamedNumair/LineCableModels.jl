@@ -17,6 +17,7 @@ export Fortescue
 # Module-specific dependencies
 using ...Commons
 import ...Commons: get_description
+import ...Utils: symtrans, offdiag_ratio
 import ..Engine: AbstractTransformFormulation, LineParameters
 using Measurements
 using LinearAlgebra
@@ -29,7 +30,6 @@ Fortescue(; tol::BASE_FLOAT = BASE_FLOAT(1e-4)) = Fortescue(tol)
 get_description(::Fortescue) = "Fortescue (symmetrical components)"
 include("transforms/fortescue.jl")
 
-include("transforms/mode_decomp.jl")
 
 
 

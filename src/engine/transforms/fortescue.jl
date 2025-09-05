@@ -12,8 +12,8 @@ function (f::Fortescue)(lp::LineParameters{Tc}) where {Tc <: COMPLEXSCALAR}
 	Y012 = similar(lp.Y.values)
 
 	for k in 1:nfreq
-		Zs = symmetranspose(lp.Z.values[:, :, k])  # enforce reciprocity
-		Ys = symmetranspose(lp.Y.values[:, :, k])
+		Zs = symtrans(lp.Z.values[:, :, k])  # enforce reciprocity
+		Ys = symtrans(lp.Y.values[:, :, k])
 
 		Zseq = Tv * Zs * Tv'       # NOT inv(T)*Z*T — use unitary similarity
 		Yseq = Tv * Ys * Tv'
