@@ -31,7 +31,7 @@ using LineCableModels.Engine.Transforms: Fortescue
 using DataFrames
 using Printf
 fullfile(filename) = joinpath(@__DIR__, filename); #hide
-set_logger!(0); #hide
+set_verbosity!(0); #hide
 
 # Initialize library and the required materials for this design:
 materials = MaterialsLibrary(add_defaults = true)
