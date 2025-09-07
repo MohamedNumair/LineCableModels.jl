@@ -3,7 +3,7 @@ module CableToolbox
 # Import required libraries
 using Measurements
 using Calculus
-using SpecialFunctions  # For Bessel functions
+# using SpecialFunctions  # For Bessel functions
 using LinearAlgebra     # For sqrt(-1) as `im`
 using Base.MathConstants: pi
 using QuadGK
