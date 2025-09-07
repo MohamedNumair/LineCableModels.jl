@@ -6,14 +6,13 @@ Uncertainty-aware wrappers for Bessel functions.
 [`UncertainBessels`](@ref) lifts selected functions from `SpecialFunctions` so they accept
 `Measurement` and `Complex{Measurement}` inputs. The wrapper evaluates the
 underlying function at the nominal complex argument and propagates uncertainty
-via first-order finite differences using the four partial derivatives ``\\frac{\\partial \\Re f}{\\partial x}, \\frac{\\partial \\Re f}{\\partial y}, \\frac{\\partial \\Im f}{\\partial x}, \\frac{\\partial \\Im f}{\\partial y}`` with ``x = \\Re z`` and ``y = \\Im z``. No new Bessel algorithms are implemented:
-for plain numeric inputs, results and numerical behaviour are those of
+via first-order finite differences using the four partial derivatives ``\\frac{\\partial \\mathrm{Re} \\, f}{\\partial x}, \\frac{\\partial \\mathrm{Re} \\, f}{\\partial y}, \\frac{\\partial \\mathrm{Im} \\, f}{\\partial x}, \\frac{\\partial \\mathrm{Im} \\, f}{\\partial y}`` with ``x = \\mathrm{Re}(z)`` and ``y = \\mathrm{Im}(z)``. No new Bessel algorithms are implemented: for plain numeric inputs, results and numerical behaviour are those of
 `SpecialFunctions`.
 
 Numerical scaling (as defined by `SpecialFunctions`) is supported for the
 “x” variants (e.g. `besselix`, `besselkx`, `besseljx`, …) to improve stability
 for large or complex arguments. In particular, the modified functions use
-exponential factors to temper growth along ``\\Re z`` (e.g. ``I_\\nu`` and ``K_\\nu``);
+exponential factors to temper growth along ``\\mathrm{Re}(z)`` (e.g. ``I_\\nu`` and ``K_\\nu``);
 other scaled variants follow conventions in `SpecialFunctions` and DLMF guidance
 for complex arguments. See [NIST:DLMF](@cite) and [6897971](@cite).
 
@@ -22,12 +21,13 @@ for complex arguments. See [NIST:DLMF](@cite) and [6897971](@cite).
 - Thin, uncertainty-aware wrappers around `SpecialFunctions` (`besselj`, `bessely`,
   `besseli`, `besselk`, `besselh`) and their scaled counterparts (`…x`).
 - For `Complex{Measurement}` inputs, uncertainty is propagated using the 4-component
-  gradient with respect to ``\\Re z`` and ``\\Im z``.
+  gradient with respect to ``\\mathrm{Re}(z)`` and ``\\mathrm{Im}(z)``.
 - For `Measurement` (real) inputs, a 1-D finite-difference derivative is used.
 - No change in semantics for `Real`/`Complex` inputs: calls delegate to `SpecialFunctions`.
 
 # Dependencies
 
+- `SpecialFunctions`
 $(IMPORTS)
 
 # Exports
@@ -37,6 +37,8 @@ $(EXPORTS)
 # Usage
 
 ```julia
+# do not import SpecialFunctions directly
+using LineCableModels.UncertainBessels 
 z = complex(1.0, 1.0 ± 0.5)
 J0_cpl = besselj(0, z)		    # Complex{Measurement}
 J0_nom = besselj(0, value(z))  	# nominal comparison
@@ -45,7 +47,7 @@ I1 = besselix(1, z)           	# scaled I1 with uncertainty
 
 # Numerical notes
 
-- Scaled modified Bessels remove large exponential factors along ``\\Re z`` (e.g., ``I_\\nu`` and ``K_\\nu`` are scaled by opposite signs of ``|\\Re z|``), improving conditioning. Scaled forms for the other families follow the definitions in `SpecialFunctions` and DLMF.
+- Scaled modified Bessels remove large exponential factors along ``\\mathrm{Re}(z)`` (e.g., ``I_\\nu`` and ``K_\\nu`` are scaled by opposite signs of ``|\\mathrm{Re}(z)|``), improving conditioning. Scaled forms for the other families follow the definitions in `SpecialFunctions` and DLMF.
 - Uncertainty propagation is first order (linearization at the nominal point).
   Large uncertainties or strong nonlinearity may reduce accuracy.
 
