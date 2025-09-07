@@ -105,9 +105,23 @@ function compute!(
 		return dest
 	end
 
+	# apply temperature correction if needed
+	if formulation.options.temperature_correction
+		ΔT = ws.temp - T₀
+		@. ws.rho_cond *= 1 + ws.alpha_cond * ΔT
+	end
+
 	# --- per-frequency pipeline ------------------------------------------------
 	@info "Starting line parameters computation"
 	for k in 1:nfreq
+		InternalImpedance.ScaledBessel()(
+			:inner,
+			ws.r_in[1],
+			ws.r_ext[1],
+			ws.rho_cond[1],
+			ws.mu_cond[1],
+			ws.freq[k],
+		)
 		# 0) build raw slice (fill Ztmp, Ytmp in ORIGINAL ordering)
 		# _compute_impedance_slice_into!(Ztmp, ws, k, formulation)    # <-- your builder
 		# _compute_admittance_slice_into!(Ytmp, ws, k, formulation)   # <-- your builder
