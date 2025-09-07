@@ -15,7 +15,7 @@ Numerical scaling (as defined by `SpecialFunctions`) is supported for the
 for large or complex arguments. In particular, the modified functions use
 exponential factors to temper growth along ``\\Re z`` (e.g. ``I_\\nu`` and ``K_\\nu``);
 other scaled variants follow conventions in `SpecialFunctions` and DLMF guidance
-for complex arguments. See [NIST_DLMF](@ref) and [6897971](@ref).
+for complex arguments. See [NIST:DLMF](@cite) and [6897971](@cite).
 
 # Overview
 
@@ -38,9 +38,9 @@ $(EXPORTS)
 
 ```julia
 z = complex(1.0, 1.0 ± 0.5)
-J0 = besselj(0, z)		   		# Complex{Measurement}
+J0_cpl = besselj(0, z)		    # Complex{Measurement}
 J0_nom = besselj(0, value(z))  	# nominal comparison
-I1 = besselix(1, z)           	# scaled I₁ with uncertainty
+I1 = besselix(1, z)           	# scaled I1 with uncertainty
 ```
 
 # Numerical notes
