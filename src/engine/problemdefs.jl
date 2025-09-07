@@ -247,9 +247,9 @@ end
 
 function FormulationSet(::Val{:EMT};
 	internal_impedance::InternalImpedanceFormulation = InternalImpedance.ScaledBessel(),
-	insulation_impedance::InsulationImpedanceFormulation = InsulationImpedance.PureInductance(),
+	insulation_impedance::InsulationImpedanceFormulation = InsulationImpedance.Lossless(),
 	earth_impedance::EarthImpedanceFormulation = EarthImpedance.Papadopoulos(),
-	insulation_admittance::InsulationAdmittanceFormulation = InsulationAdmittance.PureCapacitance(),
+	insulation_admittance::InsulationAdmittanceFormulation = InsulationAdmittance.Lossless(),
 	earth_admittance::EarthAdmittanceFormulation = EarthAdmittance.Papadopoulos(),
 	modal_transform::AbstractTransformFormulation = Transforms.Fortescue(),
 	equivalent_earth::Union{AbstractEHEMFormulation, Nothing} = nothing,
