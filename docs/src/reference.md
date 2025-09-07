@@ -68,6 +68,16 @@ Private = false
 
 ---
 
+## Uncertain Bessels
+```@autodocs
+Modules = [LineCableModels.UncertainBessels]
+Order = [:module, :constant, :type, :function, :macro]
+Public = true
+Private = false
+```
+
+---
+
 ## Private API
 
 #### Data model
