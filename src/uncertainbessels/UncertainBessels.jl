@@ -39,9 +39,9 @@ $(EXPORTS)
 # do not import SpecialFunctions directly
 using LineCableModels.UncertainBessels 
 z = complex(1.0, 1.0 ± 0.5)
-J0_cpl = besselj(0, z)		    # Complex{Measurement}
-J0_nom = besselj(0, value(z))  	# nominal comparison
-I1 = besselix(1, z)           	# scaled I1 with uncertainty
+J0_cpl = besselj(0, z) 			# Complex{Measurement}
+J0_nom = besselj(0, value(z)) 	# nominal comparison
+I1 = besselix(1, z) 			# scaled I1 with uncertainty
 ```
 
 # Numerical notes
