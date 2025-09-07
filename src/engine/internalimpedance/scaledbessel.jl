@@ -17,6 +17,7 @@ end
 	::Val{:inner}, r_in::T, r_ex::T, rho_c::T, mur_c::T, freq::T,
 ) where {T <: REALSCALAR}
 	# TODO: replace with your actual formula
+	# Issue URL: https://github.com/Electa-Git/LineCableModels.jl/issues/16
 	println("ScaledBessel inner");
 	return Complex{T}(0)
 end
