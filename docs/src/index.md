@@ -28,9 +28,17 @@ Depth = 1
 
 Clone the package and add to the Julia environment:
 
-```julia
-] add https://github.com/Electa-Git/LineCableModels.jl
+```julia-repl
+pkg> add https://github.com/Electa-Git/LineCableModels.jl.git
 ```
+
+If you are using the finite-element solver, it is recommended to run the build script to retrieve the required `GetDP` binaries:
+
+```julia-repl
+pkg> build LineCableModels
+```
+
+Then, in your Julia code, import the package:
 
 ```julia
 using LineCableModels
