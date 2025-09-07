@@ -52,31 +52,31 @@ include("lineparams.jl")
 
 # Submodule `InternalImpedance`
 include("internalimpedance/InternalImpedance.jl")
-@force using .InternalImpedance
+using .InternalImpedance: InternalImpedance
 
 # Submodule `InsulationImpedance`
 include("insulationimpedance/InsulationImpedance.jl")
-@force using .InsulationImpedance
+using .InsulationImpedance: InsulationImpedance
 
 # Submodule `EarthImpedance`
 include("earthimpedance/EarthImpedance.jl")
-@force using .EarthImpedance
+using .EarthImpedance: EarthImpedance
 
 # Submodule `InsulationAdmittance`
 include("insulationadmittance/InsulationAdmittance.jl")
-@force using .InsulationAdmittance
+using .InsulationAdmittance: InsulationAdmittance
 
 # Submodule `EarthAdmittance`
 include("earthadmittance/EarthAdmittance.jl")
-@force using .EarthAdmittance
+using .EarthAdmittance: EarthAdmittance
 
 # Submodule `Transforms`
 include("transforms/Transforms.jl")
-@force using .Transforms
+using .Transforms
 
 # Submodule `EHEM`
 include("ehem/EHEM.jl")
-@force using .EHEM
+using .EHEM
 
 # Helpers
 include("helpers.jl")
@@ -84,10 +84,10 @@ include("helpers.jl")
 # Workspace definition
 include("workspace.jl")
 
-# include all .jl files from src/legacy if the folder exists
-isdir(joinpath(@__DIR__, "legacy")) &&
-	map(f -> endswith(f, ".jl") && include(joinpath(@__DIR__, "legacy", f)),
-		sort(readdir(joinpath(@__DIR__, "legacy"))))
+# # include all .jl files from src/legacy if the folder exists
+# isdir(joinpath(@__DIR__, "legacy")) &&
+# 	map(f -> endswith(f, ".jl") && include(joinpath(@__DIR__, "legacy", f)),
+# 		sort(readdir(joinpath(@__DIR__, "legacy"))))
 
 # Computation methods
 include("solver.jl")
@@ -99,8 +99,11 @@ include("base.jl")
 # Submodule `FEM`
 include("fem/FEM.jl")
 
-@reexport using .InternalImpedance,
-	.InsulationImpedance, .EarthImpedance,
-	.InsulationAdmittance, .EarthAdmittance, .EHEM, .Transforms
+@reexport using .InternalImpedance: InternalImpedance
+@reexport using .InsulationImpedance: InsulationImpedance
+@reexport using .EarthImpedance: EarthImpedance
+@reexport using .InsulationAdmittance: InsulationAdmittance
+@reexport using .EarthAdmittance: EarthAdmittance
+@reexport using .EHEM, .Transforms
 
 end # module Engine
