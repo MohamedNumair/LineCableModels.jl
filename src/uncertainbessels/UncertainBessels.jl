@@ -47,6 +47,8 @@ $(EXPORTS)
 """
 module UncertainBessels
 
+# Module-specific dependencies
+using ..Commons
 using Calculus: Calculus
 using SpecialFunctions: SpecialFunctions
 using Measurements: Measurements, Measurement
