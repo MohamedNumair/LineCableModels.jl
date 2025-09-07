@@ -29,8 +29,7 @@ export to_nominal,
 	bias_to_uncertain,
 	to_upper,
 	to_lower,
-	percent_error,
-	besseliu, besselku, besselju
+	percent_error
 
 # Module-specific dependencies
 using ..Commons
