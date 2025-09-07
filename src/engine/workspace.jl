@@ -25,6 +25,8 @@ $(TYPEDFIELDS)
 	r_ins_ext::Vector{T}
 	"Vector of conductor resistivities [Ω·m]."
 	rho_cond::Vector{T}
+	"Vector of conductor temperature coefficients [1/°C]."
+	alpha_cond::Vector{T}
 	"Vector of conductor relative permeabilities."
 	mu_cond::Vector{T}
 	"Vector of conductor relative permittivities."
@@ -85,6 +87,7 @@ function init_workspace(
 	r_ins_in = Vector{T}(undef, n_phases)
 	r_ins_ext = Vector{T}(undef, n_phases)
 	rho_cond = Vector{T}(undef, n_phases)
+	alpha_cond = Vector{T}(undef, n_phases)
 	mu_cond = Vector{T}(undef, n_phases)
 	eps_cond = Vector{T}(undef, n_phases)
 	rho_ins = Vector{T}(undef, n_phases)
@@ -113,6 +116,7 @@ function init_workspace(
 
 			# Material properties
 			rho_cond[idx] = T(component.conductor_props.rho)
+			alpha_cond[idx] = T(component.conductor_props.alpha)
 			mu_cond[idx] = T(component.conductor_props.mu_r)
 			eps_cond[idx] = T(component.conductor_props.eps_r)
 			rho_ins[idx] = T(component.insulator_props.rho)
@@ -146,9 +150,9 @@ function init_workspace(
 		horz = horz, vert = vert,
 		r_in = r_in, r_ext = r_ext,
 		r_ins_in = r_ins_in, r_ins_ext = r_ins_ext,
-		rho_cond = rho_cond, mu_cond = mu_cond, eps_cond = eps_cond,
-		rho_ins = rho_ins, mu_ins = mu_ins, eps_ins = eps_ins, tan_ins = tan_ins,
-		phase_map = phase_map, cable_map = cable_map, earth = earth,
+		rho_cond = rho_cond, alpha_cond = alpha_cond, mu_cond = mu_cond,
+		eps_cond = eps_cond, rho_ins = rho_ins, mu_ins = mu_ins, eps_ins = eps_ins,
+		tan_ins = tan_ins, phase_map = phase_map, cable_map = cable_map, earth = earth,
 		temp = temp, n_frequencies = n_frequencies, n_phases = n_phases,
 		n_cables = system.num_cables, Zprim = Zprim, Yprim = Yprim,
 	)
