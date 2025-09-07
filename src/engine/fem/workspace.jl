@@ -50,6 +50,8 @@ struct FEMWorkspace{T <: AbstractFloat}
 	r_ins_ext::Vector{T}
 	"Vector of conductor resistivities [Ω·m]."
 	rho_cond::Vector{T}
+	"Vector of conductor temperature coefficients [1/°C]."
+	alpha_cond::Vector{T}
 	"Vector of conductor relative permeabilities."
 	mu_cond::Vector{T}
 	"Vector of conductor relative permittivities."
@@ -129,6 +131,7 @@ struct FEMWorkspace{T <: AbstractFloat}
 		r_ins_in = Vector{T}(undef, n_phases)
 		r_ins_ext = Vector{T}(undef, n_phases)
 		rho_cond = Vector{T}(undef, n_phases)
+		alpha_cond = Vector{T}(undef, n_phases)
 		mu_cond = Vector{T}(undef, n_phases)
 		eps_cond = Vector{T}(undef, n_phases)
 		rho_ins = Vector{T}(undef, n_phases)
@@ -157,6 +160,7 @@ struct FEMWorkspace{T <: AbstractFloat}
 
 				# Material properties
 				rho_cond[idx] = to_nominal(component.conductor_props.rho)
+				alpha_cond[idx] = to_nominal(component.conductor_props.alpha)
 				mu_cond[idx] = to_nominal(component.conductor_props.mu_r)
 				eps_cond[idx] = to_nominal(component.conductor_props.eps_r)
 				rho_ins[idx] = to_nominal(component.insulator_props.rho)
@@ -201,7 +205,7 @@ struct FEMWorkspace{T <: AbstractFloat}
 			horz, vert,
 			r_in, r_ext,
 			r_ins_in, r_ins_ext,
-			rho_cond, mu_cond, eps_cond,
+			rho_cond, alpha_cond, mu_cond, eps_cond,
 			rho_ins, mu_ins, eps_ins, tan_ins,
 			phase_map, cable_map, earth,
 			temp, n_frequencies, n_phases,
