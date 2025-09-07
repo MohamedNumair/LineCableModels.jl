@@ -31,37 +31,39 @@ export export_data, save, load!
 import DocStringExtensions: DocStringExtensions
 
 # Submodule `Commons`
-include("Commons.jl")
+include("commons/Commons.jl")
 using .Commons: IMPORTS, EXPORTS, add!
 
 # Submodule `Utils`
-include("Utils.jl")
+include("utils/Utils.jl")
 using .Utils: set_verbosity!
 
+include("uncertainbessels/UncertainBessels.jl")
+
 # Submodule `Validation`
-include("Validation.jl")
+include("validation/Validation.jl")
 
 # Submodule `Materials`
-include("Materials.jl")
+include("materials/Materials.jl")
 using .Materials: Material, MaterialsLibrary
 
 # Submodule `EarthProps`
-include("EarthProps.jl")
+include("earthprops/EarthProps.jl")
 using .EarthProps: EarthModel
 
 # Submodule `DataModel`
-include("DataModel.jl")
+include("datamodel/DataModel.jl")
 using .DataModel: Thickness, Diameter, WireArray, Strip, Tubular, Semicon, Insulator,
 	ConductorGroup, InsulatorGroup, CableComponent, CableDesign, NominalData, CablesLibrary,
 	CablePosition, LineCableSystem, trifoil_formation, flat_formation, preview, simplify
 
 # Submodule `Engine`
-include("Engine.jl")
+include("engine/Engine.jl")
 using .Engine: LineParametersProblem, compute!, SeriesImpedance, ShuntAdmittance, per_km,
 	per_m, kronify, FormulationSet
 
 # Submodule `ImportExport`
-include("ImportExport.jl")
+include("importexport/ImportExport.jl")
 using .ImportExport: export_data, load!, save
 
 end
