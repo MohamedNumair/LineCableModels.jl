@@ -27,7 +27,6 @@ for complex arguments. See [NIST:DLMF](@cite) and [6897971](@cite).
 
 # Dependencies
 
-- `SpecialFunctions`
 $(IMPORTS)
 
 # Exports
