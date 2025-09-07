@@ -29,7 +29,7 @@ Clone the package and add to the Julia environment:
 pkg> add https://github.com/Electa-Git/LineCableModels.jl.git
 ```
 
-If you are using the finite-element solver, it is recommended to run the build script to retrieve the required `GetDP` binaries:
+If you are using the finite-element solver, it is recommended to run the build script to retrieve the binaries needed by the [`GetDP.jl`](https://github.com/Electa-Git/GetDP.jl) front-end:
 
 ```julia-repl
 pkg> build LineCableModels
