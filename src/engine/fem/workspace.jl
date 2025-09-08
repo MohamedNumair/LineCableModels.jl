@@ -68,10 +68,12 @@ struct FEMWorkspace{T <: AbstractFloat}
 	phase_map::Vector{Int}
 	"Vector of cable mapping indices."
 	cable_map::Vector{Int}
-	"Effective earth parameters as a vector of NamedTuples."
-	earth::Vector{
-		NamedTuple{(:rho_g, :eps_g, :mu_g), Tuple{Vector{T}, Vector{T}, Vector{T}}},
-	}
+	"Effective earth resistivity (layers × freq)."
+	rho_g::Matrix{T}
+	"Effective earth permittivity (layers × freq)."
+	eps_g::Matrix{T}
+	"Effective earth permeability (layers × freq)."
+	mu_g::Matrix{T}
 	"Operating temperature [°C]."
 	temp::T
 	"Number of frequency samples."
@@ -179,7 +181,7 @@ struct FEMWorkspace{T <: AbstractFloat}
 			end
 		end
 
-		earth = _get_earth_data(
+		(rho_g, eps_g, mu_g) = _get_earth_data(
 			nothing,
 			problem.earth_props,
 			freq,
@@ -207,7 +209,8 @@ struct FEMWorkspace{T <: AbstractFloat}
 			r_ins_in, r_ins_ext,
 			rho_cond, alpha_cond, mu_cond, eps_cond,
 			rho_ins, mu_ins, eps_ins, tan_ins,
-			phase_map, cable_map, earth,
+			phase_map, cable_map, rho_g,
+			eps_g, mu_g,
 			temp, n_frequencies, n_phases,
 			system.num_cables, Zprim, Yprim,
 		)
