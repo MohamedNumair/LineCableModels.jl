@@ -6,6 +6,7 @@ get_description(::Lossless) = "Lossless insulation (ideal dielectric)"
 
 	if r_ex == r_in
 		# TODO: Implement consistent handling of admittance for bare conductors
+		# Issue URL: https://github.com/Electa-Git/LineCableModels.jl/issues/17
 		return zero(Complex{T})
 	end
 
