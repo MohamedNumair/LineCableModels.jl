@@ -20,7 +20,6 @@ import ...Commons: get_description
 import ..Engine: InsulationAdmittanceFormulation
 using Measurements
 
-struct Lossless <: InsulationAdmittanceFormulation end
-get_description(::Lossless) = "Lossless insulation (ideal dielectric)"
+include("lossless.jl")
 
 end # module InsulationAdmittance
