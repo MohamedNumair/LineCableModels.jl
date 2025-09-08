@@ -12,7 +12,7 @@ $(EXPORTS)
 module EarthAdmittance
 
 # Export public API
-# export 
+export Papadopoulos
 
 # Module-specific dependencies
 using ...Commons
@@ -20,104 +20,118 @@ import ...Commons: get_description
 import ..Engine: EarthAdmittanceFormulation
 using Measurements
 
-struct Papadopoulos <: EarthAdmittanceFormulation end
-get_description(::Papadopoulos) = "Papadopoulos (homogeneous earth)"
+abstract type Homogeneous <: EarthAdmittanceFormulation end
+
+get_description(::Homogeneous) = "Homogeneous earth (general model)"
+
+Base.@kwdef struct Papadopoulos <: Homogeneous
+	"Layer where the source conductor is placed."
+	s::Int = 2
+	"Layer where the target conductor is placed."
+	t::Int = 2
+	"Source propagation constant (0 = lossless, 1 = air, 2 = earth)."
+	source_kx::Int = 2
+	"Earth displacement current assumption."
+	use_earth_eps::Bool = true
+end
+get_description(::Papadopoulos) = "Papadopoulos"
+
 
 function calc_self_potential_coeff_papadopoulos(
-    h::Vector{Measurement{Float64}},
-    r::Vector{Measurement{Float64}},
-    eps_g::Measurement{Float64},
-    mu_g::Measurement{Float64},
-    sigma_g::Measurement{Float64},
-    f::Float64,
-    con::Int,
-    kx::Int=0,
+	h::Vector{Measurement{Float64}},
+	r::Vector{Measurement{Float64}},
+	eps_g::Measurement{Float64},
+	mu_g::Measurement{Float64},
+	sigma_g::Measurement{Float64},
+	f::Float64,
+	con::Int,
+	kx::Int = 0,
 )
 
-    # Constants
-    sig0 = 0.0
-    eps0 = 8.8541878128e-12
-    mu0 = 4 * pi * 1e-7
-    w = 2 * pi * f
+	# Constants
+	sig0 = 0.0
+	eps0 = 8.8541878128e-12
+	mu0 = 4 * pi * 1e-7
+	w = 2 * pi * f
 
-    # Define k_x based on input kx type
-    # 0 = neglect propagation constant
-    # 1 = use value of layer 1 (air)
-    # 2 = use value of layer 2 (earth)
-    k_x = if kx == 2
-        ω -> ω * sqrt(mu_g * (eps_g - im * (sigma_g / ω)))
-    elseif kx == 1
-        ω -> ω * sqrt(mu0 * eps0)
-    else
-        ω -> ω * 0.0  # Default to zero
-    end
+	# Define k_x based on input kx type
+	# 0 = neglect propagation constant
+	# 1 = use value of layer 1 (air)
+	# 2 = use value of layer 2 (earth)
+	k_x = if kx == 2
+		ω -> ω * sqrt(mu_g * (eps_g - im * (sigma_g / ω)))
+	elseif kx == 1
+		ω -> ω * sqrt(mu0 * eps0)
+	else
+		ω -> ω * 0.0  # Default to zero
+	end
 
-    # Define gamma and a functions
-    gamma_0 = ω -> sqrt(im * ω * mu0 * (sig0 + im * ω * eps0))
-    gamma_1 = ω -> sqrt(im * ω * mu_g * (sigma_g + im * ω * eps_g))
-    a_0 = (λ, ω) -> sqrt(λ^2 + gamma_0(ω)^2 + k_x(ω)^2)
-    a_1 = (λ, ω) -> sqrt(λ^2 + gamma_1(ω)^2 + k_x(ω)^2)
+	# Define gamma and a functions
+	gamma_0 = ω -> sqrt(im * ω * mu0 * (sig0 + im * ω * eps0))
+	gamma_1 = ω -> sqrt(im * ω * mu_g * (sigma_g + im * ω * eps_g))
+	a_0 = (λ, ω) -> sqrt(λ^2 + gamma_0(ω)^2 + k_x(ω)^2)
+	a_1 = (λ, ω) -> sqrt(λ^2 + gamma_1(ω)^2 + k_x(ω)^2)
 
-    Pg_self = zeros(Complex{Measurement{Float64}}, con, con)
-    TOL = 1e-3
+	Pg_self = zeros(Complex{Measurement{Float64}}, con, con)
+	TOL = 1e-3
 
-    for k ∈ 1:con
-        if h[k] < 0
-            yy =
-                (a0, a1, gamma0, gamma1, hi, hj, λ, mu0, mu_g, ω, y) ->
-                    (
-                        1.0 / gamma1^2 *
-                        mu_g *
-                        ω *
-                        exp(-a1 * abs(hi - hj + TOL)) *
-                        cos(λ * y) *
-                        0.5im
-                    ) / (a1 * pi) -
-                    (
-                        1.0 / gamma1^2 *
-                        mu_g *
-                        ω *
-                        exp(a1 * (hi + hj)) *
-                        cos(λ * y) *
-                        (a0 * mu_g + a1 * mu0 * sign(hi)) *
-                        0.5im
-                    ) / (a1 * pi * (a0 * mu_g + a1 * mu0)) +
-                    (
-                        a1 * 1.0 / gamma1^2 *
-                        mu0 *
-                        mu_g^2 *
-                        ω *
-                        exp(a1 * (hi + hj)) *
-                        cos(λ * y) *
-                        (sign(hi) - 1.0) *
-                        (gamma0^2 - gamma1^2) *
-                        0.5im
-                    ) / (
-                        pi *
-                        (a0 * gamma1^2 * mu0 + a1 * gamma0^2 * mu_g) *
-                        (a0 * mu_g + a1 * mu0)
-                    )
+	for k ∈ 1:con
+		if h[k] < 0
+			yy =
+				(a0, a1, gamma0, gamma1, hi, hj, λ, mu0, mu_g, ω, y) ->
+					(
+						1.0 / gamma1^2 *
+						mu_g *
+						ω *
+						exp(-a1 * abs(hi - hj + TOL)) *
+						cos(λ * y) *
+						0.5im
+					) / (a1 * pi) -
+					(
+						1.0 / gamma1^2 *
+						mu_g *
+						ω *
+						exp(a1 * (hi + hj)) *
+						cos(λ * y) *
+						(a0 * mu_g + a1 * mu0 * sign(hi)) *
+						0.5im
+					) / (a1 * pi * (a0 * mu_g + a1 * mu0)) +
+					(
+						a1 * 1.0 / gamma1^2 *
+						mu0 *
+						mu_g^2 *
+						ω *
+						exp(a1 * (hi + hj)) *
+						cos(λ * y) *
+						(sign(hi) - 1.0) *
+						(gamma0^2 - gamma1^2) *
+						0.5im
+					) / (
+						pi *
+						(a0 * gamma1^2 * mu0 + a1 * gamma0^2 * mu_g) *
+						(a0 * mu_g + a1 * mu0)
+					)
 
-            yfun =
-                λ -> yy(
-                    a_0(λ, w),
-                    a_1(λ, w),
-                    gamma_0(w),
-                    gamma_1(w),
-                    h[k],
-                    h[k],
-                    λ,
-                    mu0,
-                    mu_g,
-                    w,
-                    r[k],
-                )
-            Qs, _ = quadgk(yfun, 0, Inf, rtol=1e-6)
-            Pg_self[k, k] = (im * w * Qs)
-        end
-    end
+			yfun =
+				λ -> yy(
+					a_0(λ, w),
+					a_1(λ, w),
+					gamma_0(w),
+					gamma_1(w),
+					h[k],
+					h[k],
+					λ,
+					mu0,
+					mu_g,
+					w,
+					r[k],
+				)
+			Qs, _ = quadgk(yfun, 0, Inf, rtol = 1e-6)
+			Pg_self[k, k] = (im * w * Qs)
+		end
+	end
 
-    return Pg_self
+	return Pg_self
 end
 
 """
@@ -146,112 +160,112 @@ formula, considering the properties of the ground and the frequency of the syste
 
 """
 function calc_mutual_potential_coeff_papadopoulos(
-    h::Vector{Measurement{Float64}},
-    d::Matrix{Measurement{Float64}},
-    eps_g::Measurement{Float64},
-    mu_g::Measurement{Float64},
-    sigma_g::Measurement{Float64},
-    f::Float64,
-    con::Int,
-    kx::Int=0,
+	h::Vector{Measurement{Float64}},
+	d::Matrix{Measurement{Float64}},
+	eps_g::Measurement{Float64},
+	mu_g::Measurement{Float64},
+	sigma_g::Measurement{Float64},
+	f::Float64,
+	con::Int,
+	kx::Int = 0,
 )
 
-    # Constants
-    sig0 = 0.0
-    eps0 = 8.8541878128e-12
-    mu0 = 4 * pi * 1e-7
-    w = 2 * pi * f
+	# Constants
+	sig0 = 0.0
+	eps0 = 8.8541878128e-12
+	mu0 = 4 * pi * 1e-7
+	w = 2 * pi * f
 
-    # Define k_x based on input kx type
-    # 0 = neglect propagation constant
-    # 1 = use value of layer 1 (air)
-    # 2 = use value of layer 2 (earth)
-    k_x = if kx == 2
-        ω -> ω * sqrt(mu_g * (eps_g - im * (sigma_g / ω)))
-    elseif kx == 1
-        ω -> ω * sqrt(mu0 * eps0)
-    else
-        ω -> ω * 0.0  # Default to zero
-    end
+	# Define k_x based on input kx type
+	# 0 = neglect propagation constant
+	# 1 = use value of layer 1 (air)
+	# 2 = use value of layer 2 (earth)
+	k_x = if kx == 2
+		ω -> ω * sqrt(mu_g * (eps_g - im * (sigma_g / ω)))
+	elseif kx == 1
+		ω -> ω * sqrt(mu0 * eps0)
+	else
+		ω -> ω * 0.0  # Default to zero
+	end
 
-    # Define gamma and a functions
-    gamma_0 = ω -> sqrt(im * ω * mu0 * (sig0 + im * ω * eps0))
-    gamma_1 = ω -> sqrt(im * ω * mu_g * (sigma_g + im * ω * eps_g))
-    a_0 = (λ, ω) -> sqrt(λ^2 + gamma_0(ω)^2 + k_x(ω)^2)
-    a_1 = (λ, ω) -> sqrt(λ^2 + gamma_1(ω)^2 + k_x(ω)^2)
+	# Define gamma and a functions
+	gamma_0 = ω -> sqrt(im * ω * mu0 * (sig0 + im * ω * eps0))
+	gamma_1 = ω -> sqrt(im * ω * mu_g * (sigma_g + im * ω * eps_g))
+	a_0 = (λ, ω) -> sqrt(λ^2 + gamma_0(ω)^2 + k_x(ω)^2)
+	a_1 = (λ, ω) -> sqrt(λ^2 + gamma_1(ω)^2 + k_x(ω)^2)
 
-    Pg_mutual = zeros(Complex{Measurement{Float64}}, con, con)
-    TOL = 1e-3
+	Pg_mutual = zeros(Complex{Measurement{Float64}}, con, con)
+	TOL = 1e-3
 
-    # Mutual potential coefficient
-    for x ∈ 1:con
-        for y ∈ x+1:con
-            if x != y
-                h1 = h[x]
-                h2 = h[y]
-                if abs(h2 - h1) < TOL
-                    h2 += TOL
-                end
+	# Mutual potential coefficient
+	for x ∈ 1:con
+		for y ∈ (x+1):con
+			if x != y
+				h1 = h[x]
+				h2 = h[y]
+				if abs(h2 - h1) < TOL
+					h2 += TOL
+				end
 
-                if h1 < 0 && h2 < 0
-                    yy =
-                        (a0, a1, gamma0, gamma1, hi, hj, λ, mu0, mu_g, ω, y) ->
-                            (
-                                1.0 / gamma1^2 *
-                                mu_g *
-                                ω *
-                                exp(-a1 * abs(hi - hj)) *
-                                cos(λ * y) *
-                                0.5im
-                            ) / (a1 * pi) -
-                            (
-                                1.0 / gamma1^2 *
-                                mu_g *
-                                ω *
-                                exp(a1 * (hi + hj)) *
-                                cos(λ * y) *
-                                (a0 * mu_g + a1 * mu0 * sign(hi)) *
-                                0.5im
-                            ) / (a1 * pi * (a0 * mu_g + a1 * mu0)) +
-                            (
-                                a1 * 1.0 / gamma1^2 *
-                                mu0 *
-                                mu_g^2 *
-                                ω *
-                                exp(a1 * (hi + hj)) *
-                                cos(λ * y) *
-                                (sign(hi) - 1.0) *
-                                (gamma0^2 - gamma1^2) *
-                                0.5im
-                            ) / (
-                                pi *
-                                (a0 * gamma1^2 * mu0 + a1 * gamma0^2 * mu_g) *
-                                (a0 * mu_g + a1 * mu0)
-                            )
+				if h1 < 0 && h2 < 0
+					yy =
+						(a0, a1, gamma0, gamma1, hi, hj, λ, mu0, mu_g, ω, y) ->
+							(
+								1.0 / gamma1^2 *
+								mu_g *
+								ω *
+								exp(-a1 * abs(hi - hj)) *
+								cos(λ * y) *
+								0.5im
+							) / (a1 * pi) -
+							(
+								1.0 / gamma1^2 *
+								mu_g *
+								ω *
+								exp(a1 * (hi + hj)) *
+								cos(λ * y) *
+								(a0 * mu_g + a1 * mu0 * sign(hi)) *
+								0.5im
+							) / (a1 * pi * (a0 * mu_g + a1 * mu0)) +
+							(
+								a1 * 1.0 / gamma1^2 *
+								mu0 *
+								mu_g^2 *
+								ω *
+								exp(a1 * (hi + hj)) *
+								cos(λ * y) *
+								(sign(hi) - 1.0) *
+								(gamma0^2 - gamma1^2) *
+								0.5im
+							) / (
+								pi *
+								(a0 * gamma1^2 * mu0 + a1 * gamma0^2 * mu_g) *
+								(a0 * mu_g + a1 * mu0)
+							)
 
-                    yfun =
-                        λ -> yy(
-                            a_0(λ, w),
-                            a_1(λ, w),
-                            gamma_0(w),
-                            gamma_1(w),
-                            h1,
-                            h2,
-                            λ,
-                            mu0,
-                            mu_g,
-                            w,
-                            d[x, y],
-                        )
-                    Qm, _ = quadgk(yfun, 0, Inf, rtol=1e-3)
-                    Pg_mutual[x, y] = (im * w * Qm)
-                    Pg_mutual[y, x] = Pg_mutual[x, y]
-                end
-            end
-        end
-    end
+					yfun =
+						λ -> yy(
+							a_0(λ, w),
+							a_1(λ, w),
+							gamma_0(w),
+							gamma_1(w),
+							h1,
+							h2,
+							λ,
+							mu0,
+							mu_g,
+							w,
+							d[x, y],
+						)
+					Qm, _ = quadgk(yfun, 0, Inf, rtol = 1e-3)
+					Pg_mutual[x, y] = (im * w * Qm)
+					Pg_mutual[y, x] = Pg_mutual[x, y]
+				end
+			end
+		end
+	end
 
-    return Pg_mutual
+	return Pg_mutual
 end
 
 end # module EarthAdmittance
