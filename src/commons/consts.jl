@@ -23,5 +23,4 @@ using Measurements: Measurement
 const BASE_FLOAT = Float64
 const REALSCALAR = Union{BASE_FLOAT, Measurement{BASE_FLOAT}}
 const COMPLEXSCALAR = Union{Complex{BASE_FLOAT}, Complex{Measurement{BASE_FLOAT}}}
-# const REALVECTOR = Union{Vector{BASE_FLOAT},Vector{Measurement{BASE_FLOAT}}}
-# const COMPLEXVECTOR = Union{Vector{Complex{BASE_FLOAT}},Vector{Complex{Measurement{BASE_FLOAT}}}}
+
