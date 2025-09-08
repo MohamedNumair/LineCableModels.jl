@@ -189,17 +189,24 @@ end
 """
 nonsensify(original_design::CableDesign; new_id::String="")::CableDesign
 
-Recreates a cable design using simplified shapes and "main" material props.
+Recreates a cable design by bulldozing reality into a "simplified" shape 
+with only the so-called "main" material properties. 
 
-For each component, builds:
-- `ConductorGroup(Tubular(...))` with radii from the first and last conductor
-  layers; material from the first conductor layer.
-- `InsulatorGroup(Insulator(...))` spanning from the new conductor outer radius
-  to the original insulator group's outer radius, reusing the same material.
+Translation: if you wanted physics, you came to the wrong neighborhood.  
 
-This is intentionally crude ("nonsensical"): it ignores proper equivalent
-property calculations and just uses the main material props from the conductor
-for both conductor and insulation.
+For each component, this abomination does:
+- `ConductorGroup(Tubular(...))` with radii stolen from the first and last 
+  conductor layers, and material blindly copied from the first conductor layer. 
+  Because high-fidelity is for losers.  
+
+- `InsulatorGroup(Insulator(...))` spanning from the new conductor outer radius 
+  to the original insulator group's outer radius; material is taken from the 
+  first `Insulator` layer available (or whatever warm body it can find).  
+
+⚠ WARNING: This is *deliberately* nonsensical. It laughs in the face of proper 
+equivalent property corrections and just slaps the "main" props on like duct tape. 
+Use only when you don’t give a damn about accuracy and just want something 
+that looks cable-ish, e.g., never.
 """
 function nonsensify(
 	original_design::CableDesign;
@@ -224,19 +231,24 @@ function nonsensify(
 		rin = cg.layers[1].radius_in
 		rex = cg.layers[end].radius_ext
 
-		# "Main" material props and temperature from first conductor layer
-		mat = cg.layers[1].material_props
-		temp = cg.layers[1].temperature
+		# "Main" material props and temperature for conductor from first conductor layer
+		mat_con = cg.layers[1].material_props
+		temp_con = cg.layers[1].temperature
 
 		# Build simplified parts and groups
-		tubular = Tubular(rin, rex, mat, temp)
+		tubular = Tubular(rin, rex, mat_con, temp_con)
 		new_cond_group = ConductorGroup(tubular)
 
 		ins_rin = new_cond_group.radius_ext           # ensure interface matches
 		ins_rex = ig.radius_ext                        # keep original outer boundary
-		mat = ig.layers[1].material_props
-		temp = ig.layers[1].temperature
-		ins = Insulator(ins_rin, ins_rex, mat, temp)   # reuse same material (nonsense)
+
+		# Pick first Insulator layer in insulator group (skip Semicon); fallback to first layer
+		idx_ins = findfirst(x -> x isa Insulator, ig.layers)
+		idx_ins = isnothing(idx_ins) ? 1 : idx_ins
+		mat_ins = ig.layers[idx_ins].material_props
+		temp_ins = ig.layers[idx_ins].temperature
+
+		ins = Insulator(ins_rin, ins_rex, mat_ins, temp_ins)
 		new_ins_group = InsulatorGroup(ins)
 
 		if i == 1
