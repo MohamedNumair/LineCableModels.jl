@@ -1,4 +1,4 @@
-abstract type Homogeneous <: EarthImpedanceFormulation end
+abstract type Homogeneous <: EarthAdmittanceFormulation end
 
 struct Kernel{Tγ1, Tγ2, Tμ2}
 	"Layer where the source conductor is placed."
@@ -37,7 +37,7 @@ end
 
 Pollaczek(; s::Int = 2, t::Int = 2, Γx::Int = 0,
 	γ1 = (ω, μ, σ, ε) -> 1im * ω * sqrt(μ * ε),
-	γ2 = (ω, μ, σ, ε) -> sqrt(1im * ω * μ * σ),
+	γ2 = (ω, μ, σ, ε) -> zero(1im * ω),
 	μ2 = μ -> oftype(μ, μ₀)) =
 	Pollaczek(
 		Kernel{typeof(γ1), typeof(γ2), typeof(μ2)}(s, t, Γx, γ1, γ2, μ2),
@@ -46,21 +46,20 @@ Pollaczek(; s::Int = 2, t::Int = 2, Γx::Int = 0,
 get_description(::Pollaczek) = "Pollaczek"
 from_kernel(f::Pollaczek) = f.kernel
 
-struct Carson{Tγ1, Tγ2, Tμ2} <: Homogeneous
+struct Images{Tγ1, Tγ2, Tμ2} <: Homogeneous
 	kernel::Kernel{Tγ1, Tγ2, Tμ2}
 end
 
-Carson(; s::Int = 1, t::Int = 1, Γx::Int = 0,
+Images(; s::Int = 1, t::Int = 1, Γx::Int = 0,
 	γ1 = (ω, μ, σ, ε) -> 1im * ω * sqrt(μ * ε),
-	γ2 = (ω, μ, σ, ε) -> sqrt(1im * ω * μ * σ),
+	γ2 = (ω, μ, σ, ε) -> zero(1im * ω),
 	μ2 = μ -> oftype(μ, μ₀)) =
-	Carson(
+	Images(
 		Kernel{typeof(γ1), typeof(γ2), typeof(μ2)}(s, t, Γx, γ1, γ2, μ2),
 	)
 
-get_description(::Carson) = "Carson"
-from_kernel(f::Carson) = f.kernel
-
+get_description(::Images) = "Electrostatic images"
+from_kernel(f::Images) = f.kernel
 
 # ρ, ε, μ = ws.rho_g, ws.eps_g, ws.mu_g
 #     f(h, d, @view(ρ[:,k]), @view(ε[:,k]), @view(μ[:,k]), ws.freq[k])
@@ -78,7 +77,7 @@ function (f::Homogeneous)(
 	Base.@nospecialize form
 	return form === :self ? f(Val(:self), h, yij, rho_g, eps_g, mu_g, freq) :
 		   form === :mutual ? f(Val(:mutual), h, yij, rho_g, eps_g, mu_g, freq) :
-		   throw(ArgumentError("Unknown earth impedance form: $form"))
+		   throw(ArgumentError("Unknown earth admittance form: $form"))
 end
 
 function (f::Homogeneous)(
@@ -123,6 +122,8 @@ end
 	zmax < T(1e-6) ? log(D/d) : (besselk(0, γs*d) - besselk(0, γs*D))
 end
 
+
+
 @inline function (f::Homogeneous)(
 	::Val{:mutual},
 	h::AbstractVector{T},
@@ -164,6 +165,13 @@ end
 		oftype(γs_2, (ω^2) * μ[ℓ] * eps_g[ℓ])
 	end
 
+	# --- Underground,"no capacitive coupling" ---
+	# physics: source in EARTH (s=t=2), kx = 0, γ_earth ≈ 0
+	# ⇒ Pe = 0
+	if f.s == 2 && f.t == 2 && isapprox(γ_s, zero(γ_s))
+		return zero(Complex{T})
+	end
+
 	# unpack geometry
 	@inbounds hi, hj = abs(h[1]), abs(h[2])
 	dij = hypot(yij, hi - hj)          # √(y^2 + (hi - hj)^2) - conductor-conductor
@@ -171,6 +179,14 @@ end
 
 	# perfectly conducting earth term in Bessel form
 	Λij = _bessel_diff(γ_s, dij, Dij)
+
+	# --- Overhead special case ---
+	# physics: source in AIR (s=t=1), kx = 0, σ_air ≈ 0,
+	#          earth propagation constant negligible γ_earth ≈ 0
+	# ⇒ Sij = Tij = 0, Pe = (jω)/(2π(σ_air+jωε_air)) * Λ ≡ (1/(2π ε0)) * Λ
+	if f.s == 1 && f.Γx == 0 && isapprox(γ_o, zero(γ_o))
+		return (1im*ω) / (2π*eps_g[1]) * Λij
+	end
 
 	# precompute scalars for integrand
 	a_s = (λ::T) -> sqrt(λ^2 + γs_2 + kx_2)
@@ -186,10 +202,24 @@ end
 		μ_o * exp(-as * H) / (as*μ_o + ao*μ_s)
 	end
 
-	# Sij = 2 ∫_0^∞ Fij(λ) cos(yij λ) dλ
-	integrand = (λ) -> Fij(λ) * cos(yij * λ)
-	Sij, _ = quadgk(integrand, 0.0, Inf; rtol = 1e-8)
-	Sij *= 2
+	# G_ij(λ) 
+	# G = μ0 μ1 α1 (γ1² - γ0²) e^{-α1 H} / [ (α1 μ0 + α0 μ1)(α1 γ0² μ1 + α0 γ1² μ0) ]
+	# here: 0→other (o), 1→source (s)
+	Gij = (λ) -> begin
+		as = a_s(λ);
+		ao = a_o(λ)
+		num = μ_o * μ_s * as * (γs_2 - γo_2) * exp(-as * H)
+		den = (as*μ_o + ao*μ_s) * (as*γo_2*μ_s + ao*γs_2*μ_o)
+		num / den
+	end
 
-	return (1im * ω * μ_s / (2π)) * (Λij + Sij)
+	# S_ij + T_ij in one go: 2∫₀^∞ (Fij+Gij) cos(yij λ) dλ
+	integrand = (λ) -> (Fij(λ) + Gij(λ)) * cos(yij * λ)
+	Iij, _ = quadgk(integrand, 0.0, Inf; rtol = 1e-8)
+	Iij *= 2
+
+	_σ_s = σ[s] + 1im*ω*eps_g[s] # complex conductivity of source layer
+
+	return (1im * ω / (2π * _σ_s)) * (Λij + Iij)
+
 end

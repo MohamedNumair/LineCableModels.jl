@@ -1,3 +1,10 @@
+struct Fortescue <: AbstractTransformFormulation
+	tol::BASE_FLOAT
+end
+# Convenient constructor with default tolerance
+Fortescue(; tol::BASE_FLOAT = BASE_FLOAT(1e-4)) = Fortescue(tol)
+get_description(::Fortescue) = "Fortescue (symmetrical components)"
+
 """
 $(TYPEDSIGNATURES)
 

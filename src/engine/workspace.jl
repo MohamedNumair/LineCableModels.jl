@@ -13,6 +13,8 @@ $(TYPEDFIELDS)
 	freq::Vector{T}
 	"Vector of horizontal positions [m]."
 	horz::Vector{T}
+	"Vector of horizontal separations [m]."
+	horz_sep::Matrix{T}
 	"Vector of vertical positions [m]."
 	vert::Vector{T}
 	"Vector of internal conductor radii [m]."
@@ -83,6 +85,7 @@ function init_workspace(
 	# Pre-allocate 1D arrays
 	freq = Vector{T}(undef, n_frequencies)
 	horz = Vector{T}(undef, n_phases)
+	horz_sep = Matrix{T}(undef, n_phases, n_phases)
 	vert = Vector{T}(undef, n_phases)
 	r_in = Vector{T}(undef, n_phases)
 	r_ext = Vector{T}(undef, n_phases)
@@ -137,6 +140,11 @@ function init_workspace(
 		end
 	end
 
+	# Precompute Euclidean distances, use max radius for self-distances
+	horz_sep = abs.(horz .- permutedims(horz))
+	horz_sep[diagind(horz_sep)] .= max.(r_ext, r_ins_ext)
+
+
 	(rho_g, eps_g, mu_g) = _get_earth_data(
 		formulation.equivalent_earth,
 		problem.earth_props,
@@ -149,7 +157,7 @@ function init_workspace(
 	# Construct and return the EMTWorkspace struct
 	return EMTWorkspace{T}(
 		freq = freq,
-		horz = horz, vert = vert,
+		horz = horz, horz_sep = horz_sep, vert = vert,
 		r_in = r_in, r_ext = r_ext,
 		r_ins_in = r_ins_in, r_ins_ext = r_ins_ext,
 		rho_cond = rho_cond, alpha_cond = alpha_cond, mu_cond = mu_cond,
