@@ -159,7 +159,7 @@ end
 **Convenience constructor**:
 
 ```julia
-@_ctor Tubular _REQ_TUBULAR _OPT_TUBULAR _DEFS_TUBULAR
+@construct Tubular _REQ_TUBULAR _OPT_TUBULAR _DEFS_TUBULAR
 ```
 
 This expands to a weakly‑typed method that calls `validate!`, promotes using `_promotion_T`, coerces via `_coerced_args`, and delegates to the numeric core.
@@ -203,7 +203,7 @@ Validation.parse(::Type{NewPart}, nt) = begin
 end
 
 # 6) Convenience constructor — generated
-@_ctor NewPart (:a, :b, :material) (:temperature,) (T₀,)
+@construct NewPart (:a, :b, :material) (:temperature,) (T₀,)
 ```
 
 ---

@@ -27,13 +27,14 @@ HVDC cables are constructed around a central conductor enclosed by a triple-extr
 # Load the package and set up the environment:
 using LineCableModels
 using LineCableModels.Engine.FEM
+using LineCableModels.Engine.Transforms: Fortescue
 using DataFrames
 using Printf
 fullfile(filename) = joinpath(@__DIR__, filename); #hide
-set_logger!(0); #hide
+set_verbosity!(0); #hide
 
 # Initialize library and the required materials for this design:
-materials = MaterialsLibrary(add_defaults=true)
+materials = MaterialsLibrary(add_defaults = true)
 lead = Material(21.4e-8, 1.0, 0.999983, 20.0, 0.00400) # Lead or lead alloy
 add!(materials, "lead", lead)
 steel = Material(13.8e-8, 1.0, 300.0, 20.0, 0.00450) # Steel
@@ -91,11 +92,11 @@ push!(layers, ("PP jacket", t_jac * 1000, d_overall * 1000)); #hide
 
 # The cable structure is summarized in a table for better visualization, with dimensions in milimiters:
 df = DataFrame( #hide
-    layer=first.(layers), #hide
-    thickness=[ #hide
-        ismissing(t) ? "-" : round(t, sigdigits=2) for t in getindex.(layers, 2) #hide
-    ], #hide
-    diameter=[round(d, digits=2) for d in getindex.(layers, 3)], #hide
+	layer = first.(layers), #hide
+	thickness = [ #hide
+		ismissing(t) ? "-" : round(t, sigdigits = 2) for t in getindex.(layers, 2) #hide
+	], #hide
+	diameter = [round(d, digits = 2) for d in getindex.(layers, 3)], #hide
 ) #hide
 
 #=
@@ -111,7 +112,7 @@ core = ConductorGroup(WireArray(0.0, Diameter(d_w), 1, 0.0, material))
 n_strands = 6 # Strands per layer
 n_layers = 6 # Layers of strands
 for i in 1:n_layers
-    add!(core, WireArray, Diameter(d_w), i * n_strands, 11.0, material)
+	add!(core, WireArray, Diameter(d_w), i * n_strands, 11.0, material)
 end
 core
 
@@ -151,16 +152,16 @@ core_cc = CableComponent("core", core, main_insu)
 
 cable_id = "525kV_1600mm2"
 datasheet_info = NominalData(
-    designation_code="(N)2XH(F)RK2Y",
-    U0=500.0,                        # Phase (pole)-to-ground voltage [kV]
-    U=525.0,                         # Phase (pole)-to-phase (pole) voltage [kV]
-    conductor_cross_section=1600.0,  # [mm²]
-    screen_cross_section=1000.0,     # [mm²]
-    resistance=nothing,              # DC resistance [Ω/km]
-    capacitance=nothing,             # Capacitance [μF/km]
-    inductance=nothing,              # Inductance in trifoil [mH/km]
+	designation_code = "(N)2XH(F)RK2Y",
+	U0 = 500.0,                        # Phase (pole)-to-ground voltage [kV]
+	U = 525.0,                         # Phase (pole)-to-phase (pole) voltage [kV]
+	conductor_cross_section = 1600.0,  # [mm²]
+	screen_cross_section = 1000.0,     # [mm²]
+	resistance = nothing,              # DC resistance [Ω/km]
+	capacitance = nothing,             # Capacitance [μF/km]
+	inductance = nothing,              # Inductance in trifoil [mH/km]
 )
-cable_design = CableDesign(cable_id, core_cc, nominal_data=datasheet_info)
+cable_design = CableDesign(cable_id, core_cc, nominal_data = datasheet_info)
 
 #=
 ### Lead screen/sheath
@@ -192,7 +193,7 @@ add!(cable_design, sheath_cc)
 lay_ratio = 10.0 # typical value for wire screens
 material = get(materials, "steel")
 armor_con = ConductorGroup(
-    WireArray(screen_insu, Diameter(d_wa), num_ar_wires, lay_ratio, material))
+	WireArray(screen_insu, Diameter(d_wa), num_ar_wires, lay_ratio, material))
 
 # PP layer after armor:
 material = get(materials, "pp")
@@ -224,12 +225,12 @@ Load an existing [`CablesLibrary`](@ref) file or create a new one:
 
 library = CablesLibrary()
 library_file = fullfile("cables_library.json")
-load!(library, file_name=library_file)
+load!(library, file_name = library_file)
 add!(library, cable_design)
 library_df = DataFrame(library)
 
 # Save to file for later use:
-save(library, file_name=library_file);
+save(library, file_name = library_file);
 
 #=
 ## Defining a cable system
@@ -258,12 +259,12 @@ xp, xn, y0 = -0.5, 0.5, -1.0;
 
 # Initialize the `LineCableSystem` with positive pole:
 cablepos = CablePosition(cable_design, xp, y0,
-    Dict("core" => 1, "sheath" => 0, "armor" => 0))
+	Dict("core" => 1, "sheath" => 0, "armor" => 0))
 cable_system = LineCableSystem("525kV_1600mm2_bipole", 1000.0, cablepos)
 
 # Add the other pole (negative) to the system:
 add!(cable_system, cable_design, xn, y0,
-    Dict("core" => 2, "sheath" => 0, "armor" => 0))
+	Dict("core" => 2, "sheath" => 0, "armor" => 0))
 
 #=
 ### Cable system preview
@@ -275,7 +276,7 @@ In this section the complete bipole cable system is examined.
 system_df = DataFrame(cable_system)
 
 # Visualize the cross-section of the three-phase system:
-plt4 = preview(cable_system, zoom_factor=0.15)
+plt4 = preview(cable_system, zoom_factor = 0.15)
 
 #=
 ## PSCAD & ATPDraw export
@@ -283,11 +284,11 @@ Export to PSCAD input file:
 =#
 
 output_file = fullfile("pscad_export.pscx")
-export_file = export_data(:pscad, cable_system, earth_params, file_name=output_file);
+export_file = export_data(:pscad, cable_system, earth_params, file_name = output_file);
 
 # Export to ATPDraw project file (XML):
 output_file = fullfile("atp_export.xml")
-export_file = export_data(:atp, cable_system, earth_params, file_name=output_file);
+export_file = export_data(:atp, cable_system, earth_params, file_name = output_file);
 
 #=
 ## FEM calculations
@@ -295,10 +296,10 @@ export_file = export_data(:atp, cable_system, earth_params, file_name=output_fil
 
 # Define a LineParametersProblem with the cable system and earth model
 problem = LineParametersProblem(
-    cable_system,
-    temperature=20.0,  # Operating temperature
-    earth_props=earth_params,
-    frequencies=f,   # Frequency for the analysis
+	cable_system,
+	temperature = 20.0,  # Operating temperature
+	earth_props = earth_params,
+	frequencies = f,   # Frequency for the analysis
 );
 
 # Estimate domain size based on skin depth in the earth
@@ -306,67 +307,71 @@ domain_radius = calc_domain_size(earth_params, f);
 
 # Define custom mesh transitions around each cable
 mesh_transition1 = MeshTransition(
-    cable_system,
-    [1],
-    r_min=0.08,
-    r_length=0.25,
-    mesh_factor_min=0.01 / (domain_radius / 5),
-    mesh_factor_max=0.25 / (domain_radius / 5),
-    n_regions=5)
+	cable_system,
+	[1],
+	r_min = 0.08,
+	r_length = 0.25,
+	mesh_factor_min = 0.01 / (domain_radius / 5),
+	mesh_factor_max = 0.25 / (domain_radius / 5),
+	n_regions = 5)
 
 mesh_transition2 = MeshTransition(
-    cable_system,
-    [2],
-    r_min=0.08,
-    r_length=0.25,
-    mesh_factor_min=0.01 / (domain_radius / 5),
-    mesh_factor_max=0.25 / (domain_radius / 5),
-    n_regions=5);
+	cable_system,
+	[2],
+	r_min = 0.08,
+	r_length = 0.25,
+	mesh_factor_min = 0.01 / (domain_radius / 5),
+	mesh_factor_max = 0.25 / (domain_radius / 5),
+	n_regions = 5);
 
 # Define runtime options 
 opts = (
-    force_remesh=true,                # Force remeshing
-    force_overwrite=true,             # Overwrite existing files
-    plot_field_maps=false,            # Do not compute/ plot field maps
-    mesh_only=false,                  # Preview the mesh
-    save_path=fullfile("fem_output"), # Results directory
-    keep_run_files=true,              # Archive files after each run
-    verbosity=0,                      # Verbosity
+	force_remesh = true,                # Force remeshing
+	force_overwrite = true,             # Overwrite existing files
+	plot_field_maps = false,            # Do not compute/ plot field maps
+	mesh_only = false,                  # Preview the mesh
+	save_path = fullfile("fem_output"), # Results directory
+	keep_run_files = true,              # Archive files after each run
+	verbosity = 0,                      # Verbosity
 );
 
 # Define the FEM formulation with the specified parameters
-formulation = FormulationSet(:FEM,
-    impedance=Darwin(),
-    admittance=Electrodynamics(),
-    domain_radius=domain_radius,
-    domain_radius_inf=domain_radius * 1.25,
-    elements_per_length_conductor=1,
-    elements_per_length_insulator=2,
-    elements_per_length_semicon=1,
-    elements_per_length_interfaces=5,
-    points_per_circumference=16,
-    mesh_size_min=1e-6,
-    mesh_size_max=domain_radius / 5,
-    mesh_transitions=[mesh_transition1,
-        mesh_transition2],
-    mesh_size_default=domain_radius / 10,
-    mesh_algorithm=5,
-    mesh_max_retries=20,
-    materials=materials,
-    options=opts
+F = FormulationSet(:FEM,
+	impedance = Darwin(),
+	admittance = Electrodynamics(),
+	domain_radius = domain_radius,
+	domain_radius_inf = domain_radius * 1.25,
+	elements_per_length_conductor = 1,
+	elements_per_length_insulator = 2,
+	elements_per_length_semicon = 1,
+	elements_per_length_interfaces = 5,
+	points_per_circumference = 16,
+	mesh_size_min = 1e-6,
+	mesh_size_max = domain_radius / 5,
+	mesh_transitions = [mesh_transition1,
+		mesh_transition2],
+	mesh_size_default = domain_radius / 10,
+	mesh_algorithm = 5,
+	mesh_max_retries = 20,
+	materials = materials,
+	options = opts,
 );
 
-# Run the FEM model
-@time workspace, line_params = compute!(problem, formulation);
+# Run the FEM solver
+@time ws, p = compute!(problem, F);
 
 # Display computation results
-per_km(line_params, 1; mode=:RLCG, freq=f, tol=1e-9)
+per_km(p, 1; mode = :RLCG, tol = 1e-9)
 
 # Export ZY matrices to ATPDraw
 output_file = fullfile("ZY_export.xml")
-export_file = export_data(:atp, line_params, f; file_name=output_file, cable_system=cable_system);
+export_file = export_data(:atp, p; file_name = output_file, cable_system = cable_system);
 
-# Obtain the symmetrical components via modal transformation
-Z012 = mtransform(line_params, :Fortescue)
-display(per_km(Z012, 1; mode=:RLCG, freq=f, tol=1e-9))
-display(per_km(Z012, 1; mode=:ZY, freq=f, tol=1e-9))
+# Obtain the symmetrical components via Fortescue transformation
+Tv, p012 = Fortescue(tol = 1e-5)(p);
+
+# Inspect the transformed matrices
+per_km(p012, 1; mode = :ZY, tol = 1e-9)
+
+# Or the corresponding lumped circuit quantities
+per_km(p012, 1; mode = :RLCG, tol = 1e-9)

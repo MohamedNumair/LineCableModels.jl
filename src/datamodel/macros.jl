@@ -86,7 +86,7 @@ _ctor_materialize(mod, x) =
 	x === :(()) ? () :
 	x isa Expr && x.head === :tuple ? x.args :
 	x isa Symbol ? Base.eval(mod, x) :
-	Base.error("@_ctor: expected tuple literal or const tuple, got $(x)")
+	Base.error("@construct: expected tuple literal or const tuple, got $(x)")
 
 using MacroTools: postwalk
 """
@@ -121,7 +121,7 @@ const _REQ_TUBULAR = (:radius_in, :radius_ext, :material_props)
 const _OPT_TUBULAR = (:temperature,)
 const _DEFS_TUBULAR = (T₀,)
 
-@_ctor Tubular _REQ_TUBULAR _OPT_TUBULAR _DEFS_TUBULAR
+@construct Tubular _REQ_TUBULAR _OPT_TUBULAR _DEFS_TUBULAR
 
 # Expands roughly to:
 # function Tubular(radius_in, radius_ext, material_props; temperature=T₀)
@@ -142,12 +142,12 @@ const _DEFS_TUBULAR = (T₀,)
 
 - `ErrorException` if `length(OPT) != length(DEFS)`.
 """
-macro _ctor(T, REQ, OPT = :(()), DEFS = :(()))
+macro construct(T, REQ, OPT = :(()), DEFS = :(()))
 	mod = __module__
 	req = Symbol.(_ctor_materialize(mod, REQ))
 	opt = Symbol.(_ctor_materialize(mod, OPT))
 	dfx = _ctor_materialize(mod, DEFS)
-	length(opt) == length(dfx) || Base.error("@_ctor: OPT and DEFS length mismatch")
+	length(opt) == length(dfx) || Base.error("@construct: OPT and DEFS length mismatch")
 
 	# A) signature defaults (escape defaults)
 	sig_kws = [Expr(:kw, opt[i], esc(dfx[i])) for i in eachindex(opt)]

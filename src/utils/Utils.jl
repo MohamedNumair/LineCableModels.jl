@@ -1,7 +1,7 @@
 """
 	LineCableModels.Utils
 
-The [`Utils`](@ref) module provides utility functions and constants for the  [`LineCableModels.jl`](index.md) package. This module includes functions for handling measurements, numerical comparisons, and other common tasks.
+The [`Utils`](@ref) module provides utility functions for the  [`LineCableModels.jl`](index.md) package. This module includes functions for handling measurements, numerical comparisons, and other common tasks.
 
 # Overview
 
@@ -21,19 +21,19 @@ module Utils
 
 # Export public API
 export resolve_T, coerce_to_T, resolve_backend, is_headless, is_in_testset, display_path
-export set_logger!
+export set_verbosity!
 
 export to_nominal,
-    to_certain,
-    percent_to_uncertain,
-    bias_to_uncertain,
-    to_upper,
-    to_lower,
-    percent_error
+	to_certain,
+	percent_to_uncertain,
+	bias_to_uncertain,
+	to_upper,
+	to_lower,
+	percent_error
 
 # Module-specific dependencies
 using ..Commons
-using Measurements: Measurement, value, uncertainty, measurement, ±, Measurements
+using Measurements: Measurement, value, uncertainty, measurement, ±, Measurements, result
 using Statistics
 using Plots
 using LinearAlgebra
@@ -93,7 +93,7 @@ result = $(FUNCTIONNAME)(y)  # Output: 10.0
 ```
 """
 function to_certain(value)
-    return value isa Measurement ? (Measurements.value(value) ± 0.0) : value
+	return value isa Measurement ? (Measurements.value(value) ± 0.0) : value
 end
 
 """
@@ -120,7 +120,7 @@ $(FUNCTIONNAME)(10.0, 10)  # Output: 10.0 ± 1.0
 ```
 """
 function percent_to_uncertain(val, perc) #perc from 0 to 100
-    measurement(val, (perc * val) / 100)
+	measurement(val, (perc * val) / 100)
 end
 
 """
@@ -154,13 +154,13 @@ println(result)  # Output: Measurement with adjusted uncertainty
 ```
 """
 function bias_to_uncertain(nominal::Float64, measurements::Vector{<:Measurement})
-    # Compute the mean value and uncertainty from the measurements
-    mean_measurement = mean(measurements)
-    mean_value = Measurements.value(mean_measurement)  # Central value
-    sigma_mean = Measurements.uncertainty(mean_measurement)  # Uncertainty of the mean
-    # Compute the bias (deterministic nominal value minus mean measurement)
-    bias = abs(nominal - mean_value)
-    return mean_value ± (sigma_mean + bias)
+	# Compute the mean value and uncertainty from the measurements
+	mean_measurement = mean(measurements)
+	mean_value = Measurements.value(mean_measurement)  # Central value
+	sigma_mean = Measurements.uncertainty(mean_measurement)  # Uncertainty of the mean
+	# Compute the bias (deterministic nominal value minus mean measurement)
+	bias = abs(nominal - mean_value)
+	return mean_value ± (sigma_mean + bias)
 end
 
 """
@@ -190,11 +190,11 @@ upper_invalid = $(FUNCTIONNAME)(not_a_measurement)  # Output: NaN
 ```
 """
 function to_upper(m::Number)
-    if m isa Measurement
-        return Measurements.value(m) + Measurements.uncertainty(m)
-    else
-        return NaN
-    end
+	if m isa Measurement
+		return Measurements.value(m) + Measurements.uncertainty(m)
+	else
+		return NaN
+	end
 end
 
 """
@@ -224,11 +224,11 @@ lower_invalid = $(FUNCTIONNAME)(not_a_measurement)  # Output: NaN
 ```
 """
 function to_lower(m::Number)
-    if m isa Measurement
-        return Measurements.value(m) - Measurements.uncertainty(m)
-    else
-        return NaN
-    end
+	if m isa Measurement
+		return Measurements.value(m) - Measurements.uncertainty(m)
+	else
+		return NaN
+	end
 end
 
 """
@@ -258,37 +258,37 @@ percent_err_invalid = $(FUNCTIONNAME)(not_a_measurement)  # Output: NaN
 ```
 """
 function percent_error(m::Number)
-    if m isa Measurement
-        return 100 * Measurements.uncertainty(m) / Measurements.value(m)
-    else
-        return NaN
-    end
+	if m isa Measurement
+		return 100 * Measurements.uncertainty(m) / Measurements.value(m)
+	else
+		return NaN
+	end
 end
 
 @inline _nudge_float(x::AbstractFloat) = isfinite(x) && x == trunc(x) ? nextfloat(x) : x #redundant and I dont care
 
 _coerce_args_to_T(args...) =
-    any(x -> x isa Measurement, args) ? Measurement{BASE_FLOAT} : BASE_FLOAT
+	any(x -> x isa Measurement, args) ? Measurement{BASE_FLOAT} : BASE_FLOAT
 
 # Promote scalar to T if T is Measurement; otherwise take nominal if x is Measurement.
 function _coerce_scalar_to_T(x, ::Type{T}) where {T}
-    if T <: Measurement
-        return x isa Measurement ? x : (zero(T) + x)
-    else
-        return x isa Measurement ? T(value(x)) : convert(T, x)
-    end
+	if T <: Measurement
+		return x isa Measurement ? x : (zero(T) + x)
+	else
+		return x isa Measurement ? T(value(x)) : convert(T, x)
+	end
 end
 
 # Arrays: promote/demote elementwise, preserving shape. Arrays NEVER decide T.
 function _coerce_array_to_T(A::AbstractArray, ::Type{T}) where {T}
-    if T <: Measurement
-        return (eltype(A) === T) ? A : (A .+ zero(T))             # Real → Measurement(σ=0)
-    elseif eltype(A) <: Measurement
-        B = value.(A)                                             # Measurement → Real (nominal)
-        return (eltype(B) === T) ? B : convert.(T, B)
-    else
-        return (eltype(A) === T) ? A : convert.(T, A)
-    end
+	if T <: Measurement
+		return (eltype(A) === T) ? A : (A .+ zero(T))             # Real → Measurement(σ=0)
+	elseif eltype(A) <: Measurement
+		B = value.(A)                                             # Measurement → Real (nominal)
+		return (eltype(B) === T) ? B : convert.(T, B)
+	else
+		return (eltype(A) === T) ? A : convert.(T, A)
+	end
 end
 
 """
@@ -314,26 +314,26 @@ end
 ```
 """
 function is_headless()::Bool
-    # 1. Check for common CI environment variables
-    if get(ENV, "CI", "false") == "true"
-        return true
-    end
+	# 1. Check for common CI environment variables
+	if get(ENV, "CI", "false") == "true"
+		return true
+	end
 
-    # 2. Check if a display is available (primarily for Linux)
-    if !haskey(ENV, "DISPLAY") && Sys.islinux()
-        return true
-    end
+	# 2. Check if a display is available (primarily for Linux)
+	if !haskey(ENV, "DISPLAY") && Sys.islinux()
+		return true
+	end
 
-    # 3. Check for GR backend's specific headless setting
-    if get(ENV, "GKSwstype", "") in ("100", "nul", "nil")
-        return true
-    end
+	# 3. Check for GR backend's specific headless setting
+	if get(ENV, "GKSwstype", "") in ("100", "nul", "nil")
+		return true
+	end
 
-    return false
+	return false
 end
 
 function display_path(file_name)
-    return is_headless() ? basename(file_name) : relpath(file_name)
+	return is_headless() ? basename(file_name) : relpath(file_name)
 end
 
 """
@@ -343,26 +343,26 @@ Checks if the code is running inside a `@testset` by checking if `Test` is loade
 in the current session and then calling `get_testset_depth()`.
 """
 function is_in_testset()
-    # Start with the current module
-    current_module = @__MODULE__
+	# Start with the current module
+	current_module = @__MODULE__
 
-    # Walk up the module tree (e.g., from the sandbox to Main)
-    while true
-        if isdefined(current_module, :Test) &&
-           isdefined(current_module.Test, :get_testset_depth)
-            # Found the Test module, check the test set depth
-            return current_module.Test.get_testset_depth() > 0
-        end
+	# Walk up the module tree (e.g., from the sandbox to Main)
+	while true
+		if isdefined(current_module, :Test) &&
+		   isdefined(current_module.Test, :get_testset_depth)
+			# Found the Test module, check the test set depth
+			return current_module.Test.get_testset_depth() > 0
+		end
 
-        # Move to the parent module
-        parent = parentmodule(current_module)
-        if parent === current_module # Reached the top (Main)
-            break
-        end
-        current_module = parent
-    end
+		# Move to the parent module
+		parent = parentmodule(current_module)
+		if parent === current_module # Reached the top (Main)
+			break
+		end
+		current_module = parent
+	end
 
-    return false
+	return false
 end
 
 """
@@ -390,17 +390,17 @@ resolve_backend()           # Auto-selects based on environment
 resolve_backend(pyplot)     # Explicitly use PyPlot backend
 ```
 """
-function resolve_backend(backend=nothing)
-    if isnothing(backend) # Check if running in a headless environment 
-        if is_headless() # Use GR for CI/headless environments
-            ENV["GKSwstype"] = "100"
-            gr()
-        else # Use PlotlyJS for interactive use 
-            plotlyjs()
-        end
-    else # Use the specified backend if provided 
-        backend()
-    end
+function resolve_backend(backend = nothing)
+	if isnothing(backend) # Check if running in a headless environment 
+		if is_headless() # Use GR for CI/headless environments
+			ENV["GKSwstype"] = "100"
+			gr()
+		else # Use PlotlyJS for interactive use 
+			plotlyjs()
+		end
+	else # Use the specified backend if provided 
+		backend()
+	end
 end
 
 """
@@ -416,46 +416,104 @@ Apply `f` to every square block of `M` defined by `map`, in-place.
 Returns `M`.
 """
 function block_transform!(M,
-    map::AbstractVector{<:Integer},
-    f::F,
-    args...; slice_positions=Int[]) where {F}
-    n = size(M, 1)
-    (size(M, 2) == n && length(map) == n) || throw(ArgumentError("shape mismatch"))
-    groups = unique(map)                     # preserve first-seen order
-    blocks = [findall(==(g), map) for g in groups]
+	map::AbstractVector{<:Integer},
+	f::F,
+	args...; slice_positions = Int[]) where {F}
+	n = size(M, 1)
+	(size(M, 2) == n && length(map) == n) || throw(ArgumentError("shape mismatch"))
+	groups = unique(map)                     # preserve first-seen order
+	blocks = [findall(==(g), map) for g in groups]
 
-    # helper to build per-block args (slice selected ones)
-    make_args(idx) = ntuple(i -> (i in slice_positions ? args[i][idx] : args[i]), length(args))
+	# helper to build per-block args (slice selected ones)
+	make_args(idx) =
+		ntuple(i -> (i in slice_positions ? args[i][idx] : args[i]), length(args))
 
-    if ndims(M) == 2
-        for idx in blocks
-            Bv = @view M[idx, idx]
-            R = f(Matrix(Bv), make_args(idx)...)  #  f decides what to do
-            size(R) == size(Bv) || throw(ArgumentError("f must return $(size(Bv))"))
-            @inbounds Bv .= R
-        end
-    elseif ndims(M) == 3
-        _, _, nf = size(M)
-        for k in 1:nf
-            for idx in blocks
-                Bv = @view M[idx, idx, k]
-                R = f(Matrix(Bv), make_args(idx)...)
-                size(R) == size(Bv) || throw(ArgumentError("f must return $(size(Bv))"))
-                @inbounds Bv .= R
-            end
-        end
-    else
-        throw(ArgumentError("M must be 2D or 3D"))
-    end
-    return M
+	if ndims(M) == 2
+		for idx in blocks
+			Bv = @view M[idx, idx]
+			R = f(Matrix(Bv), make_args(idx)...)  #  f decides what to do
+			size(R) == size(Bv) || throw(ArgumentError("f must return $(size(Bv))"))
+			@inbounds Bv .= R
+		end
+	elseif ndims(M) == 3
+		_, _, nf = size(M)
+		for k in 1:nf
+			for idx in blocks
+				Bv = @view M[idx, idx, k]
+				R = f(Matrix(Bv), make_args(idx)...)
+				size(R) == size(Bv) || throw(ArgumentError("f must return $(size(Bv))"))
+				@inbounds Bv .= R
+			end
+		end
+	else
+		throw(ArgumentError("M must be 2D or 3D"))
+	end
+	return M
 end
 
 # Non-mutating
-block_transform(M, cmap, f, args...; slice_positions=Int[]) =
-    block_transform!(copy(M), cmap, f, args...; slice_positions=slice_positions)
+block_transform(M, cmap, f, args...; slice_positions = Int[]) =
+	block_transform!(copy(M), cmap, f, args...; slice_positions = slice_positions)
 
-include("utils/logging.jl")
-include("utils/typecoercion.jl")
-include("utils/macros.jl")
+
+# Reciprocity  symmetrization — in place
+symtrans!(A) = (A .= 0.5 .* (A .+ transpose(A)); A)
+
+# Reciprocity symmetrization (power lines want transpose, not adjoint)
+symtrans(A) = (A .+ transpose(A)) / 2
+
+
+# Circulant projection (N×N), least-squares fit: C[i,j] = c[(j-i) mod N]
+function line_transpose!(A::AbstractMatrix)
+	n = size(A, 1);
+	n == size(A, 2) || throw(ArgumentError("square"))
+	c = similar(diag(A))  # length n
+	@inbounds for k in 0:(n-1)
+		s = zero(eltype(A))
+		for i in 1:n
+			j = 1 + ((i-1 + k) % n)
+			s += A[i, j]
+		end
+		c[k+1] = s / n
+	end
+	@inbounds for i in 1:n, j in 1:n
+		A[i, j] = c[1+((j-i)%n)]
+	end
+	return A
+end
+
+
+function isdiag_approx(A; rtol = 1e-8, atol = 1e-8)
+	isapprox(A, Diagonal(diag(A)); rtol = rtol, atol = atol)
+end
+
+function offdiag_ratio(A)
+	n = size(A, 1)
+	n == size(A, 2) || throw(ArgumentError("square"))
+	T = real(float(eltype(A)))
+	dmax = zero(T)
+	odmax = zero(T)
+	@inbounds for j in 1:n
+		dj = abs(A[j, j])
+		dmax = dj > dmax ? dj : dmax
+		for i in 1:n
+			i == j && continue
+			v = abs(A[i, j])
+			odmax = v > odmax ? v : odmax
+		end
+	end
+	return odmax / max(dmax, eps(T))
+end
+
+isdiag_rel(A; τ = 1e-4) = offdiag_ratio(A) ≤ τ
+
+function issymmetric_approx(A; rtol = 1e-8, atol = 1e-8)
+	size(A, 1) == size(A, 2) || return false
+	return isapprox(A, transpose(A); rtol = rtol, atol = atol)
+end
+
+include("logging.jl")
+include("typecoercion.jl")
+include("macros.jl")
 
 end # module Utils

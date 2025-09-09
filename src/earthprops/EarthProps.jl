@@ -32,7 +32,7 @@ import ..Commons: get_description, add!
 import ..Utils: coerce_to_T
 using Measurements
 
-include("earthprops/fdprops.jl")
+include("fdprops.jl")
 
 """
 $(TYPEDEF)
@@ -440,8 +440,8 @@ function add!(
 	end
 end
 
-include("earthprops/typecoercion.jl")
-include("earthprops/dataframe.jl")
-include("earthprops/base.jl")
+include("typecoercion.jl")
+include("dataframe.jl")
+include("base.jl")
 
 end # module EarthProps

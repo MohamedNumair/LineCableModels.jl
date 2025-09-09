@@ -37,10 +37,10 @@ This tutorial covers:
 using LineCableModels
 using DataFrames
 fullfile(filename) = joinpath(@__DIR__, filename); #hide
-set_logger!(0); #hide
+set_verbosity!(0); #hide
 
 # Initialize materials library with default values:
-materials = MaterialsLibrary(add_defaults=true)
+materials = MaterialsLibrary(add_defaults = true)
 materials_df = DataFrame(materials)
 
 #=
@@ -112,11 +112,11 @@ push!(layers, ("PE jacket", t_jac * 1000, d_overall * 1000)); #hide
 
 # The cable structure is summarized in a table for better visualization, with dimensions in milimiters:
 df = DataFrame( #hide
-    layer=first.(layers), #hide
-    thickness=[ #hide
-        ismissing(t) ? "-" : round(t, sigdigits=2) for t in getindex.(layers, 2) #hide
-    ], #hide
-    diameter=[round(d, digits=2) for d in getindex.(layers, 3)], #hide
+	layer = first.(layers), #hide
+	thickness = [ #hide
+		ismissing(t) ? "-" : round(t, sigdigits = 2) for t in getindex.(layers, 2) #hide
+	], #hide
+	diameter = [round(d, digits = 2) for d in getindex.(layers, 3)], #hide
 ) #hide
 
 #=
@@ -260,16 +260,16 @@ With the core parts properly defined, the [`CableDesign`](@ref) object is initia
 # Define the nominal values and instantiate the `CableDesign` with the `core_cc` component:
 cable_id = "18kV_1000mm2"
 datasheet_info = NominalData(
-    designation_code="NA2XS(FL)2Y",
-    U0=18.0,                        # Phase-to-ground voltage [kV]
-    U=30.0,                         # Phase-to-phase voltage [kV]
-    conductor_cross_section=1000.0, # [mm²]
-    screen_cross_section=35.0,      # [mm²]
-    resistance=0.0291,              # DC resistance [Ω/km]
-    capacitance=0.39,               # Capacitance [μF/km]
-    inductance=0.3,                 # Inductance in trifoil [mH/km]
+	designation_code = "NA2XS(FL)2Y",
+	U0 = 18.0,                        # Phase-to-ground voltage [kV]
+	U = 30.0,                         # Phase-to-phase voltage [kV]
+	conductor_cross_section = 1000.0, # [mm²]
+	screen_cross_section = 35.0,      # [mm²]
+	resistance = 0.0291,              # DC resistance [Ω/km]
+	capacitance = 0.39,               # Capacitance [μF/km]
+	inductance = 0.3,                 # Inductance in trifoil [mH/km]
 )
-cable_design = CableDesign(cable_id, core_cc, nominal_data=datasheet_info)
+cable_design = CableDesign(cable_id, core_cc, nominal_data = datasheet_info)
 
 # At this point, it becomes possible to preview the cable design:
 plt1 = preview(cable_design)
@@ -288,7 +288,7 @@ The metallic screen (typically copper) serves multiple purposes:
 lay_ratio = 10.0 # typical value for wire screens
 material = get(materials, "copper")
 screen_con =
-    ConductorGroup(WireArray(main_insu, Diameter(d_ws), num_sc_wires, lay_ratio, material))
+	ConductorGroup(WireArray(main_insu, Diameter(d_ws), num_sc_wires, lay_ratio, material))
 
 # Add the equalizing copper tape wrapping the wire screen:
 add!(screen_con, Strip, Thickness(t_cut), w_cut, lay_ratio, material)
@@ -363,7 +363,7 @@ library_df = DataFrame(library)
 
 # Save to file for later use:
 output_file = fullfile("cables_library.json")
-save(library, file_name=output_file);
+save(library, file_name = output_file);
 
 
 #=
@@ -380,7 +380,7 @@ The earth return path significantly affects cable impedance calculations and nee
 =#
 
 # Define a frequency-dependent earth model (1 Hz to 1 MHz):
-f = 10.0 .^ range(0, stop=6, length=10)  # Frequency range
+f = 10.0 .^ range(0, stop = 6, length = 10)  # Frequency range
 earth_params = EarthModel(f, 100.0, 10.0, 1.0)  # 100 Ω·m resistivity, εr=10, μr=1
 
 # Earth model base (DC) properties:
@@ -399,14 +399,14 @@ xa, ya, xb, yb, xc, yc = trifoil_formation(x0, y0, 0.035);
 
 # Initialize the `LineCableSystem` with the first cable (phase A):
 cablepos = CablePosition(cable_design, xa, ya,
-    Dict("core" => 1, "sheath" => 0, "jacket" => 0))
+	Dict("core" => 1, "sheath" => 0, "jacket" => 0))
 cable_system = LineCableSystem("18kV_1000mm2_trifoil", 1000.0, cablepos)
 
 # Add remaining cables (phases B and C):
 add!(cable_system, cable_design, xb, yb,
-    Dict("core" => 2, "sheath" => 0, "jacket" => 0))
+	Dict("core" => 2, "sheath" => 0, "jacket" => 0))
 add!(cable_system, cable_design, xc, yc,
-    Dict("core" => 3, "sheath" => 0, "jacket" => 0))
+	Dict("core" => 3, "sheath" => 0, "jacket" => 0))
 
 #=
 !!! note "Phase mapping"
@@ -423,7 +423,7 @@ In this section the complete three-phase cable system is examined.
 system_df = DataFrame(cable_system)
 
 # Visualize the cross-section of the three-phase system:
-plt4 = preview(cable_system, zoom_factor=0.15)
+plt4 = preview(cable_system, zoom_factor = 0.15)
 
 #=
 ## PSCAD & ATPDraw export
@@ -433,11 +433,11 @@ The final step showcases how to export the model for electromagnetic transient s
 
 # Export to PSCAD input file:
 output_file = fullfile("pscad_export.pscx")
-export_file = export_data(:pscad, cable_system, earth_params, file_name=output_file);
+export_file = export_data(:pscad, cable_system, earth_params, file_name = output_file);
 
 # Export to ATPDraw project file (XML):
 output_file = fullfile("atp_export.xml")
-export_file = export_data(:atp, cable_system, earth_params, file_name=output_file);
+export_file = export_data(:atp, cable_system, earth_params, file_name = output_file);
 
 #=
 ## Conclusion

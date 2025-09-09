@@ -35,10 +35,14 @@ export preview, simplify
 # Module-specific dependencies
 using ..Commons
 import ..Commons: add!
-using ..Utils: resolve_T, to_certain, to_nominal, resolve_backend, is_headless, is_in_testset, to_lower, to_upper
+using ..Utils: resolve_T, to_certain, to_nominal, resolve_backend, is_headless,
+	is_in_testset, to_lower, to_upper
 import ..Utils: coerce_to_T, to_lower
 using ..Materials: Material
-import ..Validation: Validation, sanitize, validate!, has_radii, has_temperature, extra_rules, IntegerField, Positive, Finite, Normalized, IsA, required_fields, coercive_fields, keyword_fields, keyword_defaults, _kwdefaults_nt, is_radius_input, Nonneg, OneOf
+import ..Validation: Validation, sanitize, validate!, has_radii, has_temperature,
+	extra_rules, IntegerField, Positive, Finite, Normalized, IsA, required_fields,
+	coercive_fields, keyword_fields, keyword_defaults, _kwdefaults_nt, is_radius_input,
+	Nonneg, OneOf
 using Measurements
 using DataFrames
 using Colors
@@ -49,44 +53,44 @@ using PolygonOps
 using LinearAlgebra
 
 # Abstract types & interfaces
-include("datamodel/types.jl")
-include("datamodel/interfaces.jl")
+include("types.jl")
+include("radii.jl")
 
 # Submodule `BaseParams`
-include("datamodel/BaseParams.jl")
+include("baseparams/BaseParams.jl")
 using .BaseParams
 
 # Constructors
-include("datamodel/macros.jl")
-include("datamodel/validation.jl")
+include("macros.jl")
+include("validation.jl")
 
 # Conductors
-include("datamodel/wirearray.jl")
-include("datamodel/strip.jl")
-include("datamodel/tubular.jl")
-include("datamodel/conductorgroup.jl")
-include("datamodel/sector.jl")
+include("wirearray.jl")
+include("strip.jl")
+include("tubular.jl")
+include("conductorgroup.jl")
+include("sector.jl")
 
 # Insulators
-include("datamodel/insulator.jl")
-include("datamodel/semicon.jl")
-include("datamodel/insulatorgroup.jl")
-include("datamodel/SectorInsulator.jl")
+include("insulator.jl")
+include("semicon.jl")
+include("insulatorgroup.jl")
+include("SectorInsulator.jl")
 
 
 # Groups
-include("datamodel/nominaldata.jl")
-include("datamodel/cablecomponent.jl")
-include("datamodel/cabledesign.jl")
+include("nominaldata.jl")
+include("cablecomponent.jl")
+include("cabledesign.jl")
 
 # Library
-include("datamodel/cableslibrary.jl")
-include("datamodel/linecablesystem.jl")
+include("cableslibrary.jl")
+include("linecablesystem.jl")
 
 # Helpers & overrides
-include("datamodel/helpers.jl")
-include("datamodel/preview.jl")
-include("datamodel/io.jl")
-include("datamodel/typecoercion.jl")
+include("helpers.jl")
+include("preview.jl")
+include("io.jl")
+include("typecoercion.jl")
 
 end # module DataModel

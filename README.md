@@ -14,7 +14,7 @@
 - **Comprehensive cable modeling:** Detailed representation of conductors (solid, tubular, stranded), insulation layers, screens, armoring, and semicons.
 - **Line and cable constants:** Accurate DC and AC parameters (R, L, C, G) with correction factors for temperature, stranding, and helical effects.
 - **Propagation characteristics:** Rigorous electromagnetic   models for cable internal impedances and earth-return paths.
-- **Multiple solvers:** Analytical formulations, finite element modeling, and interfaces to EMT programs, including PSCAD.
+- **Multiple solvers:** Analytical formulations, finite element modeling, and interfaces to EMT programs, including ATPDraw and PSCAD.
 - **Materials and cables library:** Store and reuse standardized material properties and cable designs across projects.
 
 ## Documentation
@@ -25,9 +25,17 @@ See the [full documentation](https://electa-git.github.io/LineCableModels.jl/) f
 
 Clone the package and add to the Julia environment:
 
-```julia
-] add https://github.com/Electa-Git/LineCableModels.jl.git
+```julia-repl
+pkg> add https://github.com/Electa-Git/LineCableModels.jl.git
 ```
+
+If you are using the finite-element solver, it is recommended to run the build script to retrieve the binaries needed by the [GetDP.jl](https://github.com/Electa-Git/GetDP.jl) front-end:
+
+```julia-repl
+pkg> build LineCableModels
+```
+
+Then, in your Julia code, import the package:
 
 ```julia
 using LineCableModels
