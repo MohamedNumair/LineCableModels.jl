@@ -43,6 +43,7 @@ using ...Utils:
 using Measurements
 using LinearAlgebra
 using Colors
+using GeometryBasics
 
 # FEM specific dependencies
 using Gmsh
