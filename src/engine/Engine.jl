@@ -34,7 +34,7 @@ export compute!
 # Module-specific dependencies
 using Reexport, ForceImport
 using Measurements
-# using LinearAlgebra
+using LinearAlgebra
 using ..Commons
 import ..Commons: get_description
 
