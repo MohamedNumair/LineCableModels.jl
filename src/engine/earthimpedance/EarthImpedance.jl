@@ -12,7 +12,7 @@ $(EXPORTS)
 module EarthImpedance
 
 # Export public API
-export Papadopoulos
+export Papadopoulos, SimpleCarson, FullCarson, DeriEarth
 
 # Module-specific dependencies
 using ...Commons
@@ -24,5 +24,8 @@ using QuadGK: quadgk
 
 include("homogeneous.jl")
 include("base.jl")
+include("simplecarson.jl")
+include("fullcarson.jl")
+include("deriearth.jl")
 
 end # module EarthImpedance

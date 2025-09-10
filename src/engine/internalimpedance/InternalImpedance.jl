@@ -12,7 +12,7 @@ $(EXPORTS)
 module InternalImpedance
 
 # Export public API
-export ScaledBessel
+export ScaledBessel, SimpleSkin, DeriSkin
 
 # Module-specific dependencies
 using ...Commons
@@ -23,6 +23,8 @@ using LinearAlgebra
 using ...UncertainBessels: besselix, besselkx
 
 include("scaledbessel.jl")
+include("simpleskin.jl")
+include("deriskin.jl")
 
 function loop_to_phase(
 	Z::Matrix{Complex{T}},
