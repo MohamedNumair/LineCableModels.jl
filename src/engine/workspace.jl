@@ -11,6 +11,8 @@ $(TYPEDFIELDS)
 @kwdef struct EMTWorkspace{T <: REALSCALAR}
 	"Vector of frequency values [Hz]."
 	freq::Vector{T}
+	"Vector of complex frequency values cast as `σ + jω` [rad/s]."
+	jω::Vector{Complex{T}}
 	"Vector of horizontal positions [m]."
 	horz::Vector{T}
 	"Vector of horizontal separations [m]."
@@ -60,10 +62,20 @@ $(TYPEDFIELDS)
 	"Number of cables in the system."
 	n_cables::Int
 	"Full component-based Z matrix (before bundling/reduction)."
-	Zprim::Array{Complex{T}, 3}
-	"Full component-based Y matrix (before bundling/reduction)."
-	Yprim::Array{Complex{T}, 3}
+	Z::Array{Complex{T}, 3}
+	"Full component-based P matrix (before bundling/reduction)."
+	P::Array{Complex{T}, 3}
+	"Full internal impedance matrix (before bundling/reduction)."
+	Zin::Array{Complex{T}, 3}
+	"Full internal potential coefficient matrix (before bundling/reduction)."
+	Pin::Array{Complex{T}, 3}
+	"Earth impedance matrix (n_cables x n_cables)."
+	Zg::Array{Complex{T}, 3}
+	"Earth potential coefficient matrix (n_cables x n_cables)."
+	Pg::Array{Complex{T}, 3}
 end
+
+
 
 """
 $(TYPEDSIGNATURES)
@@ -81,9 +93,11 @@ function init_workspace(
 	system = problem.system
 	n_frequencies = length(problem.frequencies)
 	n_phases = sum(length(cable.design_data.components) for cable in system.cables)
+	n_cables = system.num_cables
 
 	# Pre-allocate 1D arrays
 	freq = Vector{T}(undef, n_frequencies)
+	jω = Vector{Complex{T}}(undef, n_frequencies)
 	horz = Vector{T}(undef, n_phases)
 	horz_sep = Matrix{T}(undef, n_phases, n_phases)
 	vert = Vector{T}(undef, n_phases)
@@ -101,11 +115,28 @@ function init_workspace(
 	tan_ins = Vector{T}(undef, n_phases)   # Loss tangent for insulator
 	phase_map = Vector{Int}(undef, n_phases)
 	cable_map = Vector{Int}(undef, n_phases)
-	Zprim = zeros(Complex{T}, n_phases, n_phases, n_frequencies)
-	Yprim = zeros(Complex{T}, n_phases, n_phases, n_frequencies)
+	Z =
+		opts.store_primitive_matrices ?
+		zeros(Complex{T}, n_phases, n_phases, n_frequencies) : nothing
+	P =
+		opts.store_primitive_matrices ?
+		zeros(Complex{T}, n_phases, n_phases, n_frequencies) : nothing
+	Zin =
+		opts.store_primitive_matrices ?
+		zeros(Complex{T}, n_phases, n_phases, n_frequencies) : nothing
+	Pin =
+		opts.store_primitive_matrices ?
+		zeros(Complex{T}, n_phases, n_phases, n_frequencies) : nothing
+	Zg =
+		opts.store_primitive_matrices ?
+		zeros(Complex{T}, n_cables, n_cables, n_frequencies) : nothing
+	Pg =
+		opts.store_primitive_matrices ?
+		zeros(Complex{T}, n_cables, n_cables, n_frequencies) : nothing
 
 	# Fill arrays, ensuring type promotion
 	freq .= problem.frequencies
+	jω .= 1im * 2π * freq
 
 	idx = 0
 	for (cable_idx, cable) in enumerate(system.cables)
@@ -141,9 +172,7 @@ function init_workspace(
 	end
 
 	# Precompute Euclidean distances, use max radius for self-distances
-	horz_sep = abs.(horz .- permutedims(horz))
-	horz_sep[diagind(horz_sep)] .= max.(r_ext, r_ins_ext)
-
+	_calc_horz_sep!(horz_sep, horz, r_ext, r_ins_ext, cable_map)
 
 	(rho_g, eps_g, mu_g) = _get_earth_data(
 		formulation.equivalent_earth,
@@ -156,7 +185,7 @@ function init_workspace(
 
 	# Construct and return the EMTWorkspace struct
 	return EMTWorkspace{T}(
-		freq = freq,
+		freq = freq, jω = jω,
 		horz = horz, horz_sep = horz_sep, vert = vert,
 		r_in = r_in, r_ext = r_ext,
 		r_ins_in = r_ins_in, r_ins_ext = r_ins_ext,
@@ -165,6 +194,7 @@ function init_workspace(
 		tan_ins = tan_ins, phase_map = phase_map, cable_map = cable_map, rho_g = rho_g,
 		eps_g = eps_g, mu_g = mu_g,
 		temp = temp, n_frequencies = n_frequencies, n_phases = n_phases,
-		n_cables = system.num_cables, Zprim = Zprim, Yprim = Yprim,
+		n_cables = n_cables, Z = Z, P = P, Zin = Zin, Pin = Pin, Zg = Zg,
+		Pg = Pg,
 	)
 end
