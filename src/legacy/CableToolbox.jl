@@ -3,7 +3,7 @@ module CableToolbox
 # Import required libraries
 using Measurements
 using Calculus
-# using SpecialFunctions  # For Bessel functions
+using SpecialFunctions  # For Bessel functions
 using LinearAlgebra     # For sqrt(-1) as `im`
 using Base.MathConstants: pi
 using QuadGK
@@ -12,23 +12,21 @@ using Statistics
 using DataFrames
 using Plots
 using Plots.PlotMeasures
-import ...Utils: to_nominal
 
-# # Export toolbox functions
-# export compute_impedance_matrix, compute_admittance_matrix, compute_ZY_summary
-# export calc_outer_skin_effect_impedance,
-#     calc_inner_skin_effect_impedance,
-#     calc_mutual_skin_effect_impedance,
-#     calc_outer_insulation_impedance,
-#     calc_outer_potential_coefficient
-# export transform_loop_impedance, perform_bundle_reduction, apply_fortescue_transform
-# export calc_self_impedance_papadopoulos,
-#     calc_mutual_impedance_papadopoulos,
-#     calc_self_potential_coeff_papadopoulos,
-#     calc_mutual_potential_coeff_papadopoulos,
-#     compute_frequency_dependent_soil_props
-# export remove_small_values,
-#     print_matrices, print_sym_components, uncertain_from_interval, uncertain_from_percent
+# Export toolbox functions
+export compute_impedance_matrix, compute_admittance_matrix, compute_ZY_summary
+export calc_outer_skin_effect_impedance,
+	calc_inner_skin_effect_impedance,
+	calc_mutual_skin_effect_impedance,
+	calc_outer_insulation_impedance,
+	calc_outer_potential_coefficient
+export transform_loop_impedance, perform_bundle_reduction, apply_fortescue_transform
+export calc_self_impedance_papadopoulos,
+	calc_mutual_impedance_papadopoulos,
+	calc_self_potential_coeff_papadopoulos,
+	calc_mutual_potential_coeff_papadopoulos,
+	compute_frequency_dependent_soil_props
+export remove_small_values, print_matrices, print_sym_components, uncertain_from_interval, uncertain_from_percent
 
 """
 	@uncertain_bessel(function_name(order, x))
@@ -192,43 +190,39 @@ function calc_inner_skin_effect_impedance(
 	# Calculate the reciprocal of the skin depth
 	m = sqrt(im * omega * mu_c * sigma_c)
 
+	# Approximated skin effect
+	if radius_in == 0
+		radius_in = eps()  # Avoid division by zero
+	end
+
 	if SimplifiedFormula
-
-		if isaprox(radius_in, 0)
-			zin =
-				(m / (2 * pi * radius_ex * sigma_c)) * coth(0.733 * m * radius_ex) +
-				0.3179 / (pi * radius_ex^2 * sigma_c)
-		else
-			cothTerm = coth(m * (radius_ex - radius_in))
-			Z1 = (m / sigma_c) / (2 * pi * radius_in) * cothTerm
-			Z2 = 1 / (2 * pi * radius_in * (radius_in + radius_ex) * sigma_c)
-			zin = Z1 + Z2
-		end
-
+		Z1 = (m / sigma_c) / (2 * pi * radius_in) * coth(m * (radius_ex - radius_in))
+		Z2 = 1 / (2 * pi * radius_in * (radius_in + radius_ex) * sigma_c)
+		zin = Z1 + Z2
 	else
-		w2 = radius_ex * m
+		# More detailed solution with Bessel functions and uncertainty
+		w_out = m * radius_ex
+		w_in = m * radius_in
 
-		if radius_in > 0
-			# Tubular conductor
-			w1 = radius_in * m
-			sc1 = exp(abs(real(w1)) - abs(real(w2)) + w1 - w2)  # aligns I/K scaling
+		s_in = exp(abs(real(w_in)) - w_out)
+		s_out = exp(abs(real(w_out)) - w_in)
+		sc = s_in / s_out  # Should be applied to all besselix() involving w_in
 
-			num =
-				@uncertain_bessel(besselix(0, w2)) * @uncertain_bessel(besselkx(1, w1)) +
-				sc1 *
-				@uncertain_bessel(besselix(1, w1)) * @uncertain_bessel(besselkx(0, w2))
-			den =
-				@uncertain_bessel(besselix(1, w2)) * @uncertain_bessel(besselkx(1, w1)) -
-				sc1 *
-				@uncertain_bessel(besselix(1, w1)) * @uncertain_bessel(besselkx(1, w2))
+		# Bessel function terms with uncertainty handling using the macro
+		N =
+			sc *
+			(@uncertain_bessel besselix(0, w_in)) *
+			(@uncertain_bessel besselkx(1, w_out)) +
+			(@uncertain_bessel besselkx(0, w_in)) * (@uncertain_bessel besselix(1, w_out))
 
-			zin = (im * omega * mu_c) / (2 * pi * w2) * (num / den)
-		else
-			# Solid conductor
-			num = @uncertain_bessel(besselix(0, w2))
-			den = @uncertain_bessel(besselix(1, w2))
-			zin = (im * omega * mu_c) / (2 * pi * w2) * (num / den)
-		end
+		D =
+			(@uncertain_bessel besselix(1, w_out)) * (@uncertain_bessel besselkx(1, w_in)) -
+			sc *
+			(@uncertain_bessel besselkx(1, w_out)) *
+			(@uncertain_bessel besselix(1, w_in))
+
+		# Final impedance calculation
+		zin = (im * omega * mu_c / (2 * pi)) * (1 / w_in) * (N / D)
 	end
 
 	return zin
@@ -277,6 +271,7 @@ function calc_mutual_skin_effect_impedance(
 	end
 
 	if SimplifiedFormula
+		# Calculate the hyperbolic cosecant term
 		cschTerm = csch(m * (radius_ex - radius_in))
 		zm = m / (sigma_c * pi * (radius_in + radius_ex)) * cschTerm
 	else
@@ -403,7 +398,7 @@ function reorder_by_phase_indices(
 	reordered_indices = Int[]
 
 	# Get the unique phases from ph_order, ignoring phase 0
-	unique_phases = unique(ph_order[ph_order .> 0])
+	unique_phases = unique(ph_order[ph_order.>0])
 
 	# First, process one row for each unique phase
 	for phase in unique_phases
@@ -505,8 +500,7 @@ function perform_bundle_reduction(
 	# Kron reduction formula: ZR = ZC11 - ZC12 * inv(ZC22) * ZC21
 	ZR =
 		ZC[1:nf, 1:nf] -
-		ZC[1:nf, (nf+1):(nf+ng)] *
-		(ZC[(nf+1):(nf+ng), (nf+1):(nf+ng)] \ ZC[(nf+1):(nf+ng), 1:nf])
+		ZC[1:nf, nf+1:nf+ng] * (ZC[nf+1:nf+ng, nf+1:nf+ng] \ ZC[nf+1:nf+ng, 1:nf])
 
 	return ZR
 end
@@ -718,7 +712,7 @@ function calc_mutual_impedance_papadopoulos(
 
 	# Mutual Impedance
 	for x ∈ 1:con
-		for y ∈ (x+1):con
+		for y ∈ x+1:con
 			if x != y
 				h1 = h[x]
 				h2 = h[y]
@@ -952,7 +946,7 @@ function calc_mutual_potential_coeff_papadopoulos(
 
 	# Mutual potential coefficient
 	for x ∈ 1:con
-		for y ∈ (x+1):con
+		for y ∈ x+1:con
 			if x != y
 				h1 = h[x]
 				h2 = h[y]
@@ -1021,6 +1015,124 @@ function calc_mutual_potential_coeff_papadopoulos(
 	return Pg_mutual
 end
 
+"""
+	compute_frequency_dependent_soil_props(soil, FD_flag, f_total)
+
+Computes the frequency-dependent soil properties for multiple soil layers. The returned
+dictionary contains the relative permittivity, conductivity, and absolute permittivity for
+each soil layer across all frequency samples.
+
+# Arguments
+- `soil`: A dictionary containing the base properties of the soil (including optional layers).
+- `FD_flag`: A flag to select the type of frequency-dependent model:
+  - `0`: Constant soil properties (default).
+- `f_total`: Vector of frequencies for which the soil properties will be computed.
+
+# Returns
+- `Dict{Symbol,Any}`: A dictionary with frequency-dependent soil properties:
+  - `:erg_total`: Relative permittivity for each layer and frequency.
+  - `:sigma_g_total`: Conductivity for each layer and frequency.
+  - `:e_g_total`: Absolute permittivity for each layer and frequency.
+  - `:m_g_total`: Permeability (constant for all frequencies).
+
+# Category: Frequency-dependent (FD) soil properties
+
+"""
+function compute_frequency_dependent_soil_props(
+	soil,
+	FD_flag::Int,
+	f_total::Vector{Float64},
+)
+
+	# Initialize the output soil structure
+	soilFD = Dict{Symbol, Any}()
+
+	# Constants
+	e0 = 8.854187817e-12  # Farads/meter
+	siz = length(f_total)
+
+	# Initialize number of layers
+	num_layers = 1
+	if haskey(soil, :layer)
+		num_layers += length(soil[:layer])
+	end
+
+	# Initialize matrices for soil properties across frequencies
+	erg_total = fill(measurement(0.0, 0.0), siz, num_layers)  # Relative permittivity of soil layers
+	sigma_g_total = fill(measurement(0.0, 0.0), siz, num_layers)  # Conductivity of soil layers
+	e_g_total = fill(measurement(0.0, 0.0), siz, num_layers)  # Absolute permittivity of soil layers
+
+	for l ∈ 1:num_layers
+		# Extract soil properties for each layer (or final layer if no more layers)
+		if l == num_layers
+			epsr = soil[:erg]      # Relative permittivity of earth
+			m_g = soil[:m_g]       # Permeability of earth
+			sigma_g = soil[:sigma_g]  # Conductivity of earth
+		else
+			epsr = soil[:layer][l][:erg]  # Relative permittivity of earth for this layer
+			m_g = soil[:layer][l][:m_g]   # Permeability of earth for this layer
+			sigma_g = soil[:layer][l][:sigma_g]  # Conductivity of earth for this layer
+		end
+
+		# For FD_flag == 0, the parameters are constant over frequencies
+		if FD_flag == 0
+			erg_total[:, l] .= epsr .* ones(siz)
+			sigma_g_total[:, l] .= sigma_g .* ones(siz)
+		else
+			error("Currently only constant properties (CP) soil models are available.") #TODO: port CIGRE and Longmire-Smith models
+		end
+
+		# Calculate absolute permittivity (ε = ε₀ * εr)
+		e_g_total[:, l] .= e0 .* erg_total[:, l]
+	end
+
+	# Add frequency-dependent soil properties to the output dictionary
+	soilFD[:erg_total] = erg_total
+	soilFD[:sigma_g_total] = sigma_g_total
+	soilFD[:e_g_total] = e_g_total
+	soilFD[:m_g_total] = fill(soil[:m_g], siz, num_layers)  # Permeability is constant
+
+	return soilFD
+end
+
+
+"""
+    remove_small_values(data)
+
+Cleans up the impedance/admittance values by replacing values smaller than machine epsilon
+with zero.
+
+# Arguments
+- `data`: Input scalar, 2D matrix, or nD array to clean.
+
+# Returns
+- `Complex{Measurements.Measurement{Float64}}`: Cleaned data with small values replaced by zero.
+
+# Category: Misc
+
+"""
+function remove_small_values(data)
+    eps_value = eps(Float64)
+    
+    if isa(data, Complex{Measurements.Measurement{Float64}})
+        # Handle scalar case
+        return Complex(
+            abs(Measurements.value(real(data))) < eps_value ? Measurements.measurement(0.0, 0.0) : real(data),
+            abs(Measurements.value(imag(data))) < eps_value ? Measurements.measurement(0.0, 0.0) : imag(data)
+        )
+    elseif isa(data, AbstractArray)
+        # Handle any-dimensional array case
+        return Complex{Measurements.Measurement{Float64}}[
+            Complex(
+                abs(Measurements.value(real(x))) < eps_value ? Measurements.measurement(0.0, 0.0) : real(x),
+                abs(Measurements.value(imag(x))) < eps_value ? Measurements.measurement(0.0, 0.0) : imag(x)
+            ) for x in data
+        ]
+    else
+        error("Unsupported data type.")
+    end
+end
+
 
 """
 	compute_impedance_matrix(freq, soilFD, Geom, Ncables, Nph, ph_order, h, d)
@@ -1041,22 +1153,12 @@ Computes the full impedance matrix for a multi-conductor system over a range of 
 - `Zphase::Array{Complex{Measurements.Measurement{Float64}}, 3}`: The computed impedance matrix for each frequency.
 
 # Category: Cable constants matrices
+
 """
-function compute_impedance_matrix(
-	freq,
-	sigma_g_total,
-	e_g_total,
-	m_g_total,
-	Geom,
-	Ncables,
-	Nph,
-	ph_order,
-	h,
-	d,
-	ws,
-)
+function compute_impedance_matrix(freq, soilFD, Geom, Ncables, Nph, ph_order, h, d)
 
 	freq_siz = length(freq)
+
 	# Preallocate the 3D array for impedance with size Nph x Nph x freq_siz
 	Zphase = Array{Complex{Measurements.Measurement{Float64}}, 3}(undef, Nph, Nph, freq_siz)
 
@@ -1068,23 +1170,23 @@ function compute_impedance_matrix(
 		f = freq[k]
 
 		# Get soil parameters for this frequency
-		sigma_g = sigma_g_total[k]
-		m_g = m_g_total[k]
-		e_g = e_g_total[k]
+		sigma_g = soilFD[:sigma_g_total][k]
+		m_g = soilFD[:m_g_total][k]
+		e_g = soilFD[:e_g_total][k]
 
 		# Calculate outermost radii for each cable
 		outermost_radii = map(
 			cable_num -> maximum(
-				[Geom[Geom[:, 1] .== cable_num, 6]; Geom[Geom[:, 1] .== cable_num, 9]],
+				[Geom[Geom[:, 1].==cable_num, 6]; Geom[Geom[:, 1].==cable_num, 9]],
 			),
 			1:Ncables,
 		)
 
 		# Calculate external (earth return) impedance matrices
 		Zg_self = calc_self_impedance_papadopoulos(
-			h[ph_order .!= 0],
+			h[ph_order.!=0],
 			outermost_radii,
-			e_g,
+			0 * e_g,
 			m_g,
 			sigma_g,
 			f,
@@ -1092,9 +1194,9 @@ function compute_impedance_matrix(
 			0,
 		)
 		Zg_mutual = calc_mutual_impedance_papadopoulos(
-			h[ph_order .!= 0],
-			d[ph_order .!= 0, ph_order .!= 0],
-			e_g,
+			h[ph_order.!=0],
+			d[ph_order.!=0, ph_order.!=0],
+			0 * e_g,
 			m_g,
 			sigma_g,
 			f,
@@ -1102,10 +1204,10 @@ function compute_impedance_matrix(
 			0,
 		)
 		Zext = Zg_self + Zg_mutual
-
+		
 		# Compute internal impedance matrices
 		for i ∈ 1:Ncables
-			cabledata = Geom[Geom[:, 1] .== i, 2:end]
+			cabledata = Geom[Geom[:, 1].==i, 2:end]
 			ncond_cable = size(cabledata, 1)  # Number of conductor layers in cable i
 
 			for j ∈ 1:Ncables
@@ -1131,7 +1233,6 @@ function compute_impedance_matrix(
 							sig_c_thislayer,
 							mu_c_thislayer,
 							f,
-							SimplifiedFormula = false,
 						)
 
 						# Insulation impedance (if present)
@@ -1160,7 +1261,6 @@ function compute_impedance_matrix(
 								sig_c_nextlayer,
 								mu_c_nextlayer,
 								f,
-								SimplifiedFormula = false,
 							)
 							Zmutual = calc_mutual_skin_effect_impedance(
 								rext_nextlayer,
@@ -1168,7 +1268,6 @@ function compute_impedance_matrix(
 								sig_c_nextlayer,
 								mu_c_nextlayer,
 								f,
-								SimplifiedFormula = false,
 							)
 						else
 							Zinner_nextlayer = Zext[i, j]  # Self-earth return impedance (underground conductor)
@@ -1194,11 +1293,10 @@ function compute_impedance_matrix(
 		end
 
 		# Combine all impedance matrices into a full system impedance matrix
-		Zprim = reduce(vcat, [reduce(hcat, Z[i, :]) for i ∈ 1:Ncables])
+		Zfull = reduce(vcat, [reduce(hcat, Z[i, :]) for i ∈ 1:Ncables])
+
 		# Perform bundle and Kron reduction
-		ws.Zprim[:, :, k] = eltype(ws) <: Measurement ? Zprim : to_nominal.(Zprim)
-		Zph = perform_bundle_reduction(Zprim, ph_order)
-		Zphase[:, :, k] = Zph #(Zph + transpose(Zph)) / 2.0 # enforce symmetry
+		Zphase[:, :, k] = perform_bundle_reduction(Zfull, ph_order)
 
 	end
 
@@ -1227,19 +1325,7 @@ frequencies.
 # Category: Cable constants matrices
 
 """
-function compute_admittance_matrix(
-	freq,
-	sigma_g_total,
-	e_g_total,
-	m_g_total,
-	Geom,
-	Ncables,
-	Nph,
-	ph_order,
-	h,
-	d,
-	ws,
-)
+function compute_admittance_matrix(freq, soilFD, Geom, Ncables, Nph, ph_order, h, d)
 
 	freq_siz = length(freq)
 
@@ -1253,23 +1339,23 @@ function compute_admittance_matrix(
 		f = freq[k]
 
 		# Get soil parameters for this frequency
-		sigma_g = sigma_g_total[k]
-		m_g = m_g_total[k]
-		e_g = e_g_total[k]
+		sigma_g = soilFD[:sigma_g_total][k]
+		m_g = soilFD[:m_g_total][k]
+		e_g = soilFD[:e_g_total][k]
 
 		# Calculate outermost radii for each cable
 		outermost_radii = map(
 			cable_num -> maximum(
-				[Geom[Geom[:, 1] .== cable_num, 6]; Geom[Geom[:, 1] .== cable_num, 9]],
+				[Geom[Geom[:, 1].==cable_num, 6]; Geom[Geom[:, 1].==cable_num, 9]],
 			),
 			1:Ncables,
 		)
 
 		# Calculate external (earth return) admittance matrices
 		Pg_self = calc_self_potential_coeff_papadopoulos(
-			h[ph_order .!= 0],
+			h[ph_order.!=0],
 			outermost_radii,
-			e_g,
+			0 * e_g,
 			m_g,
 			sigma_g,
 			f,
@@ -1277,9 +1363,9 @@ function compute_admittance_matrix(
 			0,
 		)
 		Pg_mutual = calc_mutual_potential_coeff_papadopoulos(
-			h[ph_order .!= 0],
-			d[ph_order .!= 0, ph_order .!= 0],
-			e_g,
+			h[ph_order.!=0],
+			d[ph_order.!=0, ph_order.!=0],
+			0 * e_g,
 			m_g,
 			sigma_g,
 			f,
@@ -1290,7 +1376,7 @@ function compute_admittance_matrix(
 
 		# Compute internal admittance matrices
 		for i ∈ 1:Ncables
-			cabledata = Geom[Geom[:, 1] .== i, 2:end]
+			cabledata = Geom[Geom[:, 1].==i, 2:end]
 			ncond_cable = size(cabledata, 1)  # Number of conductor layers in cable i
 
 			for j ∈ 1:Ncables
@@ -1343,10 +1429,7 @@ function compute_admittance_matrix(
 
 		# Compute the reduced admittance matrix
 		w = 2 * pi * f
-		Yph = 1im * w * inv(Pphase)
-		Yprim = 1im * w * inv(Pfull)
-		ws.Yprim[:, :, k] = eltype(ws) <: Measurement ? Yprim : to_nominal.(Yprim)
-		Yphase[:, :, k] = Yph #(Yph + transpose(Yph)) / 2.0 # enforce symmetry
+		Yphase[:, :, k] = 1im * w * inv(Pphase)
 
 	end
 
@@ -1368,10 +1451,7 @@ components (zero, positive, and negative sequence).
 # Category: Matrix transformations, bundle and Kron reduction
 
 """
-function apply_fortescue_transform(
-	Z::Union{Array{Complex{Measurement{Float64}}}, Array{Complex{Float64}}};
-	transpose_line::Bool = true,
-)
+function apply_fortescue_transform(Z::Union{Array{Complex{Measurement{Float64}}}, Array{Complex{Float64}}})
 	num_phases = size(Z, 1)  # Fetch the number of conductors from Z dimensions
 	num_freq_samples = size(Z, 3)  # Number of frequency samples (3rd dimension of Z)
 
@@ -1387,38 +1467,122 @@ function apply_fortescue_transform(
 	end
 
 	# Preallocate Z012 as a 3D array with full transformed 3x3 matrices for each frequency sample
-	Z012 = Array{Complex{Measurement{Float64}}, 3}(
-		undef,
-		num_phases,
-		num_phases,
-		num_freq_samples,
-	)
+	Z012 = Array{Complex{Measurement{Float64}}, 3}(undef, num_phases, num_phases, num_freq_samples)
 
 
 	# Loop over each frequency sample and apply the modal transformation
 	for k ∈ 1:num_freq_samples
-		# Extract the 2D matrix for the current frequency sample
-		Z_slice = Z[:, :, k]
-		if transpose_line
-			# Enforce transposition (snaking)
-			diag_mean = mean(diag(Z_slice))
-			off_diag_values = Z_slice[triu(trues(size(Z_slice)), 1)]  # Upper triangular off-diagonal
-			append!(off_diag_values, Z_slice[tril(trues(size(Z_slice)), -1)])  # Lower triangular off-diagonal
-			off_diag_mean = mean(off_diag_values)  # Compute the mean
-			Z_slice =
-				diagm(fill(diag_mean, 3)) .+
-				(ones(3, 3) .- Matrix(I, 3, 3)) .* off_diag_mean
-		end
-		# Apply transformation to the 2D matrix
-		Z_transformed = inv(Ti) * Z_slice * Ti
-		Z012[:, :, k] = Z_transformed
+		Z_slice = Z[:, :, k]  # Extract the 2D matrix for the current frequency sample
+		Z_transformed = inv(Ti) * Z_slice * Ti  # Apply transformation to the 2D matrix
+		Z012[:, :, k] = Z_transformed 
 
 	end
 
 	return Z012
 end
 
+"""
+	print_matrices(Z, freq_range)
 
+Formats and prints a 3D matrix `Z`, which represents frequency-dependent impedance/admittance 
+values, in a clean and human-readable way. Each frequency's matrix is printed with rows and columns 
+formatted neatly for easy reading, and the real and imaginary parts are shown with 6 decimal places.
+
+# Arguments
+- `Z::Array{Complex{Measurement{T}}, 3}`: A 3D array where the first two dimensions represent the rows and columns 
+  of the matrix, and the third dimension corresponds to different frequency samples.
+- `frequencies::Vector{T}`: A vector of frequencies corresponding to the third dimension of `Z`.
+
+# Category: Misc
+
+"""
+function print_matrices(Z, freq_range)
+	num_freqs = size(Z, 3)  # 3rd dimension is the number of frequencies
+
+	for k in 1:num_freqs
+		Zprint = remove_small_values(Z[:, :, k])
+		println("  - Phase-based quantities for frequency f = $(freq_range[k]) Hz:")
+		println("[")  # Open matrix bracket
+		
+		for i in 1:size(Z, 1)
+			
+			row_values = [
+				imag(Zprint[i, j]) >= 0 ?
+				@sprintf(
+					"%.6E ± %.6E + %.6E ± %.6Eim",
+					real(Measurements.value(Zprint[i, j])), Measurements.uncertainty(real(Zprint[i, j])),
+					imag(Measurements.value(Zprint[i, j])), Measurements.uncertainty(imag(Zprint[i, j]))
+				) :
+				@sprintf(
+					"%.6E ± %.6E - %.6E ± %.6Eim",
+					real(Measurements.value(Zprint[i, j])), Measurements.uncertainty(real(Zprint[i, j])),
+					abs(imag(Measurements.value(Zprint[i, j]))), Measurements.uncertainty(imag(Zprint[i, j]))
+				)
+				for j in 1:size(Z, 2)
+			]
+
+			if i < size(Z, 1)
+				println("   ", join(row_values, ", "), ";")  # Add semicolon at the end of each row except the last
+			else
+				println("   ", join(row_values, ", "))  # No semicolon for the last row
+			end
+		end
+
+		println("]")  # Close matrix bracket
+		println("\n")  # Linebreak between frequency matrices
+	end
+end
+
+"""
+	print_sym_components(Z, freq_range)
+
+Formats and prints the diagonal elements of a 3D matrix `Z`, which represents the sequence impedance/admittance 
+values, in a clean and human-readable way.
+
+# Arguments
+- `Z::Array{Complex{Measurement{T}}, 3}`: A 3D array where the first two dimensions represent the rows and columns 
+  of the matrix, and the third dimension corresponds to different frequency samples.
+- `frequencies::Vector{T}`: A vector of frequencies corresponding to the third dimension of `Z`.
+
+# Category: Misc
+
+"""
+function print_sym_components(Z, freq_range)
+	num_freqs = size(Z, 3)  # 3rd dimension is the number of frequencies
+
+	for k in 1:num_freqs
+		Zprint = diag(remove_small_values(Z[:, :, k]))
+		println("  - Symmetrical components ordered as 012 for frequency f = $(freq_range[k]) Hz:")
+		println("[")  # Open matrix bracket
+		
+		for i in axes(Zprint, 1)
+			
+			row_values = [
+				imag(Zprint[i, j]) >= 0 ?
+				@sprintf(
+					"%.6E ± %.6E + %.6E ± %.6Eim",
+					real(Measurements.value(Zprint[i, j])), Measurements.uncertainty(real(Zprint[i, j])),
+					imag(Measurements.value(Zprint[i, j])), Measurements.uncertainty(imag(Zprint[i, j]))
+				) :
+				@sprintf(
+					"%.6E ± %.6E - %.6E ± %.6Eim",
+					real(Measurements.value(Zprint[i, j])), Measurements.uncertainty(real(Zprint[i, j])),
+					abs(imag(Measurements.value(Zprint[i, j]))), Measurements.uncertainty(imag(Zprint[i, j]))
+				)
+				for j in axes(Zprint, 2)
+			]
+
+			if i < size(Z, 1)
+				println("   ", join(row_values, ", "), ";")  # Add semicolon at the end of each row except the last
+			else
+				println("   ", join(row_values, ", "))  # No semicolon for the last row
+			end
+		end
+
+		println("]")  # Close matrix bracket
+		println("\n")  # Linebreak between frequency matrices
+	end
+end
 
 """
 	uncertain_from_interval(max, min)
@@ -1459,7 +1623,7 @@ function uncertain_from_percent(val, perc)
 end
 
 """
-	compute_ZY_summary(Z_in, Y_in, freq_range, cable_number)
+    compute_ZY_summary(Z_in, Y_in, freq_range, cable_number)
 
 Computes a detailed summary of electrical parameters (impedance, admittance, and their derived quantities) for a given cable system, extracting values from the main diagonal of the impedance (Z) and admittance (Y) matrices.
 
@@ -1471,24 +1635,24 @@ Computes a detailed summary of electrical parameters (impedance, admittance, and
 
 # Returns
 - `Z_summary_df::DataFrame`: A DataFrame containing the following columns for each frequency:
-	- `frequency`: The frequency value.
-	- `Z`: The diagonal element of the impedance matrix for the given cable.
-	- `R`: The real part (resistance) of the impedance.
-	- `delta_R`: The uncertainty of the resistance.
-	- `delta_R_percent`: The percentage uncertainty of the resistance.
-	- `L`: The inductance extracted from the imaginary part of the impedance.
-	- `delta_L`: The uncertainty of the inductance.
-	- `delta_L_percent`: The percentage uncertainty of the inductance.
+    - `frequency`: The frequency value.
+    - `Z`: The diagonal element of the impedance matrix for the given cable.
+    - `R`: The real part (resistance) of the impedance.
+    - `delta_R`: The uncertainty of the resistance.
+    - `delta_R_percent`: The percentage uncertainty of the resistance.
+    - `L`: The inductance extracted from the imaginary part of the impedance.
+    - `delta_L`: The uncertainty of the inductance.
+    - `delta_L_percent`: The percentage uncertainty of the inductance.
 
 - `Y_summary_df::DataFrame`: A DataFrame containing the following columns for each frequency:
-	- `frequency`: The frequency value.
-	- `Y`: The diagonal element of the admittance matrix for the given cable.
-	- `C`: The capacitance extracted from the imaginary part of the admittance.
-	- `delta_C`: The uncertainty of the capacitance.
-	- `delta_C_percent`: The percentage uncertainty of the capacitance.
-	- `G`: The real part (conductance) of the admittance.
-	- `delta_G`: The uncertainty of the conductance.
-	- `delta_G_percent`: The percentage uncertainty of the conductance.
+    - `frequency`: The frequency value.
+    - `Y`: The diagonal element of the admittance matrix for the given cable.
+    - `C`: The capacitance extracted from the imaginary part of the admittance.
+    - `delta_C`: The uncertainty of the capacitance.
+    - `delta_C_percent`: The percentage uncertainty of the capacitance.
+    - `G`: The real part (conductance) of the admittance.
+    - `delta_G`: The uncertainty of the conductance.
+    - `delta_G_percent`: The percentage uncertainty of the conductance.
 
 # Notes
 - The resistance (R) and inductance (L) are extracted from the real and imaginary parts of `Z`, respectively. The capacitance (C) and conductance (G) are extracted from the imaginary and real parts of `Y`, respectively.
@@ -1498,95 +1662,84 @@ Computes a detailed summary of electrical parameters (impedance, admittance, and
 # Category: Cable constants matrices
 
 """
-function compute_ZY_summary(
-	Z_in::Array{Complex{Measurement{Float64}}, 3},
-	Y_in::Array{Complex{Measurement{Float64}}, 3},
-	freq_range::Vector{Float64},
-	cable_number::Int,
-)
+function compute_ZY_summary(Z_in::Array{Complex{Measurement{Float64}}, 3}, Y_in::Array{Complex{Measurement{Float64}}, 3}, freq_range::Vector{Float64}, cable_number::Int)
+    
+    # Create empty DataFrame
+    Z_summary_df = DataFrame(
+        frequency = Float64[],        # Frequency column
+        Z = Complex{Measurement{Float64}}[],   # Z diagonal element for the cable
+        R = Float64[],          # Real part (Resistance)
+        delta_R = Float64[],    # Uncertainty of Resistance
+        delta_R_percent = Float64[],  # % Uncertainty of R
+        L = Float64[],          # Inductance
+        delta_L = Float64[],    # Uncertainty of L
+        delta_L_percent = Float64[],  # % Uncertainty of L
+    )
 
-	# Create empty DataFrame
-	Z_summary_df = DataFrame(
-		frequency = Float64[],        # Frequency column
-		Z = Complex{Measurement{Float64}}[],   # Z diagonal element for the cable
-		R = Float64[],          # Real part (Resistance)
-		delta_R = Float64[],    # Uncertainty of Resistance
-		delta_R_percent = Float64[],  # % Uncertainty of R
-		L = Float64[],          # Inductance
-		delta_L = Float64[],    # Uncertainty of L
-		delta_L_percent = Float64[],  # % Uncertainty of L
-	)
+    Y_summary_df = DataFrame(
+        frequency = Float64[],        # Frequency column
+        Y = Complex{Measurement{Float64}}[],   # Y diagonal element for the cable
+        C = Float64[],          # Capacitance
+        delta_C = Float64[],    # Uncertainty of C
+        delta_C_percent = Float64[],  # % Uncertainty of C
+        G = Float64[],          # Conductance
+        delta_G = Float64[],    # Uncertainty of G
+        delta_G_percent = Float64[],  # % Uncertainty of G
+    )
 
-	Y_summary_df = DataFrame(
-		frequency = Float64[],        # Frequency column
-		Y = Complex{Measurement{Float64}}[],   # Y diagonal element for the cable
-		C = Float64[],          # Capacitance
-		delta_C = Float64[],    # Uncertainty of C
-		delta_C_percent = Float64[],  # % Uncertainty of C
-		G = Float64[],          # Conductance
-		delta_G = Float64[],    # Uncertainty of G
-		delta_G_percent = Float64[],  # % Uncertainty of G
-	)
+    for k in 1:length(freq_range)
+        f = freq_range[k]  # Frequency
+        
+        # Get Z_cable and Y_cable for the current frequency
+        Z_cable = remove_small_values(Z_in[cable_number, cable_number, k])
+        Y_cable = remove_small_values(Y_in[cable_number, cable_number, k])
+        
+        # Extract Resistance (R) from Z
+        R_value = Measurements.value(real(Z_cable))
+        R_uncertainty = Measurements.uncertainty(real(Z_cable))
+        R_uncertainty_percent = (R_uncertainty / R_value) * 100
+        
+        # Extract Inductance (L) from imag(Z) using the formula: L = imag(Z) / (2 * pi * f)
+        L_value = Measurements.value(imag(Z_cable)) / (2 * pi * f)
+        L_uncertainty = Measurements.uncertainty(imag(Z_cable)) / (2 * pi * f)
+        L_uncertainty_percent = (L_uncertainty / L_value) * 100
+        
+        # Extract Conductance (G) from Y
+        G_value = Measurements.value(real(Y_cable))
+        G_uncertainty = Measurements.uncertainty(real(Y_cable))
+        G_uncertainty_percent = (G_uncertainty / G_value) * 100
+        
+        # Extract Capacitance (C) from imag(Y) using the formula: C = imag(Y) / (2 * pi * f)
+        C_value = Measurements.value(imag(Y_cable)) / (2 * pi * f)
+        C_uncertainty = Measurements.uncertainty(imag(Y_cable)) / (2 * pi * f)
+        C_uncertainty_percent = (C_uncertainty / C_value) * 100
+        
+        # Add row to DataFrame
+        push!(Z_summary_df, (
+            f,                # Frequency
+            Z_cable,          # Z diagonal element
+            R_value,          # Resistance value
+            R_uncertainty,    # Resistance uncertainty
+            R_uncertainty_percent,  # Resistance % uncertainty
+            L_value,          # Inductance value
+            L_uncertainty,    # Inductance uncertainty
+            L_uncertainty_percent  # Inductance % uncertainty
+        ))
 
-	for k in 1:length(freq_range)
-		f = freq_range[k]  # Frequency
+        push!(Y_summary_df, (
+            f,                # Frequency
+            Y_cable,          # Y diagonal element
+            C_value,          # Capacitance value
+            C_uncertainty,    # Capacitance uncertainty
+            C_uncertainty_percent,  # Capacitance % uncertainty
+            G_value,          # Conductance value
+            G_uncertainty,    # Conductance uncertainty
+            G_uncertainty_percent  # Conductance % uncertainty
+        ))
 
-		# Get Z_cable and Y_cable for the current frequency
-		Z_cable = remove_small_values(Z_in[cable_number, cable_number, k])
-		Y_cable = remove_small_values(Y_in[cable_number, cable_number, k])
+    end
 
-		# Extract Resistance (R) from Z
-		R_value = Measurements.value(real(Z_cable))
-		R_uncertainty = Measurements.uncertainty(real(Z_cable))
-		R_uncertainty_percent = (R_uncertainty / R_value) * 100
-
-		# Extract Inductance (L) from imag(Z) using the formula: L = imag(Z) / (2 * pi * f)
-		L_value = Measurements.value(imag(Z_cable)) / (2 * pi * f)
-		L_uncertainty = Measurements.uncertainty(imag(Z_cable)) / (2 * pi * f)
-		L_uncertainty_percent = (L_uncertainty / L_value) * 100
-
-		# Extract Conductance (G) from Y
-		G_value = Measurements.value(real(Y_cable))
-		G_uncertainty = Measurements.uncertainty(real(Y_cable))
-		G_uncertainty_percent = (G_uncertainty / G_value) * 100
-
-		# Extract Capacitance (C) from imag(Y) using the formula: C = imag(Y) / (2 * pi * f)
-		C_value = Measurements.value(imag(Y_cable)) / (2 * pi * f)
-		C_uncertainty = Measurements.uncertainty(imag(Y_cable)) / (2 * pi * f)
-		C_uncertainty_percent = (C_uncertainty / C_value) * 100
-
-		# Add row to DataFrame
-		push!(
-			Z_summary_df,
-			(
-				f,                # Frequency
-				Z_cable,          # Z diagonal element
-				R_value,          # Resistance value
-				R_uncertainty,    # Resistance uncertainty
-				R_uncertainty_percent,  # Resistance % uncertainty
-				L_value,          # Inductance value
-				L_uncertainty,    # Inductance uncertainty
-				L_uncertainty_percent,  # Inductance % uncertainty
-			),
-		)
-
-		push!(
-			Y_summary_df,
-			(
-				f,                # Frequency
-				Y_cable,          # Y diagonal element
-				C_value,          # Capacitance value
-				C_uncertainty,    # Capacitance uncertainty
-				C_uncertainty_percent,  # Capacitance % uncertainty
-				G_value,          # Conductance value
-				G_uncertainty,    # Conductance uncertainty
-				G_uncertainty_percent,  # Conductance % uncertainty
-			),
-		)
-
-	end
-
-	return Z_summary_df, Y_summary_df
+    return Z_summary_df, Y_summary_df
 end
 
 end  # End of module
