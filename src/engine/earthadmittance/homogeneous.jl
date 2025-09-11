@@ -7,9 +7,9 @@ struct Kernel{Tγ1, Tγ2, Tμ2}
 	t::Int
 	"Primary field propagation constant (0 = lossless, 1 = air, 2 = earth)."
 	Γx::Int
-	"Air propagation constant γ₁(ω, μ, σ, ε)."
+	"Air propagation constant γ₁(jω, μ, σ, ε)."
 	γ1::Tγ1
-	"Earth propagation constant γ₂(ω, μ, σ, ε)."
+	"Earth propagation constant γ₂(jω, μ, σ, ε)."
 	γ2::Tγ2
 	"Earth magnetic-constant assumption μ₂(μ)."
 	μ2::Tμ2
@@ -20,8 +20,8 @@ struct Papadopoulos{Tγ1, Tγ2, Tμ2} <: Homogeneous
 end
 
 Papadopoulos(; s::Int = 2, t::Int = 2, Γx::Int = 2,
-	γ1 = (ω, μ, σ, ε) -> sqrt(1im * ω * μ * (σ + 1im*ω*ε)),
-	γ2 = (ω, μ, σ, ε) -> sqrt(1im * ω * μ * (σ + 1im*ω*ε)),
+	γ1 = (jω, μ, σ, ε) -> sqrt(jω * μ * (σ + jω*ε)),
+	γ2 = (jω, μ, σ, ε) -> sqrt(jω * μ * (σ + jω*ε)),
 	μ2 = μ -> μ) =
 	Papadopoulos(
 		Kernel{typeof(γ1), typeof(γ2), typeof(μ2)}(s, t, Γx, γ1, γ2, μ2),
@@ -36,8 +36,8 @@ struct Pollaczek{Tγ1, Tγ2, Tμ2} <: Homogeneous
 end
 
 Pollaczek(; s::Int = 2, t::Int = 2, Γx::Int = 0,
-	γ1 = (ω, μ, σ, ε) -> 1im * ω * sqrt(μ * ε),
-	γ2 = (ω, μ, σ, ε) -> zero(1im * ω),
+	γ1 = (jω, μ, σ, ε) -> jω * sqrt(μ * ε₀),
+	γ2 = (jω, μ, σ, ε) -> jω * sqrt(μ * ε₀),
 	μ2 = μ -> oftype(μ, μ₀)) =
 	Pollaczek(
 		Kernel{typeof(γ1), typeof(γ2), typeof(μ2)}(s, t, Γx, γ1, γ2, μ2),
@@ -51,8 +51,8 @@ struct Images{Tγ1, Tγ2, Tμ2} <: Homogeneous
 end
 
 Images(; s::Int = 1, t::Int = 1, Γx::Int = 0,
-	γ1 = (ω, μ, σ, ε) -> 1im * ω * sqrt(μ * ε),
-	γ2 = (ω, μ, σ, ε) -> zero(1im * ω),
+	γ1 = (jω, μ, σ, ε) -> jω * sqrt(μ * ε₀),
+	γ2 = (jω, μ, σ, ε) -> jω * sqrt(μ * ε₀),
 	μ2 = μ -> oftype(μ, μ₀)) =
 	Images(
 		Kernel{typeof(γ1), typeof(γ2), typeof(μ2)}(s, t, Γx, γ1, γ2, μ2),
@@ -62,7 +62,7 @@ get_description(::Images) = "Electrostatic images"
 from_kernel(f::Images) = f.kernel
 
 # ρ, ε, μ = ws.rho_g, ws.eps_g, ws.mu_g
-#     f(h, d, @view(ρ[:,k]), @view(ε[:,k]), @view(μ[:,k]), ws.freq[k])
+#     f(h, d, @view(ρ[:,k]), @view(ε[:,k]), @view(μ[:,k]), ws.jω[k])
 
 # Functor implementation for all homogeneous earth impedance formulations.
 function (f::Homogeneous)(
@@ -72,26 +72,37 @@ function (f::Homogeneous)(
 	rho_g::AbstractVector{T},
 	eps_g::AbstractVector{T},
 	mu_g::AbstractVector{T},
-	freq::T,
+	jω::Complex{T},
 ) where {T <: REALSCALAR}
 	Base.@nospecialize form
-	return form === :self ? f(Val(:self), h, yij, rho_g, eps_g, mu_g, freq) :
-		   form === :mutual ? f(Val(:mutual), h, yij, rho_g, eps_g, mu_g, freq) :
+	return form === :self ? f(Val(:self), h, yij, rho_g, eps_g, mu_g, jω) :
+		   form === :mutual ? f(Val(:mutual), h, yij, rho_g, eps_g, mu_g, jω) :
 		   throw(ArgumentError("Unknown earth admittance form: $form"))
 end
 
+# function (f::Homogeneous)(
+# 	h::AbstractVector{T},
+# 	yij::T,
+# 	rho_g::AbstractVector{T},
+# 	eps_g::AbstractVector{T},
+# 	mu_g::AbstractVector{T},
+# 	jω::Complex{T},
+# ) where {T <: REALSCALAR}
+# 	return f(Val(:mutual), h, yij, rho_g, eps_g, mu_g, jω)
+# end
+
 function (f::Homogeneous)(
+	::Val{:self},
 	h::AbstractVector{T},
 	yij::T,
 	rho_g::AbstractVector{T},
 	eps_g::AbstractVector{T},
 	mu_g::AbstractVector{T},
-	freq::T,
+	jω::Complex{T},
 ) where {T <: REALSCALAR}
-	return f(Val(:mutual), h, yij, rho_g, eps_g, mu_g, freq)
+	return f(Val(:mutual), h, yij, rho_g, eps_g, mu_g, jω)
 end
 
-@inline _to_σ(ρ) = isinf(ρ) ? zero(ρ) : (iszero(ρ) ? inv(zero(ρ)) : inv(ρ))
 @inline _not(s::Int) =
 	(s == 1 || s == 2) ? (3 - s) :
 	throw(ArgumentError("s must be 1 or 2"))
@@ -117,13 +128,6 @@ end
 	return nothing
 end
 
-@inline function _bessel_diff(γs, d::T, D::T) where {T}
-	zmax = max(abs(γs)*d, abs(γs)*D)
-	zmax < T(1e-6) ? log(D/d) : (besselk(0, γs*d) - besselk(0, γs*D))
-end
-
-
-
 @inline function (f::Homogeneous)(
 	::Val{:mutual},
 	h::AbstractVector{T},
@@ -131,14 +135,13 @@ end
 	rho_g::AbstractVector{T},
 	eps_g::AbstractVector{T},
 	mu_g::AbstractVector{T},
-	freq::T,
+	jω::Complex{T},
 ) where {T <: REALSCALAR}
 
 	validate_layers!(f, h)
 
 	s = f.s # index of source layer
 	o = _not(s) # the other layer
-	ω = 2π*freq
 	nL = length(rho_g)
 	μ = similar(mu_g);
 	σ = similar(rho_g);
@@ -150,7 +153,7 @@ end
 	# construct propagation constants according to formulation assumptions
 	γ = Vector{Complex{T}}(undef, nL)
 	@inbounds for i in 1:nL
-		γ[i] = (i == 1 ? f.γ1 : f.γ2)(ω, μ[i], σ[i], eps_g[i])
+		γ[i] = (i == 1 ? f.γ1 : f.γ2)(jω, μ[i], σ[i], eps_g[i])
 	end
 	γ_s = γ[s];
 	γ_o = γ[o]
@@ -162,15 +165,10 @@ end
 		zero(γs_2)
 	else
 		ℓ = (f.Γx == 1) ? 1 : s
-		oftype(γs_2, (ω^2) * μ[ℓ] * eps_g[ℓ])
+		oftype(γs_2, (-jω^2) * μ[ℓ] * eps_g[ℓ])
 	end
 
-	# --- Underground,"no capacitive coupling" ---
-	# physics: source in EARTH (s=t=2), kx = 0, γ_earth ≈ 0
-	# ⇒ Pe = 0
-	if f.s == 2 && f.t == 2 && isapprox(γ_s, zero(γ_s))
-		return zero(Complex{T})
-	end
+	σ̃ = σ[s] + jω*eps_g[s] # complex conductivity of source layer
 
 	# unpack geometry
 	@inbounds hi, hj = abs(h[1]), abs(h[2])
@@ -184,13 +182,20 @@ end
 	# physics: source in AIR (s=t=1), kx = 0, σ_air ≈ 0,
 	#          earth propagation constant negligible γ_earth ≈ 0
 	# ⇒ Sij = Tij = 0, Pe = (jω)/(2π(σ_air+jωε_air)) * Λ ≡ (1/(2π ε0)) * Λ
-	if f.s == 1 && f.Γx == 0 && isapprox(γ_o, zero(γ_o))
-		return (1im*ω) / (2π*eps_g[1]) * Λij
+	if f.s == 1 && f.Γx == 0 && isapprox(real(γ_o), zero(γ_o))
+		return (jω/(2π*σ̃)) * Λij #(1/(2π*ε₀)) * Λij
+	end
+
+	# --- Underground,"no displacement currents" ---
+	# physics: source in EARTH (s=t=2), kx = 0, γ_earth ≈ 0
+	# ⇒ Pe = 0
+	if f.s == 2 && f.t == 2 && isapprox(real(γ_s), zero(γ_s))
+		return (jω/(2π*σ̃)) * Λij
 	end
 
 	# precompute scalars for integrand
-	a_s = (λ::T) -> sqrt(λ^2 + γs_2 + kx_2)
-	a_o = (λ::T) -> sqrt(λ^2 + γo_2 + kx_2)
+	a_s = (λ::BASE_FLOAT) -> sqrt(λ^2 + γs_2 + kx_2)
+	a_o = (λ::BASE_FLOAT) -> sqrt(λ^2 + γo_2 + kx_2)
 	μ_s = μ[s]
 	μ_o = μ[o]
 	H = hi + hj
@@ -218,8 +223,7 @@ end
 	Iij, _ = quadgk(integrand, 0.0, Inf; rtol = 1e-8)
 	Iij *= 2
 
-	_σ_s = σ[s] + 1im*ω*eps_g[s] # complex conductivity of source layer
 
-	return (1im * ω / (2π * _σ_s)) * (Λij + Iij)
+	return (jω / (2π * σ̃)) * (Λij + Iij)
 
 end
