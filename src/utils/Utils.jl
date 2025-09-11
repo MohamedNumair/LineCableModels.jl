@@ -31,8 +31,11 @@ export to_nominal,
 	to_lower,
 	percent_error
 
+export _to_σ, _bessel_diff, symtrans!, line_transpose!
+
 # Module-specific dependencies
 using ..Commons
+using ..UncertainBessels: besselk
 using Measurements: Measurement, value, uncertainty, measurement, ±, Measurements, result
 using Statistics
 using Plots
@@ -510,6 +513,15 @@ isdiag_rel(A; τ = 1e-4) = offdiag_ratio(A) ≤ τ
 function issymmetric_approx(A; rtol = 1e-8, atol = 1e-8)
 	size(A, 1) == size(A, 2) || return false
 	return isapprox(A, transpose(A); rtol = rtol, atol = atol)
+end
+
+
+@inline _to_σ(ρ) = isinf(ρ) ? zero(ρ) : (iszero(ρ) ? inv(zero(ρ)) : inv(ρ))
+
+@inline function _bessel_diff(γs, d::T, D::T) where {T}
+	zmax = max(abs(γs)*d, abs(γs)*D)
+	return isapprox(zmax, zero(zmax), atol = T(TOL)) ? log(D/d) :
+		   (besselk(0, γs*d) - besselk(0, γs*D))
 end
 
 include("logging.jl")
