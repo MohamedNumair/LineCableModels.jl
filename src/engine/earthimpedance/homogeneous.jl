@@ -178,22 +178,28 @@ end
 	Λij = _bessel_diff(γ_s, dij, Dij)
 
 	# precompute scalars for integrand
-	a_s = (λ::BASE_FLOAT) -> sqrt(λ^2 + γs_2 + kx_2)
-	a_o = (λ::BASE_FLOAT) -> sqrt(λ^2 + γo_2 + kx_2)
 	μ_s = μ[s]
 	μ_o = μ[o]
 	H = hi + hj
 
-	# earth correction term
-	Fij = (λ) -> begin
-		as = a_s(λ);
-		ao = a_o(λ)
-		μ_o * exp(-as * H) / (as*μ_o + ao*μ_s)
+	# Sij = 2 ∫_0^∞ Fij(λ) cos(yij λ) dλ
+	# integrand = (λ) -> Fij(λ) * cos(yij * λ)
+	@inline function integrand(λ::Float64)::Complex{T}
+		as = sqrt(λ*λ + γs_2 + kx_2)
+		ao = sqrt(λ*λ + γo_2 + kx_2)
+
+		F = μ_o * exp(-as*H) / (as*μ_o + ao*μ_s)
+
+		F * cos(yij*λ)
 	end
 
-	# Sij = 2 ∫_0^∞ Fij(λ) cos(yij λ) dλ
-	integrand = (λ) -> Fij(λ) * cos(yij * λ)
-	Sij, _ = quadgk(integrand, 0.0, Inf; rtol = 1e-8)
+	Sij, _ = quadgk(
+		integrand,
+		0.0,
+		1.0;
+		rtol = 1e-8,
+		norm = z -> abs(complex(value(real(z)), value(imag(z)))),
+	)
 	Sij *= 2
 
 	return (jω * μ_s / (2π)) * (Λij + Sij)
