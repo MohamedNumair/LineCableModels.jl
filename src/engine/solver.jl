@@ -91,6 +91,7 @@ function compute!(
 	end
 
 	nkeep = kron_map === nothing ? nph : count(!=(0), kron_map)
+	@debug "keeping $nkeep phases out of $nph"
 	Zout = Array{Complex{T}, 3}(undef, nkeep, nkeep, nfreq)
 	Yout = Array{Complex{T}, 3}(undef, nkeep, nkeep, nfreq)
 

@@ -71,6 +71,7 @@ function kronify(
 	M12 = M[keep, eliminate]
 	M21 = M[eliminate, keep]
 	M22 = M[eliminate, eliminate]
+	@info "M22 is $(display(M22))"
 
 	return M11 - (M12 * inv(M22)) * M21
 end

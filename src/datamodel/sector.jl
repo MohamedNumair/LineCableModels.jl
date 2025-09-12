@@ -65,7 +65,7 @@ function Sector(
 
     # 3. Calculate cross-sectional area using the Shoelace formula
     cross_section = PolygonOps.area(rotated_vertices)
-
+    @debug "(Sector) Calculated cross-sectional area: $(cross_section*1e6) mm²"
     # 4. Calculate DC resistance
     rho_eff = calc_temperature_correction(material_props.alpha, temperature, material_props.T0) * material_props.rho
     resistance = rho_eff / cross_section
@@ -145,14 +145,14 @@ end
 
 function _generate_arc_points(center, radius, start_angle, end_angle, num_points)
     while end_angle < start_angle
-        @debug "(Sector) end_angle < start_angle: $(rad2deg(end_angle)) < $(rad2deg(start_angle))"
+        #@debug "(Sector) end_angle < start_angle: $(rad2deg(end_angle)) < $(rad2deg(start_angle))"
         end_angle += 2pi
-        @debug "(Sector)  Adjusted end_angle to be greater than start_angle: $(rad2deg(end_angle)) > $(rad2deg(start_angle))"
+        #@debug "(Sector)  Adjusted end_angle to be greater than start_angle: $(rad2deg(end_angle)) > $(rad2deg(start_angle))"
     end
     while end_angle - start_angle > pi
-        @debug "(Sector) overshoot! end_angle - start_angle > π: $(rad2deg(end_angle - start_angle)) > 180"
+        #@debug "(Sector) overshoot! end_angle - start_angle > π: $(rad2deg(end_angle - start_angle)) > 180"
         end_angle -= 2pi
-        @debug "(Sector) Adjusted end_angle to be less than start_angle: $(rad2deg(end_angle)) < $(rad2deg(start_angle))"
+        #@debug "(Sector) Adjusted end_angle to be less than start_angle: $(rad2deg(end_angle)) < $(rad2deg(start_angle))"
     end
     angle_range = range(start_angle, stop=end_angle, length=num_points)
     return [Point2f(center[1] + radius * cos(a), center[2] + radius * sin(a)) for a in angle_range]
@@ -181,9 +181,9 @@ function _calculate_sector_polygon_points(params; num_arc_points=20) # increase 
     # Arc B to C (Right Side)
     if params.r_corner > 1e-9
         start_angle = get_angle(nodes.B, centers.RightSide)
-        @debug "Arc from B to C: start_angle=$(rad2deg(start_angle))"
+        #@debug "Arc from B to C: start_angle=$(rad2deg(start_angle))"
         end_angle = get_angle(nodes.C, centers.RightSide)
-        @debug "Arc from B to C: end_angle=$(rad2deg(end_angle))"
+        #@debug "Arc from B to C: end_angle=$(rad2deg(end_angle))"
         append!(poly_points, _generate_arc_points(centers.RightSide, params.r_corner, start_angle, end_angle, num_arc_points)[2:end])
     else
         push!(poly_points, nodes.C)
@@ -197,9 +197,9 @@ function _calculate_sector_polygon_points(params; num_arc_points=20) # increase 
     # Arc D to E (Left Side)
     if params.r_corner > 1e-9
         start_angle = get_angle(nodes.D, centers.LeftSide)
-        @debug "Arc from D to E: start_angle=$(rad2deg(start_angle))"
+        #@debug "Arc from D to E: start_angle=$(rad2deg(start_angle))"
         end_angle = get_angle(nodes.E, centers.LeftSide)
-        @debug "Arc from D to E: end_angle=$(rad2deg(end_angle))"
+        #@debug "Arc from D to E: end_angle=$(rad2deg(end_angle))"
         append!(poly_points, _generate_arc_points(centers.LeftSide, params.r_corner, start_angle, end_angle, num_arc_points)[2:end])
     else
         push!(poly_points, nodes.E)
