@@ -110,6 +110,7 @@ function compute!(
 				F = lu!(Pbuf)                                # overwrite Pbuf with LU
 				ldiv!(inv_Pbuf, F, I_nph)                    # inv_Pbuf := P^{-1}
 			end
+			# inv_Pbuf = pBuf
 			inv_Pbuf .*= ws.jω[k]
 			symtrans!(inv_Pbuf)
 			formulation.options.ideal_transposition || line_transpose!(inv_Pbuf)
@@ -128,14 +129,16 @@ function compute!(
 				F = lu!(Mred)
 				ldiv!(inv_Mred, F, I_nkeep)
 			end
+			# inv_Mred = Mred
 			inv_Mred .*= ws.jω[k]
-
 			symtrans!(inv_Mred)
 			formulation.options.ideal_transposition && line_transpose!(inv_Mred)
 
 			@views @inbounds Yout[:, :, k] .= inv_Mred
 		end
 	end
+	# fill!(Yout, zero(Complex{T}))
+
 	@info "Line parameters computation completed successfully"
 	return ws, LineParameters(Zout, Yout, ws.freq)
 end
