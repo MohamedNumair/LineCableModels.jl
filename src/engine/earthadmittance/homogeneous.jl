@@ -182,45 +182,44 @@ end
 	# physics: source in AIR (s=t=1), kx = 0, σ_air ≈ 0,
 	#          earth propagation constant negligible γ_earth ≈ 0
 	# ⇒ Sij = Tij = 0, Pe = (jω)/(2π(σ_air+jωε_air)) * Λ ≡ (1/(2π ε0)) * Λ
-	if f.s == 1 && f.Γx == 0 && isapprox(real(γ_o), zero(γ_o))
+	if f.s == 1 && f.Γx == 0 && isapprox(to_nominal(real(γ_o)), 0.0, atol = TOL)
 		return (jω/(2π*σ̃)) * Λij #(1/(2π*ε₀)) * Λij
 	end
 
 	# --- Underground,"no displacement currents" ---
 	# physics: source in EARTH (s=t=2), kx = 0, γ_earth ≈ 0
 	# ⇒ Pe = 0
-	if f.s == 2 && f.t == 2 && isapprox(real(γ_s), zero(γ_s))
+	if f.s == 2 && f.t == 2 && isapprox(to_nominal(real(γ_s)), 0.0, atol = TOL)
 		return (jω/(2π*σ̃)) * Λij
 	end
 
 	# precompute scalars for integrand
-	a_s = (λ::BASE_FLOAT) -> sqrt(λ^2 + γs_2 + kx_2)
-	a_o = (λ::BASE_FLOAT) -> sqrt(λ^2 + γo_2 + kx_2)
 	μ_s = μ[s]
 	μ_o = μ[o]
 	H = hi + hj
 
-	# earth correction term
-	Fij = (λ) -> begin
-		as = a_s(λ);
-		ao = a_o(λ)
-		μ_o * exp(-as * H) / (as*μ_o + ao*μ_s)
-	end
-
-	# G_ij(λ) 
-	# G = μ0 μ1 α1 (γ1² - γ0²) e^{-α1 H} / [ (α1 μ0 + α0 μ1)(α1 γ0² μ1 + α0 γ1² μ0) ]
-	# here: 0→other (o), 1→source (s)
-	Gij = (λ) -> begin
-		as = a_s(λ);
-		ao = a_o(λ)
-		num = μ_o * μ_s * as * (γs_2 - γo_2) * exp(-as * H)
-		den = (as*μ_o + ao*μ_s) * (as*γo_2*μ_s + ao*γs_2*μ_o)
-		num / den
-	end
-
 	# S_ij + T_ij in one go: 2∫₀^∞ (Fij+Gij) cos(yij λ) dλ
-	integrand = (λ) -> (Fij(λ) + Gij(λ)) * cos(yij * λ)
-	Iij, _ = quadgk(integrand, 0.0, Inf; rtol = 1e-8)
+	# integrand = (λ) -> (Fij(λ) + Gij(λ)) * cos(yij * λ)
+	@inline function integrand(λ::Float64)::Complex{T}
+		as = sqrt(λ*λ + γs_2 + kx_2)
+		ao = sqrt(λ*λ + γo_2 + kx_2)
+
+		F = μ_o * exp(-as*H) / (as*μ_o + ao*μ_s)
+
+		num = μ_o*μ_s*as*(γs_2 - γo_2)*exp(-as*H)
+		den = (as*μ_o + ao*μ_s) * (as*γo_2*μ_s + ao*γs_2*μ_o)
+		G = num/den
+
+		(F + G) * cos(yij*λ)
+	end
+
+	Iij, _ = quadgk(
+		integrand,
+		0.0,
+		Inf;
+		rtol = 1e-8,
+		norm = z -> abs(complex(value(real(z)), value(imag(z)))),
+	)
 	Iij *= 2
 
 
