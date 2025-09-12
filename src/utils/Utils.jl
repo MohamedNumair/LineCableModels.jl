@@ -471,16 +471,19 @@ function line_transpose!(A::AbstractMatrix)
 	n = size(A, 1);
 	n == size(A, 2) || throw(ArgumentError("square"))
 	c = similar(diag(A))  # length n
+
+	# Average wrap-diagonals (use mod to avoid negatives)
 	@inbounds for k in 0:(n-1)
 		s = zero(eltype(A))
 		for i in 1:n
-			j = 1 + ((i-1 + k) % n)
+			j = 1 + mod(i-1 + k, n)
 			s += A[i, j]
 		end
 		c[k+1] = s / n
 	end
+	# Write back circulant matrix
 	@inbounds for i in 1:n, j in 1:n
-		A[i, j] = c[1+((j-i)%n)]
+		A[i, j] = c[mod1(j - i + 1, n)] #c[1+mod(j-i, n)]
 	end
 	return A
 end
@@ -520,7 +523,7 @@ end
 
 @inline function _bessel_diff(γs, d::T, D::T) where {T}
 	zmax = max(abs(γs)*d, abs(γs)*D)
-	return isapprox(zmax, zero(zmax), atol = T(TOL)) ? log(D/d) :
+	return isapprox(to_nominal(zmax), 0.0, atol = TOL) ? log(D/d) :
 		   (besselk(0, γs*d) - besselk(0, γs*D))
 end
 
