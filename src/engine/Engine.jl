@@ -84,11 +84,6 @@ include("helpers.jl")
 # Workspace definition
 include("workspace.jl")
 
-# # include all .jl files from src/legacy if the folder exists
-# isdir(joinpath(@__DIR__, "legacy")) &&
-# 	map(f -> endswith(f, ".jl") && include(joinpath(@__DIR__, "legacy", f)),
-# 		sort(readdir(joinpath(@__DIR__, "legacy"))))
-
 # Computation methods
 include("solver.jl")
 include("reduction.jl")

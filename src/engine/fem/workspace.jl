@@ -83,9 +83,9 @@ struct FEMWorkspace{T <: AbstractFloat}
 	"Number of cables in the system."
 	n_cables::Int
 	"Full component-based Z matrix (before bundling/reduction)."
-	Zprim::Array{Complex{T}, 3}
+	Z::Array{Complex{T}, 3}
 	"Full component-based Y matrix (before bundling/reduction)."
-	Yprim::Array{Complex{T}, 3}
+	Y::Array{Complex{T}, 3}
 
 
 	"""
@@ -142,8 +142,8 @@ struct FEMWorkspace{T <: AbstractFloat}
 		tan_ins = Vector{T}(undef, n_phases)   # Loss tangent for insulator
 		phase_map = Vector{Int}(undef, n_phases)
 		cable_map = Vector{Int}(undef, n_phases)
-		Zprim = zeros(Complex{T}, n_phases, n_phases, n_frequencies)
-		Yprim = zeros(Complex{T}, n_phases, n_phases, n_frequencies)
+		Z = zeros(Complex{T}, n_phases, n_phases, n_frequencies)
+		Y = zeros(Complex{T}, n_phases, n_phases, n_frequencies)
 
 		# Fill arrays, ensuring type promotion
 		freq .= to_nominal.(problem.frequencies)
@@ -212,7 +212,7 @@ struct FEMWorkspace{T <: AbstractFloat}
 			phase_map, cable_map, rho_g,
 			eps_g, mu_g,
 			temp, n_frequencies, n_phases,
-			system.num_cables, Zprim, Yprim,
+			system.num_cables, Z, Y,
 		)
 
 		# Set up paths

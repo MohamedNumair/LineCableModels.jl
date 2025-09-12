@@ -34,11 +34,11 @@ import DocStringExtensions: DocStringExtensions
 include("commons/Commons.jl")
 using .Commons: IMPORTS, EXPORTS, add!
 
+include("uncertainbessels/UncertainBessels.jl")
+
 # Submodule `Utils`
 include("utils/Utils.jl")
 using .Utils: set_verbosity!
-
-include("uncertainbessels/UncertainBessels.jl")
 
 # Submodule `Validation`
 include("validation/Validation.jl")

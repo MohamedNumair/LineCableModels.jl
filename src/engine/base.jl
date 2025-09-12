@@ -51,18 +51,6 @@ resultsview(
 	float(tol),
 )
 
-# per_km(
-# 	lp::LineParameters;
-# 	mode::Symbol = :ZY,
-# 	tol::Real = sqrt(eps(Float64)),
-# ) = resultsview(lp; per = :km, mode = mode, tol = tol)
-
-# per_m(
-# 	lp::LineParameters;
-# 	mode::Symbol = :ZY,
-# 	tol::Real = sqrt(eps(Float64)),
-# ) = resultsview(lp; per = :m, mode = mode, tol = tol)
-
 # --- Scalar formatting with zero-clipping -------------------------------------
 
 # Zero-clip helpers (display only)
@@ -366,7 +354,6 @@ function Base.show(io::IO, lp::LineParameters)
 	_has_uncertainty_type(T) && print(io, " (±)")
 end
 
-# Pretty REPL display
 function Base.show(io::IO, ::MIME"text/plain", lp::LineParameters)
 	n, _, nf = size(lp.Z)
 	T = eltype(lp.Z)
@@ -374,17 +361,25 @@ function Base.show(io::IO, ::MIME"text/plain", lp::LineParameters)
 	scale = 1_000.0   # per km preview
 	ulabel = "km"
 
-	print(io, "LineParameters  |  n = ", n, "  |  nf = ", nf,
-		"  |  eltype = ", T)
+	# Styled header similar to ResultsView
+	header_plain = string(
+		n, "x", n, "x", nf, " LineParameters  |  eltype = ", T,
+		_has_uncertainty_type(T) ? "  |  uncertainties: yes" : "",
+	)
+
+	printstyled(io, string(n, "x", n, "x", nf, " LineParameters"); bold = true)
+	print(io, "  |  eltype = ", T)
 	_has_uncertainty_type(T) && print(io, "  |  uncertainties: yes")
 	print(io, "\n")
+	print(io, repeat("─", length(header_plain)))
+	print(io, "\n\n")
 
 	# Preview: slice 1, per km, Z then Y
 	@views begin
 		Z1 = view(lp.Z.values,:,:,1)
 		Y1 = view(lp.Y.values,:,:,1)
 
-		println(io, "\nPreview (slice 1/", nf, ")  per ", ulabel)
+		println(io, "Preview (slice 1/", nf, ")  per ", ulabel)
 		println(io, "Z [Ω/", ulabel, "] =")
 		_show_matrix(io, Z1; tol = tol, map = x -> scale * x)
 
@@ -396,3 +391,4 @@ function Base.show(io::IO, ::MIME"text/plain", lp::LineParameters)
 		print(io, "\n\n… (", nf - 1, " more frequency slice", nf - 1 == 1 ? "" : "s", ")")
 	end
 end
+

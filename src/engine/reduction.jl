@@ -76,6 +76,26 @@ function kronify(
 	return M11 - (M12 * inv(M22)) * M21
 end
 
+"""
+	kronify!(M, phase_map, Mred)
+	Kron's angry little brother (in-place)
+"""
+function kronify!(
+	M::Matrix{Complex{T}},
+	phase_map::Vector{Int},
+	Mred::Matrix{Complex{T}},
+) where {T <: REALSCALAR}
+	keep = findall(!=(0), phase_map)
+	eliminate = findall(==(0), phase_map)
+
+	M11 = M[keep, keep]
+	M12 = M[keep, eliminate]
+	M21 = M[eliminate, keep]
+	M22 = M[eliminate, eliminate]
+	@views @inbounds Mred .= M11 - (M12 * inv(M22)) * M21
+	return nothing
+end
+
 # In-place: columns tail -= first (from original), then rows tail -= first (after col pass).
 function merge_bundles!(M::AbstractMatrix{T}, ph::AbstractVector{<:Integer}) where {T}
 	n = size(M, 1)

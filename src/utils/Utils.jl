@@ -31,8 +31,11 @@ export to_nominal,
 	to_lower,
 	percent_error
 
+export _to_σ, _bessel_diff, symtrans!, line_transpose!
+
 # Module-specific dependencies
 using ..Commons
+using ..UncertainBessels: besselk
 using Measurements: Measurement, value, uncertainty, measurement, ±, Measurements, result
 using Statistics
 using Plots
@@ -468,16 +471,19 @@ function line_transpose!(A::AbstractMatrix)
 	n = size(A, 1);
 	n == size(A, 2) || throw(ArgumentError("square"))
 	c = similar(diag(A))  # length n
+
+	# Average wrap-diagonals (use mod to avoid negatives)
 	@inbounds for k in 0:(n-1)
 		s = zero(eltype(A))
 		for i in 1:n
-			j = 1 + ((i-1 + k) % n)
+			j = 1 + mod(i-1 + k, n)
 			s += A[i, j]
 		end
 		c[k+1] = s / n
 	end
+	# Write back circulant matrix
 	@inbounds for i in 1:n, j in 1:n
-		A[i, j] = c[1+((j-i)%n)]
+		A[i, j] = c[mod1(j - i + 1, n)] #c[1+mod(j-i, n)]
 	end
 	return A
 end
@@ -510,6 +516,15 @@ isdiag_rel(A; τ = 1e-4) = offdiag_ratio(A) ≤ τ
 function issymmetric_approx(A; rtol = 1e-8, atol = 1e-8)
 	size(A, 1) == size(A, 2) || return false
 	return isapprox(A, transpose(A); rtol = rtol, atol = atol)
+end
+
+
+@inline _to_σ(ρ) = isinf(ρ) ? zero(ρ) : (iszero(ρ) ? inv(zero(ρ)) : inv(ρ))
+
+@inline function _bessel_diff(γs, d::T, D::T) where {T}
+	zmax = max(abs(γs)*d, abs(γs)*D)
+	return isapprox(to_nominal(zmax), 0.0, atol = TOL) ? log(D/d) :
+		   (besselk(0, γs*d) - besselk(0, γs*D))
 end
 
 include("logging.jl")

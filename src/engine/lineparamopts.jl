@@ -9,6 +9,8 @@ Base.@kwdef struct LineParamOptions
 	ideal_transposition::Bool = true
 	"Temperature correction"
 	temperature_correction::Bool = true
+	"Store primitive matrices"
+	store_primitive_matrices::Bool = true
 	"Verbosity level"
 	verbosity::Int = 0
 	"Log file path"
@@ -79,7 +81,7 @@ Base.propertynames(::EMTOptions, ::Bool = false) = (_COMMON_SYMS..., _EMT_OWN...
 Base.get(o::EMTOptions, s::Symbol, default) =
 	hasproperty(o, s) ? getproperty(o, s) : default
 asnamedtuple(o::EMTOptions) = (; (k=>getproperty(o, k) for k in propertynames(o))...)
-# asnamedtuple(o::EMTOptions) = (; (k=>getproperty(o,k) for k in propertynames(o) if k != :common)...)
+
 
 
 
