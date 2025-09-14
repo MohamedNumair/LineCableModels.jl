@@ -65,9 +65,22 @@ function Sector(
     rotation_angle_rad = deg2rad(rotation_angle_deg)
     rotated_vertices = [_rotate_point(p, rotation_angle_rad) for p in base_vertices]
 
+    # Ensure the polygon is closed: first point == last point (within tolerance)
+    # tol = 1e-9
+    # if !isempty(rotated_vertices)
+    #     firstp = rotated_vertices[1]
+    #     lastp  = rotated_vertices[end]
+    #     if !(isapprox(firstp[1], lastp[1]; atol=tol, rtol=0.0) &&
+    #          isapprox(firstp[2], lastp[2]; atol=tol, rtol=0.0))
+    #         push!(rotated_vertices, firstp)
+    #         @debug "(Sector) rotated_vertices not closed — appended first point to close polygon."
+    #     end
+    # end
     # 3. Calculate cross-sectional area using the Shoelace formula
-    cross_section = PolygonOps.area(rotated_vertices)
-    @debug "Sector cross-sectional area: $(cross_section*1e6) mm²"
+    #cross_section = PolygonOps.area(rotated_vertices)
+    cross_section = _shoelace_area(rotated_vertices)
+    #@debug "Sector cross-sectional area: $(cross_section*1e6) mm²"
+    @debug "Sector cross-sectional area (Shoelace): $(shoe_lace_area*1e6) mm²"
     # 4. Calculate DC resistance
     rho_eff = calc_temperature_correction(material_props.alpha, temperature, material_props.T0) * material_props.rho
     resistance = rho_eff / cross_section
@@ -130,7 +143,14 @@ function _calculate_sector_geometry(p::SectorParams)
     end
 
     x_side_center = (-qb + sqrt(discriminant)) / (2.0 * qa) # X_N
+    @debug "(Sector) x_side_center (X_N): $(x_side_center*1e3) mm"
+    @debug "(Sector) r_corner: $(p.r_corner*1e3) mm"
     y_side_center = x_side_center * tan(phi_rad) + k # Y_N
+
+    # Sector width (for checks):
+    # w = 2 * X_N + 2 * r_corner
+    w_sector = 2.0 * x_side_center + 2.0 * p.r_corner
+    @debug "(Sector) sector width (computed): $(w_sector) m ($(w_sector*1e3) mm)"
 
     x_side_lower = x_side_center + p.r_corner * sin(phi_rad)  # X_B
     y_side_lower = y_side_center - p.r_corner * cos(phi_rad)  # Y_B
@@ -236,4 +256,24 @@ end
 function _rotate_point(p::Point2f, angle_rad::Real)
     cos_a, sin_a = cos(angle_rad), sin(angle_rad)
     return Point2f(p[1] * cos_a - p[2] * sin_a, p[1] * sin_a + p[2] * cos_a)
+end
+
+"""
+Calculates the area of a polygon using the Shoelace formula.
+The vertices are given as a vector of points.
+"""
+function _shoelace_area(vertices::Vector{Point{2,T}}) where {T}
+    n = length(vertices)
+    if n < 3
+        return zero(T)
+    end
+
+    area = zero(T)
+    for i in 1:n
+        p1 = vertices[i]
+        p2 = vertices[mod1(i + 1, n)] # Wrap around for the last segment
+        area += (p1[1] * p2[2] - p2[1] * p1[2])
+    end
+
+    return abs(area) / 2.0
 end
