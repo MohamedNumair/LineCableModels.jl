@@ -204,7 +204,8 @@ armor_insu = InsulatorGroup(Insulator(armor_con, Thickness(t_jac), material))
 add!(cable_design, "armor", armor_con, armor_insu)
 
 # Inspect the finished cable design:
-plt3, _ = preview(cable_design)
+plt1, _ = preview(cable_design)
+plt1 #hide
 
 #=
 ## Examining the cable parameters (RLC)
@@ -277,7 +278,8 @@ In this section the complete bipole cable system is examined.
 system_df = DataFrame(cable_system)
 
 # Visualize the cross-section of the three-phase system:
-plt4, _ = preview(cable_system, earth_model = earth_params, zoom_factor = 2.0)
+plt2, _ = preview(cable_system, earth_model = earth_params, zoom_factor = 2.0)
+plt2 #hide
 
 #=
 ## PSCAD & ATPDraw export

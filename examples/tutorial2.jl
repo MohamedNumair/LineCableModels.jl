@@ -275,12 +275,7 @@ cable_design = CableDesign(cable_id, core_cc, nominal_data = datasheet_info)
 
 # At this point, it becomes possible to preview the cable design:
 plt1, _ = preview(cable_design)
-plt1
-
-# test1
-renderfig(plt1) #hide
-# test2
-renderfig(plt1)
+plt1 #hide
 
 #=
 ### Wire screens
@@ -311,6 +306,7 @@ add!(cable_design, sheath_cc)
 
 # Examine the newly added components:
 plt2, _ = preview(cable_design)
+plt2 #hide
 
 #=
 ### Outer jacket components
@@ -341,6 +337,7 @@ add!(cable_design, "jacket", jacket_con, jacket_insu)
 
 # Inspect the finished cable design:
 plt3, _ = preview(cable_design)
+plt3 #hide
 
 #=
 ## Examining the cable parameters (RLC)
@@ -432,6 +429,7 @@ system_df = DataFrame(cable_system)
 
 # Visualize the cross-section of the three-phase system:
 plt4, _ = preview(cable_system, earth_model = earth_params, zoom_factor = 2.0)
+plt4 #hide
 
 #=
 ## PSCAD & ATPDraw export
