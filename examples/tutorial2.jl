@@ -423,7 +423,7 @@ In this section the complete three-phase cable system is examined.
 system_df = DataFrame(cable_system)
 
 # Visualize the cross-section of the three-phase system:
-plt4 = preview(cable_system, zoom_factor = 0.15)
+plt4 = preview(cable_system, earth_model = earth_params, zoom_factor = 2.0)
 
 #=
 ## PSCAD & ATPDraw export
