@@ -36,6 +36,7 @@ This tutorial covers:
 # Load the package and set up the environment:
 using LineCableModels
 using DataFrames
+import LineCableModels.BackendHandler: renderfig #hide
 fullfile(filename) = joinpath(@__DIR__, filename); #hide
 set_verbosity!(0); #hide
 set_backend!(:gl); #hide
@@ -275,6 +276,11 @@ cable_design = CableDesign(cable_id, core_cc, nominal_data = datasheet_info)
 # At this point, it becomes possible to preview the cable design:
 plt1, _ = preview(cable_design)
 display(plt1)
+
+# test1
+renderfig(plt1) #hide
+# test2
+renderfig(plt1)
 
 #=
 ### Wire screens
