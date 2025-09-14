@@ -3,7 +3,7 @@ module LineCableModels
 ## Public API
 # -------------------------------------------------------------------------
 # Core generics:
-export add!, set_verbosity!
+export add!, set_verbosity!, set_backend!
 
 # Materials:
 export Material, MaterialsLibrary
@@ -34,11 +34,16 @@ import DocStringExtensions: DocStringExtensions
 include("commons/Commons.jl")
 using .Commons: IMPORTS, EXPORTS, add!
 
+# Submodule `UncertainBessels`
 include("uncertainbessels/UncertainBessels.jl")
 
 # Submodule `Utils`
 include("utils/Utils.jl")
 using .Utils: set_verbosity!
+
+# Submodule `BackendHandler`
+include("backendhandler/BackendHandler.jl")
+using .BackendHandler: set_backend!
 
 # Submodule `Validation`
 include("validation/Validation.jl")
