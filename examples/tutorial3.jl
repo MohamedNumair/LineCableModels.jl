@@ -32,6 +32,7 @@ using DataFrames
 using Printf
 fullfile(filename) = joinpath(@__DIR__, filename); #hide
 set_verbosity!(0); #hide
+set_backend!(:gl); #hide
 
 # Initialize library and the required materials for this design:
 materials = MaterialsLibrary(add_defaults = true)
@@ -203,7 +204,7 @@ armor_insu = InsulatorGroup(Insulator(armor_con, Thickness(t_jac), material))
 add!(cable_design, "armor", armor_con, armor_insu)
 
 # Inspect the finished cable design:
-plt3 = preview(cable_design)
+plt3, _ = preview(cable_design)
 
 #=
 ## Examining the cable parameters (RLC)
@@ -276,7 +277,7 @@ In this section the complete bipole cable system is examined.
 system_df = DataFrame(cable_system)
 
 # Visualize the cross-section of the three-phase system:
-plt4 = preview(cable_system, earth_model = earth_params, zoom_factor = 2.0)
+plt4, _ = preview(cable_system, earth_model = earth_params, zoom_factor = 2.0)
 
 #=
 ## PSCAD & ATPDraw export
