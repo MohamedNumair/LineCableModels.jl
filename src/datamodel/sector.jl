@@ -16,6 +16,8 @@ struct SectorParams{T<:REALSCALAR}
     r_corner::T
     "Angular width of the conductor's flat base/sides [degrees]."
     theta_cond_deg::T
+    "Insulation thickness \\[m\\]."
+    d_insulation::T  # needed to correct for the offset
 end
 
 """
@@ -65,7 +67,7 @@ function Sector(
 
     # 3. Calculate cross-sectional area using the Shoelace formula
     cross_section = PolygonOps.area(rotated_vertices)
-
+    @debug "Sector cross-sectional area: $(cross_section*1e6) mm²"
     # 4. Calculate DC resistance
     rho_eff = calc_temperature_correction(material_props.alpha, temperature, material_props.T0) * material_props.rho
     resistance = rho_eff / cross_section
@@ -94,18 +96,28 @@ end
 
 function _calculate_sector_geometry(p::SectorParams)
     phi_deg = 90.0 - p.theta_cond_deg / 2.0
-    phi_rad = deg2rad(phi_deg)
+    phi_rad = deg2rad(phi_deg) # ϕ
+    @debug "(Sector) phi_deg: $phi_deg"
+    @debug "(Sector) phi_rad: $phi_rad rad"
 
     if abs(cos(phi_rad)) < 1e-9
         error("theta_cond_deg is too close to 180, leading to division by zero. Check parameters.")
     end
 
-    d_base_corner = p.r_corner * (1.0 / cos(phi_rad) - 1.0)
-    d_offset = p.r_back - p.d_sector - d_base_corner
+    d_base_corner = p.r_corner * (1.0 / cos(phi_rad) - 1.0) # D_B 
+    @debug "(Sector) d_base_corner (D_B) : $d_base_corner m"
+    d_offset = p.r_back - p.d_sector - d_base_corner  # D_O
+    @debug "(Sector) d_offset (D_O) : $d_offset m"
+    d_insulation_offset = (p.d_insulation / (cos((pi - ((2 * pi) / p.n_sectors)) / 2.0))) - d_offset # D_I
+    @debug "(Sector) d_insulation_offset (D_I) : $d_insulation_offset m"
 
-    x_base_corner = p.r_corner * sin(phi_rad)
-    y_base_corner = x_base_corner * tan(phi_rad) + d_offset
-    node_A = Point2f(x_base_corner, y_base_corner)
+    # trick test (works though different that Urquhart's)
+    #d_offset = (p.d_insulation / (cos((pi - ((2 * pi) / p.n_sectors)) / 2.0))) # D_I
+    #d_insulation_offset = 0.0 
+
+    x_base_corner = p.r_corner * sin(phi_rad) # X_A = -X_F
+    y_base_corner = x_base_corner * tan(phi_rad) + d_offset # Y_A = Y_F
+    node_A = GeometryBasics.Point2f(x_base_corner, y_base_corner + d_insulation_offset)
 
     k = p.r_corner / cos(phi_rad) + d_offset
     qa = 1.0 + tan(phi_rad)^2
@@ -117,29 +129,37 @@ function _calculate_sector_geometry(p::SectorParams)
         error("Cannot calculate side corner center: negative discriminant ($discriminant). Check parameters.")
     end
 
-    x_side_center = (-qb + sqrt(discriminant)) / (2.0 * qa)
-    y_side_center = x_side_center * tan(phi_rad) + k
+    x_side_center = (-qb + sqrt(discriminant)) / (2.0 * qa) # X_N
+    y_side_center = x_side_center * tan(phi_rad) + k # Y_N
 
-    x_side_lower = x_side_center + p.r_corner * sin(phi_rad)
-    y_side_lower = y_side_center - p.r_corner * cos(phi_rad)
-    node_B = Point2f(x_side_lower, y_side_lower)
+    x_side_lower = x_side_center + p.r_corner * sin(phi_rad)  # X_B
+    y_side_lower = y_side_center - p.r_corner * cos(phi_rad)  # Y_B
+    node_B = GeometryBasics.Point2f(x_side_lower, y_side_lower + d_insulation_offset)
 
     dist_origin_side_center = sqrt(x_side_center^2 + y_side_center^2)
     if dist_origin_side_center < 1e-9
         error("Side corner center is at the origin, cannot determine upper point direction.")
     end
-    x_side_upper = x_side_center * p.r_back / dist_origin_side_center
-    y_side_upper = y_side_center * p.r_back / dist_origin_side_center
-    node_C = Point2f(x_side_upper, y_side_upper)
+    x_side_upper = x_side_center * p.r_back / dist_origin_side_center # X_C
+    y_side_upper = y_side_center * p.r_back / dist_origin_side_center # Y_C
+    node_C = GeometryBasics.Point2f(x_side_upper, y_side_upper + d_insulation_offset)
 
     nodes = (
-        A=node_A, B=node_B, C=node_C, D=Point2f(-node_C[1], node_C[2]),
-        E=Point2f(-node_B[1], node_B[2]), F=Point2f(-node_A[1], node_A[2])
+        A=node_A,
+        B=node_B,
+        C=node_C,
+        D=GeometryBasics.Point2f(-node_C[1], node_C[2]),
+        E=GeometryBasics.Point2f(-node_B[1], node_B[2]),
+        F=GeometryBasics.Point2f(-node_A[1], node_A[2])
     )
+    @debug "(Sector) Nodes: $nodes"
     centers = (
-        Back=Point2f(0, 0), Base=Point2f(0, d_offset+  p.r_corner / cos(phi_rad)),
-        RightSide=Point2f(x_side_center, y_side_center), LeftSide=Point2f(-x_side_center, y_side_center)
+        Back=GeometryBasics.Point2f(0, 0+ d_insulation_offset),
+        Base=GeometryBasics.Point2f(0, d_offset + p.r_corner / cos(phi_rad) + d_insulation_offset),
+        RightSide=GeometryBasics.Point2f(x_side_center, y_side_center+ d_insulation_offset),
+        LeftSide=GeometryBasics.Point2f(-x_side_center, y_side_center+ d_insulation_offset)
     )
+    @debug "(Sector) Centers: $centers"
     return (Nodes=nodes, Centers=centers, Params=p)
 end
 
@@ -155,6 +175,7 @@ function _generate_arc_points(center, radius, start_angle, end_angle, num_points
         @debug "(Sector) Adjusted end_angle to be less than start_angle: $(rad2deg(end_angle)) < $(rad2deg(start_angle))"
     end
     angle_range = range(start_angle, stop=end_angle, length=num_points)
+    @debug "(Sector) ______________________________ ∠ $(rad2deg(start_angle-end_angle))."
     return [Point2f(center[1] + radius * cos(a), center[2] + radius * sin(a)) for a in angle_range]
 end
 
@@ -168,7 +189,9 @@ function _calculate_sector_polygon_points(params; num_arc_points=20) # increase 
     push!(poly_points, nodes.F)
     if params.r_corner > 1e-9
         start_angle = get_angle(nodes.F, centers.Base)
+        @debug "Arc from F to A: start_angle=$(rad2deg(start_angle))"
         end_angle = get_angle(nodes.A, centers.Base)
+        @debug "Arc from F to A: end_angle=$(rad2deg(end_angle))"
         append!(poly_points,
             _generate_arc_points(centers.Base, params.r_corner, start_angle, end_angle, num_arc_points)[2:end])
     else
@@ -191,7 +214,9 @@ function _calculate_sector_polygon_points(params; num_arc_points=20) # increase 
 
     # Arc C to D (Back)
     start_angle = get_angle(nodes.C, centers.Back)
+    @debug "Arc from C to D: start_angle=$(rad2deg(start_angle))"
     end_angle = get_angle(nodes.D, centers.Back)
+    @debug "Arc from C to D: end_angle=$(rad2deg(end_angle))"
     append!(poly_points, _generate_arc_points(centers.Back, params.r_back, start_angle, end_angle, num_arc_points)[2:end])
 
     # Arc D to E (Left Side)
