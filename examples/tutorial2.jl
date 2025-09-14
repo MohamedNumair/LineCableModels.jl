@@ -275,7 +275,7 @@ cable_design = CableDesign(cable_id, core_cc, nominal_data = datasheet_info)
 
 # At this point, it becomes possible to preview the cable design:
 plt1, _ = preview(cable_design)
-display(plt1)
+plt1
 
 # test1
 renderfig(plt1) #hide
