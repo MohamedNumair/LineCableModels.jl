@@ -401,7 +401,9 @@ function preview(design::CableDesign;
 	backgroundcolor = (_is_static_backend() ? :white : :gray90)
 	set_theme!(backgroundcolor = backgroundcolor)
 
-	fig = isnothing(axis) ? Makie.Figure(size = size) : nothing
+	fig =
+		isnothing(axis) ? Makie.Figure(size = size, figure_padding = (10, 10, 10, 10)) :
+		nothing
 
 	# ── 2 columns: left = main axis, right = container (button + legend + bars)
 	local ax
@@ -415,7 +417,6 @@ function preview(design::CableDesign;
 
 		ax.xlabel = "y [m]"
 		ax.ylabel = "z [m]"
-		n = next_fignum()
 
 		ax.title =
 			display_id ? "Cable design preview: $(design.cable_id)" :
@@ -423,7 +424,7 @@ function preview(design::CableDesign;
 
 		avail_w = size[1] * (1 - side_frac)
 		avail_h = size[2]
-		s = floor(Int, min(avail_w, avail_h))
+		s = floor(Int, min(avail_w, avail_h)*0.9)
 		Makie.colsize!(fig.layout, 1, Makie.Fixed(s))
 		Makie.rowsize!(fig.layout, 1, Makie.Fixed(s))
 	else
@@ -595,7 +596,9 @@ function preview(system::LineCableSystem;
 
 	set_theme!(backgroundcolor = backgroundcolor)
 
-	fig = isnothing(axis) ? Makie.Figure(size = size) : nothing
+	fig =
+		isnothing(axis) ? Makie.Figure(size = size, figure_padding = (10, 10, 10, 10)) :
+		nothing
 
 	# Layout: left = main axis, right = legend/colorbars (only if we own the axis)
 	local ax
@@ -617,7 +620,7 @@ function preview(system::LineCableSystem;
 		# Make the plotting canvas square if we own the axis
 		avail_w = size[1] * (1 - side_frac)
 		avail_h = size[2]
-		s = floor(Int, min(avail_w, avail_h))
+		s = floor(Int, min(avail_w, avail_h)*0.9)
 		Makie.colsize!(fig.layout, 1, Makie.Fixed(s))
 		Makie.rowsize!(fig.layout, 1, Makie.Fixed(s))
 	else
