@@ -74,7 +74,7 @@ begin
 		write(io, "</p></details>")
 	end
 	
-	LocalImage(x) = display(LocalResource(joinpath(@__DIR__, "assets", "img", x)))
+	LocalImage(x, kwargs) = LocalResource(joinpath(@__DIR__, "assets", "img", x), kwargs...)
 end
 
 # ╔═╡ b806b033-db55-4033-a975-ae3fe609b345
@@ -118,7 +118,7 @@ md"""
 
 # ╔═╡ a38bd2da-4ee7-4b16-88ae-f2eeb426dff3
 md"""
-## About Etch
+## Etch
 """
 
 # ╔═╡ 6c6e4d21-cc38-46eb-8178-4cc4a99adcba
@@ -145,7 +145,7 @@ TwoColumn(
    2. ###### **Protection** of cable-based systems
    3. ###### **Control** interactions
    4. ###### **Resilient HVDC** grids
-   $(LocalResource(joinpath(@__DIR__, "assets", "img", "future_grids.svg")), :width => 600, :style => "display: block; float: left; margin-left: auto; margin-right: auto;"))
+   $(LocalResource(joinpath(@__DIR__, "assets", "img", "future_grids.svg"), :width => 600, :style => "display: block; float: left; margin-left: auto; margin-right: auto;"))
    	""")
 
 # ╔═╡ 3e6a9c64-827d-4491-bcac-252ee7b1dc81
@@ -171,7 +171,7 @@ TwoColumn(
 	- #### Cables as a part of multi-GW future power grids.
 
 		""",
-	md"""$(LocalImage("cables1.png"), :width => 250, :style => "display: block; margin-left: auto; margin-right: auto; margin-bottom: 50px;"))
+	md"""$(LocalImage("cables1.png", :width => 250, :style => "display: block; margin-left: auto; margin-right: auto; margin-bottom: 50px;"))
    $(LocalImage("cables2.png"), :width => 250, :style => "display: block; margin-left: auto; margin-right: auto;"))
    	""")
 
@@ -684,7 +684,7 @@ md"""
 # ╟─3e6a9c64-827d-4491-bcac-252ee7b1dc81
 # ╠═877a84cc-979f-48c9-ac41-59be60b4850b
 # ╟─a3f5a8c5-4ab9-4a33-abab-7907ffab1347
-# ╟─3ff0eea3-9f1d-487f-a752-be6462f4bfb7
+# ╠═3ff0eea3-9f1d-487f-a752-be6462f4bfb7
 # ╟─a8ea0da0-36f1-44d4-9415-d3041f34c23f
 # ╟─f5fa7e28-97a7-456b-87a9-5ac4b76be9d4
 # ╟─8c2eaef0-4e01-41b9-b1a6-a20dfa9b2d57
