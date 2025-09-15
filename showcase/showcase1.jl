@@ -36,6 +36,7 @@ html"""
 TableOfContents()
 
 # ╔═╡ 4462e48f-0d08-4ad9-8dd9-12f4f5912f38
+# Helpers
 begin
 	struct TwoColumn{A, B}
 		left::A
@@ -72,6 +73,8 @@ begin
 		show(io, mime, fld.content)
 		write(io, "</p></details>")
 	end
+	
+	LocalImage(x) = display(LocalResource(joinpath(@__DIR__, "assets", "img", x)))
 end
 
 # ╔═╡ b806b033-db55-4033-a975-ae3fe609b345
@@ -142,7 +145,7 @@ TwoColumn(
    2. ###### **Protection** of cable-based systems
    3. ###### **Control** interactions
    4. ###### **Resilient HVDC** grids
-   $(LocalResource(joinpath(@__DIR__, "..", "assets", "img", "future_grids.svg"), :width => 600, :style => "display: block; float: left; margin-left: auto; margin-right: auto;"))
+   $(LocalResource(joinpath(@__DIR__, "assets", "img", "future_grids.svg")), :width => 600, :style => "display: block; float: left; margin-left: auto; margin-right: auto;"))
    	""")
 
 # ╔═╡ 3e6a9c64-827d-4491-bcac-252ee7b1dc81
@@ -168,8 +171,8 @@ TwoColumn(
 	- #### Cables as a part of multi-GW future power grids.
 
 		""",
-	md"""$(LocalResource(joinpath(@__DIR__, "..", "assets", "img", "cables1.png"), :width => 250, :style => "display: block; margin-left: auto; margin-right: auto; margin-bottom: 50px;"))
-   $(LocalResource(joinpath(@__DIR__, "..", "assets", "img", "cables2.png"), :width => 250, :style => "display: block; margin-left: auto; margin-right: auto;"))
+	md"""$(LocalImage("cables1.png"), :width => 250, :style => "display: block; margin-left: auto; margin-right: auto; margin-bottom: 50px;"))
+   $(LocalImage("cables2.png"), :width => 250, :style => "display: block; margin-left: auto; margin-right: auto;"))
    	""")
 
 # ╔═╡ a3f5a8c5-4ab9-4a33-abab-7907ffab1347
@@ -665,11 +668,11 @@ md"""
 """
 
 # ╔═╡ Cell order:
-# ╟─a82fd7fe-465d-4744-870f-638a72a54317
-# ╟─7b9396bd-5253-4ecd-b863-c7f9ae47cc65
-# ╟─e85bf184-df3d-45b1-a4d8-958e75ae71b8
-# ╟─4462e48f-0d08-4ad9-8dd9-12f4f5912f38
-# ╟─b806b033-db55-4033-a975-ae3fe609b345
+# ╠═a82fd7fe-465d-4744-870f-638a72a54317
+# ╠═7b9396bd-5253-4ecd-b863-c7f9ae47cc65
+# ╠═e85bf184-df3d-45b1-a4d8-958e75ae71b8
+# ╠═4462e48f-0d08-4ad9-8dd9-12f4f5912f38
+# ╠═b806b033-db55-4033-a975-ae3fe609b345
 # ╟─de026730-c3ad-4fda-9140-84f11370a7fc
 # ╟─f08a32db-05d9-4ddb-9c46-34bc623ce5e7
 # ╟─50384351-fc38-4b29-9bf6-db1556d49dee
@@ -677,9 +680,9 @@ md"""
 # ╟─d482241c-4bd5-4896-bdc1-e82387f69051
 # ╟─14f07acc-5353-4b1d-b94f-9ae43f87289b
 # ╟─a38bd2da-4ee7-4b16-88ae-f2eeb426dff3
-# ╟─6c6e4d21-cc38-46eb-8178-4cc4a99adcba
+# ╠═6c6e4d21-cc38-46eb-8178-4cc4a99adcba
 # ╟─3e6a9c64-827d-4491-bcac-252ee7b1dc81
-# ╟─877a84cc-979f-48c9-ac41-59be60b4850b
+# ╠═877a84cc-979f-48c9-ac41-59be60b4850b
 # ╟─a3f5a8c5-4ab9-4a33-abab-7907ffab1347
 # ╟─3ff0eea3-9f1d-487f-a752-be6462f4bfb7
 # ╟─a8ea0da0-36f1-44d4-9415-d3041f34c23f
