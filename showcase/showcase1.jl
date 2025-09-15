@@ -34,6 +34,81 @@ html"""
 """
   ╠═╡ =#
 
+# ╔═╡ 842fadec-1194-4b8f-b02d-da3d995c9e70
+@htl("""
+<style id="lc-plutostyles">
+/* ====== editor.css-like tweaks ====== */
+
+/* occupy full width */
+body main{
+  max-width: calc(100% - 2em) !important;
+  margin-left: 1em !important;
+  margin-right: 1em !important;
+  padding-left: max(160px, 10%);
+  padding-right: max(383px, 10%);
+}
+
+/* larger images in arrays when expanded */
+pluto-tree img{
+  max-width: none !important;
+  max-height: none !important;
+}
+
+/* somewhat larger images in arrays when collapsed */
+pluto-tree.collapsed img{
+  max-width: 15rem !important;
+  max-height: 15rem !important;
+}
+
+/* move cell popup menu to the left of its button */
+pluto-input > .open.input_context_menu > ul{
+  margin-left: -200px;
+  margin-right: 20px;
+}
+/* keep popup above other stuff */
+pluto-input > .open.input_context_menu > ul,
+pluto-input > .open.input_context_menu{
+  z-index: 31 !important;
+}
+
+/* widen generic popup */
+pluto-popup{
+  --max-size: 451px;
+  width: min(90vw, var(--max-size));
+}
+
+/* taller Pkg terminal */
+pkg-terminal > .scroller{
+  max-height: 70vh;
+}
+
+/* ====== index.css-like tweaks (harmless if not on index page) ====== */
+li.recent > a:after,
+li.running > a:after{
+  display: block;
+  content: attr(title);
+  font-size: x-small;
+}
+li > a[title*="/pluto_notebooks/"]{ color: rgb(16 113 109); }
+ul#recent{ max-height: none; }
+</style>
+
+<script>
+  // Make overrides truly global: duplicate <style> into <head> so it survives rerenders
+  (function(){
+    const s = document.getElementById("lc-plutostyles");
+    if(!s) return;
+    const exists = document.getElementById("lc-plutostyles-head");
+    if(!exists){
+      const clone = s.cloneNode(true);
+      clone.id = "lc-plutostyles-head";
+      document.head.appendChild(clone);
+    }
+  })();
+</script>
+""")
+
+
 # ╔═╡ e85bf184-df3d-45b1-a4d8-958e75ae71b8
 TableOfContents()
 
@@ -272,9 +347,6 @@ md"""#
 
 # ╔═╡ e128dcef-675a-4dce-b959-b1ef9248f73d
 
-
-# ╔═╡ de026730-c3ad-4fda-9140-84f11370a7fc
-html"<button onclick='present()'>present</button>"
 
 # ╔═╡ f08a32db-05d9-4ddb-9c46-34bc623ce5e7
 md"""
@@ -862,6 +934,7 @@ md"""
 # ╔═╡ Cell order:
 # ╠═a82fd7fe-465d-4744-870f-638a72a54317
 # ╠═7b9396bd-5253-4ecd-b863-c7f9ae47cc65
+# ╠═842fadec-1194-4b8f-b02d-da3d995c9e70
 # ╠═e85bf184-df3d-45b1-a4d8-958e75ae71b8
 # ╠═4462e48f-0d08-4ad9-8dd9-12f4f5912f38
 # ╠═b806b033-db55-4033-a975-ae3fe609b345
@@ -871,7 +944,6 @@ md"""
 # ╠═ca2e37fc-ee11-4b54-840c-bc40dd05a236
 # ╠═7139126f-5b56-4668-991b-6b63b0642d74
 # ╠═e128dcef-675a-4dce-b959-b1ef9248f73d
-# ╠═de026730-c3ad-4fda-9140-84f11370a7fc
 # ╟─f08a32db-05d9-4ddb-9c46-34bc623ce5e7
 # ╟─50384351-fc38-4b29-9bf6-db1556d49dee
 # ╟─23913cc6-a81b-4098-bacf-7a2e09998e53

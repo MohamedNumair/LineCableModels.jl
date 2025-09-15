@@ -1,9 +1,15 @@
-#!/bin/bash
-set -ex
+#!/usr/bin/env bash
+set -euxo pipefail
 
-echo "hello from postBuild"
+# Speed & reliability tweaks
+export JULIA_DEPOT_PATH="$HOME/.julia"
 
-# Optimziation:
-# Start Pluto, open new notebook, shut down notebook.
-# This should precompile the PlutoRunner boot environment, so it launches faster when opening the new notebook on the live binder.
-julia --optimize=0 warmup_server.jl
+julia --project=binder -e '
+using Pkg
+Pkg.activate("binder")
+# 1) Make the repo package available (local path)
+Pkg.develop(PackageSpec(path=pwd()))
+# 2) Instantiate & precompile to cut first-open latency
+Pkg.instantiate()
+Pkg.precompile()
+'
