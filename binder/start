@@ -2,13 +2,14 @@
 set -euxo pipefail
 
 # Start Pluto on the Binder port and open your notebook
-exec julia -e '
+exec julia --project=binder -e '
 import Pluto
 import WGLMakie; WGLMakie.activate!()
 using PlutoStyles
 Pluto.run(host = "0.0.0.0",
     port = parse(Int, get(ENV, "PORT", "8888")),
     launch_browser = false,
-    require_secret_for_open = false,
+    require_secret_for_open_links=false, 
+    require_secret_for_access=false,
 )
 '
