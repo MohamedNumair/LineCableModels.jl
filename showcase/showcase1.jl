@@ -19,101 +19,82 @@ begin
 	using HypertextLiteral
 end
 
-# ╔═╡ 7b9396bd-5253-4ecd-b863-c7f9ae47cc65
-# ╠═╡ disabled = true
-#=╠═╡
-html"""
-<style>
-	main {
-		margin: 0 auto;
-		max-width: 2000px;
-		padding-left: max(160px, 10%);
-		padding-right: max(383px, 10%);
+# ╔═╡ 46cfd6fa-b4d6-44c3-83cf-d2b9b1ff1cf1
+	# Override stupid CSS settings
+	@htl("""
+	<style id="lc-plutostyles">
+	/* ====== editor.css-like tweaks ====== */
+	
+	/* occupy full width */
+	body main{
+	  max-width: calc(100% - 2em) !important;
+	  margin-left: 1em !important;
+	  margin-right: 1em !important;
+	  padding-left: max(160px, 10%);
+	  padding-right: max(383px, 10%);
 	}
-</style>
-"""
-  ╠═╡ =#
-
-# ╔═╡ 842fadec-1194-4b8f-b02d-da3d995c9e70
-@htl("""
-<style id="lc-plutostyles">
-/* ====== editor.css-like tweaks ====== */
-
-/* occupy full width */
-body main{
-  max-width: calc(100% - 2em) !important;
-  margin-left: 1em !important;
-  margin-right: 1em !important;
-  padding-left: max(160px, 10%);
-  padding-right: max(383px, 10%);
-}
-
-/* larger images in arrays when expanded */
-pluto-tree img{
-  max-width: none !important;
-  max-height: none !important;
-}
-
-/* somewhat larger images in arrays when collapsed */
-pluto-tree.collapsed img{
-  max-width: 15rem !important;
-  max-height: 15rem !important;
-}
-
-/* move cell popup menu to the left of its button */
-pluto-input > .open.input_context_menu > ul{
-  margin-left: -200px;
-  margin-right: 20px;
-}
-/* keep popup above other stuff */
-pluto-input > .open.input_context_menu > ul,
-pluto-input > .open.input_context_menu{
-  z-index: 31 !important;
-}
-
-/* widen generic popup */
-pluto-popup{
-  --max-size: 451px;
-  width: min(90vw, var(--max-size));
-}
-
-/* taller Pkg terminal */
-pkg-terminal > .scroller{
-  max-height: 70vh;
-}
-
-/* ====== index.css-like tweaks (harmless if not on index page) ====== */
-li.recent > a:after,
-li.running > a:after{
-  display: block;
-  content: attr(title);
-  font-size: x-small;
-}
-li > a[title*="/pluto_notebooks/"]{ color: rgb(16 113 109); }
-ul#recent{ max-height: none; }
-</style>
-
-<script>
-  // Make overrides truly global: duplicate <style> into <head> so it survives rerenders
-  (function(){
-    const s = document.getElementById("lc-plutostyles");
-    if(!s) return;
-    const exists = document.getElementById("lc-plutostyles-head");
-    if(!exists){
-      const clone = s.cloneNode(true);
-      clone.id = "lc-plutostyles-head";
-      document.head.appendChild(clone);
-    }
-  })();
-</script>
-""")
-
-
-# ╔═╡ e85bf184-df3d-45b1-a4d8-958e75ae71b8
-TableOfContents()
+	
+	/* larger images in arrays when expanded */
+	pluto-tree img{
+	  max-width: none !important;
+	  max-height: none !important;
+	}
+	
+	/* somewhat larger images in arrays when collapsed */
+	pluto-tree.collapsed img{
+	  max-width: 15rem !important;
+	  max-height: 15rem !important;
+	}
+	
+	/* move cell popup menu to the left of its button */
+	pluto-input > .open.input_context_menu > ul{
+	  margin-left: -200px;
+	  margin-right: 20px;
+	}
+	/* keep popup above other stuff */
+	pluto-input > .open.input_context_menu > ul,
+	pluto-input > .open.input_context_menu{
+	  z-index: 31 !important;
+	}
+	
+	/* widen generic popup */
+	pluto-popup{
+	  --max-size: 451px;
+	  width: min(90vw, var(--max-size));
+	}
+	
+	/* taller Pkg terminal */
+	pkg-terminal > .scroller{
+	  max-height: 70vh;
+	}
+	
+	/* ====== index.css-like tweaks (harmless if not on index page) ====== */
+	li.recent > a:after,
+	li.running > a:after{
+	  display: block;
+	  content: attr(title);
+	  font-size: x-small;
+	}
+	li > a[title*="/pluto_notebooks/"]{ color: rgb(16 113 109); }
+	ul#recent{ max-height: none; }
+	</style>
+	
+	<script>
+	  // Make overrides truly global: duplicate <style> into <head> so it survives rerenders
+	  (function(){
+	    const s = document.getElementById("lc-plutostyles");
+	    if(!s) return;
+	    const exists = document.getElementById("lc-plutostyles-head");
+	    if(!exists){
+	      const clone = s.cloneNode(true);
+	      clone.id = "lc-plutostyles-head";
+	      document.head.appendChild(clone);
+	    }
+	  })();
+	</script>
+	""")
 
 # ╔═╡ 4462e48f-0d08-4ad9-8dd9-12f4f5912f38
-# Helpers
 begin
 	struct TwoColumn{A, B}
 		left::A
@@ -154,10 +135,6 @@ begin
 	LocalImage(x::AbstractString; attrs...) =
     LocalResource(joinpath(@__DIR__, "assets", "img", x), pairs(attrs)...)
 end;
-
-# ╔═╡ b806b033-db55-4033-a975-ae3fe609b345
-md"""# 
-"""
 
 # ╔═╡ e90baf94-c8b8-41aa-8728-e129f7f6881e
 @htl("""
@@ -258,6 +235,11 @@ md"""#
   .lc-icon:active { background: var(--lc-icon-active); transform: translateY(1px); }
   .lc-icon:focus-visible { outline: 2px solid color-mix(in oklab, var(--lc-accent), white 10%); outline-offset: 2px; }
 
+  .lc-hidden{
+    position:absolute !important; width:1px; height:1px; padding:0; margin:-1px;
+    overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0;
+  }
+
   .material-symbols-rounded{
     font-variation-settings: 'OPSZ' 24, 'wght' 400, 'FILL' 0, 'GRAD' 0;
     font-size: 24px; line-height: 1;
@@ -320,33 +302,83 @@ md"""#
   document.getElementById("btn-prev").addEventListener("click", () => clickChange(-1))
   document.getElementById("btn-next").addEventListener("click", () => clickChange(1))
 
-  // Home
-  document.getElementById("btn-home").addEventListener("click", () => {
-    window.scrollTo({ top: 0, behavior: "smooth" })
-  })
+  // Home → smooth-scroll to #home and update the URL hash
+document.getElementById("btn-home").addEventListener("click", () => {
+  const target = document.getElementById("home");
+  if (target) {
+    // update the URL without a jump
+    history.replaceState(null, "", "#home");
+    // smooth scroll to the anchor
+    target.scrollIntoView({ behavior: "smooth", block: "start", inline: "nearest" });
+  } else {
+    // fallback if #home isn't in the DOM
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+});
 
   // Hotkeys: n/p arrows, h home, p present, c code
-  window.addEventListener("keydown", (e) => {
-    if (e.target && ["INPUT","TEXTAREA"].includes(e.target.tagName)) return
-    if (e.metaKey || e.ctrlKey || e.altKey) return
-    if (e.key === "ArrowRight") clickChange(1)
-    if (e.key === "ArrowLeft")  clickChange(-1)
-    if (e.key === "h") document.getElementById("btn-home").click()
-    if (e.key === "p") bPresent.click()
-    if (e.key === "c") bCode.click()
-  })
+  //window.addEventListener("keydown", (e) => {
+  //  if (e.target && ["INPUT","TEXTAREA"].includes(e.target.tagName)) return
+  //  if (e.metaKey || e.ctrlKey || e.altKey) return
+  //  if (e.key === "ArrowRight") clickChange(1)
+  //  if (e.key === "ArrowLeft")  clickChange(-1)
+  //  if (e.key === "h") document.getElementById("btn-home").click()
+  //  if (e.key === "p") bPresent.click()
+  //  if (e.key === "c") bCode.click()
+  //})
 </script>
 """)
 
 
 # ╔═╡ ca2e37fc-ee11-4b54-840c-bc40dd05a236
 
+# Make an invisible heading that PlutoUI.ToC will index
+# level ∈ 1:6 controls nesting in the ToC
+begin
+	function toc_phantom(title; level::Int=2, id::Union{Nothing,String}=nothing)
+    level = clamp(level, 1, 6)                       # h1..h6 only
+    slug  = isnothing(id) ?
+        lowercase(replace(strip(string(title)), r"[^A-Za-z0-9]+" => "-")) :
+        id
+    tag = Symbol("h", level)                          # :h1, :h2, ...
 
-# ╔═╡ 7139126f-5b56-4668-991b-6b63b0642d74
+    @htl("""
+    <!-- one-time install of visually-hidden CSS -->
+    <script>
+      (function(){
+        if(!document.getElementById("lc-vis-hidden-style")){
+          const s=document.createElement('style');
+          s.id="lc-vis-hidden-style";
+          s.textContent=".lc-visually-hidden{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}";
+          document.head.appendChild(s);
+        }
+      })();
+    </script>
 
+    <!-- invisible heading that ToC will index -->
+    <$(tag) id=$(slug) class="lc-visually-hidden">$(title)</$(tag)>
 
-# ╔═╡ e128dcef-675a-4dce-b959-b1ef9248f73d
+    <!-- auto-ping ToC so it rescans -->
+    <script>
+      const cell = currentScript.closest('pluto-cell');
+      if (cell){
+        cell.classList.add('lc-toc-ping');
+        setTimeout(()=>cell.classList.remove('lc-toc-ping'),0);
+      }
+    </script>
+    """)
+	end
+end;
 
+# ╔═╡ fde80e93-1964-4287-acfc-a2da2d4b7d48
+TableOfContents()
+
+# ╔═╡ 715b8cc1-7da6-4010-995d-35d02d43dbde
+toc_phantom("🏠 Home", level=1, id="home") 
+
+# ╔═╡ 87b6b005-3ea5-457f-8462-72d35f2e977c
+md"""# 
+"""
 
 # ╔═╡ f08a32db-05d9-4ddb-9c46-34bc623ce5e7
 md"""
@@ -381,9 +413,7 @@ md"""
 """
 
 # ╔═╡ a38bd2da-4ee7-4b16-88ae-f2eeb426dff3
-md"""
-## Etch
-"""
+toc_phantom("Etch", level=1, id="home") 
 
 # ╔═╡ 6c6e4d21-cc38-46eb-8178-4cc4a99adcba
 TwoColumn(
@@ -933,23 +963,21 @@ md"""
 
 # ╔═╡ Cell order:
 # ╠═a82fd7fe-465d-4744-870f-638a72a54317
-# ╠═7b9396bd-5253-4ecd-b863-c7f9ae47cc65
-# ╠═842fadec-1194-4b8f-b02d-da3d995c9e70
-# ╠═e85bf184-df3d-45b1-a4d8-958e75ae71b8
+# ╠═46cfd6fa-b4d6-44c3-83cf-d2b9b1ff1cf1
 # ╠═4462e48f-0d08-4ad9-8dd9-12f4f5912f38
-# ╠═b806b033-db55-4033-a975-ae3fe609b345
 # ╠═e90baf94-c8b8-41aa-8728-e129f7f6881e
 # ╠═532cb61b-97b6-43e7-a8f9-3a5f12b8b3f7
 # ╠═b16ff72c-872a-4505-9468-6cefd4a8852c
 # ╠═ca2e37fc-ee11-4b54-840c-bc40dd05a236
-# ╠═7139126f-5b56-4668-991b-6b63b0642d74
-# ╠═e128dcef-675a-4dce-b959-b1ef9248f73d
+# ╠═fde80e93-1964-4287-acfc-a2da2d4b7d48
+# ╟─715b8cc1-7da6-4010-995d-35d02d43dbde
+# ╟─87b6b005-3ea5-457f-8462-72d35f2e977c
 # ╟─f08a32db-05d9-4ddb-9c46-34bc623ce5e7
-# ╠═50384351-fc38-4b29-9bf6-db1556d49dee
+# ╟─50384351-fc38-4b29-9bf6-db1556d49dee
 # ╟─23913cc6-a81b-4098-bacf-7a2e09998e53
 # ╟─d482241c-4bd5-4896-bdc1-e82387f69051
 # ╟─14f07acc-5353-4b1d-b94f-9ae43f87289b
-# ╟─a38bd2da-4ee7-4b16-88ae-f2eeb426dff3
+# ╠═a38bd2da-4ee7-4b16-88ae-f2eeb426dff3
 # ╟─6c6e4d21-cc38-46eb-8178-4cc4a99adcba
 # ╟─3e6a9c64-827d-4491-bcac-252ee7b1dc81
 # ╟─877a84cc-979f-48c9-ac41-59be60b4850b

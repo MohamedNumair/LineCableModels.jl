@@ -1,12 +1,25 @@
-#!/usr/bin/env bash
-set -euxo pipefail
+#!/bin/bash
+set -euxo pipefile
 
-julia --project=binder -e '
-using Pkg
-Pkg.activate("binder")
-# 1) Make the repo package available (local path)
-Pkg.develop(PackageSpec(path=pwd()))
-# 2) Instantiate & precompile to cut first-open latency
-Pkg.instantiate()
-Pkg.precompile()
-'
+# First, instantiate and precompile your binder environment as usual
+julia --project=binder -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()'
+
+# Now, find the julia kernel.json and force it to use our project
+# This is the magic that makes the Pluto plugin work correctly
+KERNEL_PATH=$(jupyter kernelspec list | grep julia | awk '{print $2}')
+cat <<EOF > temp_kernel.json
+{
+ "argv": [
+  "julia",
+  "-i",
+  "--color=yes",
+  "--project=/home/jovyan/binder",
+  "{connection_file}"
+ ],
+ "display_name": "Julia (LineCableModels)",
+ "language": "julia"
+}
+EOF
+mv temp_kernel.json "${KERNEL_PATH}/kernel.json"
+
+echo "Successfully configured Jupyter kernel to use the binder environment."
