@@ -15,6 +15,7 @@ begin
 	WGLMakie.activate!()
 	using Makie, PlutoUI, Colors
 	using LineCableModels
+	using DataFrames
 end
 
 # ╔═╡ 7b9396bd-5253-4ecd-b863-c7f9ae47cc65
@@ -273,7 +274,7 @@ TwoColumn(
 		diameter = [round(d, digits = 2) for d in getindex.(layers, 3)], # hide
 	))
 	""",
-	md"""$(LocalResource(joinpath(@__DIR__, "cable_photo.jpg"), :width => 350, :style => "display: block; margin-top: 50px; margin-left: auto; margin-right: auto;"))
+	md"""$(LocalImage("cable_photo.jpg", width = 350, style = "display: block; margin-top: 50px; margin-left: auto; margin-right: auto;"))
 	""")
 
 # ╔═╡ 29222f8e-fb07-4bdb-8939-f18e668d2037
@@ -690,7 +691,7 @@ md"""
 # ╟─f5fa7e28-97a7-456b-87a9-5ac4b76be9d4
 # ╟─8c2eaef0-4e01-41b9-b1a6-a20dfa9b2d57
 # ╟─cb8f01ae-26e0-44ce-8347-298ab692ac63
-# ╠═29222f8e-fb07-4bdb-8939-f18e668d2037
+# ╟─29222f8e-fb07-4bdb-8939-f18e668d2037
 # ╟─c1595a9d-7882-4b66-a1fc-fe6de19f1ef6
 # ╟─c13e262c-2dd2-43da-a01b-a95adb7eaa7d
 # ╠═c2539b01-ac04-48e4-a973-6a5d8a0e2b58
