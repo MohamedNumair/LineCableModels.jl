@@ -49,6 +49,7 @@ url = "https://github.com/Electa-Git/GetDP.jl"
 
 [compat]
 CSV = "0.10.15"
+CairoMakie = "0.15"
 Calculus = "0.5.2"
 ColorSchemes = "3.27.1"
 Colors = "0.13.0"
