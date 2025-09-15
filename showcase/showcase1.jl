@@ -16,6 +16,7 @@ begin
 	using Makie, PlutoUI, Colors
 	using LineCableModels
 	using DataFrames
+	using HypertextLiteral
 end
 
 # ╔═╡ 7b9396bd-5253-4ecd-b863-c7f9ae47cc65
@@ -82,6 +83,128 @@ end;
 # ╔═╡ b806b033-db55-4033-a975-ae3fe609b345
 md"""# 
 """
+
+# ╔═╡ 4814de60-f2ee-4d6a-86d1-759762042054
+# ╠═╡ disabled = true
+#=╠═╡
+@htl("""
+<style id="lc-button-kit">
+  /* Base tokens pulled from Pluto (with fallbacks) */
+  :root{
+    --lc-accent: var(--selected-cell-bg-color, #2a73cd);
+    --lc-bg:     var(--overlay-button-bg, #f5f5f5);
+    --lc-fg:     var(--overlay-button-color, #222);
+    --lc-bd:     var(--overlay-button-border, #c7c7c7);
+
+    /* Derived tokens (work in both themes) */
+    --lc-bg-hover:  color-mix(in oklab, var(--lc-bg),   white 8%);
+    --lc-bg-active: color-mix(in oklab, var(--lc-bg),   black 10%);
+    --lc-ring:      color-mix(in oklab, var(--lc-accent), white 10%);
+    --lc-danger:    var(--jl-danger-accent-color, #ff7562);
+  }
+
+  .lc-btn{
+    appearance:none; -webkit-appearance:none; -moz-appearance:none;
+    font: inherit;
+    color: var(--lc-fg);
+    background: var(--lc-bg);
+    border: 1px solid var(--lc-bd);
+    border-radius: 8px;
+    padding: .4rem .75rem;
+    display: inline-flex; align-items: center; gap: .5rem;
+    cursor: pointer;
+    transition: background .15s ease, box-shadow .15s ease, transform .02s ease, border-color .15s ease;
+    user-select: none;
+  }
+  .lc-btn:hover  { background: var(--lc-bg-hover); }
+  .lc-btn:active { background: var(--lc-bg-active); transform: translateY(1px); }
+  .lc-btn:focus-visible { outline: 2px solid var(--lc-ring); outline-offset: 2px; }
+
+  .lc-btn[disabled]{ opacity:.55; cursor:not-allowed }
+
+  /* Variants */
+  .lc-btn--primary{
+    background: var(--lc-accent);
+    border-color: color-mix(in oklab, var(--lc-accent), black 15%);
+    color: white;
+  }
+  .lc-btn--primary:hover{
+    background: color-mix(in oklab, var(--lc-accent), white 8%);
+  }
+  .lc-btn--ghost{
+    background: transparent;
+    border-color: var(--lc-bd);
+    color: var(--lc-fg);
+  }
+  .lc-btn--danger{
+    background: var(--lc-danger);
+    border-color: color-mix(in oklab, var(--lc-danger), black 25%);
+    color: #000;
+  }
+
+  /* Sizes */
+  .lc-btn--sm{ padding:.25rem .55rem; font-size:.9rem; border-radius:6px; }
+  .lc-btn--lg{ padding:.55rem .95rem; font-size:1.05rem; border-radius:10px; }
+
+  /* Icon helper */
+  .lc-ico{ font-size:1.1em; line-height:0 }
+</style>
+""")
+
+  ╠═╡ =#
+
+# ╔═╡ e90baf94-c8b8-41aa-8728-e129f7f6881e
+# @htl("""
+# <button id="view_code_btn" class="lc-btn lc-btn--sm lc-btn--ghost" title="Read hidden code">
+#   <span class="lc-ico">👁️</span><span class="text">View code</span>
+# </button>
+
+# <script>
+#   const root  = document.documentElement
+#   const btn   = currentScript.parentElement.querySelector('#view_code_btn')
+#   const label = () => btn.querySelector('.text')
+#   function sync(){ label().textContent = root.classList.contains('show-code') ? 'Hide code' : 'View code' }
+#   btn.addEventListener('click', () => { root.classList.toggle('show-code'); sync() })
+#   sync()
+# </script>
+# """)
+
+@htl("""
+<style>
+  /* Hide inputs unless the root has .show-code */
+  :root:not(.show-code) pluto-input { display: none !important; }
+  .view_hidden_code { 
+    cursor: pointer; padding: 0.35rem 0.6rem; border-radius: 6px; 
+    border: 1px solid #bbb; background: #f8f8f8; font: inherit;
+  }
+</style>
+
+<button id="view_code_btn" class="lc-btn lc-btn--sm lc-btn--ghost" title="Read hidden code">
+  <span class="lc-ico">👁️</span><span class="text">View code</span>
+</button>
+
+<script>
+  const root = document.documentElement
+  const btn  = currentScript.parentElement.querySelector('#view_code_btn')
+  const label = () => btn.querySelector('.text')
+  function sync() { label().textContent = root.classList.contains('show-code') ? 'Hide code' : 'View code' }
+  btn.addEventListener('click', () => { root.classList.toggle('show-code'); sync() })
+  sync()
+</script>
+""")
+
+
+# ╔═╡ b16ff72c-872a-4505-9468-6cefd4a8852c
+
+
+# ╔═╡ ca2e37fc-ee11-4b54-840c-bc40dd05a236
+
+
+# ╔═╡ 7139126f-5b56-4668-991b-6b63b0642d74
+
+
+# ╔═╡ e128dcef-675a-4dce-b959-b1ef9248f73d
+
 
 # ╔═╡ de026730-c3ad-4fda-9140-84f11370a7fc
 html"<button onclick='present()'>present</button>"
@@ -309,11 +432,11 @@ md"""
 # ╔═╡ c2539b01-ac04-48e4-a973-6a5d8a0e2b58
 # ╠═╡ show_logs = false
 # Initialize materials library with default values:
-materials_db = MaterialsLibrary(add_defaults = true)
+materials = MaterialsLibrary(add_defaults = true)
 
 
 # ╔═╡ c7c7ce65-3a0c-4ac6-82f0-f9f58e46f47e
-list_materialslibrary(materials_db)
+DataFrame(materials)
 
 
 # ╔═╡ 062439db-1e3f-497e-96c1-e1f65f80399b
@@ -674,8 +797,14 @@ md"""
 # ╟─7b9396bd-5253-4ecd-b863-c7f9ae47cc65
 # ╟─e85bf184-df3d-45b1-a4d8-958e75ae71b8
 # ╟─4462e48f-0d08-4ad9-8dd9-12f4f5912f38
-# ╟─b806b033-db55-4033-a975-ae3fe609b345
-# ╟─de026730-c3ad-4fda-9140-84f11370a7fc
+# ╠═b806b033-db55-4033-a975-ae3fe609b345
+# ╟─4814de60-f2ee-4d6a-86d1-759762042054
+# ╠═e90baf94-c8b8-41aa-8728-e129f7f6881e
+# ╠═b16ff72c-872a-4505-9468-6cefd4a8852c
+# ╠═ca2e37fc-ee11-4b54-840c-bc40dd05a236
+# ╠═7139126f-5b56-4668-991b-6b63b0642d74
+# ╠═e128dcef-675a-4dce-b959-b1ef9248f73d
+# ╠═de026730-c3ad-4fda-9140-84f11370a7fc
 # ╟─f08a32db-05d9-4ddb-9c46-34bc623ce5e7
 # ╟─50384351-fc38-4b29-9bf6-db1556d49dee
 # ╟─23913cc6-a81b-4098-bacf-7a2e09998e53

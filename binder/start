@@ -1,5 +1,42 @@
 #!/bin/bash
 set -euxo pipefail
 
-# Start Pluto on the Binder port and open your notebook
-exec julia --project=/home/jovyan/binder -e 'import Pluto; import WGLMakie; WGLMakie.activate!(); using PlutoStyles; Pluto.run(host = "0.0.0.0", port = parse(Int, get(ENV, "PORT", "8888")), launch_browser = false, require_secret_for_open_links=false, require_secret_for_access=false)'
+echo "--- [DEBUG] Executing custom start script ---"
+echo "--- [DEBUG] Current time: $(date)"
+echo "--- [DEBUG] Current working directory: $(pwd)"
+echo "--- [DEBUG] Listing contents of current directory:"
+ls -la
+echo "--- [DEBUG] Listing contents of binder/ directory:"
+ls -la binder/
+echo "--- [DEBUG] Binder PORT variable is: ${PORT}"
+echo "--- [DEBUG] Julia version:"
+julia --version
+
+echo "--- [INFO] Preparing to launch Pluto with WGLMakie backend... ---"
+
+# Start Pluto on the Binder port, activate WGLMakie, and open your notebook
+exec julia --project=binder -e '
+    try
+        println("[JULIA-INFO] Importing packages...")
+        import Pluto
+        import WGLMakie
+        using PlutoStyles
+        println("[JULIA-INFO] Activating WGLMakie backend...")
+        WGLMakie.activate!()
+        println("[JULIA-INFO] Packages imported and backend activated successfully.")
+        
+        println("[JULIA-INFO] Starting Pluto server...")
+        Pluto.run(
+            host = "0.0.0.0",
+            port = parse(Int, ENV["PORT"]),
+            launch_browser = false,
+            require_secret_for_open_links = false,
+            require_secret_for_access = false
+        )
+    catch e
+        println("[JULIA-ERROR] An error occurred during Julia startup.")
+        showerror(stdout, e)
+        println("\n")
+        rethrow(e)
+    end
+'
