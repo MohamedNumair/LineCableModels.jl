@@ -1,0 +1,6 @@
+# binder/start
+#!/bin/bash
+set -euxo pipefail
+export JULIA_PROJECT='@v#.#'
+# whatever you already do to launch JupyterLab + Pluto proxy
+exec jupyter lab --no-browser --ServerApp.allow_origin='*'
