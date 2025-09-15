@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
-# Speed & reliability tweaks
-export JULIA_DEPOT_PATH="$HOME/.julia"
-
 julia --project=binder -e '
 using Pkg
 Pkg.activate("binder")
