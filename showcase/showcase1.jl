@@ -84,91 +84,7 @@ end;
 md"""# 
 """
 
-# ╔═╡ 4814de60-f2ee-4d6a-86d1-759762042054
-# ╠═╡ disabled = true
-#=╠═╡
-@htl("""
-<style id="lc-button-kit">
-  /* Base tokens pulled from Pluto (with fallbacks) */
-  :root{
-    --lc-accent: var(--selected-cell-bg-color, #2a73cd);
-    --lc-bg:     var(--overlay-button-bg, #f5f5f5);
-    --lc-fg:     var(--overlay-button-color, #222);
-    --lc-bd:     var(--overlay-button-border, #c7c7c7);
-
-    /* Derived tokens (work in both themes) */
-    --lc-bg-hover:  color-mix(in oklab, var(--lc-bg),   white 8%);
-    --lc-bg-active: color-mix(in oklab, var(--lc-bg),   black 10%);
-    --lc-ring:      color-mix(in oklab, var(--lc-accent), white 10%);
-    --lc-danger:    var(--jl-danger-accent-color, #ff7562);
-  }
-
-  .lc-btn{
-    appearance:none; -webkit-appearance:none; -moz-appearance:none;
-    font: inherit;
-    color: var(--lc-fg);
-    background: var(--lc-bg);
-    border: 1px solid var(--lc-bd);
-    border-radius: 8px;
-    padding: .4rem .75rem;
-    display: inline-flex; align-items: center; gap: .5rem;
-    cursor: pointer;
-    transition: background .15s ease, box-shadow .15s ease, transform .02s ease, border-color .15s ease;
-    user-select: none;
-  }
-  .lc-btn:hover  { background: var(--lc-bg-hover); }
-  .lc-btn:active { background: var(--lc-bg-active); transform: translateY(1px); }
-  .lc-btn:focus-visible { outline: 2px solid var(--lc-ring); outline-offset: 2px; }
-
-  .lc-btn[disabled]{ opacity:.55; cursor:not-allowed }
-
-  /* Variants */
-  .lc-btn--primary{
-    background: var(--lc-accent);
-    border-color: color-mix(in oklab, var(--lc-accent), black 15%);
-    color: white;
-  }
-  .lc-btn--primary:hover{
-    background: color-mix(in oklab, var(--lc-accent), white 8%);
-  }
-  .lc-btn--ghost{
-    background: transparent;
-    border-color: var(--lc-bd);
-    color: var(--lc-fg);
-  }
-  .lc-btn--danger{
-    background: var(--lc-danger);
-    border-color: color-mix(in oklab, var(--lc-danger), black 25%);
-    color: #000;
-  }
-
-  /* Sizes */
-  .lc-btn--sm{ padding:.25rem .55rem; font-size:.9rem; border-radius:6px; }
-  .lc-btn--lg{ padding:.55rem .95rem; font-size:1.05rem; border-radius:10px; }
-
-  /* Icon helper */
-  .lc-ico{ font-size:1.1em; line-height:0 }
-</style>
-""")
-
-  ╠═╡ =#
-
 # ╔═╡ e90baf94-c8b8-41aa-8728-e129f7f6881e
-# @htl("""
-# <button id="view_code_btn" class="lc-btn lc-btn--sm lc-btn--ghost" title="Read hidden code">
-#   <span class="lc-ico">👁️</span><span class="text">View code</span>
-# </button>
-
-# <script>
-#   const root  = document.documentElement
-#   const btn   = currentScript.parentElement.querySelector('#view_code_btn')
-#   const label = () => btn.querySelector('.text')
-#   function sync(){ label().textContent = root.classList.contains('show-code') ? 'Hide code' : 'View code' }
-#   btn.addEventListener('click', () => { root.classList.toggle('show-code'); sync() })
-#   sync()
-# </script>
-# """)
-
 @htl("""
 <style>
   /* Hide inputs unless the root has .show-code */
@@ -178,10 +94,6 @@ md"""#
     border: 1px solid #bbb; background: #f8f8f8; font: inherit;
   }
 </style>
-
-<button id="view_code_btn" class="lc-btn lc-btn--sm lc-btn--ghost" title="Read hidden code">
-  <span class="lc-ico">👁️</span><span class="text">View code</span>
-</button>
 
 <script>
   const root = document.documentElement
@@ -194,7 +106,162 @@ md"""#
 """)
 
 
+# ╔═╡ 532cb61b-97b6-43e7-a8f9-3a5f12b8b3f7
+@htl("""
+<style id="lc-hide-pluto-slide-controls">
+  /* Nuke the default slideshow arrows (both normal & presentation DOMs) */
+  #slide_controls,
+  #presentation #slide_controls {
+    display: none !important;
+  }
+</style>
+
+<script>
+  // Defensive: if Pluto re-injects them, hide again
+  const hide = (n) => { try { n.style.display = "none"; n.hidden = true } catch {} }
+  const sc0 = document.getElementById("slide_controls"); if (sc0) hide(sc0)
+  const mo = new MutationObserver(muts => {
+    for (const m of muts) for (const el of m.addedNodes) {
+      if (el.nodeType !== 1) continue
+      if (el.id === "slide_controls") hide(el)
+      const sc = el.querySelector?.("#slide_controls"); if (sc) hide(sc)
+    }
+  })
+  mo.observe(document.body, { childList: true, subtree: true })
+</script>
+""")
+
 # ╔═╡ b16ff72c-872a-4505-9468-6cefd4a8852c
+
+@htl("""
+<link rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
+
+<style id="lc-toolbar-vertical">
+  :root{
+    --lc-toolbar-w: 58px;
+    --lc-toolbar-bg: color-mix(in oklab, var(--header-bg-color, #f1f1f1), transparent 20%);
+    --lc-toolbar-bd: var(--rule-color, #0000001a);
+    --lc-icon-bg: var(--overlay-button-bg, #2c2c2c);
+    --lc-icon-fg: var(--overlay-button-color, white);
+    --lc-icon-bd: var(--overlay-button-border, #9e9e9e70);
+    --lc-icon-hover: color-mix(in oklab, var(--lc-icon-bg), white 10%);
+    --lc-icon-active: color-mix(in oklab, var(--lc-icon-bg), black 12%);
+    --lc-accent: var(--selected-cell-bg-color, #2a73cdc7);
+  }
+
+  /* keep content clear of the bar */
+  html { scroll-padding-left: var(--lc-toolbar-w); }
+  body { padding-left: var(--lc-toolbar-w); }
+
+  /* Global 'show code' toggle */
+  :root:not(.show-code) pluto-input { display: none !important; }
+
+  /* Vertical toolbar */
+  #lc-toolbar{
+    position: fixed; left: 0; top: 0; bottom: 0;
+    width: var(--lc-toolbar-w);
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    padding: 10px 6px;
+    background: var(--lc-toolbar-bg);
+    border-right: 1px solid var(--lc-toolbar-bd);
+    backdrop-filter: blur(6px);
+    z-index: 2147483647;
+  }
+
+  .lc-icon{
+    display:inline-flex; align-items:center; justify-content:center;
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: var(--lc-icon-bg);
+    border: 1px solid var(--lc-icon-bd);
+    color: var(--lc-icon-fg);
+    cursor: pointer; user-select: none;
+    transition: background .15s ease, transform .02s ease, border-color .15s ease;
+  }
+  .lc-icon:hover  { background: var(--lc-icon-hover); }
+  .lc-icon:active { background: var(--lc-icon-active); transform: translateY(1px); }
+  .lc-icon:focus-visible { outline: 2px solid color-mix(in oklab, var(--lc-accent), white 10%); outline-offset: 2px; }
+
+  .material-symbols-rounded{
+    font-variation-settings: 'OPSZ' 24, 'wght' 400, 'FILL' 0, 'GRAD' 0;
+    font-size: 24px; line-height: 1;
+  }
+</style>
+
+<nav id="lc-toolbar" role="toolbar" aria-label="Notebook toolbar (vertical)">
+  <!-- ORDER: Next, Prev, Home, Present, Show/Hide code -->
+  <button class="lc-icon" id="btn-next" title="Next slide">
+    <span class="material-symbols-rounded">arrow_forward</span>
+  </button>
+
+  <button class="lc-icon" id="btn-prev" title="Previous slide">
+    <span class="material-symbols-rounded">arrow_back</span>
+  </button>
+
+  <button class="lc-icon" id="btn-home" title="Scroll to top">
+    <span class="material-symbols-rounded">home</span>
+  </button>
+
+  <button class="lc-icon" id="btn-present" title="Start presentation">
+    <span class="material-symbols-rounded">slideshow</span>
+  </button>
+
+  <button class="lc-icon" id="btn-toggle-code" title="Show/Hide code">
+    <span class="material-symbols-rounded" id="ico-toggle-code">code_blocks</span>
+  </button>
+</nav>
+
+<script>
+  const root = document.documentElement
+
+  // Show/Hide code (icon stays code_blocks; tooltip flips)
+  const bCode = document.getElementById("btn-toggle-code")
+  function flipCode(){
+    const showing = root.classList.toggle("show-code")
+    bCode.title = showing ? "Hide code" : "Show code"
+  }
+  bCode.addEventListener("click", flipCode)
+
+  // Presentation start (Pluto native)
+  const bPresent = document.getElementById("btn-present")
+  function startPresentation(){
+    if (typeof window.present === "function"){ window.present(); return }
+    const cand = document.querySelector('button.present, #present, [title="Start presentation"]')
+    if (cand) { cand.click(); return }
+    window.dispatchEvent(new KeyboardEvent('keydown', {key:'p'}))
+  }
+  bPresent.addEventListener("click", startPresentation)
+
+  // Slide nav (prefer Pluto's buttons if present; fallback to arrow keys)
+  function clickChange(dir){
+    const sel = dir < 0 ? "button.changeslide.prev" : "button.changeslide.next"
+    const b = document.querySelector(sel) || document.querySelector("#presentation " + sel)
+    if (b){ b.click(); return true }
+    const key = dir < 0 ? "ArrowLeft" : "ArrowRight"
+    window.dispatchEvent(new KeyboardEvent('keydown', {key}))
+    return false
+  }
+  document.getElementById("btn-prev").addEventListener("click", () => clickChange(-1))
+  document.getElementById("btn-next").addEventListener("click", () => clickChange(1))
+
+  // Home
+  document.getElementById("btn-home").addEventListener("click", () => {
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  })
+
+  // Hotkeys: n/p arrows, h home, p present, c code
+  window.addEventListener("keydown", (e) => {
+    if (e.target && ["INPUT","TEXTAREA"].includes(e.target.tagName)) return
+    if (e.metaKey || e.ctrlKey || e.altKey) return
+    if (e.key === "ArrowRight") clickChange(1)
+    if (e.key === "ArrowLeft")  clickChange(-1)
+    if (e.key === "h") document.getElementById("btn-home").click()
+    if (e.key === "p") bPresent.click()
+    if (e.key === "c") bCode.click()
+  })
+</script>
+""")
 
 
 # ╔═╡ ca2e37fc-ee11-4b54-840c-bc40dd05a236
@@ -794,12 +861,12 @@ md"""
 
 # ╔═╡ Cell order:
 # ╠═a82fd7fe-465d-4744-870f-638a72a54317
-# ╟─7b9396bd-5253-4ecd-b863-c7f9ae47cc65
-# ╟─e85bf184-df3d-45b1-a4d8-958e75ae71b8
-# ╟─4462e48f-0d08-4ad9-8dd9-12f4f5912f38
+# ╠═7b9396bd-5253-4ecd-b863-c7f9ae47cc65
+# ╠═e85bf184-df3d-45b1-a4d8-958e75ae71b8
+# ╠═4462e48f-0d08-4ad9-8dd9-12f4f5912f38
 # ╠═b806b033-db55-4033-a975-ae3fe609b345
-# ╟─4814de60-f2ee-4d6a-86d1-759762042054
 # ╠═e90baf94-c8b8-41aa-8728-e129f7f6881e
+# ╠═532cb61b-97b6-43e7-a8f9-3a5f12b8b3f7
 # ╠═b16ff72c-872a-4505-9468-6cefd4a8852c
 # ╠═ca2e37fc-ee11-4b54-840c-bc40dd05a236
 # ╠═7139126f-5b56-4668-991b-6b63b0642d74

@@ -1,6 +1,6 @@
 # This script launches Pluto and opens a specific notebook file.
 using Pluto
-using PlutoStyles
+# using PlutoStyles
 
 # Define the path to the notebook file.
 # notebook_path = "/home/amartins/Documents/KUL/LineCableModels/showcase/showcase1.jl"
