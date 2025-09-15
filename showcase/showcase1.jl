@@ -96,30 +96,53 @@ ul#recent{ max-height: none; }
 
 # ╔═╡ 4462e48f-0d08-4ad9-8dd9-12f4f5912f38
 begin
-	struct TwoColumn{A, B}
-		left::A
-		right::B
-	end
+	struct TwoColumn{A,B}
+    left::A
+    right::B
+end
 
-	function Base.show(io, mime::MIME"text/html", tc::TwoColumn)
-		write(io,
-			"""
-			<div style="display: flex;">
-				<div style="flex: 50%;">
-			""")
-		show(io, mime, tc.left)
-		write(io,
-			"""
-				</div>
-				<div style="flex: 50%;">
-			""")
-		show(io, mime, tc.right)
-		write(io,
-			"""
-		   		</div>
-		   	</div>
-		   """)
-	end
+# New light wrapper that carries widths (percentages)
+struct TwoColumnWithWidths{A,B}
+    left::A
+    right::B
+    widths::NTuple{2,Float64}   # (left%, right%)
+end
+
+# Convenience “constructor” with keywords — old calls still work,
+# new calls with kws return the width-aware wrapper
+TwoColumn(left, right; left_pct::Real=50.0, right_pct::Real=50.0) =
+    TwoColumnWithWidths{typeof(left), typeof(right)}(left, right, (float(left_pct), float(right_pct)))
+
+# Original show (defaults to 50/50)
+function Base.show(io, mime::MIME"text/html", tc::TwoColumn)
+    write(io, """
+    <div style="display:flex;">
+      <div style="flex: 50%;">""")
+    show(io, mime, tc.left)
+    write(io, """
+      </div>
+      <div style="flex: 50%;">""")
+    show(io, mime, tc.right)
+    write(io, """
+      </div>
+    </div>""")
+end
+
+# New show for width-aware variant
+function Base.show(io, mime::MIME"text/html", tc::TwoColumnWithWidths)
+    l, r = tc.widths
+    write(io, """
+    <div style="display:flex;">
+      <div style="flex: $(l)%;">""")
+    show(io, mime, tc.left)
+    write(io, """
+      </div>
+      <div style="flex: $(r)%;">""")
+    show(io, mime, tc.right)
+    write(io, """
+      </div>
+    </div>""")
+end
 
 	struct Foldable{C}
 		title::String
@@ -443,30 +466,32 @@ TwoColumn(
 
 # ╔═╡ a3f5a8c5-4ab9-4a33-abab-7907ffab1347
 md"""
-## Enhanced cable modeling
+## Uncertainty quantification in cable parameters
 """
 
-# ╔═╡ 3ff0eea3-9f1d-487f-a752-be6462f4bfb7
-md"""$(LocalResource(joinpath(@__DIR__, "..", "docs", "src", "assets", "logo.svg"), :width => 120, :style => "float: left; margin-right: 40px; margin-bottom: 20px;")) 
-### LineCableModels.jl
-##### Toolbox developed in Julia language to compute the electrical parameters of coaxial arbitrarily-layered underground/overhead cables with uncertainty quantification. It focuses on calculating line and cable impedances and admittances in the frequency-domain, accounting for skin effect, insulation properties, and earth-return impedances with frequency-dependent soil models.
+# ╔═╡ 382252ca-ede1-4043-b921-7834e59810cb
+md"""
+#### - Physical quantities are treated as nominal values associated to the corresponding uncertainties, i.e. ``\hat{x} = x ± \delta x``, ``\hat{y} = y ± \delta y``. Uncertainties are propagated according to the linear error propagation theory by using the package `Measurements.jl`.
+""" 
 
-#### Overview
+# ╔═╡ 96121e5b-6b5b-4ab1-81d0-6dcbe924cda2
 
-- **Comprehensive cable modeling:** Detailed representation of conductors (solid, tubular, stranded), insulation layers, screens, armoring, and semicons.
-- **Line and cable constants:** Accurate DC and AC parameters (R, L, C, G) with correction factors for temperature, stranding, and helical effects.
-- **Propagation characteristics:** Rigorous electromagnetic models for cable internal impedances and earth-return paths.
-- **Multiple solvers:** Analytical formulations, finite element modeling, and interfaces to EMT programs, including PSCAD.
-- **Materials and cables library:** Store and reuse standardized material properties and cable designs across projects.
-- **Open-source:** Under active development, multi-purpose, with complete documentation and examples in the `LineCableModels.jl` [repository](https://electa-git.github.io/LineCableModels.jl/).
+	TwoColumn(
+	md"""
+	$(LocalResource(joinpath(@__DIR__, "..", "assets", "img", "cable_dark_mode.svg"), :width => 800, :style => "display: block; margin-top: 50px; margin-left: auto; margin-right: auto;"))
+	""",
+	md"""
+	#### - Addition and subtraction:
+	#### ``\hat{z} = \hat{x} \pm \hat{y} = (x \pm y) \pm \sqrt{(\delta x)^2 + (\delta y)^2}``
+	#### - Multiplication and division:
+	#### ``\hat{z} = (x \cdot y \text{ or } x/y) \pm \delta z``
+	#### ``\frac{\delta z}{|z|} = \sqrt{\left(\frac{\delta x}{x}\right)^2 + \left(\frac{\delta y}{y}\right)^2}``
+	#### - For an arbitrary function ``f(\hat{x}, \hat{y}, ...)``
+	#### ``\delta f = \sqrt{\left( \frac{\partial f}{\partial x} \delta x \right)^2 + \left( \frac{\partial f}{\partial y} \delta y \right)^2 + \dots }``
 
-#### Uncertainty quantification
-
-- Every physical quantity represented in `LineCableModels.jl` is treated as a nominal value associated to an uncertainty, i.e. ``x ± \delta x``. Uncertainties are propagated according to the linear error propagation theory by using the package `Measurements.jl`.
-
-$(LocalResource(joinpath(@__DIR__, "..", "assets", "img", "cable_dark_mode.svg"), :width => 800, :style => "display: block; margin-top: 50px; margin-left: auto; margin-right: auto;"))
-
-"""
+	!!! warning "Warning"
+		Even when subtracting the nominal values ($x-y$), the uncertainties are still combined, leading to a larger total uncertainty.
+	"""; left_pct=65, right_pct=35)
 
 
 # ╔═╡ a8ea0da0-36f1-44d4-9415-d3041f34c23f
@@ -953,14 +978,15 @@ md"""
 # ╟─3e6a9c64-827d-4491-bcac-252ee7b1dc81
 # ╟─877a84cc-979f-48c9-ac41-59be60b4850b
 # ╟─a3f5a8c5-4ab9-4a33-abab-7907ffab1347
-# ╟─3ff0eea3-9f1d-487f-a752-be6462f4bfb7
+# ╟─382252ca-ede1-4043-b921-7834e59810cb
+# ╟─96121e5b-6b5b-4ab1-81d0-6dcbe924cda2
 # ╟─a8ea0da0-36f1-44d4-9415-d3041f34c23f
 # ╟─f5fa7e28-97a7-456b-87a9-5ac4b76be9d4
 # ╟─8c2eaef0-4e01-41b9-b1a6-a20dfa9b2d57
 # ╟─cb8f01ae-26e0-44ce-8347-298ab692ac63
 # ╟─29222f8e-fb07-4bdb-8939-f18e668d2037
 # ╟─c1595a9d-7882-4b66-a1fc-fe6de19f1ef6
-# ╟─c13e262c-2dd2-43da-a01b-a95adb7eaa7d
+# ╠═c13e262c-2dd2-43da-a01b-a95adb7eaa7d
 # ╠═c2539b01-ac04-48e4-a973-6a5d8a0e2b58
 # ╠═c7c7ce65-3a0c-4ac6-82f0-f9f58e46f47e
 # ╟─062439db-1e3f-497e-96c1-e1f65f80399b
