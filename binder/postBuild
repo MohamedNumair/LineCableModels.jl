@@ -1,25 +1,58 @@
 #!/bin/bash
 set -euxo pipefail
 
-# First, instantiate and precompile your binder environment as usual
-julia --project=binder -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()'
+# Pre-seed Julia's default environment for this Julia version (e.g. @v1.11)
+# and install everything listed in binder/Project.toml (plus your local package).
 
-# Now, find the julia kernel.json and force it to use our project
-# This is the magic that makes the Pluto plugin work correctly
-KERNEL_PATH=$(jupyter kernelspec list | grep julia | awk '{print $2}')
-cat <<EOF > temp_kernel.json
-{
- "argv": [
-  "julia",
-  "-i",
-  "--color=yes",
-  "--project=/home/jovyan/binder",
-  "{connection_file}"
- ],
- "display_name": "Julia (LineCableModels)",
- "language": "julia"
-}
-EOF
-mv temp_kernel.json "${KERNEL_PATH}/kernel.json"
+julia -e '
+using Pkg, TOML
 
-echo "Successfully configured Jupyter kernel to use the binder environment."
+# 1) Activate default env for the running Julia version
+#    (@v#.# expands to ~/.julia/environments/v<major>.<minor>)
+Pkg.activate("@v#.#")
+
+# 2) Always dev the local repo (your unregistered package) into the default env
+#    so `using LineCableModels` works from anywhere.
+if isfile("Project.toml")
+    try
+        Pkg.develop(path=".")
+    catch e
+        @warn "Pkg.develop(path=\".\") failed; check repo root" exception=(e, catch_backtrace())
+    end
+end
+
+# 3) Read declared deps from binder/Project.toml (fallback to root Project.toml)
+projfile = isfile("binder/Project.toml") ? "binder/Project.toml" :
+           (isfile("Project.toml") ? "Project.toml" : nothing)
+
+deps = Dict{String,Any}()
+if projfile !== nothing
+    proj = TOML.parsefile(projfile)
+    deps = get(proj, "deps", deps)
+end
+
+# 4) Add each dependency by name if it is not the local package we just devved.
+for name in sort(collect(keys(deps)))
+    if name == "LineCableModels"
+        continue
+    end
+    try
+        Pkg.add(name)
+    catch e
+        # If this dep exists as a subdir, try dev it; else warn.
+        if isdir(name)
+            @info "Pkg.add($name) failed, trying Pkg.develop(path=\"$name\")"
+            try
+                Pkg.develop(path=name)
+            catch e2
+                @warn "Could not add or dev dependency $name" exception=(e2, catch_backtrace())
+            end
+        else
+            @warn "Could not add dependency $name (not found as a subdir)."
+        end
+    end
+end
+
+# 5) Precompile the default env so Pluto loads fast
+Pkg.precompile()
+'

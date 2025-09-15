@@ -20,79 +20,79 @@ begin
 end
 
 # ╔═╡ 46cfd6fa-b4d6-44c3-83cf-d2b9b1ff1cf1
-	# Override stupid CSS settings
-	@htl("""
-	<style id="lc-plutostyles">
-	/* ====== editor.css-like tweaks ====== */
-	
-	/* occupy full width */
-	body main{
-	  max-width: calc(100% - 2em) !important;
-	  margin-left: 1em !important;
-	  margin-right: 1em !important;
-	  padding-left: max(160px, 10%);
-	  padding-right: max(383px, 10%);
+# Override stupid CSS settings
+@htl("""
+<style id="lc-plutostyles">
+/* ====== editor.css-like tweaks ====== */
+
+/* occupy full width */
+body main{
+  max-width: calc(100% - 2em) !important;
+  margin-left: 1em !important;
+  margin-right: 1em !important;
+  padding-left: max(160px, 10%);
+  padding-right: max(383px, 10%);
+}
+
+/* larger images in arrays when expanded */
+pluto-tree img{
+  max-width: none !important;
+  max-height: none !important;
+}
+
+/* somewhat larger images in arrays when collapsed */
+pluto-tree.collapsed img{
+  max-width: 15rem !important;
+  max-height: 15rem !important;
+}
+
+/* move cell popup menu to the left of its button */
+pluto-input > .open.input_context_menu > ul{
+  margin-left: -200px;
+  margin-right: 20px;
+}
+/* keep popup above other stuff */
+pluto-input > .open.input_context_menu > ul,
+pluto-input > .open.input_context_menu{
+  z-index: 31 !important;
+}
+
+/* widen generic popup */
+pluto-popup{
+  --max-size: 451px;
+  width: min(90vw, var(--max-size));
+}
+
+/* taller Pkg terminal */
+pkg-terminal > .scroller{
+  max-height: 70vh;
+}
+
+/* ====== index.css-like tweaks (harmless if not on index page) ====== */
+li.recent > a:after,
+li.running > a:after{
+  display: block;
+  content: attr(title);
+  font-size: x-small;
+}
+li > a[title*="/pluto_notebooks/"]{ color: rgb(16 113 109); }
+ul#recent{ max-height: none; }
+</style>
+
+<script>
+  // Make overrides truly global: duplicate <style> into <head> so it survives rerenders
+  (function(){
+	const s = document.getElementById("lc-plutostyles");
+	if(!s) return;
+	const exists = document.getElementById("lc-plutostyles-head");
+	if(!exists){
+	  const clone = s.cloneNode(true);
+	  clone.id = "lc-plutostyles-head";
+	  document.head.appendChild(clone);
 	}
-	
-	/* larger images in arrays when expanded */
-	pluto-tree img{
-	  max-width: none !important;
-	  max-height: none !important;
-	}
-	
-	/* somewhat larger images in arrays when collapsed */
-	pluto-tree.collapsed img{
-	  max-width: 15rem !important;
-	  max-height: 15rem !important;
-	}
-	
-	/* move cell popup menu to the left of its button */
-	pluto-input > .open.input_context_menu > ul{
-	  margin-left: -200px;
-	  margin-right: 20px;
-	}
-	/* keep popup above other stuff */
-	pluto-input > .open.input_context_menu > ul,
-	pluto-input > .open.input_context_menu{
-	  z-index: 31 !important;
-	}
-	
-	/* widen generic popup */
-	pluto-popup{
-	  --max-size: 451px;
-	  width: min(90vw, var(--max-size));
-	}
-	
-	/* taller Pkg terminal */
-	pkg-terminal > .scroller{
-	  max-height: 70vh;
-	}
-	
-	/* ====== index.css-like tweaks (harmless if not on index page) ====== */
-	li.recent > a:after,
-	li.running > a:after{
-	  display: block;
-	  content: attr(title);
-	  font-size: x-small;
-	}
-	li > a[title*="/pluto_notebooks/"]{ color: rgb(16 113 109); }
-	ul#recent{ max-height: none; }
-	</style>
-	
-	<script>
-	  // Make overrides truly global: duplicate <style> into <head> so it survives rerenders
-	  (function(){
-	    const s = document.getElementById("lc-plutostyles");
-	    if(!s) return;
-	    const exists = document.getElementById("lc-plutostyles-head");
-	    if(!exists){
-	      const clone = s.cloneNode(true);
-	      clone.id = "lc-plutostyles-head";
-	      document.head.appendChild(clone);
-	    }
-	  })();
-	</script>
-	""")
+  })();
+</script>
+""")
 
 # ╔═╡ 4462e48f-0d08-4ad9-8dd9-12f4f5912f38
 begin
@@ -131,19 +131,20 @@ begin
 		show(io, mime, fld.content)
 		write(io, "</p></details>")
 	end
-	
+
 	LocalImage(x::AbstractString; attrs...) =
-    LocalResource(joinpath(@__DIR__, "assets", "img", x), pairs(attrs)...)
+		LocalResource(joinpath(@__DIR__, "assets", "img", x), pairs(attrs)...)
 end;
 
 # ╔═╡ e90baf94-c8b8-41aa-8728-e129f7f6881e
-@htl("""
+@htl(
+	"""
 <style>
   /* Hide inputs unless the root has .show-code */
   :root:not(.show-code) pluto-input { display: none !important; }
   .view_hidden_code { 
-    cursor: pointer; padding: 0.35rem 0.6rem; border-radius: 6px; 
-    border: 1px solid #bbb; background: #f8f8f8; font: inherit;
+	cursor: pointer; padding: 0.35rem 0.6rem; border-radius: 6px; 
+	border: 1px solid #bbb; background: #f8f8f8; font: inherit;
   }
 </style>
 
@@ -155,7 +156,8 @@ end;
   btn.addEventListener('click', () => { root.classList.toggle('show-code'); sync() })
   sync()
 </script>
-""")
+"""
+)
 
 
 # ╔═╡ 532cb61b-97b6-43e7-a8f9-3a5f12b8b3f7
@@ -164,7 +166,7 @@ end;
   /* Nuke the default slideshow arrows (both normal & presentation DOMs) */
   #slide_controls,
   #presentation #slide_controls {
-    display: none !important;
+	display: none !important;
   }
 </style>
 
@@ -173,11 +175,11 @@ end;
   const hide = (n) => { try { n.style.display = "none"; n.hidden = true } catch {} }
   const sc0 = document.getElementById("slide_controls"); if (sc0) hide(sc0)
   const mo = new MutationObserver(muts => {
-    for (const m of muts) for (const el of m.addedNodes) {
-      if (el.nodeType !== 1) continue
-      if (el.id === "slide_controls") hide(el)
-      const sc = el.querySelector?.("#slide_controls"); if (sc) hide(sc)
-    }
+	for (const m of muts) for (const el of m.addedNodes) {
+	  if (el.nodeType !== 1) continue
+	  if (el.id === "slide_controls") hide(el)
+	  const sc = el.querySelector?.("#slide_controls"); if (sc) hide(sc)
+	}
   })
   mo.observe(document.body, { childList: true, subtree: true })
 </script>
@@ -185,21 +187,22 @@ end;
 
 # ╔═╡ b16ff72c-872a-4505-9468-6cefd4a8852c
 
-@htl("""
+@htl(
+	"""
 <link rel="stylesheet"
   href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
 
 <style id="lc-toolbar-vertical">
   :root{
-    --lc-toolbar-w: 58px;
-    --lc-toolbar-bg: color-mix(in oklab, var(--header-bg-color, #f1f1f1), transparent 20%);
-    --lc-toolbar-bd: var(--rule-color, #0000001a);
-    --lc-icon-bg: var(--overlay-button-bg, #2c2c2c);
-    --lc-icon-fg: var(--overlay-button-color, white);
-    --lc-icon-bd: var(--overlay-button-border, #9e9e9e70);
-    --lc-icon-hover: color-mix(in oklab, var(--lc-icon-bg), white 10%);
-    --lc-icon-active: color-mix(in oklab, var(--lc-icon-bg), black 12%);
-    --lc-accent: var(--selected-cell-bg-color, #2a73cdc7);
+	--lc-toolbar-w: 58px;
+	--lc-toolbar-bg: color-mix(in oklab, var(--header-bg-color, #f1f1f1), transparent 20%);
+	--lc-toolbar-bd: var(--rule-color, #0000001a);
+	--lc-icon-bg: var(--overlay-button-bg, #2c2c2c);
+	--lc-icon-fg: var(--overlay-button-color, white);
+	--lc-icon-bd: var(--overlay-button-border, #9e9e9e70);
+	--lc-icon-hover: color-mix(in oklab, var(--lc-icon-bg), white 10%);
+	--lc-icon-active: color-mix(in oklab, var(--lc-icon-bg), black 12%);
+	--lc-accent: var(--selected-cell-bg-color, #2a73cdc7);
   }
 
   /* keep content clear of the bar */
@@ -211,61 +214,61 @@ end;
 
   /* Vertical toolbar */
   #lc-toolbar{
-    position: fixed; left: 0; top: 0; bottom: 0;
-    width: var(--lc-toolbar-w);
-    display: flex; flex-direction: column; align-items: center; gap: 10px;
-    padding: 10px 6px;
-    background: var(--lc-toolbar-bg);
-    border-right: 1px solid var(--lc-toolbar-bd);
-    backdrop-filter: blur(6px);
-    z-index: 2147483647;
+	position: fixed; left: 0; top: 0; bottom: 0;
+	width: var(--lc-toolbar-w);
+	display: flex; flex-direction: column; align-items: center; gap: 10px;
+	padding: 10px 6px;
+	background: var(--lc-toolbar-bg);
+	border-right: 1px solid var(--lc-toolbar-bd);
+	backdrop-filter: blur(6px);
+	z-index: 2147483647;
   }
 
   .lc-icon{
-    display:inline-flex; align-items:center; justify-content:center;
-    width: 40px; height: 40px;
-    border-radius: 10px;
-    background: var(--lc-icon-bg);
-    border: 1px solid var(--lc-icon-bd);
-    color: var(--lc-icon-fg);
-    cursor: pointer; user-select: none;
-    transition: background .15s ease, transform .02s ease, border-color .15s ease;
+	display:inline-flex; align-items:center; justify-content:center;
+	width: 40px; height: 40px;
+	border-radius: 10px;
+	background: var(--lc-icon-bg);
+	border: 1px solid var(--lc-icon-bd);
+	color: var(--lc-icon-fg);
+	cursor: pointer; user-select: none;
+	transition: background .15s ease, transform .02s ease, border-color .15s ease;
   }
   .lc-icon:hover  { background: var(--lc-icon-hover); }
   .lc-icon:active { background: var(--lc-icon-active); transform: translateY(1px); }
   .lc-icon:focus-visible { outline: 2px solid color-mix(in oklab, var(--lc-accent), white 10%); outline-offset: 2px; }
 
   .lc-hidden{
-    position:absolute !important; width:1px; height:1px; padding:0; margin:-1px;
-    overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0;
+	position:absolute !important; width:1px; height:1px; padding:0; margin:-1px;
+	overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0;
   }
 
   .material-symbols-rounded{
-    font-variation-settings: 'OPSZ' 24, 'wght' 400, 'FILL' 0, 'GRAD' 0;
-    font-size: 24px; line-height: 1;
+	font-variation-settings: 'OPSZ' 24, 'wght' 400, 'FILL' 0, 'GRAD' 0;
+	font-size: 24px; line-height: 1;
   }
 </style>
 
 <nav id="lc-toolbar" role="toolbar" aria-label="Notebook toolbar (vertical)">
   <!-- ORDER: Next, Prev, Home, Present, Show/Hide code -->
   <button class="lc-icon" id="btn-next" title="Next slide">
-    <span class="material-symbols-rounded">arrow_forward</span>
+	<span class="material-symbols-rounded">arrow_forward</span>
   </button>
 
   <button class="lc-icon" id="btn-prev" title="Previous slide">
-    <span class="material-symbols-rounded">arrow_back</span>
+	<span class="material-symbols-rounded">arrow_back</span>
   </button>
 
-  <button class="lc-icon" id="btn-home" title="Scroll to top">
-    <span class="material-symbols-rounded">home</span>
+  <button class="lc-icon" id="btn-home" title="Scroll to title">
+	<span class="material-symbols-rounded">home</span>
   </button>
 
   <button class="lc-icon" id="btn-present" title="Start presentation">
-    <span class="material-symbols-rounded">slideshow</span>
+	<span class="material-symbols-rounded">slideshow</span>
   </button>
 
   <button class="lc-icon" id="btn-toggle-code" title="Show/Hide code">
-    <span class="material-symbols-rounded" id="ico-toggle-code">code_blocks</span>
+	<span class="material-symbols-rounded" id="ico-toggle-code">code_blocks</span>
   </button>
 </nav>
 
@@ -275,29 +278,29 @@ end;
   // Show/Hide code (icon stays code_blocks; tooltip flips)
   const bCode = document.getElementById("btn-toggle-code")
   function flipCode(){
-    const showing = root.classList.toggle("show-code")
-    bCode.title = showing ? "Hide code" : "Show code"
+	const showing = root.classList.toggle("show-code")
+	bCode.title = showing ? "Hide code" : "Show code"
   }
   bCode.addEventListener("click", flipCode)
 
   // Presentation start (Pluto native)
   const bPresent = document.getElementById("btn-present")
   function startPresentation(){
-    if (typeof window.present === "function"){ window.present(); return }
-    const cand = document.querySelector('button.present, #present, [title="Start presentation"]')
-    if (cand) { cand.click(); return }
-    window.dispatchEvent(new KeyboardEvent('keydown', {key:'p'}))
+	if (typeof window.present === "function"){ window.present(); return }
+	const cand = document.querySelector('button.present, #present, [title="Start presentation"]')
+	if (cand) { cand.click(); return }
+	window.dispatchEvent(new KeyboardEvent('keydown', {key:'p'}))
   }
   bPresent.addEventListener("click", startPresentation)
 
   // Slide nav (prefer Pluto's buttons if present; fallback to arrow keys)
   function clickChange(dir){
-    const sel = dir < 0 ? "button.changeslide.prev" : "button.changeslide.next"
-    const b = document.querySelector(sel) || document.querySelector("#presentation " + sel)
-    if (b){ b.click(); return true }
-    const key = dir < 0 ? "ArrowLeft" : "ArrowRight"
-    window.dispatchEvent(new KeyboardEvent('keydown', {key}))
-    return false
+	const sel = dir < 0 ? "button.changeslide.prev" : "button.changeslide.next"
+	const b = document.querySelector(sel) || document.querySelector("#presentation " + sel)
+	if (b){ b.click(); return true }
+	const key = dir < 0 ? "ArrowLeft" : "ArrowRight"
+	window.dispatchEvent(new KeyboardEvent('keydown', {key}))
+	return false
   }
   document.getElementById("btn-prev").addEventListener("click", () => clickChange(-1))
   document.getElementById("btn-next").addEventListener("click", () => clickChange(1))
@@ -306,211 +309,49 @@ end;
 document.getElementById("btn-home").addEventListener("click", () => {
   const target = document.getElementById("home");
   if (target) {
-    // update the URL without a jump
-    history.replaceState(null, "", "#home");
-    // smooth scroll to the anchor
-    target.scrollIntoView({ behavior: "smooth", block: "start", inline: "nearest" });
+	// update the URL without a jump
+	history.replaceState(null, "", "#home");
+	// smooth scroll to the anchor
+	target.scrollIntoView({ behavior: "smooth", block: "start", inline: "nearest" });
   } else {
-    // fallback if #home isn't in the DOM
-    window.scrollTo({ top: 0, behavior: "smooth" });
+	// fallback if #home isn't in the DOM
+	window.scrollTo({ top: 0, behavior: "smooth" });
   }
 });
 
-  // Hotkeys: n/p arrows, h home, p present, c code
-  //window.addEventListener("keydown", (e) => {
-  //  if (e.target && ["INPUT","TEXTAREA"].includes(e.target.tagName)) return
-  //  if (e.metaKey || e.ctrlKey || e.altKey) return
-  //  if (e.key === "ArrowRight") clickChange(1)
-  //  if (e.key === "ArrowLeft")  clickChange(-1)
-  //  if (e.key === "h") document.getElementById("btn-home").click()
-  //  if (e.key === "p") bPresent.click()
-  //  if (e.key === "c") bCode.click()
-  //})
 </script>
-""")
+"""
+)
 
 
-# ╔═╡ 9465a717-7418-4f6b-a2d5-c283d4c314c7
-
-@htl("""
-<style id="lc-deck-style">
-  /* Comfortable headroom so anchors aren’t hidden under sticky chrome */
-  h1, #home { scroll-margin-top: 64px; }
-
-  /* Optional: while in deck mode you can hide noisy UI (uncomment if desired) */
-  /*
-  body.lc-deck #toc, body.lc-deck nav#slide_controls { display: none !important; }
-  */
-</style>
-
-<script>
-(function(){
-  const Q = (s, r=document) => r.querySelector(s)
-  const QA = (s, r=document) => Array.from(r.querySelectorAll(s))
-  const EDIT_TAGS = /^(INPUT|TEXTAREA|SELECT|OPTION)$/i
-  const slug = txt => (txt||"section").trim().toLowerCase()
-                    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "section"
-
-  // ---- Custom deck state & API ----
-  const lcDeck = window.lcDeck || (window.lcDeck = {
-    active: false, idx: 0, slides: [],
-
-    rescan(){
-      // Collect #home (if any) and all visible H1 headings in DOM order
-      const nodes = QA("#home, h1")
-      const slides = []
-      const seen = new Set()
-
-      for (const el of nodes){
-        if (!el) continue
-        // Skip invisible and phantom headings
-        const hidden = (el.offsetParent === null) || el.classList?.contains("lc-visually-hidden")
-        if (hidden) continue
-
-        // Ensure unique, stable id
-        if (!el.id){
-          let id = slug(el.textContent)
-          let i = 1, tryid = id
-          while (seen.has(tryid) || document.getElementById(tryid)) { i++; tryid = id + "-" + i }
-          el.id = tryid
-        }
-
-        if (seen.has(el.id)) continue
-        seen.add(el.id)
-        slides.push({ el, id: el.id })
-      }
-
-      this.slides = slides
-      // Start from #home if present, else first slide
-      const hi = slides.findIndex(s => s.id === "home")
-      this.idx = hi >= 0 ? hi : 0
-      return slides.length
-    },
-
-    goto(i){
-      if (this.slides.length === 0) this.rescan()
-      const n = this.slides.length
-      if (n === 0) return
-      i = Math.max(0, Math.min(i, n - 1))
-      this.idx = i
-      const s = this.slides[i]
-      history.replaceState(null, "", "#" + s.id)
-      s.el.scrollIntoView({ behavior: "smooth", block: "start", inline: "nearest" })
-    },
-
-    next(){ this.goto(this.idx + 1) },
-    prev(){ this.goto(this.idx - 1) },
-
-    start(){
-      if (this.active) return
-      this.rescan()
-      this.active = true
-      document.body.classList.add("lc-deck")
-      // Jump to #home (or first) immediately
-      this.goto(this.idx)
-      updatePresentButton(true)
-    },
-
-    end(){
-      if (!this.active) return
-      this.active = false
-      document.body.classList.remove("lc-deck")
-      updatePresentButton(false)
-    }
-  })
-
-  // ---- Wire toolbar buttons (use your existing ids) ----
-  const btnNext = Q("#btn-next");   if (btnNext)   btnNext.onclick   = () => lcDeck.next()
-  const btnPrev = Q("#btn-prev");   if (btnPrev)   btnPrev.onclick   = () => lcDeck.prev()
-  const btnHome = Q("#btn-home");   if (btnHome)   btnHome.onclick   = () => {
-    const i = lcDeck.slides.findIndex(s => s.id === "home")
-    if (i >= 0) lcDeck.goto(i); else window.scrollTo({ top: 0, behavior: "smooth" })
-  }
-  const btnPres = Q("#btn-present"); if (btnPres) btnPres.onclick = () => lcDeck.active ? lcDeck.end() : lcDeck.start()
-
-  function updatePresentButton(on){
-    const icon = Q("#btn-present .material-symbols-rounded")
-    if (icon) icon.textContent = on ? "close_fullscreen" : "slideshow"
-    if (btnPres) btnPres.title = on ? "Exit presentation" : "Start presentation"
-  }
-
-  // ---- Presentation-only hotkeys (no interference while editing) ----
-  if (window.__lc_onKey) window.removeEventListener("keydown", window.__lc_onKey)
-  window.__lc_onKey = (e) => {
-    if (!lcDeck.active) return
-    if (e.metaKey || e.ctrlKey || e.altKey) return
-    const tag = e.target?.tagName; if (tag && EDIT_TAGS.test(tag)) return
-
-    if (e.key === "ArrowRight"){ e.preventDefault(); lcDeck.next() }
-    else if (e.key === "ArrowLeft"){ e.preventDefault(); lcDeck.prev() }
-    else if (e.key === "h"){ e.preventDefault();
-      const i = lcDeck.slides.findIndex(s => s.id === "home"); if (i >= 0) lcDeck.goto(i)
-    }
-    else if (e.key === "Escape"){ e.preventDefault(); lcDeck.end() }
-  }
-  window.addEventListener("keydown", window.__lc_onKey)
-
-  // Ensure all H1s have ids even outside deck mode (nice deep links)
-  QA("h1:not([id])").forEach(h => {
-    let id = slug(h.textContent), i = 1, tryid = id
-    while (document.getElementById(tryid)) { i++; tryid = id + "-" + i }
-    h.id = tryid
-  })
-})();
-</script>
-""")
-
-
-# ╔═╡ ca2e37fc-ee11-4b54-840c-bc40dd05a236
-
-# Make an invisible heading that PlutoUI.ToC will index
-# level ∈ 1:6 controls nesting in the ToC
+# ╔═╡ 9fefeafa-63f9-43d0-a2ee-4d4fca170126
 begin
-	function toc_phantom(title; level::Int=2, id::Union{Nothing,String}=nothing)
-    level = clamp(level, 1, 6)                       # h1..h6 only
-    slug  = isnothing(id) ?
-        lowercase(replace(strip(string(title)), r"[^A-Za-z0-9]+" => "-")) :
-        id
-    tag = Symbol("h", level)                          # :h1, :h2, ...
+	@htl("""
+	<style id="lc-anchor-style">
+	  /* Invisible, takes no space; but scroll targets land nicely below fixed chrome */
+	  .lc-anchor{
+		display:block; height:0; margin:0; padding:0; border:0;
+		scroll-margin-top: var(--lc-anchor-offset, 0px); /* tweak per anchor if needed */
+	  }
+	</style>
+	""")
 
-    @htl("""
-    <!-- one-time install of visually-hidden CSS -->
-    <script>
-      (function(){
-        if(!document.getElementById("lc-vis-hidden-style")){
-          const s=document.createElement('style');
-          s.id="lc-vis-hidden-style";
-          s.textContent=".lc-visually-hidden{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}";
-          document.head.appendChild(s);
-        }
-      })();
-    </script>
-
-    <!-- invisible heading that ToC will index -->
-    <$(tag) id=$(slug) class="lc-visually-hidden">$(title)</$(tag)>
-
-    <!-- auto-ping ToC so it rescans -->
-    <script>
-      const cell = currentScript.closest('pluto-cell');
-      if (cell){
-        cell.classList.add('lc-toc-ping');
-        setTimeout(()=>cell.classList.remove('lc-toc-ping'),0);
-      }
-    </script>
-    """)
-	end
+	anchor(id::AbstractString = "home"; offset_px::Real = 0) = @htl("""
+		<span id="$(id)" class="lc-anchor" aria-hidden="true"
+			  style="--lc-anchor-offset: $(offset_px)px;"></span>
+		""")
 end;
 
 # ╔═╡ fde80e93-1964-4287-acfc-a2da2d4b7d48
 TableOfContents()
 
-# ╔═╡ 3e90c2f7-90f0-43e8-9722-c671910c82ee
+# ╔═╡ 77d3c731-bdae-46c2-8b23-eb0b860e7444
 md"""
-# 
+---
 """
 
-# ╔═╡ 715b8cc1-7da6-4010-995d-35d02d43dbde
-toc_phantom("🏠 Home", level=1, id="home") 
+# ╔═╡ 9ef6f05f-c384-4fab-bc39-e47edb49f994
+anchor("home"; offset_px = 256)
 
 # ╔═╡ f08a32db-05d9-4ddb-9c46-34bc623ce5e7
 md"""
@@ -519,29 +360,27 @@ $(LocalResource(joinpath(@__DIR__, "..", "assets", "img", "ETCH_LOGO_RGB_NEG.svg
 
 # ╔═╡ 50384351-fc38-4b29-9bf6-db1556d49dee
 html"""
-<p style="font-size:60px; text-align: left; font-weight: bold; font-family: Vollkorn, Palatino, Georgia, serif;"> Improved models and tools for cable systems </p>
+<p style="font-size:40px; text-align: left; font-weight: bold; font-family: Vollkorn, Palatino, Georgia, serif;"> Uncertainty of Frequency Dependent Impedance Parameters for Transmission Assets</p>
+<p style="font-size:28px; text-align: left; font-weight: bold; font-family: Vollkorn, Palatino, Georgia, serif;"> Second Annual Belgian Energy Transition Workshop</p>
 """
 
 # ╔═╡ 23913cc6-a81b-4098-bacf-7a2e09998e53
 md"""
+
+####
 #### Amauri Martins
 
 #### [amauri.martinsbritto@kuleuven.be](mailto:amauri.martinsbritto@kuleuven.be)
 
 #### KU Leuven – Etch / EnergyVille
 
-##### 10 April 2025
+##### 16 September 2025
 """
 
 # ╔═╡ d482241c-4bd5-4896-bdc1-e82387f69051
 md"""
 $(LocalResource(joinpath(@__DIR__, "..", "assets", "img", "ENERGYVILLE-LOGO.svg"), :width => 150, :style => "margin-right: 40px;"))
 $(LocalResource(joinpath(@__DIR__, "..", "assets", "img", "kul_logo.svg"), :width => 150, :style => "margin-right: 0px;"))
-"""
-
-# ╔═╡ 5db05775-9f9d-4c3d-a3b0-ba6a1af4ed1b
-md"""
-# 
 """
 
 # ╔═╡ 14f07acc-5353-4b1d-b94f-9ae43f87289b
@@ -592,11 +431,10 @@ TwoColumn(
 		
 	### Research roadmaps
 
-	- #### Enhanced modeling & design of cables, accessories and cable systems.
-	- #### Uncertainty quantification and design optimization.
-	- #### Diagnostics and condition monitoring.
-	- #### Common grounds with protection, control, and HVDC resilience.
-	- #### Cables as a part of multi-GW future power grids.
+	- #### Accurate modelling of cables, joints and interaction with (complex) environment.
+	- #### HVDC cables systems in multiterminal HVDC grids.
+	- #### Enhanced computational tools in view of operation, diagnostics and condition monitoring.
+	- #### Cable hosting capacity.
 
 		""",
 	md"""$(LocalImage("cables1.png", width=250, style="display: block; margin-left: auto; margin-right: auto; margin-bottom: 50px;"))
@@ -626,7 +464,7 @@ md"""$(LocalResource(joinpath(@__DIR__, "..", "docs", "src", "assets", "logo.svg
 
 - Every physical quantity represented in `LineCableModels.jl` is treated as a nominal value associated to an uncertainty, i.e. ``x ± \delta x``. Uncertainties are propagated according to the linear error propagation theory by using the package `Measurements.jl`.
 
-$(LocalResource(joinpath(@__DIR__, "..", "assets", "img", "cable_dark_mode.svg"), :width => 550, :style => "display: block; margin-top: 50px; margin-left: auto; margin-right: auto;"))
+$(LocalResource(joinpath(@__DIR__, "..", "assets", "img", "cable_dark_mode.svg"), :width => 800, :style => "display: block; margin-top: 50px; margin-left: auto; margin-right: auto;"))
 
 """
 
@@ -1102,16 +940,14 @@ md"""
 # ╠═e90baf94-c8b8-41aa-8728-e129f7f6881e
 # ╠═532cb61b-97b6-43e7-a8f9-3a5f12b8b3f7
 # ╠═b16ff72c-872a-4505-9468-6cefd4a8852c
-# ╠═9465a717-7418-4f6b-a2d5-c283d4c314c7
-# ╠═ca2e37fc-ee11-4b54-840c-bc40dd05a236
+# ╠═9fefeafa-63f9-43d0-a2ee-4d4fca170126
 # ╠═fde80e93-1964-4287-acfc-a2da2d4b7d48
-# ╟─3e90c2f7-90f0-43e8-9722-c671910c82ee
-# ╟─715b8cc1-7da6-4010-995d-35d02d43dbde
+# ╟─77d3c731-bdae-46c2-8b23-eb0b860e7444
+# ╟─9ef6f05f-c384-4fab-bc39-e47edb49f994
 # ╟─f08a32db-05d9-4ddb-9c46-34bc623ce5e7
 # ╟─50384351-fc38-4b29-9bf6-db1556d49dee
 # ╟─23913cc6-a81b-4098-bacf-7a2e09998e53
 # ╟─d482241c-4bd5-4896-bdc1-e82387f69051
-# ╟─5db05775-9f9d-4c3d-a3b0-ba6a1af4ed1b
 # ╟─14f07acc-5353-4b1d-b94f-9ae43f87289b
 # ╟─6c6e4d21-cc38-46eb-8178-4cc4a99adcba
 # ╟─3e6a9c64-827d-4491-bcac-252ee7b1dc81
