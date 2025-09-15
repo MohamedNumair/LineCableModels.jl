@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euxo pipefile
+set -euxo pipefail
 
 # First, instantiate and precompile your binder environment as usual
 julia --project=binder -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()'

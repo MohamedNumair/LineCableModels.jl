@@ -330,6 +330,137 @@ document.getElementById("btn-home").addEventListener("click", () => {
 """)
 
 
+# ╔═╡ 9465a717-7418-4f6b-a2d5-c283d4c314c7
+
+@htl("""
+<style id="lc-deck-style">
+  /* Comfortable headroom so anchors aren’t hidden under sticky chrome */
+  h1, #home { scroll-margin-top: 64px; }
+
+  /* Optional: while in deck mode you can hide noisy UI (uncomment if desired) */
+  /*
+  body.lc-deck #toc, body.lc-deck nav#slide_controls { display: none !important; }
+  */
+</style>
+
+<script>
+(function(){
+  const Q = (s, r=document) => r.querySelector(s)
+  const QA = (s, r=document) => Array.from(r.querySelectorAll(s))
+  const EDIT_TAGS = /^(INPUT|TEXTAREA|SELECT|OPTION)$/i
+  const slug = txt => (txt||"section").trim().toLowerCase()
+                    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "section"
+
+  // ---- Custom deck state & API ----
+  const lcDeck = window.lcDeck || (window.lcDeck = {
+    active: false, idx: 0, slides: [],
+
+    rescan(){
+      // Collect #home (if any) and all visible H1 headings in DOM order
+      const nodes = QA("#home, h1")
+      const slides = []
+      const seen = new Set()
+
+      for (const el of nodes){
+        if (!el) continue
+        // Skip invisible and phantom headings
+        const hidden = (el.offsetParent === null) || el.classList?.contains("lc-visually-hidden")
+        if (hidden) continue
+
+        // Ensure unique, stable id
+        if (!el.id){
+          let id = slug(el.textContent)
+          let i = 1, tryid = id
+          while (seen.has(tryid) || document.getElementById(tryid)) { i++; tryid = id + "-" + i }
+          el.id = tryid
+        }
+
+        if (seen.has(el.id)) continue
+        seen.add(el.id)
+        slides.push({ el, id: el.id })
+      }
+
+      this.slides = slides
+      // Start from #home if present, else first slide
+      const hi = slides.findIndex(s => s.id === "home")
+      this.idx = hi >= 0 ? hi : 0
+      return slides.length
+    },
+
+    goto(i){
+      if (this.slides.length === 0) this.rescan()
+      const n = this.slides.length
+      if (n === 0) return
+      i = Math.max(0, Math.min(i, n - 1))
+      this.idx = i
+      const s = this.slides[i]
+      history.replaceState(null, "", "#" + s.id)
+      s.el.scrollIntoView({ behavior: "smooth", block: "start", inline: "nearest" })
+    },
+
+    next(){ this.goto(this.idx + 1) },
+    prev(){ this.goto(this.idx - 1) },
+
+    start(){
+      if (this.active) return
+      this.rescan()
+      this.active = true
+      document.body.classList.add("lc-deck")
+      // Jump to #home (or first) immediately
+      this.goto(this.idx)
+      updatePresentButton(true)
+    },
+
+    end(){
+      if (!this.active) return
+      this.active = false
+      document.body.classList.remove("lc-deck")
+      updatePresentButton(false)
+    }
+  })
+
+  // ---- Wire toolbar buttons (use your existing ids) ----
+  const btnNext = Q("#btn-next");   if (btnNext)   btnNext.onclick   = () => lcDeck.next()
+  const btnPrev = Q("#btn-prev");   if (btnPrev)   btnPrev.onclick   = () => lcDeck.prev()
+  const btnHome = Q("#btn-home");   if (btnHome)   btnHome.onclick   = () => {
+    const i = lcDeck.slides.findIndex(s => s.id === "home")
+    if (i >= 0) lcDeck.goto(i); else window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+  const btnPres = Q("#btn-present"); if (btnPres) btnPres.onclick = () => lcDeck.active ? lcDeck.end() : lcDeck.start()
+
+  function updatePresentButton(on){
+    const icon = Q("#btn-present .material-symbols-rounded")
+    if (icon) icon.textContent = on ? "close_fullscreen" : "slideshow"
+    if (btnPres) btnPres.title = on ? "Exit presentation" : "Start presentation"
+  }
+
+  // ---- Presentation-only hotkeys (no interference while editing) ----
+  if (window.__lc_onKey) window.removeEventListener("keydown", window.__lc_onKey)
+  window.__lc_onKey = (e) => {
+    if (!lcDeck.active) return
+    if (e.metaKey || e.ctrlKey || e.altKey) return
+    const tag = e.target?.tagName; if (tag && EDIT_TAGS.test(tag)) return
+
+    if (e.key === "ArrowRight"){ e.preventDefault(); lcDeck.next() }
+    else if (e.key === "ArrowLeft"){ e.preventDefault(); lcDeck.prev() }
+    else if (e.key === "h"){ e.preventDefault();
+      const i = lcDeck.slides.findIndex(s => s.id === "home"); if (i >= 0) lcDeck.goto(i)
+    }
+    else if (e.key === "Escape"){ e.preventDefault(); lcDeck.end() }
+  }
+  window.addEventListener("keydown", window.__lc_onKey)
+
+  // Ensure all H1s have ids even outside deck mode (nice deep links)
+  QA("h1:not([id])").forEach(h => {
+    let id = slug(h.textContent), i = 1, tryid = id
+    while (document.getElementById(tryid)) { i++; tryid = id + "-" + i }
+    h.id = tryid
+  })
+})();
+</script>
+""")
+
+
 # ╔═╡ ca2e37fc-ee11-4b54-840c-bc40dd05a236
 
 # Make an invisible heading that PlutoUI.ToC will index
@@ -373,12 +504,13 @@ end;
 # ╔═╡ fde80e93-1964-4287-acfc-a2da2d4b7d48
 TableOfContents()
 
+# ╔═╡ 3e90c2f7-90f0-43e8-9722-c671910c82ee
+md"""
+# 
+"""
+
 # ╔═╡ 715b8cc1-7da6-4010-995d-35d02d43dbde
 toc_phantom("🏠 Home", level=1, id="home") 
-
-# ╔═╡ 87b6b005-3ea5-457f-8462-72d35f2e977c
-md"""# 
-"""
 
 # ╔═╡ f08a32db-05d9-4ddb-9c46-34bc623ce5e7
 md"""
@@ -407,13 +539,15 @@ $(LocalResource(joinpath(@__DIR__, "..", "assets", "img", "ENERGYVILLE-LOGO.svg"
 $(LocalResource(joinpath(@__DIR__, "..", "assets", "img", "kul_logo.svg"), :width => 150, :style => "margin-right: 0px;"))
 """
 
+# ╔═╡ 5db05775-9f9d-4c3d-a3b0-ba6a1af4ed1b
+md"""
+# 
+"""
+
 # ╔═╡ 14f07acc-5353-4b1d-b94f-9ae43f87289b
 md"""
 # Introduction
 """
-
-# ╔═╡ a38bd2da-4ee7-4b16-88ae-f2eeb426dff3
-toc_phantom("Etch", level=1, id="home") 
 
 # ╔═╡ 6c6e4d21-cc38-46eb-8178-4cc4a99adcba
 TwoColumn(
@@ -968,16 +1102,17 @@ md"""
 # ╠═e90baf94-c8b8-41aa-8728-e129f7f6881e
 # ╠═532cb61b-97b6-43e7-a8f9-3a5f12b8b3f7
 # ╠═b16ff72c-872a-4505-9468-6cefd4a8852c
+# ╠═9465a717-7418-4f6b-a2d5-c283d4c314c7
 # ╠═ca2e37fc-ee11-4b54-840c-bc40dd05a236
 # ╠═fde80e93-1964-4287-acfc-a2da2d4b7d48
+# ╟─3e90c2f7-90f0-43e8-9722-c671910c82ee
 # ╟─715b8cc1-7da6-4010-995d-35d02d43dbde
-# ╟─87b6b005-3ea5-457f-8462-72d35f2e977c
 # ╟─f08a32db-05d9-4ddb-9c46-34bc623ce5e7
 # ╟─50384351-fc38-4b29-9bf6-db1556d49dee
 # ╟─23913cc6-a81b-4098-bacf-7a2e09998e53
 # ╟─d482241c-4bd5-4896-bdc1-e82387f69051
+# ╟─5db05775-9f9d-4c3d-a3b0-ba6a1af4ed1b
 # ╟─14f07acc-5353-4b1d-b94f-9ae43f87289b
-# ╠═a38bd2da-4ee7-4b16-88ae-f2eeb426dff3
 # ╟─6c6e4d21-cc38-46eb-8178-4cc4a99adcba
 # ╟─3e6a9c64-827d-4491-bcac-252ee7b1dc81
 # ╟─877a84cc-979f-48c9-ac41-59be60b4850b
