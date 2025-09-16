@@ -2,6 +2,15 @@
 # v0.20.18
 
 #> [frontmatter]
+#> image = "https://raw.githubusercontent.com/Electa-Git/LineCableModels.jl/main/docs/src/assets/logo.svg"
+#> language = "en-US"
+#> title = "Uncertainty of Frequency Dependent Impedance Parameters for Transmission Assets"
+#> date = "2025-09-16"
+#> description = "LineCableModels.jl showcase"
+#> 
+#>     [[frontmatter.author]]
+#>     name = "Amauri Martins"
+#>     url = "https://github.com/amaurigmartins"
 
 using Markdown
 using InteractiveUtils
@@ -76,7 +85,7 @@ begin
         add!(main_insu, Semicon,   Thickness(t_sct),    get(materials, "polyacrylate"))
 
         core_cc = CableComponent("core", core, main_insu)
-        return core_cc
+        return core_cc, main_insu
     end
 end;
 
@@ -675,17 +684,7 @@ datasheet_info = NominalData(
 
 # ╔═╡ c1595a9d-7882-4b66-a1fc-fe6de19f1ef6
 md"""
-## Building the cable model
-
 ### Materials library
-"""
-
-# ╔═╡ c13e262c-2dd2-43da-a01b-a95adb7eaa7d
-md"""
-!!! note "Note"
-	The `MaterialsLibrary` is a container for storing electromagnetic properties of 
-	different materials used in power cables. By default, it initializes with several common 
-	materials with their standard properties.
 """
 
 # ╔═╡ c2539b01-ac04-48e4-a973-6a5d8a0e2b58
@@ -694,48 +693,39 @@ md"""
 materials = MaterialsLibrary(add_defaults = true)
 
 
-# ╔═╡ c7c7ce65-3a0c-4ac6-82f0-f9f58e46f47e
-DataFrame(materials)
-
 # ╔═╡ 062439db-1e3f-497e-96c1-e1f65f80399b
 md"""
-## Core and main insulation
-
-- The core consists of a 4-layer AAAC stranded conductor with 61 wires arranged in (1/6/12/18/24) pattern, with respective lay ratios of (15/13.5/12.5/11). Stranded conductors are modeled using the `WireArray` object, which handles the helical pattern and twisting effects.
+## Base RLC quantities
 """
 
 # ╔═╡ 4e1dec4b-223f-45f8-9393-523fcc4019f0
- md"#### Controls"
+ md"#### Parameters"
 
 # ╔═╡ 5b005f4b-605e-4a3d-ba7f-003908f332b2
 md"""
 Layers: $(@bind n_layers PlutoUI.Slider(0:10; default=4, show_value=true))
 
-Wire diameter [mm]: $(@bind dd_w PlutoUI.Slider(0.45:0.01:11.7; default=3.0, show_value=true)), uncertainty [%]: $(@bind unc_d_w PlutoUI.Slider(0.0:0.01:10; default=0.0, show_value=true))
+Wire diameter [mm]: $(@bind dd_w PlutoUI.Slider(0.45:0.01:11.7; default=4.7, show_value=true)), uncertainty [%]: $(@bind unc_d_w PlutoUI.Slider(0.0:0.01:10; default=0.0, show_value=true))
 
-Inner semicon thickness [mm]: $(@bind tt_sc_in PlutoUI.Slider(0.45:0.01:11.7; default=3.0, show_value=true)), uncertainty [%]:  $(@bind unc_t_sc_in PlutoUI.Slider(0.0:0.01:10; default=0.0, show_value=true))
+Inner semicon thickness [mm]: $(@bind tt_sc_in PlutoUI.Slider(0.1:0.01:3; default=0.3, show_value=true)), uncertainty [%]:  $(@bind unc_t_sc_in PlutoUI.Slider(0.0:0.01:10; default=0.0, show_value=true))
 
-Main insulation thickness [mm]: $(@bind tt_ins PlutoUI.Slider(0.45:0.01:11.7; default=3.0, show_value=true)), uncertainty [%]:  $(@bind unc_t_ins PlutoUI.Slider(0.0:0.01:10; default=0.0, show_value=true))
+Main insulation thickness [mm]: $(@bind tt_ins PlutoUI.Slider(0.1:0.01:30; default=8.0, show_value=true)), uncertainty [%]:  $(@bind unc_t_ins PlutoUI.Slider(0.0:0.01:10; default=0.0, show_value=true))
 
-Outer semicon thickness [mm]: $(@bind tt_sc_out PlutoUI.Slider(0.45:0.01:11.7; default=3.0, show_value=true)), uncertainty [%]:  $(@bind unc_t_sc_out PlutoUI.Slider(0.0:0.01:10; default=0.0, show_value=true))
+Outer semicon thickness [mm]: $(@bind tt_sc_out PlutoUI.Slider(0.1:0.01:3; default=0.6, show_value=true)), uncertainty [%]:  $(@bind unc_t_sc_out PlutoUI.Slider(0.0:0.01:10; default=0.0, show_value=true))
 """
 
-# ╔═╡ e0f87b28-14a3-4630-87db-6f4b51bdb30a
-md"""
-Cross-section: $(cable_design.components[1].conductor_group.cross_section*1e6) mm²
-"""
-
-# ╔═╡ da168b34-43be-4701-8de8-5e953ff8dcd8
-cable_design.components[1].conductor_group.resistance
-
-# ╔═╡ cda1f413-8d71-4473-af93-f6ae2dd06ccb
-md"""
-## Wire screens
-"""
-
-# ╔═╡ 926048a4-f1e9-46ca-a6a8-84e254d74719
-# ╠═╡ show_logs = false
+# ╔═╡ 0b5142ef-2eb0-4c72-8ba5-da776eadb5a3
 begin
+    core_cc, main_insu = build_geometry(materials;
+        d_wire_mm   = dd_w,      d_wire_pct   = unc_d_w,
+        t_sc_in_mm  = tt_sc_in,  t_sc_in_pct  = unc_t_sc_in,
+        t_ins_mm    = tt_ins,    t_ins_pct    = unc_t_ins,
+        t_sc_out_mm = tt_sc_out, t_sc_out_pct = unc_t_sc_out,
+        n_layers    = n_layers,
+        t_sct       = t_sct # keep your existing var for semicon tape thickness (mm)
+    )
+
+	
 	# Build the wire screens on top of the previous layer:
 	lay_ratio = 10 # typical value for wire screens
 	screen_con =
@@ -745,150 +735,97 @@ begin
 				Diameter(d_ws),
 				num_sc_wires,
 				lay_ratio,
-				get_material(materials_db, "copper"),
+				get(materials, "copper"),
 			),
 		)
 	# Add the equalizing copper tape wrapping the wire screen:
-	addto_conductorgroup!(
+	add!(
 		screen_con,
 		Strip,
 		Thickness(t_cut),
 		w_cut,
 		lay_ratio,
-		get_material(materials_db, "copper"),
+		get(materials, "copper"),
 	)
 
 	# Water blocking tape over screen:
 	screen_insu = InsulatorGroup(
-		Semicon(screen_con, Thickness(t_wbt), get_material(materials_db, "polyacrylate")),
+		Semicon(screen_con, Thickness(t_wbt), get(materials, "polyacrylate")),
 	)
 
 	# Group sheath components and assign to design:
 	sheath_cc = CableComponent("sheath", screen_con, screen_insu)
-	addto_cabledesign!(cable_design, sheath_cc)
-end
+	
 
-# ╔═╡ 6a74b6bf-d833-4d9b-af2c-0fcf729ff0f4
-# ╠═╡ show_logs = false
-# Examine the newly added components:
-preview_cabledesign(cable_design, sz = (1200, 600))
-
-# ╔═╡ c5bdbd1f-327e-4d33-8c14-f019b3057adb
-md"""
-## Outer jacket components
-"""
-
-# ╔═╡ 995cfe45-ba32-4c06-9843-603d2e6073bf
-begin
+	
 	# Add the aluminum foil (moisture barrier):
 	jacket_con = ConductorGroup(
-		Tubular(screen_insu, Thickness(t_alt), get_material(materials_db, "aluminum")),
+		Tubular(screen_insu, Thickness(t_alt), get(materials, "aluminum")),
 	)
 
 	# PE layer after aluminum foil:
 	jacket_insu = InsulatorGroup(
-		Insulator(jacket_con, Thickness(t_pet), get_material(materials_db, "pe")),
+		Insulator(jacket_con, Thickness(t_pet), get(materials, "pe")),
 	)
 
 	# PE jacket (outer mechanical protection):
-	addto_insulatorgroup!(
+	add!(
 		jacket_insu,
 		Insulator,
 		Thickness(t_jac),
-		get_material(materials_db, "pe"),
+		get(materials, "pe"),
 	)
+	
+	
+    cable_id     = "showcase"
+    cable_design = CableDesign(cable_id, core_cc; nominal_data = datasheet_info)
+	add!(cable_design, sheath_cc)
+	add!(cable_design, "jacket", jacket_con, jacket_insu)
+
+	backend_sym = :cairo 
+    plt, _ = preview(cable_design; size=(800, 500), backend = backend_sym)
+    plt
+
 end
 
-# ╔═╡ 58626fd7-b088-4310-811c-a4f3f1338f03
-# Assign the jacket parts directly to the design:
-addto_cabledesign!(cable_design, "jacket", jacket_con, jacket_insu)
-
-# ╔═╡ 783c759f-0889-4ce5-ba2e-6cc1c7555641
+# ╔═╡ e0f87b28-14a3-4630-87db-6f4b51bdb30a
 md"""
-## Finished cable design
-"""
+Cross-section: $(cable_design.components[1].conductor_group.cross_section*1e6) mm²
 
-# ╔═╡ a0138b90-e4d7-4711-95e1-b6e2f5f3fb30
-# ╠═╡ show_logs = false
-preview_cabledesign(cable_design, sz = (1200, 600))
+Core resistance: $(cable_design.components[1].conductor_group.resistance*1000) Ω/km
 
-# ╔═╡ f904b5e4-0167-4ecf-8a5e-078a2877d4f7
-md"""
-# Cable parameters (RLC)
+Main insulation capacitance: $(cable_design.components[1].insulator_group.shunt_capacitance*1e9) μF/km
+
 """
 
 # ╔═╡ 1ae76282-4340-4df0-ba29-11712c184a79
 md"""
-## Core and corrected EM properties
+## Equivalent parameters for EMT studies
 """
 
 # ╔═╡ 9ddcccbe-86c8-4335-8d65-35af4ce755ab
-# Compare with datasheet information (R, L, C values):
-to_df(cable_design, :core)
-
-# ╔═╡ 380b4c0a-780c-4be2-9c5a-666257dbe4da
-# Obtain the equivalent electromagnetic properties of the cable:
-to_df(cable_design, :components)
-
-# ╔═╡ eb60126a-c646-417c-b9a6-9335b0cfe6c4
-md"""
-## Detailed report
-"""
-
-# ╔═╡ 58d30993-f4b3-4621-8d23-447b3d4f5935
-to_df(cable_design, :detailed)
-
-# ╔═╡ 02a77417-3896-4e29-abd6-6e2586da0571
-md"""
-# Data exchange features
-"""
-
-# ╔═╡ da6b39c6-7053-4412-8bd8-6c0f771ee456
-md"""
-## Cable designs library
-"""
-
-# ╔═╡ 282bd09f-ecea-44c7-b455-e83bb8e2fdd1
 begin
-	# Store the cable design and inspect the library contents:
-	library = CablesLibrary()
-	store_cableslibrary!(library, cable_design)
-	list_cableslibrary(library)
+	core_df = DataFrame(cable_design, :baseparams)
+	core_df
 end
 
-# ╔═╡ 00fcdd99-c603-4df3-a15b-d3ba64b34b7a
-md"""
-!!! info "Note"
-	Cable designs are exported to JSON format by default to facilitate data exchange acress projects. In case of sensitive design specs, it is also possible to use the standard binary format of Julia.
-"""
+# ╔═╡ 43ff64cb-1226-4d26-9fdf-8aff03505439
+cable_emt = equivalent(cable_design)
 
-# ╔═╡ 8f147f54-ec3d-47a7-a3e7-9ff533adfb2d
+# ╔═╡ ae1749c8-0f6d-4487-8857-12826eb57db3
 begin
-	# Save to file for later use:
-	output_file = joinpath(@__DIR__, "cables_library.json")
-	save_cableslibrary(library, file_name = output_file)
-	json_str = read(output_file, String)
-	println(JSON3.pretty(JSON3.read(json_str)))
+plt2, _ = preview(cable_design; size = (800, 500), backend = backend_sym)
 end
 
-# ╔═╡ 878f722b-0ad8-4098-8ff7-c11797eddddc
-md"""
-## Materials library 
-"""
-
-# ╔═╡ a48ddf49-42f1-454e-8182-de1da6b51fe8
+# ╔═╡ 3d9239df-523e-40be-b6e9-f0d538638bd8
 begin
-	# Saving the materials library to JSON
-	save_materialslibrary(
-		materials_db,
-		file_name = joinpath(@__DIR__, "materials_library.json"),
-	)
-	nothing
+plt3, _ = preview(cable_emt; size = (800, 500), backend = backend_sym)
+plt3
 end
 
 # ╔═╡ fd1e268a-6520-4dc8-a9ff-32a4854859df
 md"""
-# Cable system definition
+# Frequency domain analysis
 """
 
 # ╔═╡ b4169697-e06d-4947-8105-9f42017f5042
@@ -903,196 +840,539 @@ begin
 	earth_params = EarthModel(f, 100.0, 10.0, 1.0)  # 100 Ω·m resistivity, εr=10, μr=1
 end
 
-# ╔═╡ 9ef6ef41-3a95-4540-ae93-dcc279ec72b0
-to_df(earth_params)
-
 # ╔═╡ 4ce85966-0386-4525-8cf2-35e9814f8459
 md"""
-## Trifoil arrangement
+### Trifoil arrangement
 """
 
 # ╔═╡ 44f5823e-4b07-4f2c-8773-e4c3187a6100
 begin
+	import LineCableModels.Utils: to_nominal
 	# Define system center point (underground at 1 m depth) and the trifoil positions
-	x0 = 0
-	y0 = -1
-	xa, ya, xb, yb, xc, yc = trifoil_formation(x0, y0, 0.035)
-	nothing
-end
+	x0 = 0.0
+	y0 = -1.0
+	S = 1e-6+to_nominal(cable_design.components[end].insulator_group.radius_ext)
+	xa, ya, xb, yb, xc, yc = trifoil_formation(x0, y0, S)
+end;
 
 # ╔═╡ 987902c5-5983-4815-b62f-4eabc1be2362
 begin
-	# Initialize the `LineCableSystem` with the first cable (phase A):
-	cabledef =
-		CableDef(cable_design, xa, ya, Dict("core" => 1, "sheath" => 0, "jacket" => 0))
-	cable_system = LineCableSystem("tutorial2", 20.0, earth_params, 1000.0, cabledef)
-
-	# Add remaining cables (phases B and C):
-	addto_linecablesystem!(cable_system, cable_design, xb, yb,
-		Dict("core" => 2, "sheath" => 0, "jacket" => 0),
-	)
-	addto_linecablesystem!(
-		cable_system, cable_design, xc, yc,
-		Dict("core" => 3, "sheath" => 0, "jacket" => 0),
-	)
+	cablepos = CablePosition(cable_design, xa, ya,
+	Dict("core" => 1, "sheath" => 0, "jacket" => 0))
+cable_system = LineCableSystem("showcase", 1000.0, cablepos)
+	add!(cable_system, cable_design, xb, yb,
+	Dict("core" => 2, "sheath" => 0, "jacket" => 0))
+add!(cable_system, cable_design, xc, yc,
+	Dict("core" => 3, "sheath" => 0, "jacket" => 0))
 end
-
-# ╔═╡ 539cdfbe-f5c6-47eb-9b2d-64f9ca7feacd
-md"""
-!!! note "Phase mapping"
-	The `addto_linecablesystem!` function allows the specification of phase mapping for each cable. The `Dict` argument maps the cable components to their respective phases, where `core` is the conductor, `sheath` is the screen, and `jacket` is the outer jacket. The values (1, 2, 3) represent the phase numbers (A, B, C) in this case. Components mapped to phase 0 will be Kron-eliminated (grounded). Components set to the same phase will be bundled into an equivalent phase.
-"""
-
-# ╔═╡ 960c9035-d86c-471a-9ed6-330beead03cb
-md"""
-## Cable system preview & PSCAD export
-"""
 
 # ╔═╡ 6ee6d16d-326c-4436-a750-077ecc2b3b9c
-preview_linecablesystem(cable_system, zoom_factor = 0.15, sz = (1000, 600))
-
-# ╔═╡ 2164f425-291b-4ca8-a66d-9ff3d402fdb8
 begin
-	# Export to PSCAD input file:
-	export_file = export_pscad_lcp(
-		cable_system,
-		file_name = joinpath(@__DIR__, "tutorial2_export.pscx"),
-	)
-	nothing
+plt4, _ = preview(cable_system, earth_model = earth_params, zoom_factor = 2.0, size = (800, 500))
+plt4
 end
 
+# ╔═╡ 39f7460d-8a1e-483d-94f4-14500d6c9ac2
+md"""
+## Sequence-component impedances
+"""
+
+# ╔═╡ a2e5d81f-f6a2-4b04-83cc-c95026fd283a
+md"""
+Layers: $(@bind nn_layers PlutoUI.Slider(0:10; default=4, show_value=true))
+
+Wire diameter [mm]: $(@bind ddd_w PlutoUI.Slider(0.45:0.01:11.7; default=4.7, show_value=true)), uncertainty [%]: $(@bind uunc_d_w PlutoUI.Slider(0.0:0.01:10; default=0.0, show_value=true))
+
+Inner semicon thickness [mm]: $(@bind ttt_sc_in PlutoUI.Slider(0.1:0.01:3; default=0.3, show_value=true)), uncertainty [%]:  $(@bind uunc_t_sc_in PlutoUI.Slider(0.0:0.01:10; default=0.0, show_value=true))
+
+Main insulation thickness [mm]: $(@bind ttt_ins PlutoUI.Slider(0.1:0.01:30; default=8.0, show_value=true)), uncertainty [%]:  $(@bind uunc_t_ins PlutoUI.Slider(0.0:0.01:10; default=0.0, show_value=true))
+
+Outer semicon thickness [mm]: $(@bind ttt_sc_out PlutoUI.Slider(0.1:0.01:3; default=0.6, show_value=true)), uncertainty [%]:  $(@bind uunc_t_sc_out PlutoUI.Slider(0.0:0.01:10; default=0.0, show_value=true))
+"""
+
+# ╔═╡ ce7d068e-2831-49dc-a459-bb68138c3a00
+begin
+    ccore_cc, mmain_insu = build_geometry(materials;
+        d_wire_mm   = ddd_w,      d_wire_pct   = uunc_d_w,
+        t_sc_in_mm  = ttt_sc_in,  t_sc_in_pct  = uunc_t_sc_in,
+        t_ins_mm    = ttt_ins,    t_ins_pct    = uunc_t_ins,
+        t_sc_out_mm = ttt_sc_out, t_sc_out_pct = uunc_t_sc_out,
+        n_layers    = nn_layers,
+        t_sct       = t_sct # keep your existing var for semicon tape thickness (mm)
+    )
+
+	
+	# Build the wire screens on top of the previous layer:
+	sscreen_con =
+		ConductorGroup(
+			WireArray(
+				main_insu,
+				Diameter(d_ws),
+				num_sc_wires,
+				lay_ratio,
+				get(materials, "copper"),
+			),
+		)
+	# Add the equalizing copper tape wrapping the wire screen:
+	add!(
+		sscreen_con,
+		Strip,
+		Thickness(t_cut),
+		w_cut,
+		lay_ratio,
+		get(materials, "copper"),
+	)
+
+	# Water blocking tape over screen:
+	sscreen_insu = InsulatorGroup(
+		Semicon(sscreen_con, Thickness(t_wbt), get(materials, "polyacrylate")),
+	)
+
+	# Group sheath components and assign to design:
+	ssheath_cc = CableComponent("sheath", sscreen_con, sscreen_insu)
+	
+
+	
+	# Add the aluminum foil (moisture barrier):
+	jjacket_con = ConductorGroup(
+		Tubular(sscreen_insu, Thickness(t_alt), get(materials, "aluminum")),
+	)
+
+	# PE layer after aluminum foil:
+	jjacket_insu = InsulatorGroup(
+		Insulator(jjacket_con, Thickness(t_pet), get(materials, "pe")),
+	)
+
+	# PE jacket (outer mechanical protection):
+	add!(
+		jjacket_insu,
+		Insulator,
+		Thickness(t_jac),
+		get(materials, "pe"),
+	)
+	
+	
+    ccable_design = CableDesign(cable_id, ccore_cc; nominal_data = datasheet_info)
+	add!(ccable_design, ssheath_cc)
+	add!(ccable_design, "jacket", jjacket_con, jjacket_insu)
+
+	# Define system center point (underground at 1 m depth) and the trifoil positions
+	SS = 0.1+to_nominal(ccable_design.components[end].insulator_group.radius_ext)
+	xxa, yya, xxb, yyb, xxc, yyc = trifoil_formation(x0, y0, SS)
+
+		ccablepos = CablePosition(ccable_design, xxa, yya,
+	Dict("core" => 1, "sheath" => 0, "jacket" => 0))
+ccable_system = LineCableSystem("showcase", 1000.0, ccablepos)
+	add!(ccable_system, ccable_design, xxb, yyb,
+	Dict("core" => 2, "sheath" => 0, "jacket" => 0))
+add!(ccable_system, ccable_design, xxc, yyc,
+	Dict("core" => 3, "sheath" => 0, "jacket" => 0))
+
+end;
+
 # ╔═╡ 83d26ac6-24e5-4ca1-817c-921d3c2375c5
-md"""$(LocalResource(joinpath(@__DIR__, "pscad_export.png"), :width => 800, :style => "display: block; margin-top: auto; margin-left: auto; margin-right: auto;"))
- """
+begin
+fullfile(filename) = joinpath(@__DIR__, filename); #hide
+
+problem = LineParametersProblem(
+	ccable_system,
+	temperature = 20.0,  # Operating temperature
+	earth_props = earth_params,
+	frequencies = f,  # Frequency for the analysis
+)
+
+	# Define runtime options 
+opts = (
+	force_overwrite = true,                    # Overwrite existing files
+	save_path = fullfile("lineparams_output"), # Results directory
+	verbosity = 0,                             # Verbosity
+)
+end;
+
+# ╔═╡ cb44ffb8-7e33-4603-a97e-47dbc507f813
+begin
+	using LineCableModels.Engine
+	using LineCableModels.Engine.Transforms: Fortescue
+	using LineCableModels.Engine.FEM
+	F = FormulationSet(:EMT,
+		internal_impedance = InternalImpedance.ScaledBessel(),
+		insulation_impedance = InsulationImpedance.Lossless(),
+		earth_impedance = EarthImpedance.Papadopoulos(),
+		insulation_admittance = InsulationAdmittance.Lossless(),
+		earth_admittance = EarthAdmittance.Papadopoulos(),
+		modal_transform = Transforms.Fortescue(),
+		equivalent_earth = EHEM.EnforceLayer(layer = -1),  # Use the last layer as effective earth
+		options = opts,
+	)
+end;
+
+# ╔═╡ c6415453-f16c-4a8d-8d2d-c754eca919b0
+begin
+import LineCableModels.BackendHandler: ensure_backend!, current_backend_symbol
+using Measurements: Measurement, uncertainty
+function plot(
+    lp::LineParameters;
+    per::Symbol = :km,
+    diag_only::Bool = true,
+    elements::Union{Nothing,Vector{Tuple{Int,Int}}} = nothing,
+    labels::Union{Nothing,Vector{String}} = nothing,
+    backend::Union{Nothing,Symbol} = nothing,
+    figsize::Tuple{Int,Int} = (900, 500),
+)
+    # Ensure a Makie backend (defaults to Cairo if none)
+    ensure_backend!(backend)
+
+    n, _, nf = size(lp.Z)
+    _nom(x) = x isa Measurement ? value(x) : x
+    f = collect(map(x -> float(_nom(x)), lp.f))
+    scale = per === :km ? 1_000.0 : 1.0
+
+    # Build element list
+    elts = if diag_only
+        [(i, i) for i in 1:n]
+    else
+        elements === nothing ? [(i, j) for i in 1:n for j in 1:n] : elements
+    end
+
+    # Default labels
+    if labels === nothing
+        if diag_only && n == 3
+            labels = ["Z₀", "Z₁", "Z₂"]
+        else
+            labels = ["Z[$i,$j]" for (i, j) in elts]
+        end
+    end
+
+    fig = Figure(size = figsize)
+    axr = Axis(fig[1, 1], xlabel = "f [Hz]", ylabel = "Re(Z) [Ω/$(per==:km ? "km" : "m")]", xscale = log10)
+    axi = Axis(fig[1, 2], xlabel = "f [Hz]", ylabel = "Im(Z) [Ω/$(per==:km ? "km" : "m")]", xscale = log10)
+
+    # Plot lines for each selected element
+    for (idx, (i, j)) in enumerate(elts)
+        reZ = Vector{Float64}(undef, nf)
+        imZ = Vector{Float64}(undef, nf)
+        @inbounds for k in 1:nf
+            z = lp.Z.values[i, j, k] * scale
+            reZ[k] = float(_nom(real(z)))
+            imZ[k] = float(_nom(imag(z)))
+        end
+        color = Makie.wong_colors()[mod1(idx, length(Makie.wong_colors()))]
+        lines!(axr, f, reZ, color = color, label = labels[idx])
+        lines!(axi, f, imZ, color = color, label = labels[idx])
+    end
+
+    axislegend(axr; position = :rb)
+    fig
+end
+
+function _plot(
+    lp::LineParameters;
+    per::Symbol = :km,
+    diag_only::Bool = true,
+    elements::Union{Nothing,Vector{Tuple{Int,Int}}} = nothing,
+    labels::Union{Nothing,Vector{String}} = nothing,
+    backend::Union{Nothing,Symbol} = nothing,
+    figsize::Tuple{Int,Int} = (900, 500),
+    show_errors::Bool = true,
+    error_style::Symbol = :band,           # :band or :bars
+    error_scale::Real = 1.0,               # multiply σ by this factor
+    error_alpha::Real = 0.25,              # band transparency
+    error_linewidth::Real = 1.5,           # line width for bars/band edges
+    error_whiskerwidth::Real = 8.0,        # for :bars style
+    error_whiskerlinewidth::Real = 1.2,
+)
+    # Ensure a Makie backend (defaults to Cairo if none)
+    ensure_backend!(backend)
+
+    n, _, nf = size(lp.Z)
+    _nom(x) = x isa Measurement ? value(x) : x
+    f = collect(map(x -> float(_nom(x)), lp.f))
+    scale = per === :km ? 1_000.0 : 1.0
+
+    # Build element list
+    elts = if diag_only
+        [(i, i) for i in 1:n]
+    else
+        elements === nothing ? [(i, j) for i in 1:n for j in 1:n] : elements
+    end
+
+    # Default labels
+    if labels === nothing
+        if diag_only && n == 3
+            labels = ["Z₀", "Z₁", "Z₂"]
+        else
+            labels = ["Z[$i,$j]" for (i, j) in elts]
+        end
+    end
+
+    fig = Figure(size = figsize)
+    axr = Axis(fig[1, 1], xlabel = "f [Hz]", ylabel = "Re(Z) [Ω/$(per==:km ? "km" : "m")]", xscale = log10)
+    axi = Axis(fig[1, 2], xlabel = "f [Hz]", ylabel = "Im(Z) [Ω/$(per==:km ? "km" : "m")]", xscale = log10)
+
+    # Plot lines for each selected element
+    for (idx, (i, j)) in enumerate(elts)
+        reZ = Vector{Float64}(undef, nf)
+        imZ = Vector{Float64}(undef, nf)
+        reE = Vector{Float64}(undef, nf)
+        imE = Vector{Float64}(undef, nf)
+        @inbounds for k in 1:nf
+            z = lp.Z.values[i, j, k] * scale
+            r = real(z)
+            ii = imag(z)
+            reZ[k] = float(_nom(r))
+            imZ[k] = float(_nom(ii))
+            reE[k] = r isa Measurement ? float(uncertainty(r)) : 0.0
+            imE[k] = ii isa Measurement ? float(uncertainty(ii)) : 0.0
+        end
+        color = Makie.wong_colors()[mod1(idx, length(Makie.wong_colors()))]
+        if show_errors && error_style == :band
+            has_re = any(x -> x > 0, reE)
+            has_im = any(x -> x > 0, imE)
+            if has_re
+                ylow = reZ .- error_scale .* reE
+                yupp = reZ .+ error_scale .* reE
+                band!(axr, f, ylow, yupp; color = (color, error_alpha))
+            end
+            if has_im
+                ylow = imZ .- error_scale .* imE
+                yupp = imZ .+ error_scale .* imE
+                band!(axi, f, ylow, yupp; color = (color, error_alpha))
+            end
+        end
+        # Draw lines on top for visibility
+        lines!(axr, f, reZ, color = color, label = labels[idx])
+        lines!(axi, f, imZ, color = color, label = labels[idx])
+        if show_errors && error_style != :band
+            has_re = any(x -> x > 0, reE)
+            has_im = any(x -> x > 0, imE)
+            has_re && errorbars!(axr, f, reZ, error_scale .* reE;
+                color = color, whiskerwidth = error_whiskerwidth,
+                whiskerlinewidth = error_whiskerlinewidth, linewidth = error_linewidth)
+            has_im && errorbars!(axi, f, imZ, error_scale .* imE;
+                color = color, whiskerwidth = error_whiskerwidth,
+                whiskerlinewidth = error_whiskerlinewidth, linewidth = error_linewidth)
+        end
+    end
+
+    axislegend(axr; position = :rb)
+    fig
+end
+
+	function _plot_RL(
+    lp::LineParameters;
+    per::Symbol = :km,
+    diag_only::Bool = true,
+    elements::Union{Nothing,Vector{Tuple{Int,Int}}} = nothing,
+    labels::Union{Nothing,Vector{String}} = nothing,
+    backend::Union{Nothing,Symbol} = nothing,
+    figsize::Tuple{Int,Int} = (900, 500),
+    L_unit::Symbol = :H,
+    show_errors::Bool = true,
+    error_style::Symbol = :band,
+    error_scale::Real = 1.0,
+    error_alpha::Real = 0.25,
+    error_linewidth::Real = 1.5,
+    error_whiskerwidth::Real = 8.0,
+)
+    ensure_backend!(backend)
+
+    n, _, nf = size(lp.Z)
+    _nom(x) = x isa Measurement ? value(x) : x
+    f = collect(map(x -> float(_nom(x)), lp.f))
+    ω = 2π .* f
+    scale = per === :km ? 1_000.0 : 1.0
+    Lscale = (L_unit === :mH ? 1e3 : 1.0)  # convert H → mH if requested
+
+    elts = if diag_only
+        [(i, i) for i in 1:n]
+    else
+        elements === nothing ? [(i, j) for i in 1:n for j in 1:n] : elements
+    end
+    if labels === nothing
+        if diag_only && n == 3
+            labels = ["Z₀", "Z₁", "Z₂"]
+        else
+            labels = ["Z[$i,$j]" for (i, j) in elts]
+        end
+    end
+
+    fig = Figure(size = figsize)
+    yLlabel = L_unit === :mH ? "mH" : "H"
+    axR = Axis(fig[1, 1], xlabel = "f [Hz]", ylabel = "R [Ω/$(per==:km ? "km" : "m")]", xscale = log10)
+    axL = Axis(fig[1, 2], xlabel = "f [Hz]", ylabel = "L [$yLlabel/$(per==:km ? "km" : "m")]", xscale = log10)
+
+    for (idx, (i, j)) in enumerate(elts)
+        Rv = Vector{Float64}(undef, nf)
+        Lv = Vector{Float64}(undef, nf)
+        Re = Vector{Float64}(undef, nf)
+        Le = Vector{Float64}(undef, nf)
+        @inbounds for k in 1:nf
+            z = lp.Z.values[i, j, k]
+            r = real(z) * scale
+            x = imag(z) * scale
+            Rv[k] = float(_nom(r))
+            Re[k] = r isa Measurement ? float(uncertainty(r)) : 0.0
+            if ω[k] == 0
+                Lv[k] = NaN
+                Le[k] = 0.0
+            else
+                lk = (x / ω[k]) * Lscale
+                Lv[k] = float(_nom(lk))
+                Le[k] = lk isa Measurement ? float(uncertainty(lk)) : 0.0
+            end
+        end
+        color = Makie.wong_colors()[mod1(idx, length(Makie.wong_colors()))]
+        if show_errors && error_style == :band
+            if any(>(0), Re)
+                band!(axR, f, Rv .- error_scale .* Re, Rv .+ error_scale .* Re; color = (color, error_alpha))
+            end
+            if any(>(0), Le)
+                band!(axL, f, Lv .- error_scale .* Le, Lv .+ error_scale .* Le; color = (color, error_alpha))
+            end
+        end
+        lines!(axR, f, Rv, color = color, label = labels[idx])
+        lines!(axL, f, Lv, color = color, label = labels[idx])
+        if show_errors && error_style != :band
+            any(>(0), Re) && errorbars!(axR, f, Rv, error_scale .* Re;
+                color = color, whiskerwidth = error_whiskerwidth, linewidth = error_linewidth, linecap = :round)
+            any(>(0), Le) && errorbars!(axL, f, Lv, error_scale .* Le;
+                color = color, whiskerwidth = error_whiskerwidth, linewidth = error_linewidth, linecap = :round)
+        end
+    end
+
+    axislegend(axR; position = :rb)
+    fig
+end
+	
+end;
+
+# ╔═╡ e8117400-adf3-45e3-bf56-59933f01e6d0
+# ╠═╡ show_logs = false
+begin
+	@time ws, p = compute!(problem, F);
+	Tv, p012 = Fortescue(tol = 1e-5)(p)
+end;
+
+# ╔═╡ cebe81ec-a183-43d7-be36-6627a46de3bf
+begin
+	fig = _plot_RL(p012, error_scale=100, error_style = :bars, L_unit = :mH)
+	axL = content(fig[1, 2])
+	axR = content(fig[1, 1])
+	lo = 1
+	hi = 1e6
+	xlims!(axR, lo, hi); xlims!(axL, lo, hi)
+
+	fig
+end
+
+# ╔═╡ d20e89c6-b980-4f57-8989-f86d23ea59c6
+function rlcg_tables(
+    lp::LineParameters;
+    per::Symbol = :km,
+    diag_only::Bool = true,
+    elements::Union{Nothing,Vector{Tuple{Int,Int}}} = nothing,
+    labels::Union{Nothing,Vector{String}} = nothing,
+    epsval::Real = eps(Float64),
+)
+    n, _, nf = size(lp.Z)
+    # frequency vector (preserve potential Measurement)
+    f = collect(lp.f)
+    scale = per === :km ? 1_000.0 : 1.0
+    elts = if diag_only
+        [(i, i) for i in 1:n]
+    else
+        elements === nothing ? [(i, j) for i in 1:n for j in 1:n] : elements
+    end
+    if labels === nothing
+        if diag_only && n == 3
+            labels = ["0", "1", "2"]
+        else
+            labels = ["$(i),$(j)" for (i, j) in elts]
+        end
+    end
+    # Zero-clip helper preserving Measurement type
+    zero_clip(x, τ) = begin
+        if x isa Measurement
+            v = value(x)
+            u = uncertainty(x)
+            vv = abs(v) < τ ? 0.0 : v
+            uu = abs(u) < τ ? 0.0 : u
+            return measurement(vv, uu)
+        else
+            return abs(x) < τ ? zero(x) : x
+        end
+    end
+    out = Dict{String, DataFrame}()
+    @inbounds for (idx, (i, j)) in enumerate(elts)
+        R = Vector{Any}(undef, nf)
+        L = Vector{Any}(undef, nf)
+        G = Vector{Any}(undef, nf)
+        C = Vector{Any}(undef, nf)
+        for k in 1:nf
+            fk = f[k]
+            ω = 2π * fk
+            z = lp.Z.values[i, j, k] * scale
+            y = lp.Y.values[i, j, k] * scale
+            r = real(z)
+            g = real(y)
+            if (fk isa Measurement ? value(fk) == 0 : fk == 0)
+                l = NaN
+                c = NaN
+            else
+                l = imag(z) / ω
+                c = imag(y) / ω
+            end
+            R[k] = zero_clip(r, epsval)
+            L[k] = (l isa Number || l isa Measurement) ? zero_clip(l, epsval) : l
+            G[k] = zero_clip(g, epsval)
+            C[k] = (c isa Number || c isa Measurement) ? zero_clip(c, epsval) : c
+        end
+        tag = labels[idx]
+        df = DataFrame(
+            :f_Hz => f,
+            :R => R,
+            :L => L,
+            :C => C,
+            :G => G,
+        )
+        out[string(tag)] = df
+    end
+    return out
+end
+
+# ╔═╡ c6cdfb66-1405-4208-808b-12f3e0949ed1
+rlcg_tables(p012)
 
 # ╔═╡ 2f28cc7a-cb14-44e6-908a-f34b8991c1bd
 md"""
-# Concluding remarks & research directions
+# Concluding remarks
 """
 
-# ╔═╡ a57fdd18-573b-4af9-984d-811132fe4fd1
-md"""
-- ##### Accurate modeling of the different conductor materials is crucial for the proper representation of line/cable parameters and propagation characteristics.
-- ##### Expansion of currently implemented routines to include different earth impedance models, FD soil properties and modal decomposition techniques.
-- ##### Construction of additional cable models, detailed investigations on uncertainty quantification.
-- ##### Development of novel formulations for cables composed of N concentrical layers, allowing for accurate representations of semiconductor materials.
-- ##### Implementation of an interface to run finite element simulations using the open-source software [ONELAB](https://onelab.info/) - Open Numerical Engineering LABoratory.
-"""
+# ╔═╡ fb9cfe06-1a26-443a-9669-615a4e0463b4
+html"""
+	<div style="font-family: Vollkorn, Palatino, Georgia, serif;
+            color: var(--pluto-output-h-color, inherit);
+            line-height: 1.35;">
+  <ul style="margin: .25rem 0 0 1.25rem; padding: 0; list-style: disc;">
+    <li style="font-size: 2rem; margin: .25rem 0;">Accurate modeling of the different conductor materials is crucial for the proper representation of line/cable parameters and propagation characteristics.</li>
+    <li style="font-size: 2rem; margin: .25rem 0;">
+      Expansion of currently implemented routines to include different earth impedance models, FD soil properties and modal decomposition techniques.
+    </li>
+    <li style="font-size: 2rem; margin: .25rem 0;">Construction of additional cable models, detailed investigations on uncertainty quantification.</li>
+    <li style="font-size: 2rem; margin: .25rem 0;">
+      Development of novel formulations for cables composed of N concentrical layers, allowing for accurate representations of semiconductor materials.
+    </li>
+<li style="font-size: 2rem; margin: .25rem 0;">
+      Additional tests and validations using the FEM solver.
+    </li>
+  </ul>
+</div>
+	"""
 
 # ╔═╡ 7d77f069-930b-4451-ab7d-0e77b8fd86a7
 md"""
 # Thank you!
 """
-
-# ╔═╡ ec9ede5e-dd18-467e-88b7-e9964f05c97a
-# ╠═╡ show_logs = false
-# ╠═╡ disabled = true
-#=╠═╡
-begin
-	cable_id = "showcase"
-	cable_design = CableDesign(cable_id, core_cc, nominal_data = datasheet_info)
-
-	# At this point, it becomes possible to preview the cable design:
-	plt1, _ = preview(cable_design, size=(600, 400), backend=:wgl)
-	plt1
-end
-  ╠═╡ =#
-
-# ╔═╡ 0b5142ef-2eb0-4c72-8ba5-da776eadb5a3
-begin
-    core_cc = build_geometry(materials;
-        d_wire_mm   = dd_w,      d_wire_pct   = unc_d_w,
-        t_sc_in_mm  = tt_sc_in,  t_sc_in_pct  = unc_t_sc_in,
-        t_ins_mm    = tt_ins,    t_ins_pct    = unc_t_ins,
-        t_sc_out_mm = tt_sc_out, t_sc_out_pct = unc_t_sc_out,
-        n_layers    = n_layers,
-        t_sct       = t_sct # keep your existing var for semicon tape thickness (mm)
-    )
-
-    cable_id     = "showcase"
-    cable_design = CableDesign(cable_id, core_cc; nominal_data = datasheet_info)
-	backend_sym = :cairo 
-    plt, _ = preview(cable_design; size = size=(600, 400), backend = backend_sym)
-    plt
-end
-
-# ╔═╡ 1b2bc07f-a88c-4b2f-a920-406d8743a2a8
-# ╠═╡ disabled = true
-#=╠═╡
-begin
-	# Define the material and initialize the main conductor
-	core = ConductorGroup(
-		WireArray(0, Diameter(d_w), 1, 0, get(materials, "aluminum")),
-	)
-	# Add subsequent layers of stranded wires
-	add!(
-		core,
-		WireArray,
-		Diameter(d_w),
-		6,
-		15,
-		get(materials, "aluminum"),
-	)
-	add!(
-		core,
-		WireArray,
-		Diameter(d_w),
-		12,
-		13.5,
-		get(materials, "aluminum"),
-	)
-	add!(
-		core,
-		WireArray,
-		Diameter(d_w),
-		18,
-		12.5,
-		get(materials, "aluminum"),
-	)
-	add!(
-		core,
-		WireArray,
-		Diameter(d_w),
-		24,
-		11,
-		get(materials, "aluminum"),
-	)
-	# Inner semiconductive tape:
-	main_insu = InsulatorGroup(
-		Semicon(core, Thickness(t_sct), get(materials, "polyacrylate")),
-	)
-	# Inner semiconductor (1000 Ω.m as per IEC 840):
-	add!(
-		main_insu,
-		Semicon,
-		Thickness(t_sc_in),
-		get(materials, "semicon1"),
-	)
-	# Add the insulation layer XLPE (cross-linked polyethylene):
-	add!(
-		main_insu,
-		Insulator,
-		Thickness(t_ins),
-		get(materials, "pe"),
-	)
-	# Outer semiconductor (500 Ω.m as per IEC 840):
-	add!(
-		main_insu,
-		Semicon,
-		Thickness(t_sc_out),
-		get(materials, "semicon2"),
-	)
-	# Outer semiconductive tape:
-	add!(
-		main_insu,
-		Semicon,
-		Thickness(t_sct),
-		get(materials, "polyacrylate"),
-	)
-	# Group core-related components:
-	core_cc = CableComponent("core", core, main_insu)
-end
-  ╠═╡ =#
 
 # ╔═╡ Cell order:
 # ╠═a82fd7fe-465d-4744-870f-638a72a54317
@@ -1112,7 +1392,7 @@ end
 # ╟─14f07acc-5353-4b1d-b94f-9ae43f87289b
 # ╟─6c6e4d21-cc38-46eb-8178-4cc4a99adcba
 # ╟─3e6a9c64-827d-4491-bcac-252ee7b1dc81
-# ╠═877a84cc-979f-48c9-ac41-59be60b4850b
+# ╟─877a84cc-979f-48c9-ac41-59be60b4850b
 # ╟─db1944b6-c55f-4091-8128-8d297bdc9a74
 # ╟─5397f442-8dc1-42a6-941d-0b1d58057a6b
 # ╟─a3f5a8c5-4ab9-4a33-abab-7907ffab1347
@@ -1124,51 +1404,35 @@ end
 # ╟─cb8f01ae-26e0-44ce-8347-298ab692ac63
 # ╟─29222f8e-fb07-4bdb-8939-f18e668d2037
 # ╟─c1595a9d-7882-4b66-a1fc-fe6de19f1ef6
-# ╟─c13e262c-2dd2-43da-a01b-a95adb7eaa7d
 # ╠═c2539b01-ac04-48e4-a973-6a5d8a0e2b58
-# ╠═c7c7ce65-3a0c-4ac6-82f0-f9f58e46f47e
 # ╟─062439db-1e3f-497e-96c1-e1f65f80399b
-# ╠═1b2bc07f-a88c-4b2f-a920-406d8743a2a8
-# ╠═ec9ede5e-dd18-467e-88b7-e9964f05c97a
 # ╟─4e1dec4b-223f-45f8-9393-523fcc4019f0
 # ╟─5b005f4b-605e-4a3d-ba7f-003908f332b2
-# ╠═e0f87b28-14a3-4630-87db-6f4b51bdb30a
+# ╟─e0f87b28-14a3-4630-87db-6f4b51bdb30a
 # ╟─b081c88a-7959-44ea-85ff-33b980ec71b4
 # ╟─0b5142ef-2eb0-4c72-8ba5-da776eadb5a3
-# ╠═da168b34-43be-4701-8de8-5e953ff8dcd8
-# ╟─cda1f413-8d71-4473-af93-f6ae2dd06ccb
-# ╠═926048a4-f1e9-46ca-a6a8-84e254d74719
-# ╠═6a74b6bf-d833-4d9b-af2c-0fcf729ff0f4
-# ╟─c5bdbd1f-327e-4d33-8c14-f019b3057adb
-# ╠═995cfe45-ba32-4c06-9843-603d2e6073bf
-# ╠═58626fd7-b088-4310-811c-a4f3f1338f03
-# ╟─783c759f-0889-4ce5-ba2e-6cc1c7555641
-# ╠═a0138b90-e4d7-4711-95e1-b6e2f5f3fb30
-# ╟─f904b5e4-0167-4ecf-8a5e-078a2877d4f7
 # ╟─1ae76282-4340-4df0-ba29-11712c184a79
-# ╠═9ddcccbe-86c8-4335-8d65-35af4ce755ab
-# ╠═380b4c0a-780c-4be2-9c5a-666257dbe4da
-# ╟─eb60126a-c646-417c-b9a6-9335b0cfe6c4
-# ╠═58d30993-f4b3-4621-8d23-447b3d4f5935
-# ╟─02a77417-3896-4e29-abd6-6e2586da0571
-# ╟─da6b39c6-7053-4412-8bd8-6c0f771ee456
-# ╠═282bd09f-ecea-44c7-b455-e83bb8e2fdd1
-# ╟─00fcdd99-c603-4df3-a15b-d3ba64b34b7a
-# ╠═8f147f54-ec3d-47a7-a3e7-9ff533adfb2d
-# ╟─878f722b-0ad8-4098-8ff7-c11797eddddc
-# ╠═a48ddf49-42f1-454e-8182-de1da6b51fe8
+# ╟─9ddcccbe-86c8-4335-8d65-35af4ce755ab
+# ╟─43ff64cb-1226-4d26-9fdf-8aff03505439
+# ╟─ae1749c8-0f6d-4487-8857-12826eb57db3
+# ╟─3d9239df-523e-40be-b6e9-f0d538638bd8
 # ╟─fd1e268a-6520-4dc8-a9ff-32a4854859df
 # ╟─b4169697-e06d-4947-8105-9f42017f5042
-# ╠═0900d10f-8191-4507-af4e-50d7f4a1126f
-# ╠═9ef6ef41-3a95-4540-ae93-dcc279ec72b0
+# ╟─0900d10f-8191-4507-af4e-50d7f4a1126f
 # ╟─4ce85966-0386-4525-8cf2-35e9814f8459
-# ╠═44f5823e-4b07-4f2c-8773-e4c3187a6100
-# ╠═987902c5-5983-4815-b62f-4eabc1be2362
-# ╟─539cdfbe-f5c6-47eb-9b2d-64f9ca7feacd
-# ╟─960c9035-d86c-471a-9ed6-330beead03cb
-# ╠═6ee6d16d-326c-4436-a750-077ecc2b3b9c
-# ╠═2164f425-291b-4ca8-a66d-9ff3d402fdb8
+# ╟─44f5823e-4b07-4f2c-8773-e4c3187a6100
+# ╟─987902c5-5983-4815-b62f-4eabc1be2362
+# ╟─6ee6d16d-326c-4436-a750-077ecc2b3b9c
+# ╟─39f7460d-8a1e-483d-94f4-14500d6c9ac2
+# ╟─a2e5d81f-f6a2-4b04-83cc-c95026fd283a
+# ╟─cebe81ec-a183-43d7-be36-6627a46de3bf
+# ╟─ce7d068e-2831-49dc-a459-bb68138c3a00
 # ╟─83d26ac6-24e5-4ca1-817c-921d3c2375c5
+# ╟─cb44ffb8-7e33-4603-a97e-47dbc507f813
+# ╟─e8117400-adf3-45e3-bf56-59933f01e6d0
+# ╟─c6415453-f16c-4a8d-8d2d-c754eca919b0
+# ╟─d20e89c6-b980-4f57-8989-f86d23ea59c6
+# ╠═c6cdfb66-1405-4208-808b-12f3e0949ed1
 # ╟─2f28cc7a-cb14-44e6-908a-f34b8991c1bd
-# ╟─a57fdd18-573b-4af9-984d-811132fe4fd1
+# ╟─fb9cfe06-1a26-443a-9669-615a4e0463b4
 # ╟─7d77f069-930b-4451-ab7d-0e77b8fd86a7
