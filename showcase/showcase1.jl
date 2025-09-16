@@ -6,6 +6,18 @@
 using Markdown
 using InteractiveUtils
 
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
+macro bind(def, element)
+    #! format: off
+    return quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local el = $(esc(element))
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
+        el
+    end
+    #! format: on
+end
+
 # ╔═╡ a82fd7fe-465d-4744-870f-638a72a54317
 # ╠═╡ show_logs = false
 begin
@@ -18,6 +30,55 @@ begin
 	using DataFrames
 	using HypertextLiteral
 end
+
+# ╔═╡ b081c88a-7959-44ea-85ff-33b980ec71b4
+begin
+    using Measurements: measurement, value
+
+    # mm + percent → Measurement with absolute σ = (pct/100)*nom
+    _with_unc(nom_mm::Real, pct::Real) = measurement(nom_mm/1000, abs(nom_mm/1000) * pct/100)
+
+    # Pitch: start at 15, decrease 2.5 per layer, clamp at 10
+    pitch_for_layer(ℓ::Integer) = max(10.0, 15.0 - 2.5*(ℓ - 1))
+
+    function build_core(materials, d_wire_mm::Real, d_wire_pct::Real, n_layers::Int)
+        d = _with_unc(d_wire_mm, d_wire_pct)  # Measurement
+        core = ConductorGroup(WireArray(0, Diameter(d), 1, 0, get(materials, "aluminum")))
+        for ℓ in 1:n_layers
+            add!(core, WireArray, Diameter(d), 6*ℓ, pitch_for_layer(ℓ), get(materials, "aluminum"))
+        end
+        return core
+    end
+
+    function build_geometry(materials;
+        d_wire_mm::Real, d_wire_pct::Real,
+        t_sc_in_mm::Real,  t_sc_in_pct::Real,
+        t_ins_mm::Real,    t_ins_pct::Real,
+        t_sc_out_mm::Real, t_sc_out_pct::Real,
+        n_layers::Int,
+        t_sct # keep your existing t_sct (mm, can be Real or Measurement)
+    )
+        # Core
+        core = build_core(materials, d_wire_mm, d_wire_pct, n_layers)
+
+        # Layer thicknesses as Measurements (mm)
+        t_sc_in  = _with_unc(t_sc_in_mm,  t_sc_in_pct)
+        t_ins    = _with_unc(t_ins_mm,    t_ins_pct)
+        t_sc_out = _with_unc(t_sc_out_mm, t_sc_out_pct)
+
+        # Insulation group
+        main_insu = InsulatorGroup(
+            Semicon(core, Thickness(t_sct), get(materials, "polyacrylate")),
+        )
+        add!(main_insu, Semicon,   Thickness(t_sc_in),  get(materials, "semicon1"))
+        add!(main_insu, Insulator, Thickness(t_ins),    get(materials, "pe"))
+        add!(main_insu, Semicon,   Thickness(t_sc_out), get(materials, "semicon2"))
+        add!(main_insu, Semicon,   Thickness(t_sct),    get(materials, "polyacrylate"))
+
+        core_cc = CableComponent("core", core, main_insu)
+        return core_cc
+    end
+end;
 
 # ╔═╡ 46cfd6fa-b4d6-44c3-83cf-d2b9b1ff1cf1
 # Override stupid CSS settings
@@ -464,9 +525,41 @@ TwoColumn(
    $(LocalImage("cables2.png", width=250, style="display: block; margin-left: auto; margin-right: auto;"))
    	""")
 
+# ╔═╡ db1944b6-c55f-4091-8128-8d297bdc9a74
+md"""
+## Sources of uncertainties in cable parameters
+"""
+
+# ╔═╡ 5397f442-8dc1-42a6-941d-0b1d58057a6b
+
+	TwoColumn(
+	html"""
+	<div style="font-family: Vollkorn, Palatino, Georgia, serif;
+            color: var(--pluto-output-h-color, inherit);
+            line-height: 1.35;">
+  <div style="font-size: 2rem; font-weight: 700; margin: 0 0 .35rem 0;">
+    Internal and external origins:
+  </div>
+  <ul style="margin: .25rem 0 0 1.25rem; padding: 0; list-style: disc;">
+    <li style="font-size: 2rem; margin: .25rem 0;">Geometrical and material properties</li>
+    <li style="font-size: 2rem; margin: .25rem 0;">
+      Real field data <span style="opacity:.85;">(resistivity, actual conductor layout etc.)</span>
+    </li>
+    <li style="font-size: 2rem; margin: .25rem 0;">Presence of interferences</li>
+    <li style="font-size: 2rem; margin: .25rem 0;">
+      Modeling procedure <span style="opacity:.85;">(parameters and EMT)</span>
+    </li>
+  </ul>
+</div>
+	""",
+	md"""
+$(LocalImage("skeffect.png", width=400, style="display: block; margin-left: auto; margin-right: auto; margin-bottom: 50px;"))
+$(LocalImage("earthreturn.png", width=400, style="display: block; margin-left: auto; margin-right: auto;"))
+	"""; left_pct=50, right_pct=50)
+
 # ╔═╡ a3f5a8c5-4ab9-4a33-abab-7907ffab1347
 md"""
-## Uncertainty quantification in cable parameters
+## Uncertainty quantification
 """
 
 # ╔═╡ 382252ca-ede1-4043-b921-7834e59810cb
@@ -496,7 +589,7 @@ md"""
 
 # ╔═╡ a8ea0da0-36f1-44d4-9415-d3041f34c23f
 md"""
-# Toolbox showcase
+# Application study
 """
 
 # ╔═╡ f5fa7e28-97a7-456b-87a9-5ac4b76be9d4
@@ -604,7 +697,6 @@ materials = MaterialsLibrary(add_defaults = true)
 # ╔═╡ c7c7ce65-3a0c-4ac6-82f0-f9f58e46f47e
 DataFrame(materials)
 
-
 # ╔═╡ 062439db-1e3f-497e-96c1-e1f65f80399b
 md"""
 ## Core and main insulation
@@ -612,95 +704,29 @@ md"""
 - The core consists of a 4-layer AAAC stranded conductor with 61 wires arranged in (1/6/12/18/24) pattern, with respective lay ratios of (15/13.5/12.5/11). Stranded conductors are modeled using the `WireArray` object, which handles the helical pattern and twisting effects.
 """
 
-# ╔═╡ 1b2bc07f-a88c-4b2f-a920-406d8743a2a8
-begin
-	# Define the material and initialize the main conductor
-	core = ConductorGroup(
-		WireArray(0, Diameter(d_w), 1, 0, get_material(materials_db, "aluminum")),
-	)
-	# Add subsequent layers of stranded wires
-	addto_conductorgroup!(
-		core,
-		WireArray,
-		Diameter(d_w),
-		6,
-		15,
-		get_material(materials_db, "aluminum"),
-	)
-	addto_conductorgroup!(
-		core,
-		WireArray,
-		Diameter(d_w),
-		12,
-		13.5,
-		get_material(materials_db, "aluminum"),
-	)
-	addto_conductorgroup!(
-		core,
-		WireArray,
-		Diameter(d_w),
-		18,
-		12.5,
-		get_material(materials_db, "aluminum"),
-	)
-	addto_conductorgroup!(
-		core,
-		WireArray,
-		Diameter(d_w),
-		24,
-		11,
-		get_material(materials_db, "aluminum"),
-	)
-	# Inner semiconductive tape:
-	main_insu = InsulatorGroup(
-		Semicon(core, Thickness(t_sct), get_material(materials_db, "polyacrylate")),
-	)
-	# Inner semiconductor (1000 Ω.m as per IEC 840):
-	addto_insulatorgroup!(
-		main_insu,
-		Semicon,
-		Thickness(t_sc_in),
-		get_material(materials_db, "semicon1"),
-	)
-	# Add the insulation layer XLPE (cross-linked polyethylene):
-	addto_insulatorgroup!(
-		main_insu,
-		Insulator,
-		Thickness(t_ins),
-		get_material(materials_db, "pe"),
-	)
-	# Outer semiconductor (500 Ω.m as per IEC 840):
-	addto_insulatorgroup!(
-		main_insu,
-		Semicon,
-		Thickness(t_sc_out),
-		get_material(materials_db, "semicon2"),
-	)
-	# Outer semiconductive tape:
-	addto_insulatorgroup!(
-		main_insu,
-		Semicon,
-		Thickness(t_sct),
-		get_material(materials_db, "polyacrylate"),
-	)
-	# Group core-related components:
-	core_cc = CableComponent("core", core, main_insu)
-end
+# ╔═╡ 4e1dec4b-223f-45f8-9393-523fcc4019f0
+ md"#### Controls"
 
-# ╔═╡ 6be0de5a-1b3d-4543-988d-4044b258718a
+# ╔═╡ 5b005f4b-605e-4a3d-ba7f-003908f332b2
 md"""
-### Design preview
+Layers: $(@bind n_layers PlutoUI.Slider(0:10; default=4, show_value=true))
+
+Wire diameter [mm]: $(@bind dd_w PlutoUI.Slider(0.45:0.01:11.7; default=3.0, show_value=true)), uncertainty [%]: $(@bind unc_d_w PlutoUI.Slider(0.0:0.01:10; default=0.0, show_value=true))
+
+Inner semicon thickness [mm]: $(@bind tt_sc_in PlutoUI.Slider(0.45:0.01:11.7; default=3.0, show_value=true)), uncertainty [%]:  $(@bind unc_t_sc_in PlutoUI.Slider(0.0:0.01:10; default=0.0, show_value=true))
+
+Main insulation thickness [mm]: $(@bind tt_ins PlutoUI.Slider(0.45:0.01:11.7; default=3.0, show_value=true)), uncertainty [%]:  $(@bind unc_t_ins PlutoUI.Slider(0.0:0.01:10; default=0.0, show_value=true))
+
+Outer semicon thickness [mm]: $(@bind tt_sc_out PlutoUI.Slider(0.45:0.01:11.7; default=3.0, show_value=true)), uncertainty [%]:  $(@bind unc_t_sc_out PlutoUI.Slider(0.0:0.01:10; default=0.0, show_value=true))
 """
 
-# ╔═╡ ec9ede5e-dd18-467e-88b7-e9964f05c97a
-# ╠═╡ show_logs = false
-begin
-	cable_id = "showcase"
-	cable_design = CableDesign(cable_id, core_cc, nominal_data = datasheet_info)
+# ╔═╡ e0f87b28-14a3-4630-87db-6f4b51bdb30a
+md"""
+Cross-section: $(cable_design.components[1].conductor_group.cross_section*1e6) mm²
+"""
 
-	# At this point, it becomes possible to preview the cable design:
-	plt1 = preview_cabledesign(cable_design, sz = (1200, 600))
-end
+# ╔═╡ da168b34-43be-4701-8de8-5e953ff8dcd8
+cable_design.components[1].conductor_group.resistance
 
 # ╔═╡ cda1f413-8d71-4473-af93-f6ae2dd06ccb
 md"""
@@ -958,6 +984,116 @@ md"""
 # Thank you!
 """
 
+# ╔═╡ ec9ede5e-dd18-467e-88b7-e9964f05c97a
+# ╠═╡ show_logs = false
+# ╠═╡ disabled = true
+#=╠═╡
+begin
+	cable_id = "showcase"
+	cable_design = CableDesign(cable_id, core_cc, nominal_data = datasheet_info)
+
+	# At this point, it becomes possible to preview the cable design:
+	plt1, _ = preview(cable_design, size=(600, 400), backend=:wgl)
+	plt1
+end
+  ╠═╡ =#
+
+# ╔═╡ 0b5142ef-2eb0-4c72-8ba5-da776eadb5a3
+begin
+    core_cc = build_geometry(materials;
+        d_wire_mm   = dd_w,      d_wire_pct   = unc_d_w,
+        t_sc_in_mm  = tt_sc_in,  t_sc_in_pct  = unc_t_sc_in,
+        t_ins_mm    = tt_ins,    t_ins_pct    = unc_t_ins,
+        t_sc_out_mm = tt_sc_out, t_sc_out_pct = unc_t_sc_out,
+        n_layers    = n_layers,
+        t_sct       = t_sct # keep your existing var for semicon tape thickness (mm)
+    )
+
+    cable_id     = "showcase"
+    cable_design = CableDesign(cable_id, core_cc; nominal_data = datasheet_info)
+	backend_sym = :cairo 
+    plt, _ = preview(cable_design; size = size=(600, 400), backend = backend_sym)
+    plt
+end
+
+# ╔═╡ 1b2bc07f-a88c-4b2f-a920-406d8743a2a8
+# ╠═╡ disabled = true
+#=╠═╡
+begin
+	# Define the material and initialize the main conductor
+	core = ConductorGroup(
+		WireArray(0, Diameter(d_w), 1, 0, get(materials, "aluminum")),
+	)
+	# Add subsequent layers of stranded wires
+	add!(
+		core,
+		WireArray,
+		Diameter(d_w),
+		6,
+		15,
+		get(materials, "aluminum"),
+	)
+	add!(
+		core,
+		WireArray,
+		Diameter(d_w),
+		12,
+		13.5,
+		get(materials, "aluminum"),
+	)
+	add!(
+		core,
+		WireArray,
+		Diameter(d_w),
+		18,
+		12.5,
+		get(materials, "aluminum"),
+	)
+	add!(
+		core,
+		WireArray,
+		Diameter(d_w),
+		24,
+		11,
+		get(materials, "aluminum"),
+	)
+	# Inner semiconductive tape:
+	main_insu = InsulatorGroup(
+		Semicon(core, Thickness(t_sct), get(materials, "polyacrylate")),
+	)
+	# Inner semiconductor (1000 Ω.m as per IEC 840):
+	add!(
+		main_insu,
+		Semicon,
+		Thickness(t_sc_in),
+		get(materials, "semicon1"),
+	)
+	# Add the insulation layer XLPE (cross-linked polyethylene):
+	add!(
+		main_insu,
+		Insulator,
+		Thickness(t_ins),
+		get(materials, "pe"),
+	)
+	# Outer semiconductor (500 Ω.m as per IEC 840):
+	add!(
+		main_insu,
+		Semicon,
+		Thickness(t_sc_out),
+		get(materials, "semicon2"),
+	)
+	# Outer semiconductive tape:
+	add!(
+		main_insu,
+		Semicon,
+		Thickness(t_sct),
+		get(materials, "polyacrylate"),
+	)
+	# Group core-related components:
+	core_cc = CableComponent("core", core, main_insu)
+end
+  ╠═╡ =#
+
 # ╔═╡ Cell order:
 # ╠═a82fd7fe-465d-4744-870f-638a72a54317
 # ╠═46cfd6fa-b4d6-44c3-83cf-d2b9b1ff1cf1
@@ -976,7 +1112,9 @@ md"""
 # ╟─14f07acc-5353-4b1d-b94f-9ae43f87289b
 # ╟─6c6e4d21-cc38-46eb-8178-4cc4a99adcba
 # ╟─3e6a9c64-827d-4491-bcac-252ee7b1dc81
-# ╟─877a84cc-979f-48c9-ac41-59be60b4850b
+# ╠═877a84cc-979f-48c9-ac41-59be60b4850b
+# ╟─db1944b6-c55f-4091-8128-8d297bdc9a74
+# ╟─5397f442-8dc1-42a6-941d-0b1d58057a6b
 # ╟─a3f5a8c5-4ab9-4a33-abab-7907ffab1347
 # ╟─382252ca-ede1-4043-b921-7834e59810cb
 # ╟─96121e5b-6b5b-4ab1-81d0-6dcbe924cda2
@@ -986,13 +1124,18 @@ md"""
 # ╟─cb8f01ae-26e0-44ce-8347-298ab692ac63
 # ╟─29222f8e-fb07-4bdb-8939-f18e668d2037
 # ╟─c1595a9d-7882-4b66-a1fc-fe6de19f1ef6
-# ╠═c13e262c-2dd2-43da-a01b-a95adb7eaa7d
+# ╟─c13e262c-2dd2-43da-a01b-a95adb7eaa7d
 # ╠═c2539b01-ac04-48e4-a973-6a5d8a0e2b58
 # ╠═c7c7ce65-3a0c-4ac6-82f0-f9f58e46f47e
 # ╟─062439db-1e3f-497e-96c1-e1f65f80399b
 # ╠═1b2bc07f-a88c-4b2f-a920-406d8743a2a8
-# ╟─6be0de5a-1b3d-4543-988d-4044b258718a
 # ╠═ec9ede5e-dd18-467e-88b7-e9964f05c97a
+# ╟─4e1dec4b-223f-45f8-9393-523fcc4019f0
+# ╟─5b005f4b-605e-4a3d-ba7f-003908f332b2
+# ╠═e0f87b28-14a3-4630-87db-6f4b51bdb30a
+# ╟─b081c88a-7959-44ea-85ff-33b980ec71b4
+# ╟─0b5142ef-2eb0-4c72-8ba5-da776eadb5a3
+# ╠═da168b34-43be-4701-8de8-5e953ff8dcd8
 # ╟─cda1f413-8d71-4473-af93-f6ae2dd06ccb
 # ╠═926048a4-f1e9-46ca-a6a8-84e254d74719
 # ╠═6a74b6bf-d833-4d9b-af2c-0fcf729ff0f4
