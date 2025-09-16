@@ -1,58 +1,80 @@
 #!/bin/bash
 set -euxo pipefail
 
-# Pre-seed Julia's default environment for this Julia version (e.g. @v1.11)
-# and install everything listed in binder/Project.toml (plus your local package).
+# Seed Julia's default environment (@v#.#) with *your* unregistered package
+# and all deps listed in binder/Project.toml (fall back to root Project.toml).
+# After this, in Pluto: `import Pkg; Pkg.activate(); using LineCableModels, ...`
 
 julia -e '
 using Pkg, TOML
 
-# 1) Activate default env for the running Julia version
-#    (@v#.# expands to ~/.julia/environments/v<major>.<minor>)
+# 1) Activate the default versioned env, not a folder named "@v#.#"
 Pkg.activate("@v#.#")
 
-# 2) Always dev the local repo (your unregistered package) into the default env
-#    so `using LineCableModels` works from anywhere.
-if isfile("Project.toml")
-    try
-        Pkg.develop(path=".")
-    catch e
-        @warn "Pkg.develop(path=\".\") failed; check repo root" exception=(e, catch_backtrace())
-    end
+# 2) Develop the local repo (assume postBuild is running at repo root)
+try
+    Pkg.develop(path=".")
+catch e
+    @warn "Pkg.develop(path=\".\") failed" exception=(e, catch_backtrace())
 end
 
-# 3) Read declared deps from binder/Project.toml (fallback to root Project.toml)
-projfile = isfile("binder/Project.toml") ? "binder/Project.toml" :
-           (isfile("Project.toml") ? "Project.toml" : nothing)
-
-deps = Dict{String,Any}()
-if projfile !== nothing
-    proj = TOML.parsefile(projfile)
-    deps = get(proj, "deps", deps)
-end
-
-# 4) Add each dependency by name if it is not the local package we just devved.
-for name in sort(collect(keys(deps)))
-    if name == "LineCableModels"
-        continue
+# Helper to add deps from a Project.toml
+function add_deps_from(project_file::String)
+    if !isfile(project_file)
+        @info "No $project_file found"; return
     end
-    try
-        Pkg.add(name)
-    catch e
-        # If this dep exists as a subdir, try dev it; else warn.
-        if isdir(name)
-            @info "Pkg.add($name) failed, trying Pkg.develop(path=\"$name\")"
-            try
-                Pkg.develop(path=name)
-            catch e2
-                @warn "Could not add or dev dependency $name" exception=(e2, catch_backtrace())
-            end
-        else
-            @warn "Could not add dependency $name (not found as a subdir)."
+    proj = TOML.parsefile(project_file)
+    deps    = get(proj, "deps",    Dict{String,Any}())
+    compat  = get(proj, "compat",  Dict{String,Any}())
+    extras  = get(proj, "extras",  Dict{String,Any}())  # in case you keep dev/test stuff here
+    targets = get(proj, "targets", Dict{String,Any}())
+
+    # Collect package names to install (deps + optionally selected extras)
+    names = Set{String}(keys(deps))
+
+    # If you keep things like IJulia/Pluto in [extras] with a "binder" target, include them
+    if haskey(targets, "binder") && isa(targets["binder"], Vector)
+        for extra in targets["binder"]
+            extra in keys(extras) && push!(names, extra)
+        end
+    end
+
+    for name in sort(collect(names))
+        # Skip your own devved package if it appears in deps
+        if name == "LineCableModels"
+            continue
+        end
+        ver = get(compat, name, nothing)
+        spec = ver === nothing ? Pkg.PackageSpec(name=name) :
+                                 Pkg.PackageSpec(name=name, version=ver)
+        try
+            Pkg.add(spec)
+        catch e
+            @warn "Pkg.add failed for $name" exception=(e, catch_backtrace())
         end
     end
 end
 
-# 5) Precompile the default env so Pluto loads fast
+# Prefer binder/Project.toml, fall back to repo root
+add_deps_from("binder/Project.toml")
+add_deps_from("Project.toml")
+
+# 3) Nice-to-haves commonly needed in Binder + Pluto
+try
+    Pkg.add(["IJulia", "Pluto"])
+catch e
+    @warn "Optional adds failed" exception=(e, catch_backtrace())
+end
+
+# 4) Precompile for faster startup
 Pkg.precompile()
+
+# 5) Make sure the IJulia kernel points to the default env (useful in JupyterLab)
+try
+    using IJulia
+    envpath = Base.load_path_expand("@v#.#")
+    IJulia.installkernel("Julia (@v#.#)", env=envpath)
+catch e
+    @warn "IJulia kernel install failed (non-fatal)" exception=(e, catch_backtrace())
+end
 '
