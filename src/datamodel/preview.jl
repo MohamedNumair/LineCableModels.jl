@@ -11,9 +11,10 @@ _is_gl_backend() = current_backend_symbol() == :gl
 
 
 ########################
-# Small utility glue   #
-########################
-const _TAU = 2π
+# Fancy icons
+const MI_REFRESH = "\uE5D5"  # Material Icons: 'refresh'
+const MI_SAVE    = "\uE161"  # Material Icons: 'save'
+const ICON_TTF   = joinpath(@__DIR__, "..", "..", "assets", "fonts", "material-icons", "MaterialIcons-Regular.ttf")
 
 # finite & nonnegative
 _valid_finite(x, y) = isfinite(x) && isfinite(y)
@@ -272,7 +273,7 @@ end
 # polygons (Float32 points; filter non-finite)
 function _annulus_poly(rin::Real, rex::Real, x0::Real, y0::Real; N::Int = 256)
 	N ≥ 32 || throw(ArgumentError("N too small for a smooth annulus"))
-	θo = range(0, _TAU; length = N);
+	θo = range(0, 2π; length = N);
 	θi = reverse(θo)
 	xo = x0 .+ rex .* cos.(θo);
 	yo = y0 .+ rex .* sin.(θo)
@@ -285,7 +286,7 @@ function _annulus_poly(rin::Real, rex::Real, x0::Real, y0::Real; N::Int = 256)
 end
 
 function _circle_poly(r::Real, x0::Real, y0::Real; N::Int = 128)
-	θ = range(0, _TAU; length = N)
+	θ = range(0, 2π; length = N)
 	x = x0 .+ r .* cos.(θ);
 	y = y0 .+ r .* sin.(θ)
 	pts = Makie.Point2f.(vcat(x, x[1]), vcat(y, y[1]))
@@ -378,6 +379,30 @@ function _plot_layer_makie!(ax, layer, label::String;
 	return ()
 end
 
+function apply_default_theme!()
+	bg = _is_static_backend() ? :white : :gray90
+	set_theme!(backgroundcolor = bg, fonts = (; icons = ICON_TTF))
+end
+
+# --- 3) tiny helper to build "icon + text" labels ergonomically ---
+"""
+with_icon(icon; text="", isize=14, tsize=12, color=:black, gap=4,
+		  dy_icon=-0.18, dy_text=0.0)
+
+- `dy_icon`, `dy_text`: vertical tweaks in *em* units (fraction of that part's fontsize).
+  Negative moves down, positive moves up.
+"""
+with_icon(icon::AbstractString; text::AbstractString = "",
+	isize::Int = 16, tsize::Int = 12, color = :black, gap::Int = 2,
+	dy_icon::Float64 = -0.18, dy_text::Float64 = 0.0) =
+	text == "" ?
+	rich(icon; font = :icons, fontsize = isize, color = color, offset = (0, dy_icon)) :
+	rich(
+		rich(icon; font = :icons, fontsize = isize, color = color, offset = (0, dy_icon)),
+		rich(" "^gap; font = :regular, fontsize = tsize, color = color),
+		rich(text; font = :regular, fontsize = tsize, color = color, offset = (0, dy_text)),
+	)
+
 ###############################################
 # CableDesign cross-section (Makie version)   #
 ###############################################
@@ -397,9 +422,9 @@ function preview(design::CableDesign;
 
 	ensure_backend!(backend)
 
-
-	backgroundcolor = (_is_static_backend() ? :white : :gray90)
-	set_theme!(backgroundcolor = backgroundcolor)
+	# backgroundcolor = (_is_static_backend() ? :white : :gray90)
+	# set_theme!(backgroundcolor = backgroundcolor)
+	apply_default_theme!()
 
 	fig =
 		isnothing(axis) ? Makie.Figure(size = size, figure_padding = (10, 10, 10, 10)) :
@@ -592,9 +617,10 @@ function preview(system::LineCableSystem;
 )
 
 	ensure_backend!(backend)
-	backgroundcolor = (_is_static_backend() ? :white : :gray90)
+	# backgroundcolor = (_is_static_backend() ? :white : :gray90)
 
-	set_theme!(backgroundcolor = backgroundcolor)
+	# set_theme!(backgroundcolor = backgroundcolor)
+	apply_default_theme!()
 
 	fig =
 		isnothing(axis) ? Makie.Figure(size = size, figure_padding = (10, 10, 10, 10)) :
@@ -819,8 +845,11 @@ function _add_save_svg_button!(parent_cell, system;
 	save_dir::AbstractString = pwd(),
 )
 	btn = Makie.Button(
-		parent_cell, label = "Save SVG", halign = :center,
-		valign = :top, width = Makie.Relative(1.0),
+		parent_cell,
+		label = with_icon(MI_SAVE; text = "Save SVG"),
+		halign = :center,
+		valign = :top,
+		width = Makie.Relative(1.0),
 	)
 	Makie.on(btn.clicks) do _
 		@async begin
@@ -883,7 +912,7 @@ end
 function _add_reset_button!(parent_cell, ax, fig)
 	btn = Makie.Button(
 		parent_cell,
-		label = "↻ Reset view",
+		label = with_icon(MI_REFRESH; text = "Reset view"),
 		halign = :center,
 		valign = :top,
 		width = Makie.Relative(1.0),
