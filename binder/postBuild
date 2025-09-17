@@ -1,9 +1,7 @@
 #!/bin/bash
 set -euxo pipefail
 
-# Seed Julia's default environment (@v#.#) with *your* unregistered package
-# and all deps listed in binder/Project.toml (fall back to root Project.toml).
-# After this, in Pluto: `import Pkg; Pkg.activate(); using LineCableModels, ...`
+# TODO: Make this stupid Binder+Pluto setup bow to my will. Need to find some way to add the necessary (unregistered) packages to whatever is the default env under jupyterlab -> pluto.
 
 julia -e '
 using Pkg, TOML
