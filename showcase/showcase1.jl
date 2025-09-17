@@ -27,13 +27,140 @@ macro bind(def, element)
     #! format: on
 end
 
-# ╔═╡ a82fd7fe-465d-4744-870f-638a72a54317
-# ╠═╡ show_logs = false
+# ╔═╡ 426024d7-23c8-4261-9c20-d0045b1ab077
 begin
-	using Pkg: Pkg
+	using Pkg
 	Pkg.activate()
-	using WGLMakie: WGLMakie;
-	WGLMakie.activate!()
+	using TOML
+
+	# ---------- Env detection ----------
+	function runtime_env()::Symbol
+		e = ENV
+		binder_vars = ("BINDER_LAUNCH_HOST", "BINDER_REQUEST", "BINDER_POD_NAME",
+			"BINDER_URL", "BINDER_REPO_URL", "JUPYTER_IMAGE_SPEC")
+		jhub = ("JUPYTERHUB_API_URL", "JUPYTERHUB_SERVICE_PREFIX", "JUPYTERHUB_HOST",
+			"JUPYTERHUB_SERVER_NAME", "JUPYTERHUB_USER")
+		if any(haskey(e, k) for k in binder_vars) ||
+		   (any(haskey(e, k) for k in jhub) && get(e, "NB_USER", "") == "jovyan")
+			return :binder
+		elseif any(haskey(e, k) for k in jhub)
+			return :jupyterhub
+		else
+			return :local
+		end
+	end
+
+	# ---------- Find Project.toml going up from a start dir ----------
+	function find_project(start_dir::AbstractString = @__DIR__)::Union{String, Nothing}
+		dir = abspath(start_dir)
+		while true
+			p = joinpath(dir, "Project.toml")
+			isfile(p) && return p
+			parent = dirname(dir)
+			parent == dir && return nothing
+			dir = parent
+		end
+	end
+
+	# ---------- Add every [deps] entry from Project.toml (ignore compat on purpose) ----------
+	function add_deps_from_project!(project_toml::AbstractString)
+		tbl  = TOML.parsefile(project_toml)
+		deps = get(tbl, "deps", Dict{String, Any}())
+		isempty(deps) && return
+		for (name, uuid) in deps
+			try
+				# Ignore [compat] here on purpose; Binder just needs things present.
+				Pkg.add(Pkg.PackageSpec(; name = name, uuid = string(uuid)))
+			catch err
+				@warn "Failed to add $name ($uuid)" error=err
+			end
+		end
+		try
+			Pkg.precompile()
+		catch
+			;
+		end
+		return nothing
+	end
+
+	# ---------- Public entry point ----------
+	"""
+		binder_bootstrap!(; prefer_project_root=true)
+
+	If running on Binder/JupyterHub:
+	- Activates the nearest project (folder containing Project.toml, walking upwards).
+	- Force-adds every package listed in `[deps]` via `Pkg.add` (ignoring compat).
+	Else (local):
+	- Leaves your local setup alone (no-op except a best-effort `Pkg.activate()`).
+
+	Returns `nothing`.
+	"""
+	function binder_bootstrap!(; prefer_project_root::Bool = true)
+		env = runtime_env()
+		if env === :binder || env === :jupyterhub
+			project_toml = find_project()
+			project_toml === nothing && (@warn "No Project.toml found."; return nothing)
+			@info "Runtime environment: $env"
+
+			# Best effort: instantiate first; if anything remains missing, add explicitly
+			try
+				Pkg.instantiate()  # uses [sources] when this env is active
+			catch err
+				@warn "instantiate() failed; falling back to explicit add loop" error=err
+			end
+			add_from_project!(project_toml)
+
+		end
+		return nothing
+	end
+
+	function add_from_project!(project_toml::AbstractString)
+		tbl     = TOML.parsefile(project_toml)
+		deps    = get(tbl, "deps", Dict{String, Any}())
+		sources = get(tbl, "sources", Dict{String, Any}()) # official Pkg feature
+
+		ensure_general_registry!()
+
+		# 1) First, add unregistered/source-pinned deps described in [sources]
+		for (name, src) in sources
+			spec_kwargs = Dict{Symbol, Any}(:name => name)
+			haskey(deps, name) && (spec_kwargs[:uuid] = string(deps[name]))
+			haskey(src, "url") && (spec_kwargs[:url] = src["url"])
+			haskey(src, "rev") && (spec_kwargs[:rev] = src["rev"])
+			haskey(src, "path") && (spec_kwargs[:path] = src["path"])
+			haskey(src, "subdir") && (spec_kwargs[:subdir] = src["subdir"])
+			@show name
+			@show src
+			try
+				Pkg.add(Pkg.PackageSpec(; spec_kwargs...))
+			catch err
+				@warn "Failed to add [sources] $name" error=err spec=spec_kwargs
+			end
+		end
+
+		# 2) Then add the remaining registered deps
+		for (name, uuid) in deps
+			haskey(sources, name) && continue
+			try
+				Pkg.add(Pkg.PackageSpec(; name = name, uuid = string(uuid)))
+			catch err
+				@warn "Failed to add registered dep $name ($uuid)" error=err
+			end
+		end
+
+		try
+			Pkg.precompile()
+		catch
+			;
+		end
+		return nothing
+	end
+
+end;
+
+# ╔═╡ 3183ff8d-a9fd-4035-af8a-664bec3606d4
+begin
+	binder_bootstrap!()
 	using Makie, PlutoUI, Colors
 	using LineCableModels
 	using DataFrames
@@ -42,55 +169,63 @@ end
 
 # ╔═╡ b081c88a-7959-44ea-85ff-33b980ec71b4
 begin
-    using Measurements: measurement, value
+	using Measurements: measurement, value
 
-    # mm + percent → Measurement with absolute σ = (pct/100)*nom
-    _with_unc(nom_mm::Real, pct::Real) = measurement(nom_mm/1000, abs(nom_mm/1000) * pct/100)
+	# mm + percent → Measurement with absolute σ = (pct/100)*nom
+	_with_unc(nom_mm::Real, pct::Real) =
+		measurement(nom_mm/1000, abs(nom_mm/1000) * pct/100)
 
-    # Pitch: start at 15, decrease 2.5 per layer, clamp at 10
-    pitch_for_layer(ℓ::Integer) = max(10.0, 15.0 - 2.5*(ℓ - 1))
+	# Pitch: start at 15, decrease 2.5 per layer, clamp at 10
+	pitch_for_layer(ℓ::Integer) = max(10.0, 15.0 - 2.5*(ℓ - 1))
 
-    function build_core(materials, d_wire_mm::Real, d_wire_pct::Real, n_layers::Int)
-        d = _with_unc(d_wire_mm, d_wire_pct)  # Measurement
-        core = ConductorGroup(WireArray(0, Diameter(d), 1, 0, get(materials, "aluminum")))
-        for ℓ in 1:n_layers
-            add!(core, WireArray, Diameter(d), 6*ℓ, pitch_for_layer(ℓ), get(materials, "aluminum"))
-        end
-        return core
-    end
+	function build_core(materials, d_wire_mm::Real, d_wire_pct::Real, n_layers::Int)
+		d = _with_unc(d_wire_mm, d_wire_pct)  # Measurement
+		core = ConductorGroup(WireArray(0, Diameter(d), 1, 0, get(materials, "aluminum")))
+		for ℓ in 1:n_layers
+			add!(
+				core,
+				WireArray,
+				Diameter(d),
+				6*ℓ,
+				pitch_for_layer(ℓ),
+				get(materials, "aluminum"),
+			)
+		end
+		return core
+	end
 
-    function build_geometry(materials;
-        d_wire_mm::Real, d_wire_pct::Real,
-        t_sc_in_mm::Real,  t_sc_in_pct::Real,
-        t_ins_mm::Real,    t_ins_pct::Real,
-        t_sc_out_mm::Real, t_sc_out_pct::Real,
-        n_layers::Int,
-        t_sct # keep your existing t_sct (mm, can be Real or Measurement)
-    )
-        # Core
-        core = build_core(materials, d_wire_mm, d_wire_pct, n_layers)
+	function build_geometry(materials;
+		d_wire_mm::Real, d_wire_pct::Real,
+		t_sc_in_mm::Real, t_sc_in_pct::Real,
+		t_ins_mm::Real, t_ins_pct::Real,
+		t_sc_out_mm::Real, t_sc_out_pct::Real,
+		n_layers::Int,
+		t_sct, # keep your existing t_sct (mm, can be Real or Measurement)
+	)
+		# Core
+		core = build_core(materials, d_wire_mm, d_wire_pct, n_layers)
 
-        # Layer thicknesses as Measurements (mm)
-        t_sc_in  = _with_unc(t_sc_in_mm,  t_sc_in_pct)
-        t_ins    = _with_unc(t_ins_mm,    t_ins_pct)
-        t_sc_out = _with_unc(t_sc_out_mm, t_sc_out_pct)
+		# Layer thicknesses as Measurements (mm)
+		t_sc_in  = _with_unc(t_sc_in_mm, t_sc_in_pct)
+		t_ins    = _with_unc(t_ins_mm, t_ins_pct)
+		t_sc_out = _with_unc(t_sc_out_mm, t_sc_out_pct)
 
-        # Insulation group
-        main_insu = InsulatorGroup(
-            Semicon(core, Thickness(t_sct), get(materials, "polyacrylate")),
-        )
-        add!(main_insu, Semicon,   Thickness(t_sc_in),  get(materials, "semicon1"))
-        add!(main_insu, Insulator, Thickness(t_ins),    get(materials, "pe"))
-        add!(main_insu, Semicon,   Thickness(t_sc_out), get(materials, "semicon2"))
-        add!(main_insu, Semicon,   Thickness(t_sct),    get(materials, "polyacrylate"))
+		# Insulation group
+		main_insu = InsulatorGroup(
+			Semicon(core, Thickness(t_sct), get(materials, "polyacrylate")),
+		)
+		add!(main_insu, Semicon, Thickness(t_sc_in), get(materials, "semicon1"))
+		add!(main_insu, Insulator, Thickness(t_ins), get(materials, "pe"))
+		add!(main_insu, Semicon, Thickness(t_sc_out), get(materials, "semicon2"))
+		add!(main_insu, Semicon, Thickness(t_sct), get(materials, "polyacrylate"))
 
-        core_cc = CableComponent("core", core, main_insu)
-        return core_cc, main_insu
-    end
+		core_cc = CableComponent("core", core, main_insu)
+		return core_cc, main_insu
+	end
 end;
 
 # ╔═╡ 46cfd6fa-b4d6-44c3-83cf-d2b9b1ff1cf1
-# Override stupid CSS settings
+# Override CSS settings
 @htl("""
 <style id="lc-plutostyles">
 /* ====== editor.css-like tweaks ====== */
@@ -166,53 +301,75 @@ ul#recent{ max-height: none; }
 
 # ╔═╡ 4462e48f-0d08-4ad9-8dd9-12f4f5912f38
 begin
-	struct TwoColumn{A,B}
-    left::A
-    right::B
-end
+	struct TwoColumn{A, B}
+		left::A
+		right::B
+	end
 
-# New light wrapper that carries widths (percentages)
-struct TwoColumnWithWidths{A,B}
-    left::A
-    right::B
-    widths::NTuple{2,Float64}   # (left%, right%)
-end
+	# New light wrapper that carries widths (percentages)
+	struct TwoColumnWithWidths{A, B}
+		left::A
+		right::B
+		widths::NTuple{2, Float64}   # (left%, right%)
+	end
 
-# Convenience “constructor” with keywords — old calls still work,
-# new calls with kws return the width-aware wrapper
-TwoColumn(left, right; left_pct::Real=50.0, right_pct::Real=50.0) =
-    TwoColumnWithWidths{typeof(left), typeof(right)}(left, right, (float(left_pct), float(right_pct)))
+	# Convenience “constructor” with keywords — old calls still work,
+	# new calls with kws return the width-aware wrapper
+	TwoColumn(left, right; left_pct::Real = 50.0, right_pct::Real = 50.0) =
+		TwoColumnWithWidths{typeof(left), typeof(right)}(
+			left,
+			right,
+			(float(left_pct), float(right_pct)),
+		)
 
-# Original show (defaults to 50/50)
-function Base.show(io, mime::MIME"text/html", tc::TwoColumn)
-    write(io, """
-    <div style="display:flex;">
-      <div style="flex: 50%;">""")
-    show(io, mime, tc.left)
-    write(io, """
-      </div>
-      <div style="flex: 50%;">""")
-    show(io, mime, tc.right)
-    write(io, """
-      </div>
-    </div>""")
-end
+	# Original show (defaults to 50/50)
+	function Base.show(io, mime::MIME"text/html", tc::TwoColumn)
+		write(
+			io,
+			"""
+  <div style="display:flex;">
+	<div style="flex: 50%;">""",
+		)
+		show(io, mime, tc.left)
+		write(
+			io,
+			"""
+	</div>
+	<div style="flex: 50%;">""",
+		)
+		show(io, mime, tc.right)
+		write(
+			io,
+			"""
+	</div>
+  </div>""",
+		)
+	end
 
-# New show for width-aware variant
-function Base.show(io, mime::MIME"text/html", tc::TwoColumnWithWidths)
-    l, r = tc.widths
-    write(io, """
-    <div style="display:flex;">
-      <div style="flex: $(l)%;">""")
-    show(io, mime, tc.left)
-    write(io, """
-      </div>
-      <div style="flex: $(r)%;">""")
-    show(io, mime, tc.right)
-    write(io, """
-      </div>
-    </div>""")
-end
+	# New show for width-aware variant
+	function Base.show(io, mime::MIME"text/html", tc::TwoColumnWithWidths)
+		l, r = tc.widths
+		write(
+			io,
+			"""
+  <div style="display:flex;">
+	<div style="flex: $(l)%;">""",
+		)
+		show(io, mime, tc.left)
+		write(
+			io,
+			"""
+	</div>
+	<div style="flex: $(r)%;">""",
+		)
+		show(io, mime, tc.right)
+		write(
+			io,
+			"""
+	</div>
+  </div>""",
+		)
+	end
 
 	struct Foldable{C}
 		title::String
@@ -233,10 +390,20 @@ end;
 @htl(
 	"""
 <style>
-  /* Hide inputs unless the root has .show-code */
-  :root:not(.show-code) pluto-input { display: none !important; }
-  .view_hidden_code { 
-	cursor: pointer; padding: 0.35rem 0.6rem; border-radius: 6px; 
+  /* Hide inputs + toolbar bits unless the root has .show-code */
+  :root:not(.show-code) pluto-input,
+  :root:not(.show-code) .add_cell.before,
+  :root:not(.show-code) .add_cell.after,
+  :root:not(.show-code) .add_cell,
+  :root:not(.show-code) .foldcode,
+  :root:not(.show-code) .run,
+  :root:not(.show-code) .runcell,
+  :root:not(.show-code) .runtime {
+	display: none !important;
+  }
+
+  .view_hidden_code {
+	cursor: pointer; padding: 0.35rem 0.6rem; border-radius: 6px;
 	border: 1px solid #bbb; background: #f8f8f8; font: inherit;
   }
 </style>
@@ -343,17 +510,17 @@ end;
 </style>
 
 <nav id="lc-toolbar" role="toolbar" aria-label="Notebook toolbar (vertical)">
-  <!-- ORDER: Next, Prev, Home, Present, Show/Hide code -->
+  <!-- ORDER: Home, Next, Prev, Present, Show/Hide code -->
+  <button class="lc-icon" id="btn-home" title="Scroll to title">
+	<span class="material-symbols-rounded">home</span>
+  </button>
+	
   <button class="lc-icon" id="btn-next" title="Next slide">
 	<span class="material-symbols-rounded">arrow_forward</span>
   </button>
 
   <button class="lc-icon" id="btn-prev" title="Previous slide">
 	<span class="material-symbols-rounded">arrow_back</span>
-  </button>
-
-  <button class="lc-icon" id="btn-home" title="Scroll to title">
-	<span class="material-symbols-rounded">home</span>
   </button>
 
   <button class="lc-icon" id="btn-present" title="Start presentation">
@@ -541,30 +708,30 @@ md"""
 
 # ╔═╡ 5397f442-8dc1-42a6-941d-0b1d58057a6b
 
-	TwoColumn(
+TwoColumn(
 	html"""
 	<div style="font-family: Vollkorn, Palatino, Georgia, serif;
-            color: var(--pluto-output-h-color, inherit);
-            line-height: 1.35;">
+			color: var(--pluto-output-h-color, inherit);
+			line-height: 1.35;">
   <div style="font-size: 2rem; font-weight: 700; margin: 0 0 .35rem 0;">
-    Internal and external origins:
+	Internal and external origins:
   </div>
   <ul style="margin: .25rem 0 0 1.25rem; padding: 0; list-style: disc;">
-    <li style="font-size: 2rem; margin: .25rem 0;">Geometrical and material properties</li>
-    <li style="font-size: 2rem; margin: .25rem 0;">
-      Real field data <span style="opacity:.85;">(resistivity, actual conductor layout etc.)</span>
-    </li>
-    <li style="font-size: 2rem; margin: .25rem 0;">Presence of interferences</li>
-    <li style="font-size: 2rem; margin: .25rem 0;">
-      Modeling procedure <span style="opacity:.85;">(parameters and EMT)</span>
-    </li>
+	<li style="font-size: 2rem; margin: .25rem 0;">Geometrical and material properties</li>
+	<li style="font-size: 2rem; margin: .25rem 0;">
+	  Real field data <span style="opacity:.85;">(resistivity, actual conductor layout etc.)</span>
+	</li>
+	<li style="font-size: 2rem; margin: .25rem 0;">Presence of interferences</li>
+	<li style="font-size: 2rem; margin: .25rem 0;">
+	  Modeling procedure <span style="opacity:.85;">(parameters and EMT)</span>
+	</li>
   </ul>
 </div>
 	""",
 	md"""
 $(LocalImage("skeffect.png", width=400, style="display: block; margin-left: auto; margin-right: auto; margin-bottom: 50px;"))
 $(LocalImage("earthreturn.png", width=400, style="display: block; margin-left: auto; margin-right: auto;"))
-	"""; left_pct=50, right_pct=50)
+	"""; left_pct = 50, right_pct = 50)
 
 # ╔═╡ a3f5a8c5-4ab9-4a33-abab-7907ffab1347
 md"""
@@ -574,11 +741,11 @@ md"""
 # ╔═╡ 382252ca-ede1-4043-b921-7834e59810cb
 md"""
 #### - Physical quantities are treated as nominal values associated to the corresponding uncertainties, i.e. ``\hat{x} = x ± \delta x``, ``\hat{y} = y ± \delta y``. Uncertainties are propagated according to the linear error propagation theory by using the package `Measurements.jl`.
-""" 
+"""
 
 # ╔═╡ 96121e5b-6b5b-4ab1-81d0-6dcbe924cda2
 
-	TwoColumn(
+TwoColumn(
 	md"""
 	$(LocalResource(joinpath(@__DIR__, "..", "assets", "img", "cable_dark_mode.svg"), :width => 800, :style => "display: block; margin-top: 50px; margin-left: auto; margin-right: auto;"))
 	""",
@@ -593,7 +760,7 @@ md"""
 
 	!!! warning "Warning"
 		Even when subtracting the nominal values ($x-y$), the uncertainties are still combined, leading to a larger total uncertainty.
-	"""; left_pct=65, right_pct=35)
+	"""; left_pct = 65, right_pct = 35)
 
 
 # ╔═╡ a8ea0da0-36f1-44d4-9415-d3041f34c23f
@@ -699,7 +866,7 @@ md"""
 """
 
 # ╔═╡ 4e1dec4b-223f-45f8-9393-523fcc4019f0
- md"#### Parameters"
+md"#### Parameters"
 
 # ╔═╡ 5b005f4b-605e-4a3d-ba7f-003908f332b2
 md"""
@@ -716,16 +883,16 @@ Outer semicon thickness [mm]: $(@bind tt_sc_out PlutoUI.Slider(0.1:0.01:3; defau
 
 # ╔═╡ 0b5142ef-2eb0-4c72-8ba5-da776eadb5a3
 begin
-    core_cc, main_insu = build_geometry(materials;
-        d_wire_mm   = dd_w,      d_wire_pct   = unc_d_w,
-        t_sc_in_mm  = tt_sc_in,  t_sc_in_pct  = unc_t_sc_in,
-        t_ins_mm    = tt_ins,    t_ins_pct    = unc_t_ins,
-        t_sc_out_mm = tt_sc_out, t_sc_out_pct = unc_t_sc_out,
-        n_layers    = n_layers,
-        t_sct       = t_sct # keep your existing var for semicon tape thickness (mm)
-    )
+	core_cc, main_insu = build_geometry(materials;
+		d_wire_mm = dd_w, d_wire_pct = unc_d_w,
+		t_sc_in_mm = tt_sc_in, t_sc_in_pct = unc_t_sc_in,
+		t_ins_mm = tt_ins, t_ins_pct = unc_t_ins,
+		t_sc_out_mm = tt_sc_out, t_sc_out_pct = unc_t_sc_out,
+		n_layers = n_layers,
+		t_sct = t_sct, # keep your existing var for semicon tape thickness (mm)
+	)
 
-	
+
 	# Build the wire screens on top of the previous layer:
 	lay_ratio = 10 # typical value for wire screens
 	screen_con =
@@ -755,9 +922,9 @@ begin
 
 	# Group sheath components and assign to design:
 	sheath_cc = CableComponent("sheath", screen_con, screen_insu)
-	
 
-	
+
+
 	# Add the aluminum foil (moisture barrier):
 	jacket_con = ConductorGroup(
 		Tubular(screen_insu, Thickness(t_alt), get(materials, "aluminum")),
@@ -775,16 +942,16 @@ begin
 		Thickness(t_jac),
 		get(materials, "pe"),
 	)
-	
-	
-    cable_id     = "showcase"
-    cable_design = CableDesign(cable_id, core_cc; nominal_data = datasheet_info)
+
+
+	cable_id     = "showcase"
+	cable_design = CableDesign(cable_id, core_cc; nominal_data = datasheet_info)
 	add!(cable_design, sheath_cc)
 	add!(cable_design, "jacket", jacket_con, jacket_insu)
 
-	backend_sym = :cairo 
-    plt, _ = preview(cable_design; size=(800, 500), backend = backend_sym)
-    plt
+	backend_sym = :cairo
+	plt, _ = preview(cable_design; size = (800, 500), backend = backend_sym)
+	plt
 
 end
 
@@ -814,13 +981,13 @@ cable_emt = equivalent(cable_design)
 
 # ╔═╡ ae1749c8-0f6d-4487-8857-12826eb57db3
 begin
-plt2, _ = preview(cable_design; size = (800, 500), backend = backend_sym)
+	plt2, _ = preview(cable_design; size = (800, 500), backend = backend_sym)
 end
 
 # ╔═╡ 3d9239df-523e-40be-b6e9-f0d538638bd8
 begin
-plt3, _ = preview(cable_emt; size = (800, 500), backend = backend_sym)
-plt3
+	plt3, _ = preview(cable_emt; size = (800, 500), backend = backend_sym)
+	plt3
 end
 
 # ╔═╡ fd1e268a-6520-4dc8-a9ff-32a4854859df
@@ -858,18 +1025,23 @@ end;
 # ╔═╡ 987902c5-5983-4815-b62f-4eabc1be2362
 begin
 	cablepos = CablePosition(cable_design, xa, ya,
-	Dict("core" => 1, "sheath" => 0, "jacket" => 0))
-cable_system = LineCableSystem("showcase", 1000.0, cablepos)
+		Dict("core" => 1, "sheath" => 0, "jacket" => 0))
+	cable_system = LineCableSystem("showcase", 1000.0, cablepos)
 	add!(cable_system, cable_design, xb, yb,
-	Dict("core" => 2, "sheath" => 0, "jacket" => 0))
-add!(cable_system, cable_design, xc, yc,
-	Dict("core" => 3, "sheath" => 0, "jacket" => 0))
+		Dict("core" => 2, "sheath" => 0, "jacket" => 0))
+	add!(cable_system, cable_design, xc, yc,
+		Dict("core" => 3, "sheath" => 0, "jacket" => 0))
 end
 
 # ╔═╡ 6ee6d16d-326c-4436-a750-077ecc2b3b9c
 begin
-plt4, _ = preview(cable_system, earth_model = earth_params, zoom_factor = 2.0, size = (800, 500))
-plt4
+	plt4, _ = preview(
+		cable_system,
+		earth_model = earth_params,
+		zoom_factor = 2.0,
+		size = (800, 500),
+	)
+	plt4
 end
 
 # ╔═╡ 39f7460d-8a1e-483d-94f4-14500d6c9ac2
@@ -892,16 +1064,16 @@ Outer semicon thickness [mm]: $(@bind ttt_sc_out PlutoUI.Slider(0.1:0.01:3; defa
 
 # ╔═╡ ce7d068e-2831-49dc-a459-bb68138c3a00
 begin
-    ccore_cc, mmain_insu = build_geometry(materials;
-        d_wire_mm   = ddd_w,      d_wire_pct   = uunc_d_w,
-        t_sc_in_mm  = ttt_sc_in,  t_sc_in_pct  = uunc_t_sc_in,
-        t_ins_mm    = ttt_ins,    t_ins_pct    = uunc_t_ins,
-        t_sc_out_mm = ttt_sc_out, t_sc_out_pct = uunc_t_sc_out,
-        n_layers    = nn_layers,
-        t_sct       = t_sct # keep your existing var for semicon tape thickness (mm)
-    )
+	ccore_cc, mmain_insu = build_geometry(materials;
+		d_wire_mm = ddd_w, d_wire_pct = uunc_d_w,
+		t_sc_in_mm = ttt_sc_in, t_sc_in_pct = uunc_t_sc_in,
+		t_ins_mm = ttt_ins, t_ins_pct = uunc_t_ins,
+		t_sc_out_mm = ttt_sc_out, t_sc_out_pct = uunc_t_sc_out,
+		n_layers = nn_layers,
+		t_sct = t_sct, # keep your existing var for semicon tape thickness (mm)
+	)
 
-	
+
 	# Build the wire screens on top of the previous layer:
 	sscreen_con =
 		ConductorGroup(
@@ -930,9 +1102,9 @@ begin
 
 	# Group sheath components and assign to design:
 	ssheath_cc = CableComponent("sheath", sscreen_con, sscreen_insu)
-	
 
-	
+
+
 	# Add the aluminum foil (moisture barrier):
 	jjacket_con = ConductorGroup(
 		Tubular(sscreen_insu, Thickness(t_alt), get(materials, "aluminum")),
@@ -950,9 +1122,9 @@ begin
 		Thickness(t_jac),
 		get(materials, "pe"),
 	)
-	
-	
-    ccable_design = CableDesign(cable_id, ccore_cc; nominal_data = datasheet_info)
+
+
+	ccable_design = CableDesign(cable_id, ccore_cc; nominal_data = datasheet_info)
 	add!(ccable_design, ssheath_cc)
 	add!(ccable_design, "jacket", jjacket_con, jjacket_insu)
 
@@ -960,33 +1132,33 @@ begin
 	SS = 0.1+to_nominal(ccable_design.components[end].insulator_group.radius_ext)
 	xxa, yya, xxb, yyb, xxc, yyc = trifoil_formation(x0, y0, SS)
 
-		ccablepos = CablePosition(ccable_design, xxa, yya,
-	Dict("core" => 1, "sheath" => 0, "jacket" => 0))
-ccable_system = LineCableSystem("showcase", 1000.0, ccablepos)
+	ccablepos = CablePosition(ccable_design, xxa, yya,
+		Dict("core" => 1, "sheath" => 0, "jacket" => 0))
+	ccable_system = LineCableSystem("showcase", 1000.0, ccablepos)
 	add!(ccable_system, ccable_design, xxb, yyb,
-	Dict("core" => 2, "sheath" => 0, "jacket" => 0))
-add!(ccable_system, ccable_design, xxc, yyc,
-	Dict("core" => 3, "sheath" => 0, "jacket" => 0))
+		Dict("core" => 2, "sheath" => 0, "jacket" => 0))
+	add!(ccable_system, ccable_design, xxc, yyc,
+		Dict("core" => 3, "sheath" => 0, "jacket" => 0))
 
 end;
 
 # ╔═╡ 83d26ac6-24e5-4ca1-817c-921d3c2375c5
 begin
-fullfile(filename) = joinpath(@__DIR__, filename); #hide
+	fullfile(filename) = joinpath(@__DIR__, filename); #hide
 
-problem = LineParametersProblem(
-	ccable_system,
-	temperature = 20.0,  # Operating temperature
-	earth_props = earth_params,
-	frequencies = f,  # Frequency for the analysis
-)
+	problem = LineParametersProblem(
+		ccable_system,
+		temperature = 20.0,  # Operating temperature
+		earth_props = earth_params,
+		frequencies = f,  # Frequency for the analysis
+	)
 
 	# Define runtime options 
-opts = (
-	force_overwrite = true,                    # Overwrite existing files
-	save_path = fullfile("lineparams_output"), # Results directory
-	verbosity = 0,                             # Verbosity
-)
+	opts = (
+		force_overwrite = true,                    # Overwrite existing files
+		save_path = fullfile("lineparams_output"), # Results directory
+		verbosity = 0,                             # Verbosity
+	)
 end;
 
 # ╔═╡ cb44ffb8-7e33-4603-a97e-47dbc507f813
@@ -1008,242 +1180,288 @@ end;
 
 # ╔═╡ c6415453-f16c-4a8d-8d2d-c754eca919b0
 begin
-import LineCableModels.BackendHandler: ensure_backend!, current_backend_symbol
-using Measurements: Measurement, uncertainty
-function plot(
-    lp::LineParameters;
-    per::Symbol = :km,
-    diag_only::Bool = true,
-    elements::Union{Nothing,Vector{Tuple{Int,Int}}} = nothing,
-    labels::Union{Nothing,Vector{String}} = nothing,
-    backend::Union{Nothing,Symbol} = nothing,
-    figsize::Tuple{Int,Int} = (900, 500),
-)
-    # Ensure a Makie backend (defaults to Cairo if none)
-    ensure_backend!(backend)
+	import LineCableModels.BackendHandler: ensure_backend!, current_backend_symbol
+	using Measurements: Measurement, uncertainty
+	function plot(
+		lp::LineParameters;
+		per::Symbol = :km,
+		diag_only::Bool = true,
+		elements::Union{Nothing, Vector{Tuple{Int, Int}}} = nothing,
+		labels::Union{Nothing, Vector{String}} = nothing,
+		backend::Union{Nothing, Symbol} = nothing,
+		figsize::Tuple{Int, Int} = (900, 500),
+	)
+		# Ensure a Makie backend (defaults to Cairo if none)
+		ensure_backend!(backend)
 
-    n, _, nf = size(lp.Z)
-    _nom(x) = x isa Measurement ? value(x) : x
-    f = collect(map(x -> float(_nom(x)), lp.f))
-    scale = per === :km ? 1_000.0 : 1.0
+		n, _, nf = size(lp.Z)
+		_nom(x) = x isa Measurement ? value(x) : x
+		f = collect(map(x -> float(_nom(x)), lp.f))
+		scale = per === :km ? 1_000.0 : 1.0
 
-    # Build element list
-    elts = if diag_only
-        [(i, i) for i in 1:n]
-    else
-        elements === nothing ? [(i, j) for i in 1:n for j in 1:n] : elements
-    end
+		# Build element list
+		elts = if diag_only
+			[(i, i) for i in 1:n]
+		else
+			elements === nothing ? [(i, j) for i in 1:n for j in 1:n] : elements
+		end
 
-    # Default labels
-    if labels === nothing
-        if diag_only && n == 3
-            labels = ["Z₀", "Z₁", "Z₂"]
-        else
-            labels = ["Z[$i,$j]" for (i, j) in elts]
-        end
-    end
+		# Default labels
+		if labels === nothing
+			if diag_only && n == 3
+				labels = ["Z₀", "Z₁", "Z₂"]
+			else
+				labels = ["Z[$i,$j]" for (i, j) in elts]
+			end
+		end
 
-    fig = Figure(size = figsize)
-    axr = Axis(fig[1, 1], xlabel = "f [Hz]", ylabel = "Re(Z) [Ω/$(per==:km ? "km" : "m")]", xscale = log10)
-    axi = Axis(fig[1, 2], xlabel = "f [Hz]", ylabel = "Im(Z) [Ω/$(per==:km ? "km" : "m")]", xscale = log10)
+		fig = Figure(size = figsize)
+		axr = Axis(
+			fig[1, 1],
+			xlabel = "f [Hz]",
+			ylabel = "Re(Z) [Ω/$(per==:km ? "km" : "m")]",
+			xscale = log10,
+		)
+		axi = Axis(
+			fig[1, 2],
+			xlabel = "f [Hz]",
+			ylabel = "Im(Z) [Ω/$(per==:km ? "km" : "m")]",
+			xscale = log10,
+		)
 
-    # Plot lines for each selected element
-    for (idx, (i, j)) in enumerate(elts)
-        reZ = Vector{Float64}(undef, nf)
-        imZ = Vector{Float64}(undef, nf)
-        @inbounds for k in 1:nf
-            z = lp.Z.values[i, j, k] * scale
-            reZ[k] = float(_nom(real(z)))
-            imZ[k] = float(_nom(imag(z)))
-        end
-        color = Makie.wong_colors()[mod1(idx, length(Makie.wong_colors()))]
-        lines!(axr, f, reZ, color = color, label = labels[idx])
-        lines!(axi, f, imZ, color = color, label = labels[idx])
-    end
+		# Plot lines for each selected element
+		for (idx, (i, j)) in enumerate(elts)
+			reZ = Vector{Float64}(undef, nf)
+			imZ = Vector{Float64}(undef, nf)
+			@inbounds for k in 1:nf
+				z = lp.Z.values[i, j, k] * scale
+				reZ[k] = float(_nom(real(z)))
+				imZ[k] = float(_nom(imag(z)))
+			end
+			color = Makie.wong_colors()[mod1(idx, length(Makie.wong_colors()))]
+			lines!(axr, f, reZ, color = color, label = labels[idx])
+			lines!(axi, f, imZ, color = color, label = labels[idx])
+		end
 
-    axislegend(axr; position = :rb)
-    fig
-end
+		axislegend(axr; position = :rb)
+		fig
+	end
 
-function _plot(
-    lp::LineParameters;
-    per::Symbol = :km,
-    diag_only::Bool = true,
-    elements::Union{Nothing,Vector{Tuple{Int,Int}}} = nothing,
-    labels::Union{Nothing,Vector{String}} = nothing,
-    backend::Union{Nothing,Symbol} = nothing,
-    figsize::Tuple{Int,Int} = (900, 500),
-    show_errors::Bool = true,
-    error_style::Symbol = :band,           # :band or :bars
-    error_scale::Real = 1.0,               # multiply σ by this factor
-    error_alpha::Real = 0.25,              # band transparency
-    error_linewidth::Real = 1.5,           # line width for bars/band edges
-    error_whiskerwidth::Real = 8.0,        # for :bars style
-    error_whiskerlinewidth::Real = 1.2,
-)
-    # Ensure a Makie backend (defaults to Cairo if none)
-    ensure_backend!(backend)
+	function _plot(
+		lp::LineParameters;
+		per::Symbol = :km,
+		diag_only::Bool = true,
+		elements::Union{Nothing, Vector{Tuple{Int, Int}}} = nothing,
+		labels::Union{Nothing, Vector{String}} = nothing,
+		backend::Union{Nothing, Symbol} = nothing,
+		figsize::Tuple{Int, Int} = (900, 500),
+		show_errors::Bool = true,
+		error_style::Symbol = :band,           # :band or :bars
+		error_scale::Real = 1.0,               # multiply σ by this factor
+		error_alpha::Real = 0.25,              # band transparency
+		error_linewidth::Real = 1.5,           # line width for bars/band edges
+		error_whiskerwidth::Real = 8.0,        # for :bars style
+		error_whiskerlinewidth::Real = 1.2,
+	)
+		# Ensure a Makie backend (defaults to Cairo if none)
+		ensure_backend!(backend)
 
-    n, _, nf = size(lp.Z)
-    _nom(x) = x isa Measurement ? value(x) : x
-    f = collect(map(x -> float(_nom(x)), lp.f))
-    scale = per === :km ? 1_000.0 : 1.0
+		n, _, nf = size(lp.Z)
+		_nom(x) = x isa Measurement ? value(x) : x
+		f = collect(map(x -> float(_nom(x)), lp.f))
+		scale = per === :km ? 1_000.0 : 1.0
 
-    # Build element list
-    elts = if diag_only
-        [(i, i) for i in 1:n]
-    else
-        elements === nothing ? [(i, j) for i in 1:n for j in 1:n] : elements
-    end
+		# Build element list
+		elts = if diag_only
+			[(i, i) for i in 1:n]
+		else
+			elements === nothing ? [(i, j) for i in 1:n for j in 1:n] : elements
+		end
 
-    # Default labels
-    if labels === nothing
-        if diag_only && n == 3
-            labels = ["Z₀", "Z₁", "Z₂"]
-        else
-            labels = ["Z[$i,$j]" for (i, j) in elts]
-        end
-    end
+		# Default labels
+		if labels === nothing
+			if diag_only && n == 3
+				labels = ["Z₀", "Z₁", "Z₂"]
+			else
+				labels = ["Z[$i,$j]" for (i, j) in elts]
+			end
+		end
 
-    fig = Figure(size = figsize)
-    axr = Axis(fig[1, 1], xlabel = "f [Hz]", ylabel = "Re(Z) [Ω/$(per==:km ? "km" : "m")]", xscale = log10)
-    axi = Axis(fig[1, 2], xlabel = "f [Hz]", ylabel = "Im(Z) [Ω/$(per==:km ? "km" : "m")]", xscale = log10)
+		fig = Figure(size = figsize)
+		axr = Axis(
+			fig[1, 1],
+			xlabel = "f [Hz]",
+			ylabel = "Re(Z) [Ω/$(per==:km ? "km" : "m")]",
+			xscale = log10,
+		)
+		axi = Axis(
+			fig[1, 2],
+			xlabel = "f [Hz]",
+			ylabel = "Im(Z) [Ω/$(per==:km ? "km" : "m")]",
+			xscale = log10,
+		)
 
-    # Plot lines for each selected element
-    for (idx, (i, j)) in enumerate(elts)
-        reZ = Vector{Float64}(undef, nf)
-        imZ = Vector{Float64}(undef, nf)
-        reE = Vector{Float64}(undef, nf)
-        imE = Vector{Float64}(undef, nf)
-        @inbounds for k in 1:nf
-            z = lp.Z.values[i, j, k] * scale
-            r = real(z)
-            ii = imag(z)
-            reZ[k] = float(_nom(r))
-            imZ[k] = float(_nom(ii))
-            reE[k] = r isa Measurement ? float(uncertainty(r)) : 0.0
-            imE[k] = ii isa Measurement ? float(uncertainty(ii)) : 0.0
-        end
-        color = Makie.wong_colors()[mod1(idx, length(Makie.wong_colors()))]
-        if show_errors && error_style == :band
-            has_re = any(x -> x > 0, reE)
-            has_im = any(x -> x > 0, imE)
-            if has_re
-                ylow = reZ .- error_scale .* reE
-                yupp = reZ .+ error_scale .* reE
-                band!(axr, f, ylow, yupp; color = (color, error_alpha))
-            end
-            if has_im
-                ylow = imZ .- error_scale .* imE
-                yupp = imZ .+ error_scale .* imE
-                band!(axi, f, ylow, yupp; color = (color, error_alpha))
-            end
-        end
-        # Draw lines on top for visibility
-        lines!(axr, f, reZ, color = color, label = labels[idx])
-        lines!(axi, f, imZ, color = color, label = labels[idx])
-        if show_errors && error_style != :band
-            has_re = any(x -> x > 0, reE)
-            has_im = any(x -> x > 0, imE)
-            has_re && errorbars!(axr, f, reZ, error_scale .* reE;
-                color = color, whiskerwidth = error_whiskerwidth,
-                whiskerlinewidth = error_whiskerlinewidth, linewidth = error_linewidth)
-            has_im && errorbars!(axi, f, imZ, error_scale .* imE;
-                color = color, whiskerwidth = error_whiskerwidth,
-                whiskerlinewidth = error_whiskerlinewidth, linewidth = error_linewidth)
-        end
-    end
+		# Plot lines for each selected element
+		for (idx, (i, j)) in enumerate(elts)
+			reZ = Vector{Float64}(undef, nf)
+			imZ = Vector{Float64}(undef, nf)
+			reE = Vector{Float64}(undef, nf)
+			imE = Vector{Float64}(undef, nf)
+			@inbounds for k in 1:nf
+				z = lp.Z.values[i, j, k] * scale
+				r = real(z)
+				ii = imag(z)
+				reZ[k] = float(_nom(r))
+				imZ[k] = float(_nom(ii))
+				reE[k] = r isa Measurement ? float(uncertainty(r)) : 0.0
+				imE[k] = ii isa Measurement ? float(uncertainty(ii)) : 0.0
+			end
+			color = Makie.wong_colors()[mod1(idx, length(Makie.wong_colors()))]
+			if show_errors && error_style == :band
+				has_re = any(x -> x > 0, reE)
+				has_im = any(x -> x > 0, imE)
+				if has_re
+					ylow = reZ .- error_scale .* reE
+					yupp = reZ .+ error_scale .* reE
+					band!(axr, f, ylow, yupp; color = (color, error_alpha))
+				end
+				if has_im
+					ylow = imZ .- error_scale .* imE
+					yupp = imZ .+ error_scale .* imE
+					band!(axi, f, ylow, yupp; color = (color, error_alpha))
+				end
+			end
+			# Draw lines on top for visibility
+			lines!(axr, f, reZ, color = color, label = labels[idx])
+			lines!(axi, f, imZ, color = color, label = labels[idx])
+			if show_errors && error_style != :band
+				has_re = any(x -> x > 0, reE)
+				has_im = any(x -> x > 0, imE)
+				has_re && errorbars!(axr, f, reZ, error_scale .* reE;
+					color = color, whiskerwidth = error_whiskerwidth,
+					whiskerlinewidth = error_whiskerlinewidth,
+					linewidth = error_linewidth)
+				has_im && errorbars!(axi, f, imZ, error_scale .* imE;
+					color = color, whiskerwidth = error_whiskerwidth,
+					whiskerlinewidth = error_whiskerlinewidth,
+					linewidth = error_linewidth)
+			end
+		end
 
-    axislegend(axr; position = :rb)
-    fig
-end
+		axislegend(axr; position = :rb)
+		fig
+	end
 
 	function _plot_RL(
-    lp::LineParameters;
-    per::Symbol = :km,
-    diag_only::Bool = true,
-    elements::Union{Nothing,Vector{Tuple{Int,Int}}} = nothing,
-    labels::Union{Nothing,Vector{String}} = nothing,
-    backend::Union{Nothing,Symbol} = nothing,
-    figsize::Tuple{Int,Int} = (900, 500),
-    L_unit::Symbol = :H,
-    show_errors::Bool = true,
-    error_style::Symbol = :band,
-    error_scale::Real = 1.0,
-    error_alpha::Real = 0.25,
-    error_linewidth::Real = 1.5,
-    error_whiskerwidth::Real = 8.0,
-)
-    ensure_backend!(backend)
+		lp::LineParameters;
+		per::Symbol = :km,
+		diag_only::Bool = true,
+		elements::Union{Nothing, Vector{Tuple{Int, Int}}} = nothing,
+		labels::Union{Nothing, Vector{String}} = nothing,
+		backend::Union{Nothing, Symbol} = nothing,
+		figsize::Tuple{Int, Int} = (900, 500),
+		L_unit::Symbol = :H,
+		show_errors::Bool = true,
+		error_style::Symbol = :band,
+		error_scale::Real = 1.0,
+		error_alpha::Real = 0.25,
+		error_linewidth::Real = 1.5,
+		error_whiskerwidth::Real = 8.0,
+	)
+		ensure_backend!(backend)
 
-    n, _, nf = size(lp.Z)
-    _nom(x) = x isa Measurement ? value(x) : x
-    f = collect(map(x -> float(_nom(x)), lp.f))
-    ω = 2π .* f
-    scale = per === :km ? 1_000.0 : 1.0
-    Lscale = (L_unit === :mH ? 1e3 : 1.0)  # convert H → mH if requested
+		n, _, nf = size(lp.Z)
+		_nom(x) = x isa Measurement ? value(x) : x
+		f = collect(map(x -> float(_nom(x)), lp.f))
+		ω = 2π .* f
+		scale = per === :km ? 1_000.0 : 1.0
+		Lscale = (L_unit === :mH ? 1e3 : 1.0)  # convert H → mH if requested
 
-    elts = if diag_only
-        [(i, i) for i in 1:n]
-    else
-        elements === nothing ? [(i, j) for i in 1:n for j in 1:n] : elements
-    end
-    if labels === nothing
-        if diag_only && n == 3
-            labels = ["Z₀", "Z₁", "Z₂"]
-        else
-            labels = ["Z[$i,$j]" for (i, j) in elts]
-        end
-    end
+		elts = if diag_only
+			[(i, i) for i in 1:n]
+		else
+			elements === nothing ? [(i, j) for i in 1:n for j in 1:n] : elements
+		end
+		if labels === nothing
+			if diag_only && n == 3
+				labels = ["Z₀", "Z₁", "Z₂"]
+			else
+				labels = ["Z[$i,$j]" for (i, j) in elts]
+			end
+		end
 
-    fig = Figure(size = figsize)
-    yLlabel = L_unit === :mH ? "mH" : "H"
-    axR = Axis(fig[1, 1], xlabel = "f [Hz]", ylabel = "R [Ω/$(per==:km ? "km" : "m")]", xscale = log10)
-    axL = Axis(fig[1, 2], xlabel = "f [Hz]", ylabel = "L [$yLlabel/$(per==:km ? "km" : "m")]", xscale = log10)
+		fig = Figure(size = figsize)
+		yLlabel = L_unit === :mH ? "mH" : "H"
+		axR = Axis(
+			fig[1, 1],
+			xlabel = "f [Hz]",
+			ylabel = "R [Ω/$(per==:km ? "km" : "m")]",
+			xscale = log10,
+		)
+		axL = Axis(
+			fig[1, 2],
+			xlabel = "f [Hz]",
+			ylabel = "L [$yLlabel/$(per==:km ? "km" : "m")]",
+			xscale = log10,
+		)
 
-    for (idx, (i, j)) in enumerate(elts)
-        Rv = Vector{Float64}(undef, nf)
-        Lv = Vector{Float64}(undef, nf)
-        Re = Vector{Float64}(undef, nf)
-        Le = Vector{Float64}(undef, nf)
-        @inbounds for k in 1:nf
-            z = lp.Z.values[i, j, k]
-            r = real(z) * scale
-            x = imag(z) * scale
-            Rv[k] = float(_nom(r))
-            Re[k] = r isa Measurement ? float(uncertainty(r)) : 0.0
-            if ω[k] == 0
-                Lv[k] = NaN
-                Le[k] = 0.0
-            else
-                lk = (x / ω[k]) * Lscale
-                Lv[k] = float(_nom(lk))
-                Le[k] = lk isa Measurement ? float(uncertainty(lk)) : 0.0
-            end
-        end
-        color = Makie.wong_colors()[mod1(idx, length(Makie.wong_colors()))]
-        if show_errors && error_style == :band
-            if any(>(0), Re)
-                band!(axR, f, Rv .- error_scale .* Re, Rv .+ error_scale .* Re; color = (color, error_alpha))
-            end
-            if any(>(0), Le)
-                band!(axL, f, Lv .- error_scale .* Le, Lv .+ error_scale .* Le; color = (color, error_alpha))
-            end
-        end
-        lines!(axR, f, Rv, color = color, label = labels[idx])
-        lines!(axL, f, Lv, color = color, label = labels[idx])
-        if show_errors && error_style != :band
-            any(>(0), Re) && errorbars!(axR, f, Rv, error_scale .* Re;
-                color = color, whiskerwidth = error_whiskerwidth, linewidth = error_linewidth, linecap = :round)
-            any(>(0), Le) && errorbars!(axL, f, Lv, error_scale .* Le;
-                color = color, whiskerwidth = error_whiskerwidth, linewidth = error_linewidth, linecap = :round)
-        end
-    end
+		for (idx, (i, j)) in enumerate(elts)
+			Rv = Vector{Float64}(undef, nf)
+			Lv = Vector{Float64}(undef, nf)
+			Re = Vector{Float64}(undef, nf)
+			Le = Vector{Float64}(undef, nf)
+			@inbounds for k in 1:nf
+				z = lp.Z.values[i, j, k]
+				r = real(z) * scale
+				x = imag(z) * scale
+				Rv[k] = float(_nom(r))
+				Re[k] = r isa Measurement ? float(uncertainty(r)) : 0.0
+				if ω[k] == 0
+					Lv[k] = NaN
+					Le[k] = 0.0
+				else
+					lk = (x / ω[k]) * Lscale
+					Lv[k] = float(_nom(lk))
+					Le[k] = lk isa Measurement ? float(uncertainty(lk)) : 0.0
+				end
+			end
+			color = Makie.wong_colors()[mod1(idx, length(Makie.wong_colors()))]
+			if show_errors && error_style == :band
+				if any(>(0), Re)
+					band!(
+						axR,
+						f,
+						Rv .- error_scale .* Re,
+						Rv .+ error_scale .* Re;
+						color = (color, error_alpha),
+					)
+				end
+				if any(>(0), Le)
+					band!(
+						axL,
+						f,
+						Lv .- error_scale .* Le,
+						Lv .+ error_scale .* Le;
+						color = (color, error_alpha),
+					)
+				end
+			end
+			lines!(axR, f, Rv, color = color, label = labels[idx])
+			lines!(axL, f, Lv, color = color, label = labels[idx])
+			if show_errors && error_style != :band
+				any(>(0), Re) && errorbars!(axR, f, Rv, error_scale .* Re;
+					color = color, whiskerwidth = error_whiskerwidth,
+					linewidth = error_linewidth, linecap = :round)
+				any(>(0), Le) && errorbars!(axL, f, Lv, error_scale .* Le;
+					color = color, whiskerwidth = error_whiskerwidth,
+					linewidth = error_linewidth, linecap = :round)
+			end
+		end
 
-    axislegend(axR; position = :rb)
-    fig
-end
-	
+		axislegend(axR; position = :rb)
+		fig
+	end
+
 end;
 
 # ╔═╡ e8117400-adf3-45e3-bf56-59933f01e6d0
@@ -1255,89 +1473,90 @@ end;
 
 # ╔═╡ cebe81ec-a183-43d7-be36-6627a46de3bf
 begin
-	fig = _plot_RL(p012, error_scale=100, error_style = :bars, L_unit = :mH)
+	fig = _plot_RL(p012, error_scale = 100, error_style = :bars, L_unit = :mH)
 	axL = content(fig[1, 2])
 	axR = content(fig[1, 1])
 	lo = 1
 	hi = 1e6
-	xlims!(axR, lo, hi); xlims!(axL, lo, hi)
+	xlims!(axR, lo, hi);
+	xlims!(axL, lo, hi)
 
 	fig
 end
 
 # ╔═╡ d20e89c6-b980-4f57-8989-f86d23ea59c6
 function rlcg_tables(
-    lp::LineParameters;
-    per::Symbol = :km,
-    diag_only::Bool = true,
-    elements::Union{Nothing,Vector{Tuple{Int,Int}}} = nothing,
-    labels::Union{Nothing,Vector{String}} = nothing,
-    epsval::Real = eps(Float64),
+	lp::LineParameters;
+	per::Symbol = :km,
+	diag_only::Bool = true,
+	elements::Union{Nothing, Vector{Tuple{Int, Int}}} = nothing,
+	labels::Union{Nothing, Vector{String}} = nothing,
+	epsval::Real = eps(Float64),
 )
-    n, _, nf = size(lp.Z)
-    # frequency vector (preserve potential Measurement)
-    f = collect(lp.f)
-    scale = per === :km ? 1_000.0 : 1.0
-    elts = if diag_only
-        [(i, i) for i in 1:n]
-    else
-        elements === nothing ? [(i, j) for i in 1:n for j in 1:n] : elements
-    end
-    if labels === nothing
-        if diag_only && n == 3
-            labels = ["0", "1", "2"]
-        else
-            labels = ["$(i),$(j)" for (i, j) in elts]
-        end
-    end
-    # Zero-clip helper preserving Measurement type
-    zero_clip(x, τ) = begin
-        if x isa Measurement
-            v = value(x)
-            u = uncertainty(x)
-            vv = abs(v) < τ ? 0.0 : v
-            uu = abs(u) < τ ? 0.0 : u
-            return measurement(vv, uu)
-        else
-            return abs(x) < τ ? zero(x) : x
-        end
-    end
-    out = Dict{String, DataFrame}()
-    @inbounds for (idx, (i, j)) in enumerate(elts)
-        R = Vector{Any}(undef, nf)
-        L = Vector{Any}(undef, nf)
-        G = Vector{Any}(undef, nf)
-        C = Vector{Any}(undef, nf)
-        for k in 1:nf
-            fk = f[k]
-            ω = 2π * fk
-            z = lp.Z.values[i, j, k] * scale
-            y = lp.Y.values[i, j, k] * scale
-            r = real(z)
-            g = real(y)
-            if (fk isa Measurement ? value(fk) == 0 : fk == 0)
-                l = NaN
-                c = NaN
-            else
-                l = imag(z) / ω
-                c = imag(y) / ω
-            end
-            R[k] = zero_clip(r, epsval)
-            L[k] = (l isa Number || l isa Measurement) ? zero_clip(l, epsval) : l
-            G[k] = zero_clip(g, epsval)
-            C[k] = (c isa Number || c isa Measurement) ? zero_clip(c, epsval) : c
-        end
-        tag = labels[idx]
-        df = DataFrame(
-            :f_Hz => f,
-            :R => R,
-            :L => L,
-            :C => C,
-            :G => G,
-        )
-        out[string(tag)] = df
-    end
-    return out
+	n, _, nf = size(lp.Z)
+	# frequency vector (preserve potential Measurement)
+	f = collect(lp.f)
+	scale = per === :km ? 1_000.0 : 1.0
+	elts = if diag_only
+		[(i, i) for i in 1:n]
+	else
+		elements === nothing ? [(i, j) for i in 1:n for j in 1:n] : elements
+	end
+	if labels === nothing
+		if diag_only && n == 3
+			labels = ["0", "1", "2"]
+		else
+			labels = ["$(i),$(j)" for (i, j) in elts]
+		end
+	end
+	# Zero-clip helper preserving Measurement type
+	zero_clip(x, τ) = begin
+		if x isa Measurement
+			v = value(x)
+			u = uncertainty(x)
+			vv = abs(v) < τ ? 0.0 : v
+			uu = abs(u) < τ ? 0.0 : u
+			return measurement(vv, uu)
+		else
+			return abs(x) < τ ? zero(x) : x
+		end
+	end
+	out = Dict{String, DataFrame}()
+	@inbounds for (idx, (i, j)) in enumerate(elts)
+		R = Vector{Any}(undef, nf)
+		L = Vector{Any}(undef, nf)
+		G = Vector{Any}(undef, nf)
+		C = Vector{Any}(undef, nf)
+		for k in 1:nf
+			fk = f[k]
+			ω = 2π * fk
+			z = lp.Z.values[i, j, k] * scale
+			y = lp.Y.values[i, j, k] * scale
+			r = real(z)
+			g = real(y)
+			if (fk isa Measurement ? value(fk) == 0 : fk == 0)
+				l = NaN
+				c = NaN
+			else
+				l = imag(z) / ω
+				c = imag(y) / ω
+			end
+			R[k] = zero_clip(r, epsval)
+			L[k] = (l isa Number || l isa Measurement) ? zero_clip(l, epsval) : l
+			G[k] = zero_clip(g, epsval)
+			C[k] = (c isa Number || c isa Measurement) ? zero_clip(c, epsval) : c
+		end
+		tag = labels[idx]
+		df = DataFrame(
+			:f_Hz => f,
+			:R => R,
+			:L => L,
+			:C => C,
+			:G => G,
+		)
+		out[string(tag)] = df
+	end
+	return out
 end
 
 # ╔═╡ c6cdfb66-1405-4208-808b-12f3e0949ed1
@@ -1351,20 +1570,20 @@ md"""
 # ╔═╡ fb9cfe06-1a26-443a-9669-615a4e0463b4
 html"""
 	<div style="font-family: Vollkorn, Palatino, Georgia, serif;
-            color: var(--pluto-output-h-color, inherit);
-            line-height: 1.35;">
+			color: var(--pluto-output-h-color, inherit);
+			line-height: 1.35;">
   <ul style="margin: .25rem 0 0 1.25rem; padding: 0; list-style: disc;">
-    <li style="font-size: 2rem; margin: .25rem 0;">Accurate modeling of the different conductor materials is crucial for the proper representation of line/cable parameters and propagation characteristics.</li>
-    <li style="font-size: 2rem; margin: .25rem 0;">
-      Expansion of currently implemented routines to include different earth impedance models, FD soil properties and modal decomposition techniques.
-    </li>
-    <li style="font-size: 2rem; margin: .25rem 0;">Construction of additional cable models, detailed investigations on uncertainty quantification.</li>
-    <li style="font-size: 2rem; margin: .25rem 0;">
-      Development of novel formulations for cables composed of N concentrical layers, allowing for accurate representations of semiconductor materials.
-    </li>
+	<li style="font-size: 2rem; margin: .25rem 0;">Accurate modeling of the different conductor materials is crucial for the proper representation of line/cable parameters and propagation characteristics.</li>
+	<li style="font-size: 2rem; margin: .25rem 0;">
+	  Expansion of currently implemented routines to include different earth impedance models, FD soil properties and modal decomposition techniques.
+	</li>
+	<li style="font-size: 2rem; margin: .25rem 0;">Construction of additional cable models, detailed investigations on uncertainty quantification.</li>
+	<li style="font-size: 2rem; margin: .25rem 0;">
+	  Development of novel formulations for cables composed of N concentrical layers, allowing for accurate representations of semiconductor materials.
+	</li>
 <li style="font-size: 2rem; margin: .25rem 0;">
-      Additional tests and validations using the FEM solver.
-    </li>
+	  Additional tests and validations using the FEM solver.
+	</li>
   </ul>
 </div>
 	"""
@@ -1375,7 +1594,8 @@ md"""
 """
 
 # ╔═╡ Cell order:
-# ╠═a82fd7fe-465d-4744-870f-638a72a54317
+# ╟─426024d7-23c8-4261-9c20-d0045b1ab077
+# ╠═3183ff8d-a9fd-4035-af8a-664bec3606d4
 # ╠═46cfd6fa-b4d6-44c3-83cf-d2b9b1ff1cf1
 # ╠═4462e48f-0d08-4ad9-8dd9-12f4f5912f38
 # ╠═e90baf94-c8b8-41aa-8728-e129f7f6881e
