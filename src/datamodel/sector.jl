@@ -80,7 +80,7 @@ function Sector(
     #cross_section = PolygonOps.area(rotated_vertices)
     cross_section = _shoelace_area(rotated_vertices)
     #@debug "Sector cross-sectional area: $(cross_section*1e6) mm²"
-    @debug "Sector cross-sectional area (Shoelace): $(shoe_lace_area*1e6) mm²"
+    @debug "Sector cross-sectional area (Shoelace): $(cross_section*1e6) mm²"
     # 4. Calculate DC resistance
     rho_eff = calc_temperature_correction(material_props.alpha, temperature, material_props.T0) * material_props.rho
     resistance = rho_eff / cross_section
@@ -199,7 +199,7 @@ function _generate_arc_points(center, radius, start_angle, end_angle, num_points
     return [Point2f(center[1] + radius * cos(a), center[2] + radius * sin(a)) for a in angle_range]
 end
 
-function _calculate_sector_polygon_points(params; num_arc_points=20) # increase `num_arc_points` for higher accuracy
+function _calculate_sector_polygon_points(params; num_arc_points=30) # increase `num_arc_points` for higher accuracy
     geom = _calculate_sector_geometry(params)
     nodes, centers = geom.Nodes, geom.Centers
 
