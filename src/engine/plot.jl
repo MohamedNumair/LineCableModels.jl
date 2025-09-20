@@ -147,6 +147,7 @@ function _save_plot_export(spec::LineParametersPlotSpec, axis)
 	spec.xscale[] = axis.xscale[]
 	spec.yscale[] = axis.yscale[]
 	fig = build_export_figure(spec)
+	trim!(fig.layout)
 	path = _default_export_path(spec)
 	Makie.save(path, fig)
 	return path
@@ -805,11 +806,6 @@ function _build_plot!(fig_ctx, ctx, axis, spec::LineParametersPlotSpec)
 	axis.xlabel = spec.x_exp == 0 ? spec.xlabel : _axis_label(spec.xlabel, spec.x_exp)
 	axis.ylabel = spec.y_exp == 0 ? spec.ylabel : _axis_label(spec.ylabel, spec.y_exp)
 
-	# Apply scales from spec, which are relevant for export mode
-	axis.xscale[] = spec.xscale[]
-	axis.yscale[] = spec.yscale[]
-
-
 
 	palette = Makie.wong_colors()
 	ncolors = length(palette)
@@ -821,6 +817,10 @@ function _build_plot!(fig_ctx, ctx, axis, spec::LineParametersPlotSpec)
 		l = lines!(axis, spec.freqs, curve; color = color, label = label, linewidth = 2)
 		push!(lines_plots, l)
 	end
+
+	# Apply scales from spec, which are relevant for export mode
+	axis.xscale[] = spec.xscale[]
+	axis.yscale[] = spec.yscale[]
 
 	Makie.autolimits!(axis)
 
