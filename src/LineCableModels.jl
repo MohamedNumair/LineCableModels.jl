@@ -45,6 +45,9 @@ using .Utils: set_verbosity!
 include("backendhandler/BackendHandler.jl")
 using .BackendHandler: set_backend!
 
+# Submodule `PlotUIComponents`
+include("plotuicomponents/PlotUIComponents.jl")
+
 # Submodule `Validation`
 include("validation/Validation.jl")
 

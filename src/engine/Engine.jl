@@ -29,7 +29,7 @@ export LineParametersProblem,
 	LineParameters, SeriesImpedance, ShuntAdmittance, per_km, per_m, kronify
 export EMTFormulation, FormulationSet, LineParamOptions
 
-export compute!
+export compute!, plot
 
 # Module-specific dependencies
 using Reexport, ForceImport
@@ -87,6 +87,7 @@ include("workspace.jl")
 # Computation methods
 include("solver.jl")
 include("reduction.jl")
+include("plot.jl")
 
 # Override I/O methods
 include("base.jl")

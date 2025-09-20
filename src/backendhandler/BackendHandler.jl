@@ -51,10 +51,7 @@ using Makie
 using UUIDs
 using ..Utils: is_headless
 
-export set_backend!,
-	ensure_backend!, current_backend_symbol,
-	backend_available, gl_screen, renderfig,
-	next_fignum, reset_fignum!
+export set_backend!
 
 # ---------------------------------------------------------------------------
 # Backend registry
@@ -137,15 +134,6 @@ function current_backend_symbol()
 	end
 end
 
-"""Create a GLMakie screen if GL backend is active; otherwise return nothing."""
-function gl_screen(title::AbstractString)
-	if current_backend_symbol() == :gl
-		mod = Base.require(_pkgid(:gl))
-		ctor = getproperty(mod, :Screen)
-		return Base.invokelatest(ctor; title = String(title))
-	end
-	return nothing
-end
 
 """Display a figure appropriately in headless docs or interactive sessions.
 
