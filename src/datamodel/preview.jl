@@ -10,12 +10,6 @@ _is_static_backend() = current_backend_symbol() == :cairo
 _is_gl_backend() = current_backend_symbol() == :gl
 
 
-########################
-# Fancy icons
-const MI_REFRESH = "\uE5D5"  # Material Icons: 'refresh'
-const MI_SAVE    = "\uE161"  # Material Icons: 'save'
-const ICON_TTF   = joinpath(@__DIR__, "..", "..", "assets", "fonts", "material-icons", "MaterialIcons-Regular.ttf")
-
 # finite & nonnegative
 _valid_finite(x, y) = isfinite(x) && isfinite(y)
 
@@ -384,24 +378,7 @@ function apply_default_theme!()
 	set_theme!(backgroundcolor = bg, fonts = (; icons = ICON_TTF))
 end
 
-# --- 3) tiny helper to build "icon + text" labels ergonomically ---
-"""
-with_icon(icon; text="", isize=14, tsize=12, color=:black, gap=4,
-		  dy_icon=-0.18, dy_text=0.0)
 
-- `dy_icon`, `dy_text`: vertical tweaks in *em* units (fraction of that part's fontsize).
-  Negative moves down, positive moves up.
-"""
-with_icon(icon::AbstractString; text::AbstractString = "",
-	isize::Int = 16, tsize::Int = 12, color = :black, gap::Int = 2,
-	dy_icon::Float64 = -0.18, dy_text::Float64 = 0.0) =
-	text == "" ?
-	rich(icon; font = :icons, fontsize = isize, color = color, offset = (0, dy_icon)) :
-	rich(
-		rich(icon; font = :icons, fontsize = isize, color = color, offset = (0, dy_icon)),
-		rich(" "^gap; font = :regular, fontsize = tsize, color = color),
-		rich(text; font = :regular, fontsize = tsize, color = color, offset = (0, dy_text)),
-	)
 
 ###############################################
 # CableDesign cross-section (Makie version)   #
@@ -849,7 +826,7 @@ function _add_save_svg_button!(parent_cell, system;
 		label = with_icon(MI_SAVE; text = "Save SVG"),
 		halign = :center,
 		valign = :top,
-		width = Makie.Relative(1.0),
+		width = Makie.Auto(),
 	)
 	Makie.on(btn.clicks) do _
 		@async begin
@@ -888,6 +865,7 @@ function _add_save_svg_button!(parent_cell, system;
 				file = joinpath(save_dir, "$(base)_$ts.svg")
 				Makie.save(file, fig)
 				btn.label[] = "Saved ✓"
+				@info "Saved figure to $(file)"
 				hasproperty(btn, :buttoncolor) &&
 					(btn.buttoncolor[] = Makie.RGBA(0.15, 0.65, 0.25, 1.0))
 				sleep(1.2)
@@ -919,7 +897,7 @@ function _add_reset_button!(parent_cell, ax, fig)
 	)
 	Makie.on(btn.clicks) do _
 		reset_limits!(ax)
-		resize_to_layout!(fig)
+		# resize_to_layout!(fig)
 
 	end
 	return btn
@@ -953,7 +931,7 @@ function _build_colorbars!(cbgrid::Makie.GridLayout;
 			end;
 			cols
 		end
-		Makie.Label(cbgrid[idx, 1], "ρ"; halign = :left)
+		Makie.Label(cbgrid[idx, 1], L"\rho"; halign = :left, fontsize = 16)
 		Makie.Colorbar(cbgrid[idx, 2]; colormap = cm_ρ, limits = (0.0, 1.0),
 			vertical = false,
 			ticks = ([0.0, 1.0], [_nice(ρmin), _nice(ρmax)]),
@@ -977,7 +955,7 @@ function _build_colorbars!(cbgrid::Makie.GridLayout;
 			end;
 			cols
 		end
-		Makie.Label(cbgrid[idx, 1], "μᵣ"; halign = :left)
+		Makie.Label(cbgrid[idx, 1], L"\mu_{r}"; halign = :left, fontsize = 16)
 		Makie.Colorbar(cbgrid[idx, 2]; colormap = cm_μ, limits = (0.0, 1.0),
 			vertical = false,
 			ticks = ([0.0, 1.0], [_nice(μmin), _nice(μmax)]),
@@ -1001,7 +979,7 @@ function _build_colorbars!(cbgrid::Makie.GridLayout;
 			end;
 			cols
 		end
-		Makie.Label(cbgrid[idx, 1], "εᵣ"; halign = :left)
+		Makie.Label(cbgrid[idx, 1], L"\varepsilon_{r}"; halign = :left, fontsize = 16)
 		Makie.Colorbar(cbgrid[idx, 2]; colormap = cm_ε, limits = (0.0, 1.0),
 			vertical = false,
 			ticks = ([0.0, 1.0], [_nice(εmin), _nice(εmax)]),
