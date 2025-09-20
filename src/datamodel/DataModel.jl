@@ -50,10 +50,8 @@ using DataFrames
 using Colors
 using Plots
 using DisplayAs: DisplayAs
-using GeometryBasics
-using PolygonOps
 using LinearAlgebra
-
+using Makie: Point, Point2f # otherwise will require adding GeometryBasics as a dependency
 # Abstract types & interfaces
 include("types.jl")
 include("radii.jl")

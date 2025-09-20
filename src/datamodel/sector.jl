@@ -130,7 +130,7 @@ function _calculate_sector_geometry(p::SectorParams)
 
     x_base_corner = p.r_corner * sin(phi_rad) # X_A = -X_F
     y_base_corner = x_base_corner * tan(phi_rad) + d_offset # Y_A = Y_F
-    node_A = GeometryBasics.Point2f(x_base_corner, y_base_corner + d_insulation_offset)
+    node_A = Point2f(x_base_corner, y_base_corner + d_insulation_offset)
 
     k = p.r_corner / cos(phi_rad) + d_offset
     qa = 1.0 + tan(phi_rad)^2
@@ -154,7 +154,7 @@ function _calculate_sector_geometry(p::SectorParams)
 
     x_side_lower = x_side_center + p.r_corner * sin(phi_rad)  # X_B
     y_side_lower = y_side_center - p.r_corner * cos(phi_rad)  # Y_B
-    node_B = GeometryBasics.Point2f(x_side_lower, y_side_lower + d_insulation_offset)
+    node_B = Point2f(x_side_lower, y_side_lower + d_insulation_offset)
 
     dist_origin_side_center = sqrt(x_side_center^2 + y_side_center^2)
     if dist_origin_side_center < 1e-9
@@ -162,22 +162,22 @@ function _calculate_sector_geometry(p::SectorParams)
     end
     x_side_upper = x_side_center * p.r_back / dist_origin_side_center # X_C
     y_side_upper = y_side_center * p.r_back / dist_origin_side_center # Y_C
-    node_C = GeometryBasics.Point2f(x_side_upper, y_side_upper + d_insulation_offset)
+    node_C = Point2f(x_side_upper, y_side_upper + d_insulation_offset)
 
     nodes = (
         A=node_A,
         B=node_B,
         C=node_C,
-        D=GeometryBasics.Point2f(-node_C[1], node_C[2]),
-        E=GeometryBasics.Point2f(-node_B[1], node_B[2]),
-        F=GeometryBasics.Point2f(-node_A[1], node_A[2])
+        D=Point2f(-node_C[1], node_C[2]),
+        E=Point2f(-node_B[1], node_B[2]),
+        F=Point2f(-node_A[1], node_A[2])
     )
     @debug "(Sector) Nodes: $nodes"
     centers = (
-        Back=GeometryBasics.Point2f(0, 0+ d_insulation_offset),
-        Base=GeometryBasics.Point2f(0, d_offset + p.r_corner / cos(phi_rad) + d_insulation_offset),
-        RightSide=GeometryBasics.Point2f(x_side_center, y_side_center+ d_insulation_offset),
-        LeftSide=GeometryBasics.Point2f(-x_side_center, y_side_center+ d_insulation_offset)
+        Back=Point2f(0, 0+ d_insulation_offset),
+        Base=Point2f(0, d_offset + p.r_corner / cos(phi_rad) + d_insulation_offset),
+        RightSide=Point2f(x_side_center, y_side_center+ d_insulation_offset),
+        LeftSide=Point2f(-x_side_center, y_side_center+ d_insulation_offset)
     )
     @debug "(Sector) Centers: $centers"
     return (Nodes=nodes, Centers=centers, Params=p)
@@ -258,22 +258,18 @@ function _rotate_point(p::Point2f, angle_rad::Real)
     return Point2f(p[1] * cos_a - p[2] * sin_a, p[1] * sin_a + p[2] * cos_a)
 end
 
-"""
-Calculates the area of a polygon using the Shoelace formula.
-The vertices are given as a vector of points.
-"""
-function _shoelace_area(vertices::Vector{Point{2,T}}) where {T}
-    n = length(vertices)
+
+function _shoelace_area(vertices::AbstractVector{Point{2,T}}) where {T<:Real}
+    n::Int = length(vertices)
     if n < 3
+        @warn "Polygon must have at least 3 vertices to compute area. Returning 0 area"
         return zero(T)
     end
-
-    area = zero(T)
+    area::T = zero(T)
     for i in 1:n
         p1 = vertices[i]
-        p2 = vertices[mod1(i + 1, n)] # Wrap around for the last segment
+        p2 = vertices[mod1(i + 1, n)]
         area += (p1[1] * p2[2] - p2[1] * p1[2])
     end
-
-    return abs(area) / 2.0
+    return abs(area) / T(2)
 end

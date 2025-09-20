@@ -129,22 +129,3 @@ function _calculate_offset_polygon(vertices::Vector{Point{2, T}}, thickness::T) 
 
     return new_vertices
 end
-"""
-Calculates the area of a polygon using the Shoelace formula.
-The vertices are given as a vector of points.
-"""
-function _shoelace_area(vertices::Vector{Point{2,T}}) where {T}
-    n = length(vertices)
-    if n < 3
-        return zero(T)
-    end
-
-    area = zero(T)
-    for i in 1:n
-        p1 = vertices[i]
-        p2 = vertices[mod1(i + 1, n)] # Wrap around for the last segment
-        area += (p1[1] * p2[2] - p2[1] * p1[2])
-    end
-
-    return abs(area) / 2.0
-end
