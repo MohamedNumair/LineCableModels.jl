@@ -30,7 +30,7 @@ export CableComponent, CableDesign  # Cable design types
 export CablePosition, LineCableSystem  # System types
 export CablesLibrary, NominalData  # Support types
 export trifoil_formation, flat_formation  # Formation helpers
-export preview, simplify
+export preview, equivalent
 
 # Module-specific dependencies
 using ..Commons
@@ -39,6 +39,8 @@ using ..Utils: resolve_T, to_certain, to_nominal, resolve_backend, is_headless,
 	is_in_testset, to_lower, to_upper
 import ..Utils: coerce_to_T, to_lower
 using ..Materials: Material
+using ..BackendHandler: set_backend!, ensure_backend!, current_backend_symbol,
+	backend_available, gl_screen, renderfig, next_fignum
 import ..Validation: Validation, sanitize, validate!, has_radii, has_temperature,
 	extra_rules, IntegerField, Positive, Finite, Normalized, IsA, required_fields,
 	coercive_fields, keyword_fields, keyword_defaults, _kwdefaults_nt, is_radius_input,

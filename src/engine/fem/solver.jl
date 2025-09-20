@@ -702,55 +702,6 @@ function run_getdp(workspace::FEMWorkspace, fem_formulation::AbstractFormulation
 	return all_success
 end
 
-# function run_solver!(workspace::FEMWorkspace)
-
-# 	# Get problem and formulation from the workspace
-# 	problem = workspace.problem_def
-# 	formulation = workspace.formulation
-
-# 	# Preallocate result matrices
-# 	n_phases = workspace.n_phases
-# 	n_frequencies = workspace.n_frequencies
-
-# 	phase_map = workspace.phase_map
-# 	cable_map = workspace.cable_map
-# 	n_phases_reduced = count(!=(0), phase_map)
-
-# 	Z = zeros(ComplexF64, n_phases, n_phases, n_frequencies)
-# 	Y = zeros(ComplexF64, n_phases, n_phases, n_frequencies)
-# 	Zr = zeros(ComplexF64, n_phases_reduced, n_phases_reduced, n_frequencies)
-# 	Yr = zeros(ComplexF64, n_phases_reduced, n_phases_reduced, n_frequencies)
-# 	# Solve for each frequency
-# 	for (freq_idx, frequency) in enumerate(workspace.freq)
-# 		@info "Solving frequency $freq_idx/$n_frequencies: $frequency Hz"
-
-# 		try
-# 			_do_run_solver!(frequency, freq_idx, workspace, Z, Y)
-# 			Zf = Z[:, :, freq_idx]
-# 			workspace.Zprim[:, :, freq_idx] = Zf
-# 			Zf_sorted, phase_map_sorted = reorder_M(Zf, phase_map)
-# 			Zr[:, :, freq_idx] = kronify(Zf_sorted, phase_map_sorted)
-# 			w = 2 * pi * frequency
-# 			Yf = Y[:, :, freq_idx]
-# 			workspace.Yprim[:, :, freq_idx] = Yf
-# 			Pf = inv(Yf / (1im * w))
-# 			Pf_sorted, phase_map_sorted = reorder_M(Pf, phase_map)
-# 			Pr = kronify(Pf_sorted, phase_map_sorted)
-# 			Yr[:, :, freq_idx] = (1im * w) * inv(Pr)
-# 		catch e
-# 			@error "Solver failed for frequency $frequency Hz" exception = e
-# 			rethrow(e)
-# 		end
-
-# 		# Archive results if not cleaning up
-# 		if workspace.opts.keep_run_files
-# 			archive_frequency_results(workspace, frequency)
-# 		end
-# 	end
-
-# 	return LineParameters(Zr, Yr, workspace.freq)
-# end
-
 using LinearAlgebra: BLAS, BlasFloat
 
 function run_solver!(workspace::FEMWorkspace)
@@ -765,7 +716,6 @@ function run_solver!(workspace::FEMWorkspace)
 	perm  = reorder_indices(phase_map)    # encounter-ordered: first of each phase, then tails, then zeros
 	map_r = phase_map[perm]               # reordered map (constant across k)
 
-	# We'll get the reduced map back from merge_bundles! each slice (same every time).
 
 	# --- outputs: size decided by kron_map (here: map_r after merge_bundles! zeros tails)
 
@@ -801,8 +751,8 @@ function run_solver!(workspace::FEMWorkspace)
 		_do_run_solver!(k, workspace)
 
 		# REORDER → Z
-		_reorder_into!(Zbuf, workspace.Zprim, perm, k)
-		symtrans!(Zbuf)
+		_reorder_into!(Zbuf, workspace.Z, perm, k)
+		# symtrans!(Zbuf)
 
 		# MERGE bundles (in-place on Zbuf) and get reduced map (tails → 0)
 		Zm, reduced_map = merge_bundles!(Zbuf, map_r)
@@ -816,8 +766,8 @@ function run_solver!(workspace::FEMWorkspace)
 		# Y path goes via potentials: Pf = inv(Y/(jω))
 		w = 2π * frequency
 		# REORDER → Y
-		_reorder_into!(Ybuf, workspace.Yprim, perm, k)
-		symtrans!(Ybuf)
+		_reorder_into!(Ybuf, workspace.Y, perm, k)
+		# symtrans!(Ybuf)
 
 		# Pf = inv(Ybuf / (jω)) without extra temps
 		@inbounds @views begin
@@ -851,7 +801,7 @@ function _do_run_solver!(freq_idx::Int,
 
 	# Get formulation from workspace
 	formulation = workspace.formulation
-	# Z, Y = workspace.Zprim, workspace.Yprim
+	# Z, Y = workspace.Z, workspace.Y
 	frequency = workspace.freq[freq_idx]
 
 	# Build and solve both formulations
@@ -866,9 +816,9 @@ function _do_run_solver!(freq_idx::Int,
 	end
 
 	# Extract results into preallocated arrays
-	workspace.Zprim[:, :, freq_idx] =
+	workspace.Z[:, :, freq_idx] =
 		read_results_file(formulation.analysis_type[1], workspace)
-	workspace.Yprim[:, :, freq_idx] =
+	workspace.Y[:, :, freq_idx] =
 		read_results_file(formulation.analysis_type[2], workspace)
 end
 

@@ -3,7 +3,7 @@ module LineCableModels
 ## Public API
 # -------------------------------------------------------------------------
 # Core generics:
-export add!, set_verbosity!
+export add!, set_verbosity!, set_backend!
 
 # Materials:
 export Material, MaterialsLibrary
@@ -14,7 +14,7 @@ export ConductorGroup, InsulatorGroup
 export CableComponent, CableDesign, NominalData
 export CablesLibrary
 export CablePosition, LineCableSystem
-export trifoil_formation, flat_formation, preview, simplify
+export trifoil_formation, flat_formation, preview, equivalent
 
 # Earth properties:
 export EarthModel
@@ -34,11 +34,16 @@ import DocStringExtensions: DocStringExtensions
 include("commons/Commons.jl")
 using .Commons: IMPORTS, EXPORTS, add!
 
+# Submodule `UncertainBessels`
+include("uncertainbessels/UncertainBessels.jl")
+
 # Submodule `Utils`
 include("utils/Utils.jl")
 using .Utils: set_verbosity!
 
-include("uncertainbessels/UncertainBessels.jl")
+# Submodule `BackendHandler`
+include("backendhandler/BackendHandler.jl")
+using .BackendHandler: set_backend!
 
 # Submodule `Validation`
 include("validation/Validation.jl")
@@ -55,7 +60,7 @@ using .EarthProps: EarthModel
 include("datamodel/DataModel.jl")
 using .DataModel: Thickness, Diameter, WireArray, Strip, Tubular, Semicon, Insulator,
 	ConductorGroup, InsulatorGroup, CableComponent, CableDesign, NominalData, CablesLibrary,
-	CablePosition, LineCableSystem, trifoil_formation, flat_formation, preview, simplify
+	CablePosition, LineCableSystem, trifoil_formation, flat_formation, preview, equivalent
 
 # Submodule `Engine`
 include("engine/Engine.jl")

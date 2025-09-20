@@ -2,10 +2,14 @@
 struct Lossless <: InsulationImpedanceFormulation end
 get_description(::Lossless) = "Lossless insulation (ideal dielectric)"
 
-@inline function (f::Lossless)(r_in::T, r_ex::T, mur_i::T, freq::T
+@inline function (f::Lossless)(
+	r_in::T,
+	r_ex::T,
+	mur_i::T,
+	jω::Complex{T},
 ) where {T <: REALSCALAR}
 
-	if r_ex == r_in
+	if isapprox(r_in, 0.0, atol = eps(T)) || isapprox(r_in, r_ex, atol = eps(T))
 		# TODO: Implement consistent handling of admittance for bare conductors
 		# Issue URL: https://github.com/Electa-Git/LineCableModels.jl/issues/18
 		return zero(Complex{T})
@@ -13,7 +17,6 @@ get_description(::Lossless) = "Lossless insulation (ideal dielectric)"
 
 	# Constants
 	mu_i = T(μ₀) * mur_i
-	ω = 2π * freq
 
-	return Complex{T}(im * ω * mu_i * log(r_ex / r_in) / 2π)
+	return Complex{T}(jω * mu_i * log(r_ex / r_in) / 2π)
 end

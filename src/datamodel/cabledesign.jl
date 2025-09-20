@@ -151,7 +151,7 @@ homogeneous equivalent and leverages shorthand constructors:
 The geometry is preserved from the original component, while materials are
 derived from the component's effective conductor and insulator properties.
 """
-function simplify(
+function equivalent(
 	original_design::CableDesign;
 	new_id::String = "",
 )::CableDesign
