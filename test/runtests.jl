@@ -63,4 +63,4 @@ end
 
 end
 
-@run_package_tests verbose = true, filter=ti->!(:skipci in ti.tags)
+@run_package_tests(verbose = true, filter=ti->!(:skipci in ti.tags))
