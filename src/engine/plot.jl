@@ -802,19 +802,36 @@ function _render_spec(
 end
 
 function _build_plot!(fig_ctx, ctx, axis, spec::LineParametersPlotSpec)
-	axis.title = spec.title
-	axis.xlabel = spec.x_exp == 0 ? spec.xlabel : _axis_label(spec.xlabel, spec.x_exp)
-	axis.ylabel = spec.y_exp == 0 ? spec.ylabel : _axis_label(spec.ylabel, spec.y_exp)
+	# axis.title = spec.title
+	# axis.xlabel = spec.x_exp == 0 ? spec.xlabel : _axis_label(spec.xlabel, spec.x_exp)
+	# axis.ylabel = spec.y_exp == 0 ? spec.ylabel : _axis_label(spec.ylabel, spec.y_exp)
 
+	axis.title = spec.title
+
+	if spec.xscale[] == Makie.log10
+		axis.xlabel = spec.xlabel
+		x_data = spec.raw_freqs
+	else
+		axis.xlabel = spec.x_exp == 0 ? spec.xlabel : _axis_label(spec.xlabel, spec.x_exp)
+		x_data = spec.freqs
+	end
+
+	if spec.yscale[] == Makie.log10
+		axis.ylabel = spec.ylabel
+		y_data = spec.raw_curves
+	else
+		axis.ylabel = spec.y_exp == 0 ? spec.ylabel : _axis_label(spec.ylabel, spec.y_exp)
+		y_data = spec.curves
+	end
 
 	palette = Makie.wong_colors()
 	ncolors = length(palette)
 	# Store the created lines objects to update them dynamically
 	lines_plots = []
-	for (idx, curve) in enumerate(spec.curves)
+	for (idx, curve) in enumerate(y_data)
 		color = palette[mod1(idx, ncolors)]
 		label = spec.labels[idx]
-		l = lines!(axis, spec.freqs, curve; color = color, label = label, linewidth = 2)
+		l = lines!(axis, x_data, curve; color = color, label = label, linewidth = 2)
 		push!(lines_plots, l)
 	end
 
