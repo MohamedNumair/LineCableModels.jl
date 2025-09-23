@@ -23,6 +23,8 @@ using ..PlotUIComponents:
 	AXIS_LABEL_FONT_SIZE,
 	clear_status!
 
+using Measurements: Measurements
+
 const _ICON_FN =
 	(icon; text = nothing, kwargs...) ->
 		with_icon(icon; text = text === nothing ? "" : text, kwargs...)
@@ -108,10 +110,10 @@ struct LineParametersPlotSpec
 	title::String
 	xlabel::String
 	ylabel::String
-	freqs::Vector{Float64}
-	raw_freqs::Vector{Float64}
-	curves::Vector{Vector{Float64}}
-	raw_curves::Vector{Vector{Float64}}
+	freqs::Vector{<:Real}
+	raw_freqs::Vector{<:Real}
+	curves::Vector{Vector{<:Real}}
+	raw_curves::Vector{Vector{<:Real}}
 	labels::Vector{String}
 	x_exp::Int
 	y_exp::Int
@@ -201,6 +203,7 @@ prefix_symbol(prefix::Symbol) =
 	get(METRIC_PREFIX_SYMBOL, prefix) do
 		Base.error("Unsupported metric prefix :$(prefix)")
 	end
+
 
 quantity_scale(prefix::Symbol) = 10.0 ^ (-metric_exponent(prefix))
 length_scale(prefix::Symbol) = 10.0 ^ (metric_exponent(prefix))
@@ -378,6 +381,9 @@ function components_for(obj::ShuntAdmittance, mode::Symbol, coord::Symbol)
 			]
 		end
 	elseif mode == :RLCG
+		if (coord == :cart || coord == :polar)
+			@warn "Ignoring argument :$(coord) for RLCG parameters"
+		end
 		return ComponentMetadata[
 			ComponentMetadata(:conductance, :conductance, sym.conductance,
 				desc.conductance,
@@ -393,7 +399,7 @@ function components_for(obj::ShuntAdmittance, mode::Symbol, coord::Symbol)
 	end
 end
 
-function component_values(component::Symbol, slice, freqs::Vector{Float64})
+function component_values(component::Symbol, slice, freqs::Vector{<:Real})
 	data = collect(slice)
 	if component === :real
 		return (real.(data))
@@ -416,8 +422,8 @@ function component_values(component::Symbol, slice, freqs::Vector{Float64})
 	end
 end
 
-function reactance_to_l(imag_part::Vector{Float64}, freqs::Vector{Float64})
-	result = similar(freqs)
+function reactance_to_l(imag_part::Vector{<:Real}, freqs::Vector{<:Real})
+	result = similar(freqs, promote_type(eltype(imag_part), eltype(freqs)))
 	two_pi = 2π
 	for idx in eachindex(freqs)
 		f = freqs[idx]
@@ -430,8 +436,8 @@ function reactance_to_l(imag_part::Vector{Float64}, freqs::Vector{Float64})
 	return result
 end
 
-function reactance_to_c(imag_part::Vector{Float64}, freqs::Vector{Float64})
-	result = similar(freqs)
+function reactance_to_c(imag_part::Vector{<:Real}, freqs::Vector{<:Real})
+	result = similar(freqs, promote_type(eltype(imag_part), eltype(freqs)))
 	two_pi = 2π
 	for idx in eachindex(freqs)
 		f = freqs[idx]
@@ -522,8 +528,10 @@ function lineparameter_plot_specs(
 	quantity_units = nothing,
 	con = nothing,
 	fig_size::Union{Nothing, Tuple{Int, Int}} = LP_FIG_SIZE,
+	xscale::Function = Makie.identity,
+	yscale::Function = Makie.identity,
 )
-	freq_vec = collect(float.(freqs))
+	freq_vec = collect(freqs)
 	nfreq = length(freq_vec)
 	if nfreq <= 1
 		@warn "Frequency vector has $(nfreq) sample(s); nothing to plot."
@@ -548,7 +556,7 @@ function lineparameter_plot_specs(
 		ylabel_base = string(meta.axis_label, " [", ylabel_unit, "]")
 
 		# collect raw curves and labels
-		raw_curves = Vector{Vector{Float64}}()
+		raw_curves = Vector{Vector{<:Real}}()
 		labels = String[]
 		for i in isel, j in jsel
 			slice = @view obj.values[i, j, :]
@@ -574,8 +582,8 @@ function lineparameter_plot_specs(
 				freq_exp,
 				y_exp,
 				fig_size,
-				Ref{Function}(Makie.identity),
-				Ref{Function}(Makie.identity),
+				Ref{Function}(xscale),
+				Ref{Function}(yscale),
 			),
 		)
 	end
@@ -592,8 +600,10 @@ function lineparameter_plot_specs(
 	quantity_units = nothing,
 	con = nothing,
 	fig_size::Union{Nothing, Tuple{Int, Int}} = LP_FIG_SIZE,
+	xscale::Function = Makie.identity,
+	yscale::Function = Makie.identity,
 )
-	freq_vec = collect(float.(freqs))
+	freq_vec = collect(freqs)
 	nfreq = length(freq_vec)
 	if nfreq <= 1
 		@warn "Frequency vector has $(nfreq) sample(s); nothing to plot."
@@ -617,7 +627,7 @@ function lineparameter_plot_specs(
 			composite_unit(q_prefix, meta.unit.symbol, meta.unit.per_length, length_unit)
 		ylabel_base = string(meta.axis_label, " [", ylabel_unit, "]")
 
-		raw_curves = Vector{Vector{Float64}}()
+		raw_curves = Vector{Vector{<:Real}}()
 		labels = String[]
 		for i in isel, j in jsel
 			slice = @view obj.values[i, j, :]
@@ -644,8 +654,8 @@ function lineparameter_plot_specs(
 				freq_exp,
 				y_exp,
 				fig_size,
-				Ref{Function}(Makie.identity),
-				Ref{Function}(Makie.identity),
+				Ref{Function}(xscale),
+				Ref{Function}(yscale),
 			),
 		)
 	end
@@ -661,6 +671,8 @@ function lineparameter_plot_specs(
 	quantity_units = nothing,
 	con = nothing,
 	fig_size::Union{Nothing, Tuple{Int, Int}} = LP_FIG_SIZE,
+	xscale::Function = Makie.identity,
+	yscale::Function = Makie.identity,
 )
 	specs = LineParametersPlotSpec[]
 	append!(
@@ -673,6 +685,8 @@ function lineparameter_plot_specs(
 			quantity_units = quantity_units,
 			con = con,
 			fig_size = fig_size,
+			xscale = xscale,
+			yscale = yscale,
 		),
 	)
 	append!(
@@ -685,6 +699,8 @@ function lineparameter_plot_specs(
 			quantity_units = quantity_units,
 			con = con,
 			fig_size = fig_size,
+			xscale = xscale,
+			yscale = yscale,
 		),
 	)
 	return specs
@@ -801,153 +817,200 @@ function _render_spec(
 	return assembly
 end
 
+function _get_axis_data(
+	raw_data::Vector{<:Real},
+	scaled_data::Vector{<:Real},
+	scale_func::Function,
+)
+	data = scale_func == Makie.log10 ? raw_data : scaled_data
+	values = float(Measurements.value.(data))
+	errors = if eltype(data) <: Measurements.Measurement
+		float(Measurements.uncertainty.(data))
+	else
+		nothing
+	end
+	return (; values, errors)
+end
+
+function _get_axis_label(base_label::String, exponent::Int, scale_func::Function)
+	if scale_func == Makie.log10
+		return base_label
+	else
+		return _axis_label(base_label, exponent)
+	end
+end
+
 function _build_plot!(fig_ctx, ctx, axis, spec::LineParametersPlotSpec)
-	# axis.title = spec.title
-	# axis.xlabel = spec.x_exp == 0 ? spec.xlabel : _axis_label(spec.xlabel, spec.x_exp)
-	# axis.ylabel = spec.y_exp == 0 ? spec.ylabel : _axis_label(spec.ylabel, spec.y_exp)
+	# Set initial axis scales from the spec. These will be the source of truth.
 
 	axis.title = spec.title
 
-	if spec.xscale[] == Makie.log10
-		axis.xlabel = spec.xlabel
-		x_data = spec.raw_freqs
-	else
-		axis.xlabel = spec.x_exp == 0 ? spec.xlabel : _axis_label(spec.xlabel, spec.x_exp)
-		x_data = spec.freqs
+	# This helper function redraws everything based on the current axis scales.
+	function _draw_axis!()
+		# 1. Clear the axis completely
+		empty!(axis)
+		is_empty = true
+
+		# 2. Get data and labels based on the current scale stored in the axis
+		axis.xlabel = _get_axis_label(spec.xlabel, spec.x_exp, spec.xscale[])
+		axis.ylabel = _get_axis_label(spec.ylabel, spec.y_exp, spec.yscale[])
+		x_data = _get_axis_data(spec.raw_freqs, spec.freqs, spec.xscale[])
+
+		# Sanitize x-axis data for log scale if needed
+		if spec.xscale[] == Makie.log10
+			x_data.values[x_data.values .<= 0] .= NaN
+		end
+
+		palette = Makie.wong_colors()
+		ncolors = length(palette)
+
+
+		# 3. Draw all lines and error bars from scratch
+		for (idx, (raw_curve, scaled_curve)) in enumerate(zip(spec.raw_curves, spec.curves))
+
+			# If all raw values are below the threshold,
+			# consider it numerical noise and skip plotting this curve entirely.
+			if !any(abs.(value.(raw_curve)) .> eps())
+				continue
+			end
+			is_empty = false
+
+			color = palette[mod1(idx, ncolors)]
+			label = spec.labels[idx]
+			y_data = _get_axis_data(raw_curve, scaled_curve, spec.yscale[])
+
+			# LOG-SCALE SANITIZATION: Only for log plots, replace non-positive
+			# values with NaN to create gaps.
+			if spec.yscale[] == Makie.log10
+				y_data.values[y_data.values .<= 0] .= NaN
+			end
+
+			lines!(
+				axis,
+				x_data.values,
+				y_data.values;
+				color = color,
+				label = label,
+				linewidth = 2,
+			)
+
+			if y_data.errors !== nothing
+				errorbars!(
+					axis,
+					x_data.values,
+					y_data.values,
+					y_data.errors;
+					color = color,
+					whiskerwidth = 5,
+					direction = :y,
+				)
+			end
+			if x_data.errors !== nothing
+				errorbars!(
+					axis,
+					x_data.values,
+					y_data.values,
+					x_data.errors;
+					color = color,
+					whiskerwidth = 5,
+					direction = :x,
+				)
+			end
+		end
+
+		# 4. Handle the "no data" case internally
+		if is_empty
+			lines!(axis, [NaN], [NaN]; color = :transparent, label = "No data")
+		end
+
+		# 5. Reset limits
+		try
+			axis.xscale[] = spec.xscale[]
+			axis.yscale[] = spec.yscale[]
+		catch
+			# If setting the scale fails (e.g., log scale with non-positive values),
+			# revert to linear scale and notify the user.
+			axis.xscale[] = Makie.identity
+			axis.yscale[] = Makie.identity
+			@warn "Failed to set axis scale; reverted to linear scale."
+		end
+		Makie.autolimits!(axis)
+		return is_empty
 	end
 
-	if spec.yscale[] == Makie.log10
-		axis.ylabel = spec.ylabel
-		y_data = spec.raw_curves
-	else
-		axis.ylabel = spec.y_exp == 0 ? spec.ylabel : _axis_label(spec.ylabel, spec.y_exp)
-		y_data = spec.curves
-	end
-
-	palette = Makie.wong_colors()
-	ncolors = length(palette)
-	# Store the created lines objects to update them dynamically
-	lines_plots = []
-	for (idx, curve) in enumerate(y_data)
-		color = palette[mod1(idx, ncolors)]
-		label = spec.labels[idx]
-		l = lines!(axis, x_data, curve; color = color, label = label, linewidth = 2)
-		push!(lines_plots, l)
-	end
-
-	# Apply scales from spec, which are relevant for export mode
-	axis.xscale[] = spec.xscale[]
-	axis.yscale[] = spec.yscale[]
-
-	Makie.autolimits!(axis)
-
-	buttons = [
-		ControlButtonSpec(
-			(_ctx, _btn) -> begin
-				Makie.reset_limits!(axis)
-				return nothing
-			end;
-			icon = MI_REFRESH,
-			on_success = ControlReaction(
-				status_string = "Axis limits reset",
+	# Initial drawing
+	is_empty_axis = _draw_axis!()
+	buttons =
+		is_empty_axis ? [] :
+		[
+			ControlButtonSpec(
+				(_ctx, _btn) -> begin
+					Makie.reset_limits!(axis)
+					return nothing
+				end;
+				icon = MI_REFRESH,
+				on_success = ControlReaction(
+					status_string = "Axis limits reset",
+				),
 			),
-		),
-		ControlButtonSpec(
-			(_ctx, _btn) -> _save_plot_export(spec, axis);
-			icon = MI_SAVE,
-			on_success = ControlReaction(
-				status_string = path -> string("Saved SVG to ", basename(path)),
+			ControlButtonSpec(
+				(_ctx, _btn) -> _save_plot_export(spec, axis);
+				icon = MI_SAVE,
+				on_success = ControlReaction(
+					status_string = path -> string("Saved SVG to ", basename(path)),
+				),
 			),
-		),
-	]
+		]
 
 	# --- Define control toggles ---
-	toggles = [
-		ControlToggleSpec(
-			# Action when toggled ON
-			(_ctx, _toggle) -> begin
-				try
-					# Set scale and update data to raw values
-					axis.xscale = Makie.log10
-					for l in lines_plots
-						l[1] = spec.raw_freqs
-					end
-					# Remove the exponent badge from the label
-					axis.xlabel = spec.xlabel
-					Makie.autolimits!(axis)
-				catch
-					# If Makie fails to set the log scale, throw a user-friendly error.
-					# This will be caught by the wiring and trigger the on_failure reaction.
-					Base.error(
-						"Cannot apply log scale: axis contains non-positive values.",
-					)
-				end
-			end,
-			# Action when toggled OFF
-			(_ctx, _toggle) -> begin
-				# Set scale and update data to scaled values
-				axis.xscale = Makie.identity
-				for l in lines_plots
-					l[1] = spec.freqs
-				end
-				# Restore the exponent badge on the label
-				axis.xlabel =
-					spec.x_exp == 0 ? spec.xlabel : _axis_label(spec.xlabel, spec.x_exp)
-				Makie.autolimits!(axis)
-			end;
-			label = "log x-axis",
-			start_active = false,
-			on_success_on = ControlReaction(status_string = "x-axis scale set to log"),
-			on_success_off = ControlReaction(status_string = "x-axis scale set to linear"),
-			on_failure = ControlReaction(
-				# The status_string function will receive the error message we threw.
-				status_string = err_msg -> err_msg,
-				undo_on_fail = true,
+	# The callbacks are now trivial: just update the scale and redraw.
+
+	toggles =
+		is_empty_axis ? [] :
+		[
+			ControlToggleSpec(
+				# Action when toggled ON (log scale)
+				(_ctx, _toggle) -> begin
+					spec.xscale[] = Makie.log10
+					_draw_axis!()
+				end,
+				# Action when toggled OFF (linear scale)
+				(_ctx, _toggle) -> begin
+					spec.xscale[] = Makie.identity
+					_draw_axis!()
+				end;
+				label = "log x-axis",
+				start_active = spec.xscale[] == Makie.log10,
+				on_success_on = ControlReaction(status_string = "x-axis scale set to log"),
+				on_success_off = ControlReaction(
+					status_string = "x-axis scale set to linear",
+				),
+				on_failure = ControlReaction(
+					status_string = err_msg -> err_msg,
+				),
 			),
-		),
-		ControlToggleSpec(
-			# Action when toggled ON
-			(_ctx, _toggle) -> begin
-				try
-					# Set scale and update data to raw values
-					axis.yscale = Makie.log10
-					for (idx, l) in enumerate(lines_plots)
-						l[2] = spec.raw_curves[idx]
-					end
-					# Remove the exponent badge from the label
-					axis.ylabel = spec.ylabel
-					Makie.autolimits!(axis)
-				catch
-					# If Makie fails to set the log scale, throw a user-friendly error.
-					# This will be caught by the wiring and trigger the on_failure reaction.
-					Base.error(
-						"Cannot apply log scale: axis contains non-positive values.",
-					)
-				end
-			end,
-			# Action when toggled OFF
-			(_ctx, _toggle) -> begin
-				# Set scale and update data to scaled values
-				axis.yscale = Makie.identity
-				for (idx, l) in enumerate(lines_plots)
-					l[2] = spec.curves[idx]
-				end
-				# Restore the exponent badge on the label
-				axis.ylabel =
-					spec.y_exp == 0 ? spec.ylabel : _axis_label(spec.ylabel, spec.y_exp)
-				Makie.autolimits!(axis)
-			end;
-			label = "log y-axis",
-			start_active = false,
-			on_success_on = ControlReaction(status_string = "y-axis scale set to log"),
-			on_success_off = ControlReaction(status_string = "y-axis scale set to linear"),
-			on_failure = ControlReaction(
-				# The status_string function will receive the error message we threw.
-				status_string = err_msg -> err_msg,
-				undo_on_fail = true,
+			ControlToggleSpec(
+				# Action when toggled ON (log scale)
+				(_ctx, _toggle) -> begin
+					spec.yscale[] = Makie.log10
+					_draw_axis!()
+				end,
+				# Action when toggled OFF (linear scale)
+				(_ctx, _toggle) -> begin
+					spec.yscale[] = Makie.identity
+					_draw_axis!()
+				end;
+				label = "log y-axis",
+				start_active = spec.yscale[] == Makie.log10,
+				on_success_on = ControlReaction(status_string = "y-axis scale set to log"),
+				on_success_off = ControlReaction(
+					status_string = "y-axis scale set to linear",
+				),
+				on_failure = ControlReaction(
+					status_string = err_msg -> err_msg,
+				),
 			),
-		),
-	]
+		]
 
 	legend_builder = parent -> Makie.Legend(parent, axis; orientation = :vertical)
 

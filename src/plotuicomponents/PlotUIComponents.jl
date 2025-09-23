@@ -68,7 +68,6 @@ struct ControlReaction
 	button_color::Union{Nothing, Any}
 	button_label::Union{Nothing, String}
 	timeout::Union{Nothing, AbstractFloat}
-	undo_on_fail::Bool
 end
 
 ControlReaction(;
@@ -76,9 +75,8 @@ ControlReaction(;
 	button_color = nothing,
 	button_label = nothing,
 	timeout = 1.5,
-	undo_on_fail = false,
 ) =
-	ControlReaction(status_string, button_color, button_label, timeout, undo_on_fail)
+	ControlReaction(status_string, button_color, button_label, timeout)
 
 struct ControlButtonSpec
 	label::Union{Nothing, String}
@@ -609,10 +607,6 @@ function _apply_reaction!(
 				button.label[] = original_label
 			end
 		end
-	end
-
-	if reaction !== nothing && reaction.undo_on_fail && button isa Makie.Toggle
-		button.active[] = !button.active[]
 	end
 
 	return nothing
