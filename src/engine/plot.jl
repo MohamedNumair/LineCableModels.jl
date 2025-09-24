@@ -862,6 +862,20 @@ function _build_plot!(fig_ctx, ctx, axis, spec::LineParametersPlotSpec)
 		yd
 	end
 
+	function _link_visibility!(plot_obj, controller)
+		# plot_obj is the Errorbars plot object.
+		# controller is the master Lines plot.
+		# React to the controller's visibility changes.
+		on(controller.visible) do is_visible
+			# A. Manually control the visibility of the stem plot directly.
+			plot_obj.visible = is_visible
+
+			# B. Manually control the special attribute for the whiskers.
+			plot_obj.whisker_visible[] = is_visible
+		end
+		nothing
+	end
+
 	# safe max(abs(.)) ignoring non-finite
 	_finite_max_abs(v) = begin
 		buf = (x -> abs(x)).(value.(v))
@@ -920,24 +934,26 @@ function _build_plot!(fig_ctx, ctx, axis, spec::LineParametersPlotSpec)
 		)
 		line_plots[k] = ln
 
-		# Y errorbars: stems only +  caps; both follow the line’s visibility
+		# Y errorbars: stems + caps; fully follow the line’s visibility
 		if y_errs_obs[k] !== nothing
-			yerr_plots[k] = errorbars!(
+			eb = errorbars!(
 				axis, x_vals_obs, y_vals_obs[k], y_errs_obs[k];
 				color = color, direction = :y, whiskerwidth = 3,
-				visible = lift(identity, ln.visible),
 			)
+			_link_visibility!(eb, ln)
+			yerr_plots[k] = eb
 		else
 			yerr_plots[k] = nothing
 		end
 
-		# X errorbars: stems only +  caps 
+		# X errorbars: stems + caps; fully follow the line’s visibility
 		if x_errs_obs !== nothing
-			xerr_plots[k] = errorbars!(
+			ebx = errorbars!(
 				axis, x_vals_obs, y_vals_obs[k], x_errs_obs;
 				color = color, direction = :x, whiskerwidth = 3,
-				visible = lift(identity, ln.visible),
 			)
+			_link_visibility!(ebx, ln)
+			xerr_plots[k] = ebx
 		else
 			xerr_plots[k] = nothing
 		end
@@ -958,10 +974,129 @@ function _build_plot!(fig_ctx, ctx, axis, spec::LineParametersPlotSpec)
 		axis.yscale[] = Makie.identity
 		@warn "Failed to set axis scale; reverted to linear scale."
 	end
+
+	# Enforce reasonable limits (avoid microscopic ranges when curves are flat)
+	# Helper to compute finite extents
+	_finite_extents(v::AbstractVector) = begin
+		fv = filter(isfinite, v)
+		isempty(fv) && return (NaN, NaN, false)
+		return (minimum(fv), maximum(fv), true)
+	end
+
+	function _apply_limits!()
+		# Helper: smallest positive finite value in a vector
+		_min_positive(v::AbstractVector) = begin
+			m = Inf
+			@inbounds for a in v
+				if isfinite(a) && a > 0 && a < m
+					m = a
+				end
+			end
+			return m
+		end
+
+		# X limits
+		x = x_vals_obs[]
+		xmin, xmax, okx = _finite_extents(x)
+		if okx
+			Δx = xmax - xmin
+			if Δx <= 0
+				xc = (xmax + xmin) / 2
+				# minimal span based on magnitude
+				Δx = max(1e-12, 1e-3 * max(abs(xc), abs(xmax), abs(xmin), 1.0))
+				xmin = xc - Δx / 2
+				xmax = xc + Δx / 2
+			else
+				pad = 0.05 * Δx
+				xmin -= pad;
+				xmax += pad
+			end
+			# Guard for log x-axis: lower bound must stay > 0
+			if axis.xscale[] == Makie.log10
+				posmin = _min_positive(x)
+				floor_pos = isfinite(posmin) ? 0.9 * posmin : nextfloat(0.0)
+				xmin = max(xmin, floor_pos)
+				xmin <= 0 && (xmin = nextfloat(0.0))  # absolute safety
+			end
+			Makie.xlims!(axis, xmin, xmax)
+		end
+
+		# Y limits (consider error bars too)
+		ymins = Float64[]
+		ymaxs = Float64[]
+		@inbounds for k in 1:nact
+			y = y_vals_obs[k][]
+			ymin, ymax, ok = _finite_extents(y)
+			if ok
+				if y_errs_obs[k] !== nothing
+					e = y_errs_obs[k][]
+					eymin, _, okm = _finite_extents(y .- e)
+					_, eymax, okp = _finite_extents(y .+ e)
+					okm && (ymin = min(ymin, eymin))
+					okp && (ymax = max(ymax, eymax))
+				end
+				push!(ymins, ymin);
+				push!(ymaxs, ymax)
+			end
+		end
+
+		if !isempty(ymins)
+			ymin = minimum(ymins)
+			ymax = maximum(ymaxs)
+			Δy = ymax - ymin
+			yc = (ymax + ymin) / 2
+
+			# Minimal span to avoid "micro-zoom" when the curve is essentially flat.
+			#  - relative floor: 0.1% of magnitude (>= 1.0 to avoid collapsing near zero)
+			#  - absolute floor: 1e-12
+			min_span = max(1e-12, 1e-3 * max(abs(yc), abs(ymax), abs(ymin), 1.0))
+
+			if !(Δy > min_span)
+				Δy = min_span
+				ymin = yc - Δy / 2
+				ymax = yc + Δy / 2
+			else
+				pad = 0.05 * Δy
+				ymin -= pad;
+				ymax += pad
+			end
+
+			# Guard for log y-axis: lower bound must stay > 0
+			if axis.yscale[] == Makie.log10
+				# find smallest positive among all active curves (and their lower error bars)
+				posmin = Inf
+				@inbounds for k in 1:nact
+					y = y_vals_obs[k][]
+					m = _min_positive(y)
+					if isfinite(m) && m < posmin
+						posmin = m
+					end
+					if y_errs_obs[k] !== nothing
+						e = y_errs_obs[k][]
+						# consider lower whiskers
+						@inbounds for (yy, ee) in zip(y, e)
+							l = yy - ee
+							if isfinite(l) && l > 0 && l < posmin
+								posmin = l
+							end
+						end
+					end
+				end
+				floor_pos = isfinite(posmin) ? 0.9 * posmin : nextfloat(0.0)
+				ymin = max(ymin, floor_pos)
+				ymin <= 0 && (ymin = nextfloat(0.0))  # absolute safety
+			end
+
+			Makie.ylims!(axis, ymin, ymax)
+		end
+		return nothing
+	end
 	Makie.autolimits!(axis)
+	_apply_limits!()
 
 	# ---- Refreshers (update Observables only) ------------------------------
 	function _refresh_x!(scale)
+		Makie.autolimits!(axis)
 		spec.xscale[] = scale
 		axis.xscale[] = scale
 		axis.xlabel   = _get_axis_label(spec.xlabel, spec.x_exp, scale)
@@ -971,11 +1106,13 @@ function _build_plot!(fig_ctx, ctx, axis, spec::LineParametersPlotSpec)
 		if x_errs_obs !== nothing
 			x_errs_obs[] = xd.errors
 		end
-		Makie.autolimits!(axis)
+
+		_apply_limits!()
 		nothing
 	end
 
 	function _refresh_y!(scale)
+		Makie.autolimits!(axis)
 		spec.yscale[] = scale
 		axis.yscale[] = scale
 		axis.ylabel   = _get_axis_label(spec.ylabel, spec.y_exp, scale)
@@ -988,7 +1125,7 @@ function _build_plot!(fig_ctx, ctx, axis, spec::LineParametersPlotSpec)
 				y_errs_obs[k][] = yd.errors
 			end
 		end
-		Makie.autolimits!(axis)
+		_apply_limits!()
 		nothing
 	end
 
