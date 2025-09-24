@@ -841,117 +841,165 @@ function _get_axis_label(base_label::String, exponent::Int, scale_func::Function
 end
 
 function _build_plot!(fig_ctx, ctx, axis, spec::LineParametersPlotSpec)
-	# Set initial axis scales from the spec. These will be the source of truth.
+	# ---- Axis title & initial labels ----------------------------------------
+	axis.title  = spec.title
+	axis.xlabel = _get_axis_label(spec.xlabel, spec.x_exp, spec.xscale[])
+	axis.ylabel = _get_axis_label(spec.ylabel, spec.y_exp, spec.yscale[])
 
-	axis.title = spec.title
+	# ---- Helpers ------------------------------------------------------------
+	sanitize_log!(v::AbstractVector, is_log::Bool) =
+		(is_log && !isempty(v)) ? (v[v .<= 0] .= NaN; v) : v
 
-	# This helper function redraws everything based on the current axis scales.
-	function _draw_axis!()
-		# 1. Clear the axis completely
-		empty!(axis)
-		is_empty = true
-
-		# 2. Get data and labels based on the current scale stored in the axis
-		axis.xlabel = _get_axis_label(spec.xlabel, spec.x_exp, spec.xscale[])
-		axis.ylabel = _get_axis_label(spec.ylabel, spec.y_exp, spec.yscale[])
-		x_data = _get_axis_data(spec.raw_freqs, spec.freqs, spec.xscale[])
-
-		# Sanitize x-axis data for log scale if needed
-		if spec.xscale[] == Makie.log10
-			x_data.values[x_data.values .<= 0] .= NaN
-		end
-
-		palette = Makie.wong_colors()
-		ncolors = length(palette)
-
-
-		# 3. Draw all lines and error bars from scratch
-		for (idx, (raw_curve, scaled_curve)) in enumerate(zip(spec.raw_curves, spec.curves))
-
-			# If all raw values are below the threshold,
-			# consider it numerical noise and skip plotting this curve entirely.
-			if !any(abs.(value.(raw_curve)) .> eps())
-				continue
-			end
-			is_empty = false
-
-			color = palette[mod1(idx, ncolors)]
-			label = spec.labels[idx]
-			y_data = _get_axis_data(raw_curve, scaled_curve, spec.yscale[])
-
-			# LOG-SCALE SANITIZATION: Only for log plots, replace non-positive
-			# values with NaN to create gaps.
-			if spec.yscale[] == Makie.log10
-				y_data.values[y_data.values .<= 0] .= NaN
-			end
-
-			lines!(
-				axis,
-				x_data.values,
-				y_data.values;
-				color = color,
-				label = label,
-				linewidth = 2,
-			)
-
-			if y_data.errors !== nothing
-				errorbars!(
-					axis,
-					x_data.values,
-					y_data.values,
-					y_data.errors;
-					color = color,
-					whiskerwidth = 5,
-					direction = :y,
-				)
-			end
-			if x_data.errors !== nothing
-				errorbars!(
-					axis,
-					x_data.values,
-					y_data.values,
-					x_data.errors;
-					color = color,
-					whiskerwidth = 5,
-					direction = :x,
-				)
-			end
-		end
-
-		# 4. Handle the "no data" case internally
-		if is_empty
-			lines!(axis, [NaN], [NaN]; color = :transparent, label = "No data")
-		end
-
-		# 5. Reset limits
-		try
-			axis.xscale[] = spec.xscale[]
-			axis.yscale[] = spec.yscale[]
-		catch
-			# If setting the scale fails (e.g., log scale with non-positive values),
-			# revert to linear scale and notify the user.
-			axis.xscale[] = Makie.identity
-			axis.yscale[] = Makie.identity
-			@warn "Failed to set axis scale; reverted to linear scale."
-		end
-		Makie.autolimits!(axis)
-		return is_empty
+	_x_data_for(scale) = begin
+		xd = _get_axis_data(spec.raw_freqs, spec.freqs, scale)
+		sanitize_log!(xd.values, scale == Makie.log10)
+		xd
 	end
 
-	# Initial drawing
-	is_empty_axis = _draw_axis!()
+	_y_data_for(i::Int, scale) = begin
+		yd = _get_axis_data(spec.raw_curves[i], spec.curves[i], scale)
+		sanitize_log!(yd.values, scale == Makie.log10)
+		yd
+	end
+
+	# safe max(abs(.)) ignoring non-finite
+	_finite_max_abs(v) = begin
+		buf = (x -> abs(x)).(value.(v))
+		any(isfinite, buf) ? maximum(x for x in buf if isfinite(x)) : 0.0
+	end
+
+	# ---- Select active (non-noise) curves by EPS -------------------------------
+	ncurves    = length(spec.curves)
+	active_idx = Int[]
+
+	@inbounds for i in 1:ncurves
+		# max magnitude of raw curve; works for Real, Complex, and Measurement types
+		maxmag = maximum(value.(abs.(spec.raw_curves[i])))
+		if maxmag > eps(Float64)          # keep only if anything rises above machine eps
+			push!(active_idx, i)
+		end
+	end
+
+	any_real_curve = !isempty(active_idx)
+
+	# ---- Initial data (x) ---------------------------------------------------
+	x_init = _x_data_for(spec.xscale[])
+	x_vals_obs = Observable(copy(x_init.values))
+	x_errs_obs = x_init.errors === nothing ? nothing : Observable(copy(x_init.errors))
+
+	# ---- Per-curve allocs only for active curves ---------------------------
+	palette = Makie.wong_colors()
+	ncolors = length(palette)
+	nact    = length(active_idx)
+
+	y_vals_obs = Vector{Observable}(undef, nact)
+	y_errs_obs = Vector{Union{Nothing, Observable}}(undef, nact)
+	line_plots = Vector{Any}(undef, nact)
+	yerr_plots = Vector{Any}(undef, nact)
+	xerr_plots = Vector{Any}(undef, nact)
+
+	# ---- Draw active curves -------------------------------------------------
+	for k in 1:nact
+		i = active_idx[k]
+		color = palette[mod1(k, ncolors)]   # color by active order
+		label = spec.labels[i]
+
+		yd = _y_data_for(i, spec.yscale[])
+
+		y_vals_obs[k] = Observable(copy(yd.values))
+		y_errs_obs[k] = yd.errors === nothing ? nothing : Observable(copy(yd.errors))
+
+		# line
+		ln = lines!(
+			axis,
+			x_vals_obs,
+			y_vals_obs[k];
+			color = color,
+			label = label,
+			linewidth = 2,
+		)
+		line_plots[k] = ln
+
+		# Y errorbars: stems only +  caps; both follow the line’s visibility
+		if y_errs_obs[k] !== nothing
+			yerr_plots[k] = errorbars!(
+				axis, x_vals_obs, y_vals_obs[k], y_errs_obs[k];
+				color = color, direction = :y, whiskerwidth = 3,
+				visible = lift(identity, ln.visible),
+			)
+		else
+			yerr_plots[k] = nothing
+		end
+
+		# X errorbars: stems only +  caps 
+		if x_errs_obs !== nothing
+			xerr_plots[k] = errorbars!(
+				axis, x_vals_obs, y_vals_obs[k], x_errs_obs;
+				color = color, direction = :x, whiskerwidth = 3,
+				visible = lift(identity, ln.visible),
+			)
+		else
+			xerr_plots[k] = nothing
+		end
+
+	end
+
+	# If nothing to draw, add transparent dummy without legend entry
+	if !any_real_curve
+		lines!(axis, [NaN], [NaN]; color = :transparent, label = "No data")
+	end
+
+	# ---- Apply initial scales safely ---------------------------------------
+	try
+		axis.xscale[] = spec.xscale[]
+		axis.yscale[] = spec.yscale[]
+	catch
+		axis.xscale[] = Makie.identity
+		axis.yscale[] = Makie.identity
+		@warn "Failed to set axis scale; reverted to linear scale."
+	end
+	Makie.autolimits!(axis)
+
+	# ---- Refreshers (update Observables only) ------------------------------
+	function _refresh_x!(scale)
+		spec.xscale[] = scale
+		axis.xscale[] = scale
+		axis.xlabel   = _get_axis_label(spec.xlabel, spec.x_exp, scale)
+
+		xd = _x_data_for(scale)
+		x_vals_obs[] = xd.values
+		if x_errs_obs !== nothing
+			x_errs_obs[] = xd.errors
+		end
+		Makie.autolimits!(axis)
+		nothing
+	end
+
+	function _refresh_y!(scale)
+		spec.yscale[] = scale
+		axis.yscale[] = scale
+		axis.ylabel   = _get_axis_label(spec.ylabel, spec.y_exp, scale)
+
+		@inbounds for k in 1:nact
+			i = active_idx[k]
+			yd = _y_data_for(i, scale)
+			y_vals_obs[k][] = yd.values
+			if y_errs_obs[k] !== nothing
+				y_errs_obs[k][] = yd.errors
+			end
+		end
+		Makie.autolimits!(axis)
+		nothing
+	end
+
+	# ---- Buttons ------------------------------------------------------------
 	buttons =
-		is_empty_axis ? [] :
+		any_real_curve ?
 		[
 			ControlButtonSpec(
-				(_ctx, _btn) -> begin
-					Makie.reset_limits!(axis)
-					return nothing
-				end;
+				(_ctx, _btn) -> (Makie.reset_limits!(axis); nothing);
 				icon = MI_REFRESH,
-				on_success = ControlReaction(
-					status_string = "Axis limits reset",
-				),
+				on_success = ControlReaction(status_string = "Axis limits reset"),
 			),
 			ControlButtonSpec(
 				(_ctx, _btn) -> _save_plot_export(spec, axis);
@@ -960,69 +1008,56 @@ function _build_plot!(fig_ctx, ctx, axis, spec::LineParametersPlotSpec)
 					status_string = path -> string("Saved SVG to ", basename(path)),
 				),
 			),
-		]
+		] : Any[]
 
-	# --- Define control toggles ---
-	# The callbacks are now trivial: just update the scale and redraw.
-
+	# ---- Toggles ------------------------------------------------------------
 	toggles =
-		is_empty_axis ? [] :
+		any_real_curve ?
 		[
 			ControlToggleSpec(
-				# Action when toggled ON (log scale)
-				(_ctx, _toggle) -> begin
-					spec.xscale[] = Makie.log10
-					_draw_axis!()
-				end,
-				# Action when toggled OFF (linear scale)
-				(_ctx, _toggle) -> begin
-					spec.xscale[] = Makie.identity
-					_draw_axis!()
-				end;
+				(_ctx, _t) -> _refresh_x!(Makie.log10),
+				(_ctx, _t) -> _refresh_x!(Makie.identity);
 				label = "log x-axis",
 				start_active = spec.xscale[] == Makie.log10,
 				on_success_on = ControlReaction(status_string = "x-axis scale set to log"),
 				on_success_off = ControlReaction(
 					status_string = "x-axis scale set to linear",
 				),
-				on_failure = ControlReaction(
-					status_string = err_msg -> err_msg,
-				),
+				on_failure = ControlReaction(status_string = err -> err),
 			),
 			ControlToggleSpec(
-				# Action when toggled ON (log scale)
-				(_ctx, _toggle) -> begin
-					spec.yscale[] = Makie.log10
-					_draw_axis!()
-				end,
-				# Action when toggled OFF (linear scale)
-				(_ctx, _toggle) -> begin
-					spec.yscale[] = Makie.identity
-					_draw_axis!()
-				end;
+				(_ctx, _t) -> _refresh_y!(Makie.log10),
+				(_ctx, _t) -> _refresh_y!(Makie.identity);
 				label = "log y-axis",
 				start_active = spec.yscale[] == Makie.log10,
 				on_success_on = ControlReaction(status_string = "y-axis scale set to log"),
 				on_success_off = ControlReaction(
 					status_string = "y-axis scale set to linear",
 				),
-				on_failure = ControlReaction(
-					status_string = err_msg -> err_msg,
-				),
+				on_failure = ControlReaction(status_string = err -> err),
 			),
-		]
+		] : Any[]
 
-	legend_builder = parent -> Makie.Legend(parent, axis; orientation = :vertical)
+	# ---- Legend -------------------------------------------------------------
+	legend_builder =
+		parent ->
+			Makie.Legend(
+				parent,
+				axis;
+				orientation = :vertical,
+			)
 
 	return PlotBuildArtifacts(
-		axis = axis,
-		legends = legend_builder,
-		colorbars = Any[],
+		axis            = axis,
+		legends         = legend_builder,
+		colorbars       = Any[],
 		control_buttons = buttons,
 		control_toggles = toggles,
-		status_message = nothing,
+		status_message  = nothing,
 	)
 end
+
+
 
 function _display!(backend_ctx, fig::Makie.Figure; title::AbstractString = "")
 	if backend_ctx.interactive && backend_ctx.window !== nothing
