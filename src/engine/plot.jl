@@ -938,7 +938,7 @@ function _build_plot!(fig_ctx, ctx, axis, spec::LineParametersPlotSpec)
 		if y_errs_obs[k] !== nothing
 			eb = errorbars!(
 				axis, x_vals_obs, y_vals_obs[k], y_errs_obs[k];
-				color = color, direction = :y, whiskerwidth = 3,
+				color = :black, direction = :y, whiskerwidth = 3, linewidth = 1,
 			)
 			_link_visibility!(eb, ln)
 			yerr_plots[k] = eb
@@ -950,7 +950,7 @@ function _build_plot!(fig_ctx, ctx, axis, spec::LineParametersPlotSpec)
 		if x_errs_obs !== nothing
 			ebx = errorbars!(
 				axis, x_vals_obs, y_vals_obs[k], x_errs_obs;
-				color = color, direction = :x, whiskerwidth = 3,
+				color = :black, direction = :x, whiskerwidth = 3, linewidth = 1,
 			)
 			_link_visibility!(ebx, ln)
 			xerr_plots[k] = ebx
