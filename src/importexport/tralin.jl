@@ -13,12 +13,18 @@ function export_data(::Val{:tralin},
 	_fmt(x) = string(round(Float64(to_nominal(x)); digits = 6))
 	_maybe(x) = (x === nothing) ? "" : _fmt(x)
 
-	# Resolve output file name (prefix "tr_"; mirror your XML semantics)
+	# Resolve output file name (prefix "tr_"; mirror  XML semantics)
 	if isnothing(file_name)
 		file_name = joinpath(@__DIR__, "tr_$(cable_system.system_id).f05")
 	else
-		req = isabspath(file_name) ? file_name : joinpath(@__DIR__, file_name)
-		file_name = joinpath(dirname(req), "tr_$(cable_system.system_id)_$(basename(req))")
+		dir = dirname(file_name)
+		fname = basename(file_name)
+		# Ensure filename has "tr_" prefix, but preserve user's name
+		prefixed_fname = startswith(fname, "tr_") ? fname : "tr_" * fname
+		# Rejoin with original path, handling relative vs absolute
+		file_name =
+			isabspath(file_name) ? joinpath(dir, prefixed_fname) :
+			joinpath(@__DIR__, dir, prefixed_fname)
 	end
 
 	num_phases = length(cable_system.cables)
