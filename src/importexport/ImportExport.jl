@@ -39,13 +39,14 @@ using ..EarthProps: EarthModel
 using ..DataModel: CablesLibrary, CableDesign, CableComponent, ConductorGroup,
 	InsulatorGroup, WireArray, Strip, Tubular, Semicon, Insulator, LineCableSystem,
 	NominalData
-using ..Engine: LineParameters
+import ..Engine: LineParameters, SeriesImpedance, ShuntAdmittance
 using Measurements
 using EzXML
 using Dates
 using Printf # For ATP export
 using JSON3
 using Serialization # For .jls format
+using LinearAlgebra
 
 
 """
@@ -67,5 +68,6 @@ include("cableslibrary.jl")
 include("materialslibrary.jl")
 include("pscad.jl")
 include("atp.jl")
+include("tralin.jl")
 
 end # module ImportExport

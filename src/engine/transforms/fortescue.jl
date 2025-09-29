@@ -10,7 +10,6 @@ $(TYPEDSIGNATURES)
 
 Functor implementation for `Fortescue`.
 """
-
 function (f::Fortescue)(lp::LineParameters{Tc}) where {Tc <: COMPLEXSCALAR}
 	_, nph, nfreq = size(lp.Z.values)
 	Tr = typeof(real(zero(Tc)))
