@@ -61,7 +61,7 @@ preview(cable_system)
 
 # We define the earth properties and the frequency for the analysis.
 f = [50.0]
-earth = EarthModel(f, 100.0) # 100 Ω·m resistivity
+earth = EarthModel(f, 100.0, 1.0, 1.0) # 100 Ω·m resistivity
 
 # We create the `LineParametersProblem`.
 problem = LineParametersProblem(cable_system;
