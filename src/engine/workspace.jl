@@ -255,7 +255,7 @@ function init_workspace(
 	horz = Vector{T}(undef, n_phases)
 	vert = Vector{T}(undef, n_phases)
 	r_ext = Vector{T}(undef, n_phases)
-    rac = Vector{T}(undef, n_phases)
+    rdc = Vector{T}(undef, n_phases)
 	
 	# Fill arrays, ensuring type promotion
 	freq .= problem.frequencies
@@ -271,7 +271,7 @@ function init_workspace(
 			r_ext[idx] = T(component.conductor_group.radius_ext)
             
             # Electrical properties
-            rac[idx] = T(component.conductor_props.rac) # Assuming rac is provided
+            rdc[idx] = T(component.conductor_group.resistance) # Calculated resistance Rdc
 		end
 	end
 
@@ -288,7 +288,7 @@ function init_workspace(
 	return DSSWorkspace{T}(
 		freq = freq, jω = jω,
 		horz = horz, vert = vert,
-		r_ext = r_ext, rac = rac,
+		r_ext = r_ext, rdc = rdc,
 		rho_g = rho_g,
 		temp = temp, n_frequencies = n_frequencies, n_phases = n_phases,
 	)
