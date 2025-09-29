@@ -29,6 +29,9 @@ Manifest.toml
 temp/
 @INPROGRESS/
 
+# examples artifacts
+!examples/*.jl
+
 # Internal files
 dev
 bibliography/

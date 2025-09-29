@@ -43,8 +43,7 @@ using ...Utils:
 using Measurements
 using LinearAlgebra
 using Colors
-using GeometryBasics
-
+using Makie: Point, Point2f # otherwise will require adding GeometryBasics as a dependency
 # FEM specific dependencies
 using Gmsh
 using GetDP

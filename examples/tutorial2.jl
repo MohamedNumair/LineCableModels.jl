@@ -36,8 +36,10 @@ This tutorial covers:
 # Load the package and set up the environment:
 using LineCableModels
 using DataFrames
+import LineCableModels.BackendHandler: renderfig #hide
 fullfile(filename) = joinpath(@__DIR__, filename); #hide
 set_verbosity!(0); #hide
+set_backend!(:gl); #hide
 
 # Initialize materials library with default values:
 materials = MaterialsLibrary(add_defaults = true)
@@ -272,7 +274,8 @@ datasheet_info = NominalData(
 cable_design = CableDesign(cable_id, core_cc, nominal_data = datasheet_info)
 
 # At this point, it becomes possible to preview the cable design:
-plt1 = preview(cable_design)
+plt1, _ = preview(cable_design)
+plt1 #hide
 
 #=
 ### Wire screens
@@ -302,7 +305,8 @@ sheath_cc = CableComponent("sheath", screen_con, screen_insu)
 add!(cable_design, sheath_cc)
 
 # Examine the newly added components:
-plt2 = preview(cable_design)
+plt2, _ = preview(cable_design)
+plt2 #hide
 
 #=
 ### Outer jacket components
@@ -332,7 +336,8 @@ add!(jacket_insu, Insulator, Thickness(t_jac), material)
 add!(cable_design, "jacket", jacket_con, jacket_insu)
 
 # Inspect the finished cable design:
-plt3 = preview(cable_design)
+plt3, _ = preview(cable_design)
+plt3 #hide
 
 #=
 ## Examining the cable parameters (RLC)
@@ -423,7 +428,8 @@ In this section the complete three-phase cable system is examined.
 system_df = DataFrame(cable_system)
 
 # Visualize the cross-section of the three-phase system:
-plt4 = preview(cable_system, zoom_factor = 0.15)
+plt4, _ = preview(cable_system, earth_model = earth_params, zoom_factor = 2.0)
+plt4 #hide
 
 #=
 ## PSCAD & ATPDraw export

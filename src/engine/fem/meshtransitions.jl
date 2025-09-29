@@ -91,7 +91,7 @@ function MeshTransition(
 
 	# Validate no surface crossing for underground transitions
 	if earth_layer > 1 && cy + r_max > 0
-		Base.Base.error(
+		Base.error(
 			"Transition region would cross earth surface (y=0). Reduce r_length or use separate transition regions.",
 		)
 	end

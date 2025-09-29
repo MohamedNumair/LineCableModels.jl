@@ -20,7 +20,7 @@ $(EXPORTS)
 module Utils
 
 # Export public API
-export resolve_T, coerce_to_T, resolve_backend, is_headless, is_in_testset, display_path
+export resolve_T, coerce_to_T, is_headless, is_in_testset, display_path
 export set_verbosity!
 
 export to_nominal,
@@ -368,43 +368,7 @@ function is_in_testset()
 	return false
 end
 
-"""
-$(TYPEDSIGNATURES)
 
-Selects the appropriate plotting backend based on the environment.
-
-# Arguments
-
-- `backend`: Optional explicit backend to use. If provided, this backend will be activated.
-
-# Returns
-
-Nothing. The function activates the chosen backend.
-
-# Notes
-
-Automatically selects GR for headless environments (CI or no DISPLAY) and PlotlyJS
-for interactive use when no backend is explicitly specified. This is particularly needed when running within CI environments.
-
-# Examples
-
-```julia
-resolve_backend()           # Auto-selects based on environment
-resolve_backend(pyplot)     # Explicitly use PyPlot backend
-```
-"""
-function resolve_backend(backend = nothing)
-	if isnothing(backend) # Check if running in a headless environment 
-		if is_headless() # Use GR for CI/headless environments
-			ENV["GKSwstype"] = "100"
-			gr()
-		else # Use PlotlyJS for interactive use 
-			plotlyjs()
-		end
-	else # Use the specified backend if provided 
-		backend()
-	end
-end
 
 """
 Apply `f` to every square block of `M` defined by `map`, in-place.

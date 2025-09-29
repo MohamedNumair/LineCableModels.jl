@@ -63,7 +63,7 @@ using Calculus: Calculus
 using SpecialFunctions: SpecialFunctions
 using Measurements: Measurements, Measurement
 
-export besselix, besselkx, besseljx, besselyx, bessekhx
+export besselix, besselkx, besseljx, besselyx, besselhx
 export besseli, besselk, besselj, bessely, besselh
 
 # Complex argument with measurement parts
