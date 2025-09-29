@@ -47,6 +47,7 @@ include("types.jl")
 
 # Problem definitions
 include("lineparamopts.jl")
+include("dssformulation.jl")
 include("problemdefs.jl")
 include("lineparams.jl")
 
@@ -86,6 +87,7 @@ include("workspace.jl")
 
 # Computation methods
 include("solver.jl")
+include("dss_solver.jl")
 include("reduction.jl")
 include("plot.jl")
 

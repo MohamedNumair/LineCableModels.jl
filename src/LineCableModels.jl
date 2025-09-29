@@ -22,6 +22,7 @@ export EarthModel
 # Engine:
 export LineParametersProblem,
 	FormulationSet,
+    DSSFormulation,
 	compute!, SeriesImpedance, ShuntAdmittance, per_km, per_m, kronify
 
 # Import/Export:
@@ -68,7 +69,7 @@ using .DataModel: Thickness, Diameter, WireArray, Strip, Tubular, Semicon, Insul
 # Submodule `Engine`
 include("engine/Engine.jl")
 using .Engine: LineParametersProblem, compute!, SeriesImpedance, ShuntAdmittance, per_km,
-	per_m, kronify, FormulationSet
+	per_m, kronify, FormulationSet, DSSFormulation
 
 # Submodule `ImportExport`
 include("importexport/ImportExport.jl")
