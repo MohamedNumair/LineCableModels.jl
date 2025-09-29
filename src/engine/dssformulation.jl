@@ -15,6 +15,8 @@ Options for the DSS formulation.
 $(TYPEDFIELDS)
 """
 @kwdef struct DSSOptions <: AbstractFormulationOptions
+    "Common options"
+    common::LineParamOptions = LineParamOptions()
     "Reduce bundle conductors to equivalent single conductor"
 	reduce_bundle::Bool = true
 	"Eliminate grounded conductors from the system (Kron reduction)"
