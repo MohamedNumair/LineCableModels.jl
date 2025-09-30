@@ -213,15 +213,17 @@ $(TYPEDFIELDS)
 	"Vector of frequency values [Hz]."
 	freq::Vector{T}
 	"Vector of complex frequency values cast as `σ + jω` [rad/s]."
-		jω::Vector{Complex{T}}
+	jω::Vector{Complex{T}}
 	"Vector of horizontal positions [m]."
 	horz::Vector{T}
 	"Vector of vertical positions [m]."
 	vert::Vector{T}
 	"Vector of external conductor radii [m]."
 	r_ext::Vector{T}
-    "Vector of AC resistance values [Ω/m]."
-    rac::Vector{T}
+    "Vector of DC resistance values [Ω/m]."
+    rdc::Vector{T}
+    "Vector of geometric mean radius values [m]."
+    gmr::Vector{T}
 	"Effective earth resistivity (layers × freq)."
 	rho_g::Matrix{T}
 	"Operating temperature [°C]."
@@ -256,6 +258,7 @@ function init_workspace(
 	vert = Vector{T}(undef, n_phases)
 	r_ext = Vector{T}(undef, n_phases)
     rdc = Vector{T}(undef, n_phases)
+    gmr = Vector{T}(undef, n_phases)
 	
 	# Fill arrays, ensuring type promotion
 	freq .= problem.frequencies
@@ -269,6 +272,7 @@ function init_workspace(
 			horz[idx] = T(cable.horz)
 			vert[idx] = T(cable.vert)
 			r_ext[idx] = T(component.conductor_group.radius_ext)
+            gmr[idx] = T(component.conductor_group.gmr)
             
             # Electrical properties
             rdc[idx] = T(component.conductor_group.resistance) # Calculated resistance Rdc
@@ -286,10 +290,16 @@ function init_workspace(
 
 	# Construct and return the DSSWorkspace struct
 	return DSSWorkspace{T}(
-		freq = freq, jω = jω,
-		horz = horz, vert = vert,
-		r_ext = r_ext, rdc = rdc,
+		freq = freq, 
+		jω = jω,
+		horz = horz,
+		vert = vert,
+		r_ext = r_ext,
+		rdc = rdc,
+        gmr = gmr,
 		rho_g = rho_g,
-		temp = temp, n_frequencies = n_frequencies, n_phases = n_phases,
+		temp = temp,
+		n_frequencies = n_frequencies,
+		n_phases = n_phases,
 	)
 end
