@@ -12,7 +12,7 @@ $(TYPEDFIELDS)
 	"Vector of frequency values [Hz]."
 	freq::Vector{T}
 	"Vector of complex frequency values cast as `σ + jω` [rad/s]."
-	jω::Vector{Complex{T}}
+		jω::Vector{Complex{T}}
 	"Vector of horizontal positions [m]."
 	horz::Vector{T}
 	"Vector of horizontal separations [m]."
@@ -196,5 +196,110 @@ function init_workspace(
 		temp = temp, n_frequencies = n_frequencies, n_phases = n_phases,
 		n_cables = n_cables, Z = Z, P = P, Zin = Zin, Pin = Pin, Zg = Zg,
 		Pg = Pg,
+	)
+end
+
+"""
+$(TYPEDEF)
+
+A container for the simplified, type-stable data arrays derived from a
+[`LineParametersProblem`](@ref) for use with the DSS formulation. This struct
+contains only the fields necessary for the impedance and admittance calculations.
+
+# Fields
+$(TYPEDFIELDS)
+"""
+@kwdef struct DSSWorkspace{T <: REALSCALAR}
+	"Vector of frequency values [Hz]."
+	freq::Vector{T}
+	"Vector of complex frequency values cast as `σ + jω` [rad/s]."
+	jω::Vector{Complex{T}}
+	"Vector of horizontal positions [m]."
+	horz::Vector{T}
+	"Vector of vertical positions [m]."
+	vert::Vector{T}
+	"Vector of external conductor radii [m]."
+	r_ext::Vector{T}
+    "Vector of DC resistance values [Ω/m]."
+    rdc::Vector{T}
+    "Vector of geometric mean radius values [m]."
+    gmr::Vector{T}
+	"Effective earth resistivity (layers × freq)."
+	rho_g::Matrix{T}
+	"Operating temperature [°C]."
+	temp::T
+	"Number of frequency samples."
+	n_frequencies::Int
+	"Number of phases in the system."
+	n_phases::Int
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Initializes and populates the [`DSSWorkspace`](@ref) by normalizing a
+[`LineParametersProblem`](@ref) into flat, type-stable arrays.
+"""
+function init_workspace(
+	problem::LineParametersProblem{T},
+	formulation::DSSFormulation,
+) where {T}
+
+	opts = formulation.options
+
+	system = problem.system
+	n_frequencies = length(problem.frequencies)
+	n_phases = sum(length(cable.design_data.components) for cable in system.cables)
+
+	# Pre-allocate 1D arrays
+	freq = Vector{T}(undef, n_frequencies)
+	jω = Vector{Complex{T}}(undef, n_frequencies)
+	horz = Vector{T}(undef, n_phases)
+	vert = Vector{T}(undef, n_phases)
+	r_ext = Vector{T}(undef, n_phases)
+    rdc = Vector{T}(undef, n_phases)
+    gmr = Vector{T}(undef, n_phases)
+	
+	# Fill arrays, ensuring type promotion
+	freq .= problem.frequencies
+	jω .= 1im * 2π * freq
+
+	idx = 0
+	for (cable_idx, cable) in enumerate(system.cables)
+		for (comp_idx, component) in enumerate(cable.design_data.components)
+			idx += 1
+			# Geometric properties
+			horz[idx] = T(cable.horz)
+			vert[idx] = T(cable.vert)
+			r_ext[idx] = T(component.conductor_group.radius_ext)
+            gmr[idx] = T(component.conductor_group.gmr)
+            
+            # Electrical properties
+            rdc[idx] = T(component.conductor_group.resistance) # Calculated resistance Rdc
+		end
+	end
+
+	(rho_g, _, _) = _get_earth_data(
+		nothing, # No EHEM for DSS
+		problem.earth_props,
+		freq,
+		T,
+	)
+
+	temp = T(problem.temperature)
+
+	# Construct and return the DSSWorkspace struct
+	return DSSWorkspace{T}(
+		freq = freq, 
+		jω = jω,
+		horz = horz,
+		vert = vert,
+		r_ext = r_ext,
+		rdc = rdc,
+        gmr = gmr,
+		rho_g = rho_g,
+		temp = temp,
+		n_frequencies = n_frequencies,
+		n_phases = n_phases,
 	)
 end

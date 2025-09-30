@@ -1,4 +1,3 @@
-
 """
 $(TYPEDEF)
 
@@ -260,5 +259,14 @@ function FormulationSet(::Val{:EMT};
 		insulation_admittance, earth_admittance, modal_transform, equivalent_earth,
 		options = emt_opts,
 	)
+end
+
+function FormulationSet(::Val{:DSS};
+	internal_impedance::DSSEarthModel = DeriModel(),
+	earth_impedance::DSSEarthModel = FullCarson(),
+	options = (;),
+)
+	dss_opts = build_options(DSSOptions, options; strict = true)
+	return DSSFormulation(; internal_impedance, earth_impedance, options = dss_opts)
 end
 
