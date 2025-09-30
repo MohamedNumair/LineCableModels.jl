@@ -28,6 +28,8 @@ function compute!(
 	return ws, LineParameters(Zout, Yout, ws.freq)
 end
 
+earth_layer_idx = 2 # assuming single layer earth model for now -- 1 is air, 2 is earth
+
 # --- Internal Bessel function implementations ---
 function _bessel_I0(a::Complex)
     maxterm = 1000
@@ -77,7 +79,7 @@ end
 function get_Zint(ws, i::Int, k::Int, ::Union{SimpleCarson,FullCarson})
     ω = 2π * ws.freq[k]
     μ₀ = 4π * 1e-7
-    fₛₖᵢₙ = 1.2 #TODO: maybe add it in the options tuble so it can be specified by the user
+    fₛₖᵢₙ = 1.02 #TODO: maybe add it in the options tuble so it can be specified by the user
     return ws.rdc[i] * fₛₖᵢₙ + 1im * (ω * μ₀) / (8 * π)  
 end
 
@@ -114,7 +116,8 @@ end
 function get_Ze(ws, i::Int, j::Int, k::Int, ::SimpleCarson)
     ω = 2π * ws.freq[k]
     μ₀ = 4π * 1e-7
-    return complex(ω * μ₀ / 8.0, (ω * μ₀ / (2 * π)) * log(658.5 * sqrt(ws.rho_g[1,k] / ws.freq[k])))
+    @debug "Z earth SimpleCarson: freq=$(ws.freq[k]), i=$i, j=$j is $(complex(ω * μ₀ / 8.0, (ω * μ₀ / (2 * π)) * log(658.5 * sqrt(ws.rho_g[earth_layer_idx,k] / ws.freq[k]))))"
+    return complex(ω * μ₀ / 8.0, (ω * μ₀ / (2 * π)) * log(658.5 * sqrt(ws.rho_g[earth_layer_idx,k] / ws.freq[k])))
 end
 
 function get_Ze(ws, i::Int, j::Int, k::Int, ::FullCarson)
@@ -140,7 +143,7 @@ function get_Ze(ws, i::Int, j::Int, k::Int, ::FullCarson)
         theta_ij = acos((ws.vert[i] + ws.vert[j]) / dij)
     end
 
-    mij = (sqrt(2) / 503) * dij * sqrt(f / ws.rho_g[1,k])
+    mij = (sqrt(2) / 503) * dij * sqrt(f / ws.rho_g[earth_layer_idx,k])
 
     re_part = π / 8.0 - b1 * mij * cos(theta_ij) + b2 * (mij^2) * (log(exp(c2) / mij) * cos(2.0 * theta_ij) + theta_ij * sin(2.0 * theta_ij)) +
               b3 * (mij^3) * cos(3.0 * theta_ij) - d4 * (mij^4) * cos(4.0 * theta_ij)
@@ -157,6 +160,7 @@ function get_Ze(ws, i::Int, j::Int, k::Int, ::FullCarson)
     result_unscaled = re_part + 1im * im_part
     final_result = result_unscaled * (ω * μ₀ / π)
 
+    @debug "Z earth FullCarson: freq=$(ws.freq[k]), i=$i, j=$j is $final_result"
     return final_result
 end
 
@@ -164,7 +168,7 @@ function get_Ze(ws, i::Int, j::Int, k::Int, ::DeriModel)
     ω = 2π * ws.freq[k]
     μ₀ = 4π * 1e-7
 
-    p_earth = sqrt(1im * ω * μ₀ / ws.rho_g[1,k])
+    p_earth = sqrt(1im * ω * μ₀ / ws.rho_g[earth_layer_idx,k])
 
     if i == j
         h_term = ws.vert[i] + 1.0 / p_earth
@@ -175,6 +179,7 @@ function get_Ze(ws, i::Int, j::Int, k::Int, ::DeriModel)
         ln_arg = sqrt(h_term^2 + x_term^2)
     end
 
+    @debug "Z earth DeriModel: freq=$(ws.freq[k]), i=$i, j=$j is $(1im * ω * μ₀ / (2 * π)) * log($ln_arg)"
     return (1im * ω * μ₀ / (2 * π)) * log(ln_arg)
 end
 
@@ -194,14 +199,21 @@ function compute_impedance_matrix!(
 
     for i in 1:nph
         z_int = get_Zint(ws, i, k, formulation.internal_impedance)
+        @debug "Z internal: freq=$(ws.freq[k]), i=$i is $z_int"
         z_spacing = L_factor * log(1.0 / ws.gmr[i])
+        @debug "Z spacing: freq=$(ws.freq[k]), i=$i is $z_spacing"
         z_earth = get_Ze(ws, i, i, k, formulation.earth_impedance)
+        @debug "Z earth self: freq=$(ws.freq[k]), i=$i is $z_earth"
         Ztmp[i, i] = z_int + z_spacing + z_earth
+        @inbounds @debug "Ztmp[$i, $i] = $(Ztmp[i, i])"
 
         for j in 1:(i-1)
             d_ij = sqrt((ws.horz[i] - ws.horz[j])^2 + (ws.vert[i] - ws.vert[j])^2)
             z_spacing_mutual = L_factor * log(1.0 / d_ij)
+            @debug "Z spacing mutual: freq=$(ws.freq[k]), i=$i, j=$j is $z_spacing_mutual"
             z_earth_mutual = get_Ze(ws, i, j, k, formulation.earth_impedance)
+            @debug "Z earth mutual: freq=$(ws.freq[k]), i=$i, j=$j is $z_earth_mutual"
+            @inbounds @debug "Ztmp[$i, $j] and Ztmp[$j, $i] = $(z_spacing_mutual + z_earth_mutual)"
             Ztmp[i, j] = z_spacing_mutual + z_earth_mutual
             Ztmp[j, i] = z_spacing_mutual + z_earth_mutual
         end
