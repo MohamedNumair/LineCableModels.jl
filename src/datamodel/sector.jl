@@ -287,32 +287,27 @@ function _calculate_polygon_centroid(vertices::AbstractVector{Point{2,T}}) where
         return Point2f(0, 0)
     end
 
-    area = _shoelace_area(vertices)
-    if area < 1e-12
-        return Point2f(0, 0)
-    end
-
+    
     Cx = zero(T)
     Cy = zero(T)
+    signed_area = zero(T)
 
     for i in 1:n
         p1 = vertices[i]
         p2 = vertices[mod1(i + 1, n)]
         cross_prod = (p1[1] * p2[2] - p2[1] * p1[2])
+        signed_area += (p1[1] * p2[2] - p2[1] * p1[2])
         Cx += (p1[1] + p2[1]) * cross_prod
         Cy += (p1[2] + p2[2]) * cross_prod
     end
-    
-    # The centroid calculation needs to account for the fact that the shoelace formula
-    # gives a signed area. To get the correct centroid, we must use the signed area
-    # before taking the absolute value for the final area calculation.
-    signed_area = zero(T)
-    for i in 1:n
-        p1 = vertices[i]
-        p2 = vertices[mod1(i + 1, n)]
-        signed_area += (p1[1] * p2[2] - p2[1] * p1[2])
-    end
     signed_area /= 2
 
-    return Point2f(Cx / (6 * signed_area), Cy / (6 * signed_area))
+    if abs(signed_area) < 1e-12
+        return Point2f(0, 0)
+    end
+
+    Cx /= (6 * signed_area)
+    Cy /= (6 * signed_area)
+
+    return Point2f(Cx, Cy)
 end
