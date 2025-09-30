@@ -48,6 +48,8 @@ struct Sector{T<:REALSCALAR} <: AbstractConductorPart{T}
     gmr::T
     "Calculated vertices defining the polygon shape."
     vertices::Vector{Point{2,T}}
+    "Geometric centroid of the sector shape."
+    centroid::Point{2,T}
 end
 
 
@@ -81,6 +83,10 @@ function Sector(
     cross_section = _shoelace_area(rotated_vertices)
     #@debug "Sector cross-sectional area: $(cross_section*1e6) mm²"
     @debug "Sector cross-sectional area (Shoelace): $(cross_section*1e6) mm²"
+    
+    # Calculate centroid
+    centroid = _calculate_polygon_centroid(rotated_vertices)
+    @debug "Sector numerically calculated centroid point is: $(centroid)"
     # 4. Calculate DC resistance
     rho_eff = calc_temperature_correction(material_props.alpha, temperature, material_props.T0) * material_props.rho
     resistance = rho_eff / cross_section
@@ -100,6 +106,7 @@ function Sector(
         resistance,
         gmr,
         rotated_vertices,
+        centroid,
     )
 end
 
@@ -272,4 +279,40 @@ function _shoelace_area(vertices::AbstractVector{Point{2,T}}) where {T<:Real}
         area += (p1[1] * p2[2] - p2[1] * p1[2])
     end
     return abs(area) / T(2)
+end
+
+function _calculate_polygon_centroid(vertices::AbstractVector{Point{2,T}}) where {T<:Real}
+    n = length(vertices)
+    if n < 3
+        return Point2f(0, 0)
+    end
+
+    area = _shoelace_area(vertices)
+    if area < 1e-12
+        return Point2f(0, 0)
+    end
+
+    Cx = zero(T)
+    Cy = zero(T)
+
+    for i in 1:n
+        p1 = vertices[i]
+        p2 = vertices[mod1(i + 1, n)]
+        cross_prod = (p1[1] * p2[2] - p2[1] * p1[2])
+        Cx += (p1[1] + p2[1]) * cross_prod
+        Cy += (p1[2] + p2[2]) * cross_prod
+    end
+    
+    # The centroid calculation needs to account for the fact that the shoelace formula
+    # gives a signed area. To get the correct centroid, we must use the signed area
+    # before taking the absolute value for the final area calculation.
+    signed_area = zero(T)
+    for i in 1:n
+        p1 = vertices[i]
+        p2 = vertices[mod1(i + 1, n)]
+        signed_area += (p1[1] * p2[2] - p2[1] * p1[2])
+    end
+    signed_area /= 2
+
+    return Point2f(Cx / (6 * signed_area), Cy / (6 * signed_area))
 end
