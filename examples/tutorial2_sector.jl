@@ -143,6 +143,20 @@ println("Previewing cable design...")
 plt, _ = preview(design)
 plt #hide
 
+#= 
+## Storing in a Library
+
+Finally, we can store the cable design in a `CablesLibrary` for future reference.
+=#
+
+library = CablesLibrary()
+add!(library, design)
+library_df = DataFrame(library)
+
+# Save to file for later use:
+output_file = fullfile("cables_library.json")
+save(library, file_name = output_file);
+
 #=
 ## Conclusion
 
@@ -155,3 +169,4 @@ This tutorial has demonstrated how to model a three-core cable with sector-shape
 
 This detailed modeling capability allows for accurate analysis of various cable configurations.
 =#
+
