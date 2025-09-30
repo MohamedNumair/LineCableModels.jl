@@ -10,7 +10,7 @@ using LineCableModels
 using DataFrames
 
 # For reproducibility, we can set a verbosity level.
-set_verbosity!(2);
+set_verbosity!(1);
 
 # ## 2. Define Cable and System Geometry
 
@@ -63,6 +63,9 @@ preview(cable_system)
 f = [50.0]
 earth = EarthModel(f, 100.0, 1.0, 1.0) # 100 Ω·m resistivity
 
+
+
+
 # We create the `LineParametersProblem`.
 problem = LineParametersProblem(cable_system;
     temperature=20.0,
@@ -71,23 +74,16 @@ problem = LineParametersProblem(cable_system;
 )
 
 # Now, we select the `:DSS` formulation.
-dss_formulation = FormulationSet(:DSS)
+dss_formulation = FormulationSet(:DSS, 
+    internal_impedance=LineCableModels.Engine.DeriModel(),
+    earth_impedance=LineCableModels.Engine.DeriModel(),
+    options = LineCableModels.Engine.DSSOptions()
+
+);
 
 # ## 4. Compute Line Parameters
 
 # We can now compute the line parameters using the `compute!` function.
 workspace, line_params = compute!(problem, dss_formulation)
 
-# The results are stored in the `line_params` object. We can inspect the series impedance and shunt admittance matrices.
-
-println("==========================================")
-println(" DSS Series Impedance Matrix (Z) [Ω/km]:")
-println("==========================================")
-display(per_km(line_params.Z))
-
-println("\n==========================================")
-println(" DSS Shunt Admittance Matrix (Y) [S/km]:")
-println("==========================================")
-display(per_km(line_params.Y))
-
-# This concludes the tutorial on using the `:DSS` formulation.
+line_params.Z
