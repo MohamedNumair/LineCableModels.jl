@@ -268,7 +268,7 @@ function init_workspace(
     for (cable_idx, cable) in enumerate(system.cables)
         for (comp_idx, component) in enumerate(cable.design_data.components)
             idx += 1
-            layers = system.cables[1].design_data.components[2].conductor_group.layers
+            layers = component.conductor_group.layers
             @assert length(layers) == 1 "For a multi-layer conductor, DSS is not suitable analytical method."
 
             # Geometric properties
