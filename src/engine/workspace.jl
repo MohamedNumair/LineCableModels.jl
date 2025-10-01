@@ -209,29 +209,29 @@ contains only the fields necessary for the impedance and admittance calculations
 # Fields
 $(TYPEDFIELDS)
 """
-@kwdef struct DSSWorkspace{T <: REALSCALAR}
-	"Vector of frequency values [Hz]."
-	freq::Vector{T}
-	"Vector of complex frequency values cast as `σ + jω` [rad/s]."
-	jω::Vector{Complex{T}}
-	"Vector of horizontal positions [m]."
-	horz::Vector{T}
-	"Vector of vertical positions [m]."
-	vert::Vector{T}
-	"Vector of external conductor radii [m]."
-	r_ext::Vector{T}
+@kwdef struct DSSWorkspace{T<:REALSCALAR}
+    "Vector of frequency values [Hz]."
+    freq::Vector{T}
+    "Vector of complex frequency values cast as `σ + jω` [rad/s]."
+    jω::Vector{Complex{T}}
+    "Vector of horizontal positions [m]."
+    horz::Vector{T}
+    "Vector of vertical positions [m]."
+    vert::Vector{T}
+    "Vector of external conductor radii [m]."
+    r_ext::Vector{T}
     "Vector of DC resistance values [Ω/m]."
     rdc::Vector{T}
     "Vector of geometric mean radius values [m]."
     gmr::Vector{T}
-	"Effective earth resistivity (layers × freq)."
-	rho_g::Matrix{T}
-	"Operating temperature [°C]."
-	temp::T
-	"Number of frequency samples."
-	n_frequencies::Int
-	"Number of phases in the system."
-	n_phases::Int
+    "Effective earth resistivity (layers × freq)."
+    rho_g::Matrix{T}
+    "Operating temperature [°C]."
+    temp::T
+    "Number of frequency samples."
+    n_frequencies::Int
+    "Number of phases in the system."
+    n_phases::Int
 end
 
 """
@@ -241,65 +241,83 @@ Initializes and populates the [`DSSWorkspace`](@ref) by normalizing a
 [`LineParametersProblem`](@ref) into flat, type-stable arrays.
 """
 function init_workspace(
-	problem::LineParametersProblem{T},
-	formulation::DSSFormulation,
+    problem::LineParametersProblem{T},
+    formulation::DSSFormulation,
 ) where {T}
 
-	opts = formulation.options
+    opts = formulation.options
 
-	system = problem.system
-	n_frequencies = length(problem.frequencies)
-	n_phases = sum(length(cable.design_data.components) for cable in system.cables)
+    system = problem.system
+    n_frequencies = length(problem.frequencies)
+    n_phases = sum(length(cable.design_data.components) for cable in system.cables)
 
-	# Pre-allocate 1D arrays
-	freq = Vector{T}(undef, n_frequencies)
-	jω = Vector{Complex{T}}(undef, n_frequencies)
-	horz = Vector{T}(undef, n_phases)
-	vert = Vector{T}(undef, n_phases)
-	r_ext = Vector{T}(undef, n_phases)
+    # Pre-allocate 1D arrays
+    freq = Vector{T}(undef, n_frequencies)
+    jω = Vector{Complex{T}}(undef, n_frequencies)
+    horz = Vector{T}(undef, n_phases)
+    vert = Vector{T}(undef, n_phases)
+    r_ext = Vector{T}(undef, n_phases)
     rdc = Vector{T}(undef, n_phases)
     gmr = Vector{T}(undef, n_phases)
-	
-	# Fill arrays, ensuring type promotion
-	freq .= problem.frequencies
-	jω .= 1im * 2π * freq
 
-	idx = 0
-	for (cable_idx, cable) in enumerate(system.cables)
-		for (comp_idx, component) in enumerate(cable.design_data.components)
-			idx += 1
-			# Geometric properties
-			horz[idx] = T(cable.horz)
-			vert[idx] = T(cable.vert)
-			r_ext[idx] = T(component.conductor_group.radius_ext)
+    # Fill arrays, ensuring type promotion
+    freq .= problem.frequencies
+    jω .= 1im * 2π * freq
+
+    idx = 0
+    for (cable_idx, cable) in enumerate(system.cables)
+        for (comp_idx, component) in enumerate(cable.design_data.components)
+            idx += 1
+            layers = system.cables[1].design_data.components[2].conductor_group.layers
+            @assert length(layers) == 1 "For a multi-layer conductor, DSS is not suitable analytical method."
+
+            # Geometric properties
+            if layers[1] isa Sector{T}
+                horz[idx] = T(cable.horz + layers[1].centroid[1])
+                vert[idx] = T(cable.vert + layers[1].centroid[2])
+				@debug "(cable_idx :$cable_idx -> comp_idx: $comp_idx) Sector conductor position: horz=$(horz[idx]), vert=$(vert[idx])"
+			elseif layers[1] isa WireArray{T}
+                @assert layers[1].num_wires > 1 "This WireArray conductor has only one wire. Use a solid or tubular conductor instead."
+				coords = calc_wirearray_coords!(layers[1].num_wires, layers[1].radius_wire, layers[1].radius_in, C= (cable.horz, cable.vert))
+				@debug "WireArray coordinates: $coords not used for now."
+				
+				horz[idx] = T(cable.horz)
+                vert[idx] = T(cable.vert)
+				@debug "(cable_idx :$cable_idx -> comp_idx: $comp_idx) ConductorGroup position: horz=$(horz[idx]), vert=$(vert[idx])"
+			else
+                horz[idx] = T(cable.horz)
+                vert[idx] = T(cable.vert)
+            end
+
+            r_ext[idx] = T(component.conductor_group.radius_ext)
             gmr[idx] = T(component.conductor_group.gmr)
-            
+
             # Electrical properties
             rdc[idx] = T(component.conductor_group.resistance) # Calculated resistance Rdc
-		end
-	end
+        end
+    end
 
-	(rho_g, _, _) = _get_earth_data(
-		nothing, # No EHEM for DSS
-		problem.earth_props,
-		freq,
-		T,
-	)
+    (rho_g, _, _) = _get_earth_data(
+        nothing, # No EHEM for DSS
+        problem.earth_props,
+        freq,
+        T,
+    )
 
-	temp = T(problem.temperature)
+    temp = T(problem.temperature)
 
-	# Construct and return the DSSWorkspace struct
-	return DSSWorkspace{T}(
-		freq = freq, 
-		jω = jω,
-		horz = horz,
-		vert = vert,
-		r_ext = r_ext,
-		rdc = rdc,
-        gmr = gmr,
-		rho_g = rho_g,
-		temp = temp,
-		n_frequencies = n_frequencies,
-		n_phases = n_phases,
-	)
+    # Construct and return the DSSWorkspace struct
+    return DSSWorkspace{T}(
+        freq=freq,
+        jω=jω,
+        horz=horz,
+        vert=vert,
+        r_ext=r_ext,
+        rdc=rdc,
+        gmr=gmr,
+        rho_g=rho_g,
+        temp=temp,
+        n_frequencies=n_frequencies,
+        n_phases=n_phases,
+    )
 end
