@@ -41,7 +41,7 @@ import ..Commons: get_description
 using ..Utils
 using ..Materials
 using ..EarthProps: EarthModel
-using ..DataModel: LineCableSystem, Sector, calc_wirearray_coords
+using ..DataModel: LineCableSystem, Sector, WireArray, calc_wirearray_coords
 
 include("types.jl")
 
