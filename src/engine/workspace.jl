@@ -277,12 +277,18 @@ function init_workspace(
                 vert[idx] = T(cable.vert + layers[1].centroid[2])
 				@debug "(cable_idx :$cable_idx -> comp_idx: $comp_idx) Sector conductor position: horz=$(horz[idx]), vert=$(vert[idx])"
 			elseif layers[1] isa WireArray{T}
-                @assert layers[1].num_wires > 1 "This WireArray conductor has only one wire. Use a solid or tubular conductor instead."
-				coords = calc_wirearray_coords!(layers[1].num_wires, layers[1].radius_wire, layers[1].radius_in, C= (cable.horz, cable.vert))
-				@debug "WireArray coordinates: $coords not used for now."
-				
-				horz[idx] = T(cable.horz)
-                vert[idx] = T(cable.vert)
+				nW = layers[1].num_wires
+				if nW == 1  # it is used as a solid conductor
+					lay_r = 0.0
+					horz[idx] = T(cable.horz)
+					vert[idx] = T(cable.vert)
+				else # it is a wire array (stranded conductor) #TODO: complete handling of this case
+					lay_r = to_nominal(layers[1].radius_in)
+					coords = calc_wirearray_coords(nW, layers[1].radius_wire, lay_r, C= (cable.horz, cable.vert))
+					@debug "WireArray coordinates: $coords not used for now."
+					horz[idx] = T(cable.horz)
+					vert[idx] = T(cable.vert)
+				end
 				@debug "(cable_idx :$cable_idx -> comp_idx: $comp_idx) ConductorGroup position: horz=$(horz[idx]), vert=$(vert[idx])"
 			else
                 horz[idx] = T(cable.horz)
