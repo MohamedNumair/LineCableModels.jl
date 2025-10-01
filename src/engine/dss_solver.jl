@@ -1,4 +1,3 @@
-
 function compute!(
 	problem::LineParametersProblem{T},
 	formulation::DSSFormulation,
@@ -208,7 +207,7 @@ function compute_impedance_matrix!(
         @inbounds @debug "Ztmp[$i, $i] = $(Ztmp[i, i])"
 
         for j in 1:(i-1)
-            d_ij = sqrt((ws.horz[i] - ws.horz[j])^2 + (ws.vert[i] - ws.vert[j])^2)
+            d_ij = calc_gmd(ws.conductor_groups[i], ws.conductor_groups[j])
             z_spacing_mutual = L_factor * log(1.0 / d_ij)
             @debug "Z spacing mutual: freq=$(ws.freq[k]), i=$i, j=$j is $z_spacing_mutual"
             z_earth_mutual = get_Ze(ws, i, j, k, formulation.earth_impedance)
@@ -240,7 +239,7 @@ function compute_admittance_matrix!(
         P[i, i] = p_factor * log((2 * ws.vert[i]) / ws.r_ext[i])
 
         for j in 1:(i-1)
-            d_ij = sqrt((ws.horz[i] - ws.horz[j])^2 + (ws.vert[i] - ws.vert[j])^2)
+            d_ij = calc_gmd(ws.conductor_groups[i], ws.conductor_groups[j])
             d_ij_prime = sqrt((ws.horz[i] - ws.horz[j])^2 + (ws.vert[i] + ws.vert[j])^2)
 
             val = p_factor * log(d_ij_prime / d_ij)

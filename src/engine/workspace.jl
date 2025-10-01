@@ -224,6 +224,8 @@ $(TYPEDFIELDS)
     rdc::Vector{T}
     "Vector of geometric mean radius values [m]."
     gmr::Vector{T}
+    "Conductor group for each phase"
+    conductor_groups::Vector{AbstractCablePart}
     "Effective earth resistivity (layers × freq)."
     rho_g::Matrix{T}
     "Operating temperature [°C]."
@@ -259,6 +261,7 @@ function init_workspace(
     r_ext = Vector{T}(undef, n_phases)
     rdc = Vector{T}(undef, n_phases)
     gmr = Vector{T}(undef, n_phases)
+    conductor_groups = Vector{AbstractCablePart}(undef, n_phases)
 
     # Fill arrays, ensuring type promotion
     freq .= problem.frequencies
@@ -297,14 +300,13 @@ function init_workspace(
 
             r_ext[idx] = T(component.conductor_group.radius_ext)
             gmr[idx] = T(component.conductor_group.gmr)
-
-            # Electrical properties
-            rdc[idx] = T(component.conductor_group.resistance) # Calculated resistance Rdc
+            rdc[idx] = T(component.conductor_group.resistance)
+            conductor_groups[idx] = component.conductor_group
         end
     end
 
-    (rho_g, _, _) = _get_earth_data(
-        nothing, # No EHEM for DSS
+    (rho_g, eps_g, mu_g) = _get_earth_data(
+        formulation.equivalent_earth,
         problem.earth_props,
         freq,
         T,
@@ -314,16 +316,55 @@ function init_workspace(
 
     # Construct and return the DSSWorkspace struct
     return DSSWorkspace{T}(
-        freq=freq,
-        jω=jω,
-        horz=horz,
-        vert=vert,
-        r_ext=r_ext,
-        rdc=rdc,
-        gmr=gmr,
-        rho_g=rho_g,
-        temp=temp,
-        n_frequencies=n_frequencies,
-        n_phases=n_phases,
+        freq = freq, jω = jω,
+        horz = horz, vert = vert,
+        r_ext = r_ext, rdc = rdc, gmr = gmr,
+        conductor_groups = conductor_groups,
+        rho_g = rho_g,
+        temp = temp, n_frequencies = n_frequencies, n_phases = n_phases,
     )
+end
+
+function _get_earth_data(
+    formulation::EquivalentEarth,
+    earth_props::Vector{EarthLayer{T}},
+    freq::Vector{T},
+    ::Type{T},
+) where {T}
+    n_freq = length(freq)
+    n_layers = length(earth_props)
+
+    rho_g = Matrix{T}(undef, n_layers, n_freq)
+    eps_g = Matrix{T}(undef, n_layers, n_freq)
+    mu_g = Matrix{T}(undef, n_layers, n_freq)
+
+    for i in 1:n_freq
+        for j in 1:n_layers
+            rho_g[j, i] = earth_props[j].rho(freq[i])
+            eps_g[j, i] = earth_props[j].eps_r(freq[i])
+            mu_g[j, i] = earth_props[j].mu_r(freq[i])
+        end
+    end
+
+    return (rho_g, eps_g, mu_g)
+end
+
+function _calc_horz_sep!(horz_sep, horz, r_ext, r_ins_ext, cable_map)
+	n_phases = length(horz)
+	for i in 1:n_phases
+		for j in 1:i
+			if i == j
+				horz_sep[i, j] = r_ext[i]
+			else
+				dist = abs(horz[i] - horz[j])
+				# If conductors are in the same cable, use insulator radii
+				if cable_map[i] == cable_map[j]
+					horz_sep[i, j] = max(dist, r_ins_ext[i] + r_ins_ext[j])
+				else
+					horz_sep[i, j] = dist
+				end
+				horz_sep[j, i] = horz_sep[i, j]
+			end
+		end
+	end
 end
