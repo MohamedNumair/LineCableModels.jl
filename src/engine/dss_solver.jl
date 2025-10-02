@@ -207,7 +207,10 @@ function compute_impedance_matrix!(
         @inbounds @debug "Ztmp[$i, $i] = $(Ztmp[i, i])"
 
         for j in 1:(i-1)
-            d_ij = calc_gmd(ws.conductor_groups[i], ws.conductor_groups[j])
+            @assert length(ws.conductor_groups[i].layers) == 1 "Only single layer conductor groups are supported in DSS formulation for now."
+            @assert length(ws.conductor_groups[j].layers) == 1 "Only single layer conductor groups are supported in DSS formulation for now."
+            d_ij = calc_gmd(ws.conductor_groups[i].layers[1], ws.conductor_groups[j].layers[1])
+            @debug " the dij (gmd) between conductor $i : $(typeof(ws.conductor_groups[i].layers[1])) and $j : $(typeof(ws.conductor_groups[j].layers[1])) is $(d_ij)"
             z_spacing_mutual = L_factor * log(1.0 / d_ij)
             @debug "Z spacing mutual: freq=$(ws.freq[k]), i=$i, j=$j is $z_spacing_mutual"
             z_earth_mutual = get_Ze(ws, i, j, k, formulation.earth_impedance)
