@@ -6,6 +6,7 @@ abstract type DSSEarthModel end
 struct SimpleCarson <: DSSEarthModel end
 struct FullCarson <: DSSEarthModel end
 struct DeriModel <: DSSEarthModel end
+struct Saad <: DSSEarthModel end
 
 """
 $(TYPEDEF)

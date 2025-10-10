@@ -1,3 +1,5 @@
+using SpecialFunctions
+
 function compute!(
 	problem::LineParametersProblem{T},
 	formulation::DSSFormulation,
@@ -18,9 +20,9 @@ function compute!(
 	for k in 1:nfreq
 		compute_impedance_matrix!(Ztmp, ws, k, formulation)
         @views @inbounds Zout[:, :, k] .= Ztmp
-
-		compute_admittance_matrix!(Ptmp, ws, k, formulation)
+        compute_admittance_matrix!(Ptmp, ws, k, formulation)
         @views @inbounds Yout[:, :, k] .= Ptmp
+
 	end
 
 	@info "Line parameters computation completed successfully (DSS)"
@@ -120,32 +122,35 @@ function get_Ze(ws, i::Int, j::Int, k::Int, ::SimpleCarson)
 end
 
 function get_Ze(ws, i::Int, j::Int, k::Int, ::FullCarson)
-     b1 = 1.0 / (3.0 * sqrt(2.0))
-     b2 = 1.0 / 16.0
-     b3 = b1 / (3.0 * 5.0)
-     b4 = b2 / (4.0 * 6.0)
-     d2 = b2 * π / 4.0
-     d4 = b4 * π / 4.0
-     c2 = 1.3659315
-     c4 = c2 + 1.0 / 4.0 + 1.0 / 6.0
+    b1 = 1.0 / (3.0 * sqrt(2.0))
+    b2 = 1.0 / 16.0
+    b3 = b1 / (3.0 * 5.0)
+    b4 = b2 / (4.0 * 6.0)
+    d2 = b2 * π / 4.0
+    d4 = b4 * π / 4.0
+    c2 = 1.3659315
+    c4 = c2 + 1.0 / 4.0 + 1.0 / 6.0
 
     f = ws.freq[k]
     ω = 2 * π * f
     μ₀ = 4.0 * π * 1e-7
 
+    vert_i = abs(ws.vert[i])
+    vert_j = abs(ws.vert[j])
+
     local dij, theta_ij
     if i == j
-        dij = 2.0 * ws.vert[i]
-        theta_ij = 0.0
+       dij = 2.0 * vert_i
+       theta_ij = 0.0
     else
-        dij = sqrt((ws.horz[i] - ws.horz[j])^2 + (ws.vert[i] + ws.vert[j])^2)
-        theta_ij = acos((ws.vert[i] + ws.vert[j]) / dij)
+       dij = sqrt((ws.horz[i] - ws.horz[j])^2 + (vert_i + vert_j)^2)
+       theta_ij = acos((vert_i + vert_j) / dij)
     end
 
     mij = (sqrt(2) / 503) * dij * sqrt(f / ws.rho_g[earth_layer_idx,k])
 
     re_part = π / 8.0 - b1 * mij * cos(theta_ij) + b2 * (mij^2) * (log(exp(c2) / mij) * cos(2.0 * theta_ij) + theta_ij * sin(2.0 * theta_ij)) +
-              b3 * (mij^3) * cos(3.0 * theta_ij) - d4 * (mij^4) * cos(4.0 * theta_ij)
+            b3 * (mij^3) * cos(3.0 * theta_ij) - d4 * (mij^4) * cos(4.0 * theta_ij)
 
     term1 = 0.5 * log(1.85138 / mij)
     term2 = b1 * mij * cos(theta_ij)
@@ -180,6 +185,55 @@ function get_Ze(ws, i::Int, j::Int, k::Int, ::DeriModel)
 
     @debug "Z earth DeriModel: freq=$(ws.freq[k]), i=$i, j=$j is $(1im * ω * μ₀ / (2 * π)) * log($ln_arg)"
     return (1im * ω * μ₀ / (2 * π)) * log(ln_arg)
+end
+
+function get_Ze(ws, i::Int, j::Int, k::Int, ::Saad)
+    # --- 1. Extract parameters from workspace ---
+    ω = 2π * ws.freq[k]
+    μ₀ = 4π * 1e-7
+    # Assuming single earth layer for resistivity
+    ρ_g = ws.rho_g[earth_layer_idx, k] 
+
+    # --- 2. Calculate the earth propagation constant (gamma_1) ---
+    # This is identical to the 'p_earth' term in the Deri model
+    γ₁ = sqrt(1im * ω * μ₀ / ρ_g)
+
+    # --- 3. Determine the geometric distance term (R_ab) ---
+    local R_ab::Float64
+    if i == j
+        # For SELF-IMPEDANCE, Rab is the conductor's outer radius
+        R_ab = ws.r_ext[i] 
+    else
+        # For MUTUAL-IMPEDANCE, Rab is the horizontal distance
+        R_ab = abs(ws.horz[i] - ws.horz[j])
+    end
+
+    # --- 4. Get conductor heights ---
+    h_i = ws.vert[i]
+    h_j = ws.vert[j]
+
+    # --- 5. Assemble the Saad formula (Equation 1) piece by piece ---
+    
+    # Argument for the Bessel function and other terms
+    arg = γ₁ * R_ab
+    
+    # First term inside the brackets: K_0(gamma_1 * R_ab)
+    # We use besselk(0, z) for the modified Bessel function of the 2nd kind, order 0
+    term1 = besselk(0, arg)
+    
+    # Second term inside the brackets
+    exp_term = exp(-(h_i + h_j) * γ₁)
+    denominator = 4.0 + arg^2
+    term2 = (2.0 * exp_term) / denominator
+    
+    # Final scaling factor outside the brackets
+    scaling_factor = (1im * ω * μ₀) / (2 * π)
+    
+    final_result = scaling_factor * (term1 + term2)
+    
+    @debug "Z earth Saad/Pollaczek: freq=$(ws.freq[k]), i=$i, j=$j is $final_result"
+    
+    return final_result
 end
 
 
@@ -239,11 +293,13 @@ function compute_admittance_matrix!(
     p_factor = 1.0 / (2 * π * ε₀)
 
     for i in 1:nph
-        P[i, i] = p_factor * log((2 * ws.vert[i]) / ws.r_ext[i])
+        vert_i = abs(ws.vert[i])
+        P[i, i] = p_factor * log((2 * vert_i) / ws.r_ext[i])
 
         for j in 1:(i-1)
+            vert_j = abs(ws.vert[j])
             d_ij = calc_gmd(ws.conductor_groups[i], ws.conductor_groups[j])
-            d_ij_prime = sqrt((ws.horz[i] - ws.horz[j])^2 + (ws.vert[i] + ws.vert[j])^2)
+            d_ij_prime = sqrt((ws.horz[i] - ws.horz[j])^2 + (vert_i + vert_j)^2)
 
             val = p_factor * log(d_ij_prime / d_ij)
             P[i, j] = val
