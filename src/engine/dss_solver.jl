@@ -1,3 +1,5 @@
+using SpecialFunctions
+
 function compute!(
 	problem::LineParametersProblem{T},
 	formulation::DSSFormulation,
@@ -183,6 +185,55 @@ function get_Ze(ws, i::Int, j::Int, k::Int, ::DeriModel)
 
     @debug "Z earth DeriModel: freq=$(ws.freq[k]), i=$i, j=$j is $(1im * ω * μ₀ / (2 * π)) * log($ln_arg)"
     return (1im * ω * μ₀ / (2 * π)) * log(ln_arg)
+end
+
+function get_Ze(ws, i::Int, j::Int, k::Int, ::Saad)
+    # --- 1. Extract parameters from workspace ---
+    ω = 2π * ws.freq[k]
+    μ₀ = 4π * 1e-7
+    # Assuming single earth layer for resistivity
+    ρ_g = ws.rho_g[earth_layer_idx, k] 
+
+    # --- 2. Calculate the earth propagation constant (gamma_1) ---
+    # This is identical to the 'p_earth' term in the Deri model
+    γ₁ = sqrt(1im * ω * μ₀ / ρ_g)
+
+    # --- 3. Determine the geometric distance term (R_ab) ---
+    local R_ab::Float64
+    if i == j
+        # For SELF-IMPEDANCE, Rab is the conductor's outer radius
+        R_ab = ws.r_ext[i] 
+    else
+        # For MUTUAL-IMPEDANCE, Rab is the horizontal distance
+        R_ab = abs(ws.horz[i] - ws.horz[j])
+    end
+
+    # --- 4. Get conductor heights ---
+    h_i = ws.vert[i]
+    h_j = ws.vert[j]
+
+    # --- 5. Assemble the Saad formula (Equation 1) piece by piece ---
+    
+    # Argument for the Bessel function and other terms
+    arg = γ₁ * R_ab
+    
+    # First term inside the brackets: K_0(gamma_1 * R_ab)
+    # We use besselk(0, z) for the modified Bessel function of the 2nd kind, order 0
+    term1 = besselk(0, arg)
+    
+    # Second term inside the brackets
+    exp_term = exp(-(h_i + h_j) * γ₁)
+    denominator = 4.0 + arg^2
+    term2 = (2.0 * exp_term) / denominator
+    
+    # Final scaling factor outside the brackets
+    scaling_factor = (1im * ω * μ₀) / (2 * π)
+    
+    final_result = scaling_factor * (term1 + term2)
+    
+    @debug "Z earth Saad/Pollaczek: freq=$(ws.freq[k]), i=$i, j=$j is $final_result"
+    
+    return final_result
 end
 
 
