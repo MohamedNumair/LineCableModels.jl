@@ -8,8 +8,8 @@ It covers:
 """
 module Thermal
 
-using ...Commons: π
-using ...DataModel: CableDesign, ConductorGroup, LineCableSystem, CableComponent
+using ....Commons: π
+using ....DataModel: CableDesign, ConductorGroup, LineCableSystem, CableComponent
 
 export calc_T1,
        calc_T2,

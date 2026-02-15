@@ -7,10 +7,9 @@ module Solver
 
 using ....Commons: π, T₀
 using ....DataModel
-using ....Engine: AmpacityProblem, IEC60287Formulation
+using ..IEC60287: AmpacityProblem, IEC60287Formulation
 using ..Losses
 using ..Thermal
-using ..Commons: real_part
 
 export compute_ampacity
 

@@ -10,8 +10,8 @@ It covers:
 """
 module Losses
 
-using ...Commons: μ₀, ω₀, π
-using ...DataModel: CableDesign, ConductorGroup, LineCableSystem, CableComponent
+using ....Commons: μ₀, π
+using ....DataModel: CableDesign, ConductorGroup, LineCableSystem, CableComponent
 
 export calc_ac_resistance,
        calc_skin_effect_factor,
