@@ -50,6 +50,10 @@ struct EarthLayer{T <: REALSCALAR}
 	base_mur_g::T
 	"Thickness of the layer \\[m\\]."
 	t::T
+	"Thermal resistivity \\[K·m/W\\]."
+	rho_thermal::T
+	"Ambient temperature \\[°C\\]."
+	theta_ambient::T
 	"Computed resistivity values \\[Ω·m\\] at given frequencies."
 	rho_g::Vector{T}
 	"Computed permittivity values \\[F/m\\] at given frequencies."
@@ -61,8 +65,9 @@ struct EarthLayer{T <: REALSCALAR}
 	Constructs an [`EarthLayer`](@ref) instance with specified base and frequency-dependent properties.
 	"""
 	function EarthLayer{T}(base_rho_g::T, base_epsr_g::T, base_mur_g::T, t::T,
+		rho_thermal::T, theta_ambient::T,
 		rho_g::Vector{T}, eps_g::Vector{T}, mu_g::Vector{T}) where {T <: REALSCALAR}
-		new{T}(base_rho_g, base_epsr_g, base_mur_g, t, rho_g, eps_g, mu_g)
+		new{T}(base_rho_g, base_epsr_g, base_mur_g, t, rho_thermal, theta_ambient, rho_g, eps_g, mu_g)
 	end
 end
 
@@ -105,6 +110,8 @@ function EarthLayer(
 	base_mur_g::T,
 	t::T,
 	freq_dependence::AbstractFDEMFormulation,
+	rho_thermal::T = one(T),
+	theta_ambient::T = convert(T, 20.0),
 ) where {T <: REALSCALAR}
 
 	rho_g, eps_g, mu_g = freq_dependence(frequencies, base_rho_g, base_epsr_g, base_mur_g)
@@ -113,6 +120,8 @@ function EarthLayer(
 		base_epsr_g,
 		base_mur_g,
 		t,
+		rho_thermal,
+		theta_ambient,
 		rho_g,
 		eps_g,
 		mu_g,
@@ -126,8 +135,10 @@ function EarthLayer(
 	base_mur_g,
 	t,
 	freq_dependence,
+	rho_thermal=1.0,
+	theta_ambient=20.0,
 )
-	T = resolve_T(frequencies, base_rho_g, base_epsr_g, base_mur_g, t)
+	T = resolve_T(frequencies, base_rho_g, base_epsr_g, base_mur_g, t, rho_thermal, theta_ambient)
 	return EarthLayer(
 		coerce_to_T(frequencies, T),
 		coerce_to_T(base_rho_g, T),
@@ -135,6 +146,8 @@ function EarthLayer(
 		coerce_to_T(base_mur_g, T),
 		coerce_to_T(t, T),
 		freq_dependence,
+		coerce_to_T(rho_thermal, T),
+		coerce_to_T(theta_ambient, T),
 	)
 end
 

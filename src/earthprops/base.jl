@@ -69,7 +69,9 @@ function Base.show(io::IO, ::MIME"text/plain", model::EarthModel)
             "$prefix $layer_name: [rho_g=$(round(layer.base_rho_g, sigdigits=4)), " *
             "epsr_g=$(round(layer.base_epsr_g, sigdigits=4)), " *
             "mur_g=$(round(layer.base_mur_g, sigdigits=4)), " *
-            "t=$thickness_str]",
+            "t=$thickness_str, " *
+            "rho_th=$(round(layer.rho_thermal, sigdigits=4)), " *
+            "theta=$(round(layer.theta_ambient, sigdigits=4))]",
         )
     end
 
