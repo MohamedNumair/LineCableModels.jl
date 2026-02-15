@@ -105,4 +105,7 @@ include("fem/FEM.jl")
 @reexport using .EarthAdmittance: EarthAdmittance
 @reexport using .EHEM, .Transforms
 
+include("iec60287/IEC60287.jl")
+@reexport using .IEC60287
+
 end # module Engine
