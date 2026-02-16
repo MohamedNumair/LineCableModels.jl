@@ -103,13 +103,15 @@ mutable struct CableComponent{T<:REALSCALAR}
         r3 = insulator_group.radius_ext
 
         # 2) Conductor equivalents
+        mat_con = conductor_group.layers[1].material_props # not sure if this implementation is correct to pick the rho thermal and theta max from the first layer, but it is a starting point. 
         ρ_con = calc_equivalent_rho(conductor_group.resistance, r2, r1)
         μ_con = calc_equivalent_mu(conductor_group.gmr, r2, r1)
         α_con = conductor_group.alpha
         θ_con = conductor_group.layers[1].temperature
-        conductor_props = Material{T}(ρ_con, T(0), μ_con, θ_con, α_con)
+        conductor_props = Material{T}(ρ_con, T(0), μ_con, θ_con, α_con, mat_con.rho_thermal, mat_con.theta_max)
 
         # 3) Insulator equivalents (use already-aggregated C and G)
+        mat_ins = insulator_group.layers[1].material_props # not sure if this implementation is correct to pick the rho thermal and theta max from the first layer, but it is a starting point. 
         C_eq = insulator_group.shunt_capacitance
         G_eq = insulator_group.shunt_conductance
         ε_ins = calc_equivalent_eps(C_eq, r3, r2)
@@ -117,7 +119,8 @@ mutable struct CableComponent{T<:REALSCALAR}
         ρ_ins = inv(σ_ins)               # safe if σ_ins ≠ 0
         μ_ins_corr = calc_solenoid_correction(conductor_group.num_turns, r2, r3)
         θ_ins = insulator_group.layers[1].temperature
-        insulator_props = Material{T}(ρ_ins, ε_ins, μ_ins_corr, θ_ins, T(0))
+        insulator_props = Material{T}(ρ_ins, ε_ins, μ_ins_corr, θ_ins, T(0), mat_ins.rho_thermal, mat_ins.theta_max)
+
 
         return new{T}(
             id,
