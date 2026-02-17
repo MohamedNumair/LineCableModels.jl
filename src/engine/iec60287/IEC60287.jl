@@ -23,4 +23,8 @@ include("losses.jl")
 include("thermal.jl")
 include("solver.jl")
 
+using .Losses
+using .Thermal
+using .Solver: compute_ampacity
+
 end

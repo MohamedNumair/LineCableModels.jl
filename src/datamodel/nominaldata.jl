@@ -25,6 +25,10 @@ struct NominalData{T<:REALSCALAR}
     capacitance::Union{Nothing,T}
     "Inductance of the cable (trifoil formation) \\[mH/km\\]."
     inductance::Union{Nothing,T}
+    "Nominal conductor diameter \\[mm\\]."
+    conductor_diameter::Union{Nothing,T}
+    "Nominal overall cable diameter \\[mm\\]."
+    overall_diameter::Union{Nothing,T}
 
     # --- Tight / typed kernel: assumes values already coerced to T (or nothing)
     @inline function NominalData{T}(;
@@ -37,6 +41,8 @@ struct NominalData{T<:REALSCALAR}
         resistance::Union{Nothing,T}=nothing,
         capacitance::Union{Nothing,T}=nothing,
         inductance::Union{Nothing,T}=nothing,
+        conductor_diameter::Union{Nothing,T}=nothing,
+        overall_diameter::Union{Nothing,T}=nothing,
     ) where {T<:REALSCALAR}
         new{T}(
             designation_code,
@@ -48,6 +54,8 @@ struct NominalData{T<:REALSCALAR}
             resistance,
             capacitance,
             inductance,
+            conductor_diameter,
+            overall_diameter,
         )
     end
 end
@@ -69,11 +77,13 @@ If no numeric kwargs are provided, it defaults to `Float64`.
     resistance::Union{Nothing,Number}=nothing,
     capacitance::Union{Nothing,Number}=nothing,
     inductance::Union{Nothing,Number}=nothing,
+    conductor_diameter::Union{Nothing,Number}=nothing,
+    overall_diameter::Union{Nothing,Number}=nothing,
 )
     # collect provided numerics (skip `nothing`)
     nums = Tuple(x for x in
                  (U0, U, conductor_cross_section, screen_cross_section, armor_cross_section,
-        resistance, capacitance, inductance) if x !== nothing)
+        resistance, capacitance, inductance, conductor_diameter, overall_diameter) if x !== nothing)
 
     # infer T from numerics, fallback to Float64 if none
     T = isempty(nums) ? Float64 : resolve_T(nums...)
@@ -88,9 +98,9 @@ If no numeric kwargs are provided, it defaults to `Float64`.
         resistance=(resistance === nothing ? nothing : coerce_to_T(resistance, T)),
         capacitance=(capacitance === nothing ? nothing : coerce_to_T(capacitance, T)),
         inductance=(inductance === nothing ? nothing : coerce_to_T(inductance, T)),
+        conductor_diameter=(conductor_diameter === nothing ? nothing : coerce_to_T(conductor_diameter, T)),
+        overall_diameter=(overall_diameter === nothing ? nothing : coerce_to_T(overall_diameter, T)),
     )
 end
 
 include("nominaldata/base.jl")
-
-

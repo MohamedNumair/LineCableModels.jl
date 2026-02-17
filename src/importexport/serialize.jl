@@ -39,6 +39,8 @@ _serializable_fields(::NominalData) = (
 	:resistance,
 	:capacitance,
 	:inductance,
+	:conductor_diameter,
+	:overall_diameter,
 )
 
 # Layer Types (Conductor Parts)

@@ -88,17 +88,17 @@ function _add_default_materials!(library::MaterialsLibrary)
 	add!(
 		library,
 		"semicon1",
-		Material(1000.0, 1000.0, 1.0, 20.0, 0.0, 3.5, 90.0),
+		Material(1000.0, 1000.0, 1.0, 20.0, 0.0, 2.5, 90.0),
 	)
 	add!(
 		library,
 		"semicon2",
-		Material(500.0, 1000.0, 1.0, 20.0, 0.0, 3.5, 90.0),
+		Material(500.0, 1000.0, 1.0, 20.0, 0.0, 2.5, 90.0),
 	)
 	add!(
 		library,
 		"polyacrylate",
-		Material(5.3e3, 32.3, 1.0, 20.0, 0.0),
+		Material(5.3e3, 32.3, 1.0, 20.0, 0.0, 6.0, 90.0),
 	)
 	add!(library, "lead", Material(21.4e-8, 1.0, 0.999983, 20.0, 0.00400)) # Lead or lead alloy
 	add!(library, "steel", Material(13.8e-8, 1.0, 300.0, 20.0, 0.00450)) # Steel
@@ -144,4 +144,3 @@ function add!(
 	library[String(name)] = material
 	library
 end
-
