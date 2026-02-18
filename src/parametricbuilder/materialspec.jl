@@ -21,18 +21,22 @@ struct MaterialSpec
 	eps_r::Any;
 	mu_r::Any;
 	T0::Any;
-	alpha::Any
+	alpha::Any;
+	rho_thermal::Any;
+	theta_max::Any
 end
-MaterialSpec(; rho, eps_r, mu_r, T0, alpha) = MaterialSpec(rho, eps_r, mu_r, T0, alpha)
+MaterialSpec(; rho, eps_r, mu_r, T0, alpha, rho_thermal, theta_max) = MaterialSpec(rho, eps_r, mu_r, T0, alpha, rho_thermal, theta_max)
 
 # --- 1) Ad-hoc numeric: values (or (value,pct)) ---
-Material(; rho, eps_r = 1.0, mu_r = 1.0, T0 = 20.0, alpha = 0.0) =
+Material(; rho, eps_r = 1.0, mu_r = 1.0, T0 = 20.0, alpha = 0.0, rho_thermal = 3.5, theta_max = 90.0) =
 	MaterialSpec(
 		rho = _spec(rho),
 		eps_r = _spec(eps_r),
 		mu_r = _spec(mu_r),
 		T0 = _spec(T0),
 		alpha = _spec(alpha),
+		rho_thermal = _spec(rho_thermal),
+		theta_max = _spec(theta_max),
 	)
 
 # --- 2) From an existing Material: append %unc by default, or override with (value,pct) ---
@@ -43,6 +47,8 @@ function Material(
 	mu_r = nothing,
 	T0 = nothing,
 	alpha = nothing,
+	rho_thermal = nothing,
+	theta_max = nothing,
 )
 	MaterialSpec(
 		rho   = _pair_from_nominal(m.rho, rho),
@@ -50,6 +56,8 @@ function Material(
 		mu_r  = _pair_from_nominal(m.mu_r, mu_r),
 		T0    = _pair_from_nominal(m.T0, T0),
 		alpha = _pair_from_nominal(m.alpha, alpha),
+		rho_thermal = _pair_from_nominal(m.rho_thermal, rho_thermal),
+		theta_max   = _pair_from_nominal(m.theta_max, theta_max),
 	)
 end
 
@@ -66,5 +74,7 @@ function _make_range(ms::MaterialSpec)
 	μs = _make_range(ms.mu_r[1]; pct = ms.mu_r[2])
 	Ts  = _make_range(ms.T0[1]; pct = ms.T0[2])
 	αs = _make_range(ms.alpha[1]; pct = ms.alpha[2])
-	[Materials.Material(ρ, ε, μ, T, α) for (ρ, ε, μ, T, α) in product(ρs, εs, μs, Ts, αs)]
+	ρths = _make_range(ms.rho_thermal[1]; pct = ms.rho_thermal[2])
+	θms  = _make_range(ms.theta_max[1]; pct = ms.theta_max[2])
+	[Materials.Material(ρ, ε, μ, T, α, ρth, θm) for (ρ, ε, μ, T, α, ρth, θm) in product(ρs, εs, μs, Ts, αs, ρths, θms)]
 end

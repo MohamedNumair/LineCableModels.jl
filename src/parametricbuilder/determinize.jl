@@ -70,6 +70,8 @@ function determinize(ms::MaterialSpec)
 		mu_r  = _det_field(ms.mu_r),
 		T0    = _det_field(ms.T0),
 		alpha = _det_field(ms.alpha),
+		rho_thermal = _det_field(ms.rho_thermal),
+		theta_max   = _det_field(ms.theta_max),
 	)
 end
 

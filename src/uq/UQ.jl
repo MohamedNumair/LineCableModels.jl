@@ -181,6 +181,8 @@ end
 		mu_r  = _collapse_pair(ms.mu_r, distribution),
 		T0    = _collapse_pair(ms.T0, distribution),
 		alpha = _collapse_pair(ms.alpha, distribution),
+		rho_thermal = _collapse_pair(ms.rho_thermal, distribution),
+		theta_max   = _collapse_pair(ms.theta_max, distribution),
 	)
 end
 

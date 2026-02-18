@@ -105,7 +105,7 @@ function Base.show(io::IO, ::MIME"text/plain", material::Material)
     print(io, "Material with properties: [")
 
     # Define fields to display
-    fields = [:rho, :eps_r, :mu_r, :T0, :alpha]
+    fields = [:rho, :eps_r, :mu_r, :T0, :alpha, :rho_thermal, :theta_max]
 
     # Print each field with proper formatting
     for (i, field) in enumerate(fields)
@@ -194,4 +194,5 @@ end
 
 Base.convert(::Type{Material{T}}, m::Material) where {T<:REALSCALAR} =
     Material{T}(convert(T, m.rho), convert(T, m.eps_r), convert(T, m.mu_r),
-        convert(T, m.T0), convert(T, m.alpha))
+        convert(T, m.T0), convert(T, m.alpha), convert(T, m.rho_thermal),
+        convert(T, m.theta_max))
