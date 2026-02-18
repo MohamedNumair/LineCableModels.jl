@@ -94,24 +94,10 @@ function compute_ampacity(problem::AmpacityProblem, formulation::IEC60287Formula
 	# =====================================================================
 
 	cond = core_comp.conductor_group
-	Dc_model = 2 * cond.radius_ext                            # wire-model conductor diameter [m]
-	Dc = Dc_model                                              # default: wire-model value
+	Dc = 2 * cond.radius_ext                                   # conductor diameter [m]
 
 	last_comp = cable.components[end]
-	De_model = 2 * last_comp.insulator_group.radius_ext        # wire-model overall diameter [m]
-	De_cable = De_model                                        # default: wire-model value
-
-	# Override with nominal dimensions when available (mm → m)
-	nd = cable.nominal_data
-	if nd !== nothing && nd.conductor_diameter !== nothing
-		Dc = nd.conductor_diameter * 1e-3
-	end
-	if nd !== nothing && nd.overall_diameter !== nothing
-		De_cable = nd.overall_diameter * 1e-3
-	end
-
-	# Radial offset: shift all concentric layer positions from wire-model to nominal
-	delta_r = (Dc - Dc_model) / 2                             # negative when wire-model is larger
+	De_cable = 2 * last_comp.insulator_group.radius_ext        # overall cable diameter [m]
 
 	s = De_cable                                               # conductor spacing (touching trefoil) [m]
 
@@ -119,16 +105,11 @@ function compute_ampacity(problem::AmpacityProblem, formulation::IEC60287Formula
 	# 2. DC RESISTANCE AT 20 °C
 	# =====================================================================
 
-	cond_props = core_comp.conductor_props
-	alpha_c = cond_props.alpha
+	alpha_c = cond.alpha
 
-	R_dc_20 = if cable.nominal_data !== nothing && cable.nominal_data.resistance !== nothing
-		cable.nominal_data.resistance * 1e-3               # Ω/km → Ω/m
-	else
-		rho_elec = cond_props.rho
-		area = π * (cond.radius_ext^2 - cond.radius_in^2)
-		rho_elec / area
-	end
+	# DC resistance at 20 °C from material resistivity and conductor cross-section
+	rho_elec = cond.layers[1].material_props.rho
+	R_dc_20 = rho_elec / cond.cross_section
 
 	# Maximum operating temperature
 	theta_max = core_comp.insulator_props.theta_max
@@ -154,39 +135,24 @@ function compute_ampacity(problem::AmpacityProblem, formulation::IEC60287Formula
 	# =====================================================================
 
 	Wd = 0.0
-	C_cable = 0.0
 	U_e = 0.0
 	tandelta = 0.004       # XLPE, IEC 60287-1-1 Table 3
 
-	if cable.nominal_data !== nothing
-		nd = cable.nominal_data
+	# Capacitance [F/m] from insulator group (series combination of all layers)
+	C_cable = core_comp.insulator_group.shunt_capacitance
 
-		# Voltage phase-to-earth [V]:  prefer U/√3 for precision
+	# Voltage phase-to-earth [V] from nominal data (system specification)
+	nd = cable.nominal_data
+	if nd !== nothing
 		if nd.U !== nothing
 			U_e = nd.U * 1e3 / sqrt(3.0)
 		elseif nd.U0 !== nothing
 			U_e = nd.U0 * 1e3
 		end
+	end
 
-		# Capacitance [F/m]
-		if nd.capacitance !== nothing
-			C_cable = nd.capacitance * 1e-9    # μF/km → F/m
-		else
-			# Compute from insulation geometry
-			insu = core_comp.insulator_group
-			if length(insu.layers) >= 2
-				d_cs = 2 * insu.layers[1].radius_ext          # over conductor screen
-				D_ins = 2 * insu.layers[2].radius_ext          # over XLPE
-				eps_r = insu.layers[2].material_props.eps_r
-				if eps_r > 0 && D_ins > d_cs
-					C_cable = calc_capacitance(eps_r, D_ins, d_cs)
-				end
-			end
-		end
-
-		if C_cable > 0 && U_e > 0
-			Wd = calc_dielectric_loss(U_e, omega, C_cable, tandelta)
-		end
+	if C_cable > 0 && U_e > 0
+		Wd = calc_dielectric_loss(U_e, omega, C_cable, tandelta)
 	end
 
 	# =====================================================================
@@ -197,8 +163,8 @@ function compute_ampacity(problem::AmpacityProblem, formulation::IEC60287Formula
 	for layer in core_comp.insulator_group.layers
 		T1_prime += calc_layer_thermal_resistance(
 			layer.material_props.rho_thermal,
-			layer.radius_in + delta_r,
-			layer.radius_ext + delta_r)
+			layer.radius_in,
+			layer.radius_ext)
 	end
 
 	# =====================================================================
@@ -216,8 +182,8 @@ function compute_ampacity(problem::AmpacityProblem, formulation::IEC60287Formula
 		for layer in sheath_comp.insulator_group.layers
 			T3_prime += calc_layer_thermal_resistance(
 				layer.material_props.rho_thermal,
-				layer.radius_in + delta_r,
-				layer.radius_ext + delta_r)
+				layer.radius_in,
+				layer.radius_ext)
 		end
 	end
 
@@ -245,7 +211,7 @@ function compute_ampacity(problem::AmpacityProblem, formulation::IEC60287Formula
 			has_wire_screen = true
 			d_wire   = 2 * wire_lyr.radius_wire
 			n_wires  = wire_lyr.num_wires
-			D_under  = 2 * (wire_lyr.radius_in + delta_r)
+			D_under  = 2 * wire_lyr.radius_in
 			d_mean_sc = D_under + d_wire                    # corrected mean diameter [m]
 			L_lay    = wire_lyr.lay_ratio * d_mean_sc       # corrected lay length [m]
 
