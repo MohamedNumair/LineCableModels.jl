@@ -20,10 +20,11 @@ module Solver
 using ....Commons: π, T₀
 using ....DataModel
 using ..IEC60287: AmpacityProblem, IEC60287Formulation, IEC60287CableCondition, iec60287_triage
+import ..IEC60287: compute!
 using ..Losses
 using ..Thermal
 
-export compute_ampacity
+export compute_ampacity, compute!
 
 """
     calculate_ac_permissible_current(delta_theta, Wd, R_ac, lambda1, lambda2, T1, T2, T3, T4, n)
@@ -285,4 +286,9 @@ results[cable_id] = result
 return results
 end
 
+
+function compute!(problem::AmpacityProblem, formulation::IEC60287Formulation)
+    return compute_ampacity(problem::AmpacityProblem, formulation::IEC60287Formulation)
+end
+    
 end # module
