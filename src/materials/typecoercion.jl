@@ -7,5 +7,5 @@
     coerce_to_T(m.eps_r, T),
     coerce_to_T(m.mu_r, T),
     coerce_to_T(m.T0, T),
-    coerce_to_T(m.alpha, T),
-)
+    coerce_to_T(m.alpha, T),    coerce_to_T(m.rho_thermal, T),
+    coerce_to_T(m.theta_max, T),)

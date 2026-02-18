@@ -34,7 +34,7 @@ function compute_ampacity(problem::AmpacityProblem, formulation::IEC60287Formula
 	# ── Environmental parameters ──────────────────────────────────────────────
 	soil_layer_idx = length(env.layers) >= 2 ? 2 : 1
 	rho_soil = env.layers[soil_layer_idx].rho_thermal
-	theta_amb = env.layers[soil_layer_idx].theta_ambient
+	theta_amb = problem.ambient_temperature
 
 	# System-level constants
 	n_cables = system.num_cables

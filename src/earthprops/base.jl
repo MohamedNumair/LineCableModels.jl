@@ -70,8 +70,7 @@ function Base.show(io::IO, ::MIME"text/plain", model::EarthModel)
             "epsr_g=$(round(layer.base_epsr_g, sigdigits=4)), " *
             "mur_g=$(round(layer.base_mur_g, sigdigits=4)), " *
             "t=$thickness_str, " *
-            "rho_th=$(round(layer.rho_thermal, sigdigits=4)), " *
-            "theta=$(round(layer.theta_ambient, sigdigits=4))]",
+            "rho_th=$(round(layer.rho_thermal, sigdigits=4))]",
         )
     end
 

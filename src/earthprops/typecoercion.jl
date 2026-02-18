@@ -77,6 +77,7 @@ function coerce_to_T(layer::EarthLayer, ::Type{T}) where {T}
         coerce_to_T(layer.base_epsr_g, T),
         coerce_to_T(layer.base_mur_g, T),
         coerce_to_T(layer.t, T),
+        coerce_to_T(layer.rho_thermal, T),
         coerce_to_T(layer.rho_g, T),
         coerce_to_T(layer.eps_g, T),
         coerce_to_T(layer.mu_g, T)

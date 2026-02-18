@@ -170,23 +170,23 @@ end
         model_homo = EarthModel(frequencies, 100.0, 10.0, 1.0)
         s_homo = sprint(show, "text/plain", model_homo)
         @test contains(s_homo, "EarthModel with 1 horizontal earth layer (homogeneous)")
-        @test contains(s_homo, "└─ Layer 2: [rho_g=100.0, epsr_g=10.0, mur_g=1.0, t=Inf]")
+        @test contains(s_homo, "└─ Layer 2: [rho_g=100.0, epsr_g=10.0, mur_g=1.0, t=Inf, rho_th=1.0]")
 
         # Multilayer horizontal model
         model_multi_h = EarthModel(frequencies, 100.0, 10.0, 1.0, t=20.0)
         add!(model_multi_h, frequencies, 200.0, 15.0, 1.0, t=Inf)
         s_multi_h = sprint(show, "text/plain", model_multi_h)
         @test contains(s_multi_h, "EarthModel with 2 horizontal earth layers (multilayer)")
-        @test contains(s_multi_h, "├─ Layer 2: [rho_g=100.0, epsr_g=10.0, mur_g=1.0, t=20.0]")
-        @test contains(s_multi_h, "└─ Layer 3: [rho_g=200.0, epsr_g=15.0, mur_g=1.0, t=Inf]")
+        @test contains(s_multi_h, "├─ Layer 2: [rho_g=100.0, epsr_g=10.0, mur_g=1.0, t=20.0, rho_th=1.0]")
+        @test contains(s_multi_h, "└─ Layer 3: [rho_g=200.0, epsr_g=15.0, mur_g=1.0, t=Inf, rho_th=1.0]")
 
         # Multilayer vertical model
         model_multi_v = EarthModel(frequencies, 100.0, 10.0, 1.0, t=Inf, vertical_layers=true)
         add!(model_multi_v, frequencies, 200.0, 15.0, 1.0, t=30.0)
         s_multi_v = sprint(show, "text/plain", model_multi_v)
         @test contains(s_multi_v, "EarthModel with 2 vertical earth layers (multilayer)")
-        @test contains(s_multi_v, "├─ Layer 2: [rho_g=100.0, epsr_g=10.0, mur_g=1.0, t=Inf]")
-        @test contains(s_multi_v, "└─ Layer 3: [rho_g=200.0, epsr_g=15.0, mur_g=1.0, t=30.0]")
+        @test contains(s_multi_v, "├─ Layer 2: [rho_g=100.0, epsr_g=10.0, mur_g=1.0, t=Inf, rho_th=1.0]")
+        @test contains(s_multi_v, "└─ Layer 3: [rho_g=200.0, epsr_g=15.0, mur_g=1.0, t=30.0, rho_th=1.0]")
     end
 
     @testset "DataFrame for EarthModel" begin
@@ -196,7 +196,7 @@ end
 
         df = DataFrame(model)
         @test df isa DataFrame
-        @test names(df) == ["rho_g", "epsr_g", "mur_g", "thickness"]
+        @test names(df) == ["rho_g", "epsr_g", "mur_g", "thickness", "rho_thermal"]
         @test nrow(df) == 3
 
         # Air layer

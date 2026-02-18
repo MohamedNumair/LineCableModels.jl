@@ -6,6 +6,8 @@ Represents an ampacity calculation problem.
 $(TYPEDFIELDS)
 """
 struct AmpacityProblem{T <: REALSCALAR} <: ProblemDefinition
+	"Ambient temperature [°C]."
+	ambient_temperature::Float64
 	"The physical cable system to analyze."
 	system::LineCableSystem{T}
 	"Earth environment with thermal properties."
@@ -17,11 +19,12 @@ struct AmpacityProblem{T <: REALSCALAR} <: ProblemDefinition
 	Constructs an [`AmpacityProblem`](@ref) instance.
 
 	# Arguments
+	- `ambient_temperature`: Ambient temperature [°C].
 	- `system`: The cable system to analyze.
 	- `environment`: The earth model (including thermal properties).
 	"""
-	function AmpacityProblem(system::LineCableSystem{T}, environment::EarthModel{T}) where {T <: REALSCALAR}
-		return new{T}(system, environment)
+	function AmpacityProblem(ambient_temperature::Real, system::LineCableSystem{T}, environment::EarthModel{T}) where {T <: REALSCALAR}
+		return new{T}(Float64(ambient_temperature), system, environment)
 	end
 end
 

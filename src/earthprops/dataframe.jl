@@ -16,6 +16,7 @@ Generates a `DataFrame` summarizing basic properties of earth layers from an [`E
   - `epsr_g`: Base (DC) relative permittivity of each layer \\[dimensionless\\].
   - `mur_g`: Base (DC) relative permeability of each layer \\[dimensionless\\].
   - `thickness`: Thickness of each layer \\[m\\].
+  - `rho_thermal`: Thermal resistivity of each layer \\[K·m/W\\].
 
 # Examples
 
@@ -31,11 +32,13 @@ function DataFrame(earth_model::EarthModel)
   base_epsr_g = [layer.base_epsr_g for layer in layers]
   base_mur_g = [layer.base_mur_g for layer in layers]
   thickness = [layer.t for layer in layers]
+  rho_thermal = [layer.rho_thermal for layer in layers]
 
   return DataFrame(
     rho_g=base_rho_g,
     epsr_g=base_epsr_g,
     mur_g=base_mur_g,
     thickness=thickness,
+    rho_thermal=rho_thermal,
   )
 end
