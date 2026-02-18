@@ -41,11 +41,11 @@ design parameters are taken from CIGRE Technical Brochure 880, Case Study 4.
 The cable has the following configuration:
 =#
 
-num_co_wires = 91    # number of core wires (1+6+12+18+24+30)
+#num_co_wires = 91    # number of core wires (1+6+12+18+24+30)
 num_sc_wires = 56    # number of screen wires
 d_core = 18.4e-3     # nominal core overall diameter [m]
 core_n_strands = 6   # number of strands in each layer of the core (1/6/12/18/24/30)
-core_n_layers = 3   # number of layers in the core (1/6/12/18/24/30)
+core_n_layers = 4   # number of layers in the core (1/6/12/18/24/30)
 d_w = 18.4e-3/(2*(core_n_layers+0.5))        # nominal wire diameter of the core [m]
 t_cs = 0.5e-3        # nominal conductor shield (inner semicon) thickness [m]
 t_ins = 7.7e-3       # nominal main insulation (XLPE) thickness [m]
@@ -192,8 +192,8 @@ sheath_cc = CableComponent("sheath", screen_con, screen_insu)
 add!(cable_design, sheath_cc)
 
 # # Inspect the finished cable design:
-# plt1, _ = preview(cable_design)
-# plt1 #hide
+plt1, _ = preview(cable_design)
+plt1 #hide
 
 #=
 ## Examining the cable parameters (RLC)
@@ -299,7 +299,7 @@ problem = AmpacityProblem(ambient_temperature, cable_system, earth_params)
 F = IEC60287Formulation(bonding_type = :solid, solar_radiation = false)
 
 # Solve for ampacity:
-@time results = compute_ampacity(problem, F)
+results = compute_ampacity(problem, F)
 
 # Extract results for the cable:
 r = results[cable_id]

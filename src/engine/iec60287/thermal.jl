@@ -6,6 +6,7 @@ It covers:
 - Internal Thermal Resistance (T1, T2, T3) - IEC 60287-2-1 Section 4
 - External Thermal Resistance (T4) - IEC 60287-2-1 Section 4.2
 - Multi-layer thermal resistance summation
+- Armour Loss Factors — IEC 60287-1-1 Section 2.4
 - Trefoil and flat formation T4 corrections
 """
 module Thermal
@@ -25,8 +26,12 @@ export calc_T1,
     calc_layer_thermal_resistance(rho_thermal::T, r_in::T, r_ext::T) where {T<:Real}
 
 Calculates the thermal resistance of a single concentric cylindrical layer [K·m/W].
-This is the fundamental building block for computing T1 and T3 as sums over cable layers.
-IEC 60287-2-1 Section 4.1.2.
+This is the fundamental building block for computing ``T_1`` and ``T_3`` as sums
+over cable layers.
+
+# Formulation
+
+``T_{\\text{layer}} = \\frac{\\rho_T}{2\\pi} \\ln\\!\\left(\\frac{r_{\\text{ext}}}{r_{\\text{in}}}\\right)``
 
 # Arguments
 - `rho_thermal`: Thermal resistivity of the layer material [K·m/W].
@@ -35,6 +40,13 @@ IEC 60287-2-1 Section 4.1.2.
 
 # Returns
 - Thermal resistance per unit length [K·m/W].
+
+# Source
+IEC 60287-2-1:2015, Section 4.1.2
+
+# CIGRE TB880 Guidance
+Do not combine layers of different materials (e.g., semi-con and insulation)
+into a single layer; calculate separately (Guidance Point 15).
 """
 function calc_layer_thermal_resistance(rho_thermal::T, r_in::T, r_ext::T) where {T<:Real}
     if r_ext <= r_in || rho_thermal <= 0
@@ -46,9 +58,15 @@ end
 """
     calc_T1(rho_insulation::T, t_insulation::T, d_c::T) where {T<:Real}
 
-Calculates the thermal resistance of the insulation `T_1` [K·m/W].
-Assumes a single-layer round conductor. For multi-layer T1, use `calc_layer_thermal_resistance`
-and sum per layer.
+Calculates the thermal resistance of the insulation ``T_1`` [K·m/W] for a single
+homogeneous insulation layer around a round conductor.
+
+# Formulation
+
+``T_1 = \\frac{\\rho_i}{2\\pi} \\ln\\!\\left(1 + \\frac{2 t_1}{d_c}\\right)``
+
+For cables with multiple insulation layers (semicon + XLPE + semicon + bedding),
+use [`calc_layer_thermal_resistance`](@ref) for each layer and sum.
 
 # Arguments
 - `rho_insulation`: Thermal resistivity of insulation [K·m/W].
@@ -56,7 +74,16 @@ and sum per layer.
 - `d_c`: Diameter of conductor [m].
 
 # Returns
-- `T_1`: Thermal resistance per unit length [K·m/W].
+- ``T_1``: Thermal resistance per unit length [K·m/W].
+
+# Source
+IEC 60287-2-1:2015, Clause 4.1.2.1
+
+# CIGRE TB880 Guidance
+Do not combine layers of different materials into a single layer; calculate
+separately (Guidance Point 15). For 3-core cables, divide ``T_1`` by the
+'lay length factor' (Guidance Point 44). Do **not** apply the screening factor
+increase (1.16 or 1.07) for trefoil cables in air (Guidance Point 46).
 """
 function calc_T1(rho_insulation::T, t_insulation::T, d_c::T) where {T<:Real}
     # IEC 60287-2-1 Section 4.1.2
@@ -67,7 +94,11 @@ end
 """
     calc_T2(rho_bedding::T, t_bedding::T, d_sheath::T) where {T<:Real}
 
-Calculates the thermal resistance of the bedding/armour `T_2` [K·m/W].
+Calculates the thermal resistance of the bedding/armour ``T_2`` [K·m/W].
+
+# Formulation
+
+``T_2 = \\frac{\\rho_b}{2\\pi} \\ln\\!\\left(1 + \\frac{2 t_b}{d_s}\\right)``
 
 # Arguments
 - `rho_bedding`: Thermal resistivity of bedding/armour [K·m/W].
@@ -75,7 +106,10 @@ Calculates the thermal resistance of the bedding/armour `T_2` [K·m/W].
 - `d_sheath`: Diameter of sheath/screen (outer diameter of underlying layer) [m].
 
 # Returns
-- `T_2`: Thermal resistance per unit length [K·m/W].
+- ``T_2``: Thermal resistance per unit length [K·m/W].
+
+# Source
+IEC 60287-2-1:2015, Clause 4.1.2
 """
 function calc_T2(rho_bedding::T, t_bedding::T, d_sheath::T) where {T<:Real}
     # T2 = rho / (2 * pi) * ln(1 + 2 * t / d_sheath)
@@ -85,7 +119,11 @@ end
 """
     calc_T3(rho_jacket::T, t_jacket::T, d_armour::T) where {T<:Real}
 
-Calculates the thermal resistance of the outer serving (jacket) `T_3` [K·m/W].
+Calculates the thermal resistance of the outer serving (jacket) ``T_3`` [K·m/W].
+
+# Formulation
+
+``T_3 = \\frac{\\rho_j}{2\\pi} \\ln\\!\\left(1 + \\frac{2 t_j}{d_a}\\right)``
 
 # Arguments
 - `rho_jacket`: Thermal resistivity of serving [K·m/W].
@@ -93,7 +131,10 @@ Calculates the thermal resistance of the outer serving (jacket) `T_3` [K·m/W].
 - `d_armour`: Diameter over armour (outer diameter of underlying layer) [m].
 
 # Returns
-- `T_3`: Thermal resistance per unit length [K·m/W].
+- ``T_3``: Thermal resistance per unit length [K·m/W].
+
+# Source
+IEC 60287-2-1:2015, Clause 4.1.2
 """
 function calc_T3(rho_jacket::T, t_jacket::T, d_armour::T) where {T<:Real}
     # T3 = rho / (2 * pi) * ln(1 + 2 * t / d_armour)
@@ -103,7 +144,13 @@ end
 """
     calc_T4(rho_soil::T, L::T, D_e::T) where {T<:Real}
 
-Calculates external thermal resistance for a single isolated buried cable `T_4` [K·m/W].
+Calculates external thermal resistance for a single isolated buried cable
+``T_4`` [K·m/W].
+
+# Formulation
+
+``T_4 = \\frac{\\rho_T}{2\\pi} \\ln\\!\\left(u + \\sqrt{u^2 - 1}\\right),
+\\quad u = \\frac{2L}{D_e}``
 
 # Arguments
 - `rho_soil`: Thermal resistivity of soil [K·m/W].
@@ -111,7 +158,16 @@ Calculates external thermal resistance for a single isolated buried cable `T_4` 
 - `D_e`: External diameter of cable [m].
 
 # Returns
-- `T_4`: Thermal resistance per unit length [K·m/W].
+- ``T_4``: Thermal resistance per unit length [K·m/W].
+
+# Source
+IEC 60287-2-1:2015, Clause 4.2.2
+
+# CIGRE TB880 Guidance
+The approximation ``T_4 = (\\rho_T/2\\pi)\\ln(2u)`` for ``u > 10`` should **not** be
+used. Always use the full formula with the square root term (Guidance Point 8).
+For groups of cables (non-touching), use the 'unequally loaded' method
+(superposition) even if cables are equally loaded.
 """
 function calc_T4(rho_soil::T, L::T, D_e::T) where {T<:Real}
     # IEC 60287-2-1 Section 4.2.4
@@ -123,14 +179,14 @@ end
 """
     calc_T4_trefoil(rho_soil::T, L::T, D_e::T) where {T<:Real}
 
-Calculates external thermal resistance for three single-core cables in close trefoil [K·m/W].
-IEC 60287-2-1 Section 4.2.4.3.3.
+Calculates external thermal resistance for three single-core cables in close
+(touching) trefoil formation ``T_4`` [K·m/W].
 
-For close trefoil touching arrangement, where L is the depth to the centre of the trefoil group:
+# Formulation
 
-    T₄ = (1.5/π) · ρ_soil · [ln(2u) − 0.630]
-
-where u = 2L/Dₑ.
+``T_4 = \\frac{1.5}{\\pi}\\,\\rho_{\\text{soil}}
+      \\left[\\ln(2u) - 0.630\\right],
+\\quad u = \\frac{2L}{D_e}``
 
 # Arguments
 - `rho_soil`: Thermal resistivity of soil [K·m/W].
@@ -138,7 +194,10 @@ where u = 2L/Dₑ.
 - `D_e`: External diameter of one cable [m].
 
 # Returns
-- `T_4`: External thermal resistance per cable per unit length [K·m/W].
+- ``T_4``: External thermal resistance per cable per unit length [K·m/W].
+
+# Source
+IEC 60287-2-1:2015, Section 4.2.4.3.3
 """
 function calc_T4_trefoil(rho_soil::T, L::T, D_e::T) where {T<:Real}
     u = 2 * L / D_e
@@ -148,7 +207,14 @@ end
 """
     calc_T4_air(De::T, T_ambient::T, T_surface::T, h::T) where {T<:Real}
 
-Calculates external thermal resistance for cables in free air `T_4*` [K·m/W].
+Calculates external thermal resistance for cables in free air ``T_4^*`` [K·m/W].
+
+# Formulation
+
+``T_4^* = \\frac{1}{\\pi D_e^* h}``
+
+where ``h`` is the heat transfer coefficient. For a full implementation, an
+iterative process is required for surface temperature.
 
 # Arguments
 - `De`: External diameter of cable [m].
@@ -157,7 +223,14 @@ Calculates external thermal resistance for cables in free air `T_4*` [K·m/W].
 - `h`: Heat transfer coefficient [W/(m²·K)].
 
 # Returns
-- `T4_star`: Thermal resistance per unit length in air [K·m/W].
+- ``T_4^*``: Thermal resistance per unit length in air [K·m/W].
+
+# Source
+IEC 60287-2-1:2015, Clause 4.2.1
+
+# CIGRE TB880 Guidance
+Iterative process required for surface temperature. TB880 Case Study 0-4
+demonstrates implementation with solar radiation inclusion.
 """
 function calc_T4_air(De::T, T_ambient::T, T_surface::T, h::T) where {T<:Real}
     return 1 / (π * De * h)

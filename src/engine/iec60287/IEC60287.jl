@@ -6,6 +6,7 @@ The [`IEC60287`](@ref) module implements the analytical ampacity ratings and los
 # Submodules
 - [`Losses`](@ref): AC resistance and loss factor calculations.
 - [`Thermal`](@ref): Thermal resistance calculations.
+- [`Solver`](@ref): Iterative ampacity solver (IEC 60287-1-1 Eq. 3).
 """
 module IEC60287
 
@@ -15,8 +16,8 @@ using ...EarthProps
 using ...Engine: ProblemDefinition, AbstractFormulationSet
 
 # Export public API
-export AmpacityProblem, IEC60287Formulation
-export compute_ampacity
+export AmpacityProblem, IEC60287Formulation, IEC60287CableCondition
+export iec60287_triage, compute_ampacity, calculate_ac_permissible_current
 
 include("types.jl")
 include("losses.jl")
@@ -25,6 +26,6 @@ include("solver.jl")
 
 using .Losses
 using .Thermal
-using .Solver: compute_ampacity
+using .Solver: compute_ampacity, calculate_ac_permissible_current
 
 end
