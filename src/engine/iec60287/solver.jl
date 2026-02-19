@@ -3,21 +3,21 @@
 
 Solves the AmpacityProblem using the IEC 60287 formulation.
 Implements the complete steady-state ampacity calculation including:
-- Multi-layer thermal resistances T1, T3 (IEC 60287-2-1)
+- Multi-layer thermal resistances T1, T2, T3 (IEC 60287-2-1)
 - Wire screen degree-of-cover correction factors (IEC 60287-2-1 Section 4.2.4.3.3)
-- External thermal resistance T4 for trefoil formation
-- Skin + proximity effects, dielectric losses, screen circulating-current losses
+- External thermal resistance T4 for buried (single, trefoil, flat) and in-air
+- Skin + proximity effects with magnetic armour factor (GP25)
+- Dielectric losses, screen/sheath losses, armour losses
 - Iterative solution coupling screen temperature to ampacity
 
 # TB 880 Compliance
-- Convergence tolerance on current: 1 × 10⁻³ A (CIGRE TB 880 §4)
-- Convergence tolerance on screen temperature: 1 × 10⁻³ °C
+- Convergence tolerance on current: 1e-3 A (CIGRE TB 880 par.4)
+- Convergence tolerance on screen temperature: 1e-3 degC
 - Maximum iterations: 100
-- Dielectric losses always included in thermal balance (TB 880 §3.2)
+- Dielectric losses always included in thermal balance (TB 880 par.3.2)
 """
 module Solver
 
-using ....Commons: π, T₀
 using ....DataModel
 using ..IEC60287: AmpacityProblem, IEC60287Formulation, IEC60287CableCondition, iec60287_triage
 import ..IEC60287: compute!
@@ -29,39 +29,37 @@ export compute_ampacity, compute!
 """
     calculate_ac_permissible_current(delta_theta, Wd, R_ac, lambda1, lambda2, T1, T2, T3, T4, n)
 
-Compute the AC permissible current from the IEC 60287-1-1 master equation (Eq. 3):
-
-```math
-I = \\sqrt{\\frac{\\Delta\\theta - W_d \\left[\\frac{1}{2} T_1 + n (T_2 + T_3 + T_4)\\right]}
-          {R T_1 + n R (1 + \\lambda_1) T_2 + n R (1 + \\lambda_1 + \\lambda_2)(T_3 + T_4)}}
-```
+Compute the AC permissible current from the IEC 60287-1-1 master equation (Eq. 3).
 
 # Arguments
-- `delta_theta`: Allowable temperature rise θ_max − θ_amb  [K]
+- `delta_theta`: Allowable temperature rise theta_max - theta_amb  [K]
 - `Wd`:          Dielectric loss per unit length            [W/m]
-- `R_ac`:        AC resistance at θ_max                    [Ω/m]
-- `lambda1`:     Screen/sheath loss factor ratio λ₁
-- `lambda2`:     Armour loss factor ratio λ₂
-- `T1`:          Thermal resistance conductor → screen     [K·m/W]
-- `T2`:          Thermal resistance screen → armour        [K·m/W]
-- `T3`:          Thermal resistance armour → outer surface  [K·m/W]
-- `T4`:          External thermal resistance               [K·m/W]
+- `R_ac`:        AC resistance at theta_max                 [Ohm/m]
+- `lambda1`:     Screen/sheath loss factor ratio
+- `lambda2`:     Armour loss factor ratio
+- `T1`:          Thermal resistance conductor to screen     [K.m/W]
+- `T2`:          Thermal resistance screen to armour        [K.m/W]
+- `T3`:          Thermal resistance armour to outer surface  [K.m/W]
+- `T4`:          External thermal resistance               [K.m/W]
 - `n`:           Number of conductors per cable
 
 # Returns
-- Permissible current `I` [A], clamped to 0.0 when the numerator is ≤ 0.
+- Permissible current `I` [A], clamped to 0.0 when the numerator is <= 0.
+
+# Source
+IEC 60287-1-1:2006, Clause 1.4.1.1
 
 # TB 880 Guidance
-- Never omit `Wd` even when small (TB 880 §3.2).
-- Pass corrected T1, T3 values when wire-screen degree of cover < 50 %.
+- Never omit `Wd` even when small (TB 880 par.3.2).
+- Pass corrected T1, T3 values when wire-screen degree of cover < 50 percent.
 """
 function calculate_ac_permissible_current(delta_theta, Wd, R_ac, lambda1, lambda2,
                                           T1, T2, T3, T4, n)
-num = delta_theta - Wd * (0.5 * T1 + n * (T2 + T3 + T4))
-den = R_ac * T1 +
-      n * R_ac * (1 + lambda1) * T2 +
-      n * R_ac * (1 + lambda1 + lambda2) * (T3 + T4)
-return num > 0 ? sqrt(num / den) : 0.0
+    num = delta_theta - Wd * (0.5 * T1 + n * (T2 + T3 + T4))
+    den = R_ac * T1 +
+          n * R_ac * (1 + lambda1) * T2 +
+          n * R_ac * (1 + lambda1 + lambda2) * (T3 + T4)
+    return num > 0 ? sqrt(num / den) : 0.0
 end
 
 """
@@ -75,220 +73,303 @@ structure into an [`IEC60287CableCondition`](@ref) and then evaluates the analyt
 IEC 60287 equations iteratively until the screen-temperature / current coupling
 converges to within the TB 880-compliant tolerances.
 
+Supports:
+- Wire screens (WireArray) and tubular sheaths (Tubular)
+- Non-magnetic and magnetic (steel) wire armour
+- Buried cables: single, trefoil, and flat formation T4
+- Cables in air with optional solar radiation
+
 Returns a `Dict{String, NamedTuple}` with detailed intermediate values for validation.
 """
 function compute_ampacity(problem::AmpacityProblem, formulation::IEC60287Formulation)
-# ── Triage: flatten nested problem into a flat condition struct ────────
-cond = iec60287_triage(problem, formulation)
+    # -- Triage: flatten nested problem into a flat condition struct --------
+    cond = iec60287_triage(problem, formulation)
 
-results = Dict{String, Any}()
+    results = Dict{String, Any}()
 
-# =====================================================================
-# 1. GEOMETRY
-# =====================================================================
+    # =====================================================================
+    # 1. GEOMETRY
+    # =====================================================================
 
-Dc       = cond.Dc
-De_cable = cond.De
-s        = cond.s
-f        = cond.f
-omega    = cond.omega
-n_cables = length(problem.system.cables)
-is_trefoil = (n_cables == 3)
+    Dc       = cond.Dc
+    De_cable = cond.De
+    s        = cond.s
+    f        = cond.f
+    omega    = cond.omega
+    n_cables = cond.n_cables
+    is_trefoil = (cond.formation == :trefoil)
+    is_flat    = (cond.formation == :flat)
 
-# =====================================================================
-# 2. DC RESISTANCE AT 20 °C
-# =====================================================================
+    # =====================================================================
+    # 2. DC RESISTANCE AT 20 degC
+    # =====================================================================
 
-R_dc_20   = cond.rho_c / cond.A_c
-theta_max = cond.theta_max
-theta_amb = cond.theta_amb
+    R_dc_20   = cond.rho_c / cond.A_c
+    theta_max = cond.theta_max
+    theta_amb = cond.theta_amb
 
-# =====================================================================
-# 3. AC RESISTANCE  (skin + proximity)
-# =====================================================================
+    # =====================================================================
+    # 3. AC RESISTANCE  (skin + proximity + magnetic armour factor)
+    # =====================================================================
 
-ac = calc_ac_resistance(R_dc_20, cond.alpha_c, theta_max, f,
-                        cond.k_s, cond.k_p, Dc, s)
-R_ac    = ac.R_ac
-R_dc_th = ac.R_dc_theta
-y_s     = ac.y_s
-y_p     = ac.y_p
+    ac = calc_ac_resistance(R_dc_20, cond.alpha_c, theta_max, f,
+                            cond.k_s, cond.k_p, Dc, s;
+                            is_magnetic_armour = cond.is_magnetic_armour)
+    R_ac    = ac.R_ac
+    R_dc_th = ac.R_dc_theta
+    y_s     = ac.y_s
+    y_p     = ac.y_p
 
-# =====================================================================
-# 4. DIELECTRIC LOSSES
-# =====================================================================
+    # =====================================================================
+    # 4. DIELECTRIC LOSSES
+    # =====================================================================
 
-C_cable = cond.C_cable
-U0      = cond.U0
-Wd      = (C_cable > 0 && U0 > 0) ?
-          calc_dielectric_loss(U0, omega, C_cable, cond.tan_delta) : 0.0
+    C_cable = cond.C_cable
+    U0      = cond.U0
+    Wd      = (C_cable > 0 && U0 > 0) ?
+              calc_dielectric_loss(U0, omega, C_cable, cond.tan_delta) : 0.0
 
-# =====================================================================
-# 5. THERMAL RESISTANCE T1  (conductor → screen, multi-layer)
-# =====================================================================
+    # =====================================================================
+    # 5. THERMAL RESISTANCE T1  (conductor to screen, multi-layer)
+    # =====================================================================
 
-T1_prime = 0.0
-for (rho_th, r_in, r_ext) in cond.core_insulator_layers
-T1_prime += calc_layer_thermal_resistance(rho_th, r_in, r_ext)
+    T1_prime = 0.0
+    for (rho_th, r_in, r_ext) in cond.core_insulator_layers
+        T1_prime += calc_layer_thermal_resistance(rho_th, r_in, r_ext)
+    end
+
+    # =====================================================================
+    # 6. THERMAL RESISTANCE T2 (armour bedding)
+    #    When armour is present, T2 = thermal resistance between sheath
+    #    and armour (the sheath insulation acts as bedding).
+    #    When no armour: T2 = 0.
+    # =====================================================================
+
+    T2 = 0.0
+    if cond.has_armour && !isempty(cond.armour_bedding_layers)
+        for (rho_th, r_in, r_ext) in cond.armour_bedding_layers
+            T2 += calc_layer_thermal_resistance(rho_th, r_in, r_ext)
+        end
+    end
+
+    # =====================================================================
+    # 7. THERMAL RESISTANCE T3  (jacket / outer covering, multi-layer)
+    #    Without armour: sheath insulation layers -> T3
+    #    With armour: armour jacket layers -> T3
+    # =====================================================================
+
+    T3_prime = 0.0
+    if cond.has_armour && !isempty(cond.armour_jacket_layers)
+        # T3 = outer serving over armour
+        for (rho_th, r_in, r_ext) in cond.armour_jacket_layers
+            T3_prime += calc_layer_thermal_resistance(rho_th, r_in, r_ext)
+        end
+    else
+        # T3 = sheath insulation (no armour)
+        for (rho_th, r_in, r_ext) in cond.sheath_insulator_layers
+            T3_prime += calc_layer_thermal_resistance(rho_th, r_in, r_ext)
+        end
+    end
+
+    # =====================================================================
+    # 8. CORRECTION FACTORS  (wire-screen cover < 50 percent)
+    #    IEC 60287-2-1 Note following Table 1
+    # =====================================================================
+
+    T1_corr = 1.0
+    T3_corr = 1.0
+
+    d_mean_sc = cond.d_mean_screen
+    LF_s      = cond.LF_s
+
+    if cond.has_wire_screen
+        DoC = calc_screen_degree_of_cover(cond.d_wire, cond.n_wires,
+                                          cond.D_under, LF_s)
+        if DoC < 0.5
+            T1_corr = 1.07
+            T3_corr = 1.6
+        end
+    end
+
+    T1 = T1_corr * T1_prime
+    T3 = T3_corr * T3_prime
+
+    # =====================================================================
+    # 9. THERMAL RESISTANCE T4  (external / soil / air)
+    # =====================================================================
+
+    L_burial = cond.L_burial
+    rho_soil = cond.rho_soil
+
+    T4 = if L_burial > 0
+        if is_trefoil
+            calc_T4_trefoil(rho_soil, L_burial, De_cable)
+        elseif is_flat && n_cables > 1
+            calc_T4_flat(rho_soil, L_burial, De_cable, s, n_cables)
+        else
+            calc_T4(rho_soil, L_burial, De_cable)
+        end
+    else
+        calc_T4_air(De_cable, theta_amb, theta_max, 10.0)
+    end
+
+    # =====================================================================
+    # 10. AMPACITY -- iterative solution for screen/sheath temperature
+    # =====================================================================
+
+    n = 1.0              # single core per cable
+    delta_theta = theta_max - theta_amb
+
+    lambda1 = 0.0
+    lambda2 = 0.0
+
+    # Initial guess (no metallic losses)
+    I_rated = calculate_ac_permissible_current(delta_theta, Wd, R_ac,
+                                                lambda1, lambda2,
+                                                T1, T2, T3, T4, n)
+
+    theta_s = theta_max
+    R_s = 0.0
+    X_s = 0.0
+    R_A = 0.0
+
+    has_metallic_sheath = cond.has_wire_screen || cond.has_tubular_sheath
+
+    if has_metallic_sheath || cond.has_armour
+        I_prev     = 0.0
+        theta_prev = 0.0
+
+        for _iter in 1:cond.max_iter
+            # -- Screen/sheath temperature --
+            theta_s = theta_max - (I_rated^2 * R_ac + 0.5 * Wd) * T1
+
+            # -- Screen/sheath resistance and loss factor lambda1 --
+            if cond.has_wire_screen
+                scr = calc_screen_resistance(cond.rho_s, cond.alpha_s,
+                                             cond.n_wires, cond.d_wire,
+                                             cond.D_under, cond.L_lay, theta_s)
+                R_s = scr.R_s
+                d_mean_for_loss = d_mean_sc
+
+                slf = calc_sheath_loss_factors(R_s, R_ac, s, d_mean_for_loss, omega;
+                                               bonding = cond.bonding_type)
+                lambda1 = slf.lambda1
+                X_s     = slf.X_s
+
+            elseif cond.has_tubular_sheath
+                tsr = calc_tubular_sheath_resistance(cond.rho_sheath, cond.alpha_sheath,
+                                                      cond.r_sheath_in, cond.r_sheath_ext,
+                                                      theta_s)
+                R_s = tsr.R_s
+                d_mean_for_loss = cond.d_mean_sheath
+
+                slf = calc_sheath_loss_factors(R_s, R_ac, s, d_mean_for_loss, omega;
+                                               bonding = cond.bonding_type)
+                # Add eddy current component for tubular sheaths (GP6: never neglect)
+                lambda1_eddy = calc_sheath_loss_eddy(R_s, R_ac, d_mean_for_loss,
+                                                      cond.t_sheath, omega, f;
+                                                      formation = cond.formation)
+                lambda1 = slf.lambda1 + lambda1_eddy
+                X_s     = slf.X_s
+            end
+
+            # -- Armour loss factor lambda2 --
+            if cond.has_armour
+                theta_a = theta_s  # approximate armour temp as sheath temp
+                if cond.has_armour && !isempty(cond.armour_bedding_layers)
+                    # Armour temperature = sheath temp minus T2 drop
+                    W_through_T2 = n * (I_rated^2 * R_ac * (1 + lambda1) + Wd)
+                    theta_a = theta_s - W_through_T2 * T2
+                end
+                alf = calc_armour_loss_factors(R_ac, cond.rho_a, cond.alpha_a,
+                                               theta_a, cond.A_armour,
+                                               cond.d_mean_armour, omega,
+                                               cond.n_armour_wires;
+                                               bonding = cond.bonding_type)
+                lambda2 = alf.lambda2
+                R_A     = alf.R_A
+            end
+
+            # -- Re-evaluate ampacity --
+            I_rated = calculate_ac_permissible_current(delta_theta, Wd, R_ac,
+                                                        lambda1, lambda2,
+                                                        T1, T2, T3, T4, n)
+
+            # TB 880 dual convergence check
+            (abs(I_rated - I_prev) < cond.tol_I &&
+             abs(theta_s - theta_prev) < cond.tol_theta) && break
+
+            I_prev     = I_rated
+            theta_prev = theta_s
+        end
+    end
+
+    # =====================================================================
+    # 11. POST-PROCESS: losses and temperatures at rated current
+    # =====================================================================
+
+    Wc   = R_ac * I_rated^2                                  # conductor losses  [W/m]
+    Ws   = lambda1 * Wc                                      # screen losses     [W/m]
+    Wa   = lambda2 * Wc                                      # armour losses     [W/m]
+    WI   = Wc * (1 + lambda1 + lambda2)                      # total ohmic       [W/m]
+    Wt   = WI + Wd                                           # total per phase   [W/m]
+    Wsys = n_cables * Wt                                     # total system      [W/m]
+
+    theta_c  = theta_max
+    theta_s  = theta_c - (Wc + 0.5 * Wd) * T1
+    theta_a  = theta_s - n * (Wc * (1 + lambda1) + Wd) * T2
+    theta_e  = theta_a - n * (WI + Wd) * T3
+
+    # Solar radiation adjustment (cables in air)
+    delta_theta_solar = 0.0
+    if cond.installation == :in_air && cond.solar_radiation && cond.H_solar > 0
+        delta_theta_solar = calc_solar_radiation_rise(
+            cond.sigma_solar, De_cable, cond.H_solar,
+            T1, T2, T3, lambda1, lambda2, n)
+    end
+
+    # =====================================================================
+    # 12. RESULTS NAMED-TUPLE
+    # =====================================================================
+
+    cable_id = cond.cable_id
+
+    result = (;
+        I_rated,
+        # temperatures [degC]
+        theta_c, theta_s, theta_a, theta_e, theta_amb, delta_theta,
+        delta_theta_solar,
+        # resistance [Ohm/m]
+        R_dc_20, R_dc_theta = R_dc_th, R_ac, y_s, y_p,
+        # losses [W/m]
+        Wd, Wc, Ws, Wa, WI, Wt, Wsys,
+        # loss factors
+        lambda1, lambda2,
+        # thermal resistances [K.m/W]
+        T1_prime, T1, T1_correction = T1_corr,
+        T2,
+        T3_prime, T3, T3_correction = T3_corr,
+        T4,
+        # screen/sheath
+        R_s, X_s, d_mean_screen = d_mean_sc, LF_s,
+        has_wire_screen = cond.has_wire_screen,
+        has_tubular_sheath = cond.has_tubular_sheath,
+        # armour
+        R_A, has_armour = cond.has_armour,
+        is_magnetic_armour = cond.is_magnetic_armour,
+        # cable
+        Dc, De_cable, s, C_cable, U_e = U0,
+        n_cables, formation = cond.formation, f,
+        bonding_type = cond.bonding_type,
+        installation = cond.installation,
+    )
+
+    results[cable_id] = result
+    return results
 end
-
-# =====================================================================
-# 6. THERMAL RESISTANCE T2 (armour bedding)
-# =====================================================================
-
-T2 = 0.0              # no armour in this cable
-
-# =====================================================================
-# 7. THERMAL RESISTANCE T3  (jacket / outer covering, multi-layer)
-# =====================================================================
-
-T3_prime = 0.0
-for (rho_th, r_in, r_ext) in cond.sheath_insulator_layers
-T3_prime += calc_layer_thermal_resistance(rho_th, r_in, r_ext)
-end
-
-# =====================================================================
-# 8. CORRECTION FACTORS  (wire-screen cover < 50 %)
-#    IEC 60287-2-1 Note following Table 1
-# =====================================================================
-
-T1_corr = 1.0
-T3_corr = 1.0
-
-d_mean_sc = cond.d_mean_screen
-LF_s      = cond.LF_s
-
-if cond.has_wire_screen
-DoC = calc_screen_degree_of_cover(cond.d_wire, cond.n_wires,
-                                  cond.D_under, LF_s)
-if DoC < 0.5
-T1_corr = 1.07
-T3_corr = 1.6
-end
-end
-
-T1 = T1_corr * T1_prime
-T3 = T3_corr * T3_prime
-
-# =====================================================================
-# 9. THERMAL RESISTANCE T4  (external / soil)
-# =====================================================================
-
-L_burial = cond.L_burial
-rho_soil = cond.rho_soil
-
-T4 = if L_burial > 0
-is_trefoil ? calc_T4_trefoil(rho_soil, L_burial, De_cable) :
-             calc_T4(rho_soil, L_burial, De_cable)
-else
-calc_T4_air(De_cable, theta_amb, theta_max, 10.0)
-end
-
-# =====================================================================
-# 10. AMPACITY — iterative solution for screen temperature
-# =====================================================================
-
-n = 1.0              # single core per cable
-delta_theta = theta_max - theta_amb
-
-lambda1 = 0.0
-lambda2 = 0.0
-
-# Initial guess (no screen losses)
-I_rated = calculate_ac_permissible_current(delta_theta, Wd, R_ac,
-                                            lambda1, lambda2,
-                                            T1, T2, T3, T4, n)
-
-theta_s = theta_max
-R_s = 0.0
-X_s = 0.0
-
-if cond.has_wire_screen
-I_prev     = 0.0
-theta_prev = 0.0
-
-for _iter in 1:cond.max_iter
-# Screen temperature
-theta_s = theta_max - (I_rated^2 * R_ac + 0.5 * Wd) * T1
-
-# Screen resistance at θ_s
-scr = calc_screen_resistance(cond.rho_s, cond.alpha_s, cond.n_wires,
-                             cond.d_wire, cond.D_under,
-                             cond.L_lay, theta_s)
-R_s = scr.R_s
-
-# Sheath loss factor
-slf = calc_sheath_loss_factors(R_s, R_ac, s, d_mean_sc, omega;
-                               bonding = cond.bonding_type)
-lambda1 = slf.lambda1
-X_s     = slf.X_s
-
-# Re-evaluate ampacity
-I_rated = calculate_ac_permissible_current(delta_theta, Wd, R_ac,
-                                            lambda1, lambda2,
-                                            T1, T2, T3, T4, n)
-
-# TB 880 dual convergence check
-(abs(I_rated - I_prev) < cond.tol_I &&
- abs(theta_s - theta_prev) < cond.tol_theta) && break
-
-I_prev     = I_rated
-theta_prev = theta_s
-end
-end
-
-# =====================================================================
-# 11. POST-PROCESS: losses and temperatures at rated current
-# =====================================================================
-
-Wc  = R_ac * I_rated^2                                 # conductor losses  [W/m]
-Ws  = lambda1 * Wc                                     # screen losses     [W/m]
-WI  = Wc * (1 + lambda1 + lambda2)                     # total ohmic       [W/m]
-Wt  = WI + Wd                                          # total per phase   [W/m]
-Wsys = n_cables * Wt                                   # total system      [W/m]
-
-theta_c  = theta_max
-theta_s  = theta_c - (Wc + 0.5 * Wd) * T1
-theta_e  = theta_s -
-           n * (Wc * (1 + lambda1) + Wd) * T2 -
-           n * (WI + Wd) * T3
-
-# =====================================================================
-# 12. RESULTS NAMED-TUPLE
-# =====================================================================
-
-cable_id = problem.system.cables[1].design_data.cable_id
-
-result = (;
-I_rated,
-# temperatures [°C]
-theta_c, theta_s, theta_e, theta_amb, delta_theta,
-# resistance [Ω/m]
-R_dc_20, R_dc_theta = R_dc_th, R_ac, y_s, y_p,
-# losses [W/m]
-Wd, Wc, Ws, WI, Wt, Wsys,
-# loss factors
-lambda1, lambda2,
-# thermal resistances [K·m/W]
-T1_prime, T1, T1_correction = T1_corr,
-T2,
-T3_prime, T3, T3_correction = T3_corr,
-T4,
-# screen
-R_s, X_s, d_mean_screen = d_mean_sc, LF_s,
-# cable
-Dc, De_cable, s, C_cable, U_e = U0,
-n_cables, is_trefoil, f,
-bonding_type = cond.bonding_type,
-)
-
-results[cable_id] = result
-return results
-end
-
 
 function compute!(problem::AmpacityProblem, formulation::IEC60287Formulation)
     return compute_ampacity(problem::AmpacityProblem, formulation::IEC60287Formulation)
 end
-    
-end # module
+
+end

@@ -13,7 +13,8 @@ module IEC60287
 using ...Commons
 using ...DataModel
 using ...EarthProps
-using ...Engine: ProblemDefinition, AbstractFormulationSet, compute!
+using ...Engine: ProblemDefinition, AbstractFormulationSet
+import ...Engine: compute!
 
 # Export public API
 export AmpacityProblem, IEC60287Formulation, IEC60287CableCondition
@@ -26,6 +27,6 @@ include("solver.jl")
 
 using .Losses
 using .Thermal
-import .Solver: compute_ampacity, calculate_ac_permissible_current
+import .Solver: compute_ampacity, calculate_ac_permissible_current, compute!
 
 end
