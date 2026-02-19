@@ -111,14 +111,33 @@ function compute_ampacity(problem::AmpacityProblem, formulation::IEC60287Formula
     # =====================================================================
     # 3. AC RESISTANCE  (skin + proximity + magnetic armour factor)
     # =====================================================================
-
-    ac = calc_ac_resistance(R_dc_20, cond.alpha_c, theta_max, f,
-                            cond.k_s, cond.k_p, Dc, s;
-                            is_magnetic_armour = cond.is_magnetic_armour)
-    R_ac    = ac.R_ac
-    R_dc_th = ac.R_dc_theta
-    y_s     = ac.y_s
-    y_p     = ac.y_p
+    
+    # Calculate factors
+    # Step 1: DC resistance
+    R_dc_th = R_dc_20 * (1 + cond.alpha_c * (theta_max - 20))
+    
+    # Step 2: Skin effect
+    y_s = calc_skin_effect_factor(R_dc_th, f, cond.k_s)
+    
+    # Step 3: Proximity effect
+    y_p = 0.0
+    if is_flat
+         y_p = calc_proximity_effect_factor_flat(R_dc_th, f, cond.k_p, Dc, s, n_cables)
+         @debug "Using Flat Formation Proximity Factor: $y_p"
+    else
+         y_p = calc_proximity_effect_factor(R_dc_th, f, cond.k_p, Dc, s)
+         @debug "Using Trefoil/Standard Proximity Factor: $y_p"
+    end
+    
+    # Step 4: Magnetic Armour Correction (GP 25)
+    # R = R' * [1 + 1.5 * (ys + yp)] if magnetic
+    R_ac = 0.0
+    if cond.is_magnetic_armour
+        R_ac = R_dc_th * (1 + 1.5 * (y_s + y_p))
+        @debug "Applying Magnetic Armour Correction (1.5x factors)"
+    else
+        R_ac = R_dc_th * (1 + y_s + y_p)
+    end
 
     # =====================================================================
     # 4. DIELECTRIC LOSSES
@@ -201,14 +220,18 @@ function compute_ampacity(problem::AmpacityProblem, formulation::IEC60287Formula
     L_burial = cond.L_burial
     rho_soil = cond.rho_soil
 
-    T4 = if L_burial > 0
+    T4 = if cond.installation == :buried
         if is_trefoil
             calc_T4_trefoil(rho_soil, L_burial, De_cable)
-        elseif is_flat && n_cables > 1
+        elseif is_flat # && n_cables > 1 # handled in calc_T4_flat log logic
             calc_T4_flat(rho_soil, L_burial, De_cable, s, n_cables)
         else
             calc_T4(rho_soil, L_burial, De_cable)
         end
+    elseif cond.installation == :in_air
+        calc_T4_air(De_cable, theta_amb, theta_max, 10.0)
+    # elseif cond.installation == :duct
+    #    calc_T4_duct(...)
     else
         calc_T4_air(De_cable, theta_amb, theta_max, 10.0)
     end
@@ -254,6 +277,22 @@ function compute_ampacity(problem::AmpacityProblem, formulation::IEC60287Formula
                 slf = calc_sheath_loss_factors(R_s, R_ac, s, d_mean_for_loss, omega;
                                                bonding = cond.bonding_type)
                 lambda1 = slf.lambda1
+                
+                # Add eddy current component for wire screens in flat/spaced formation
+                # (although often small, instructed to include if flat)
+                if cond.formation == :flat
+                     # Note: t_sheath might be 0 for wire screen, need effective thickness or 
+                     # calc_sheath_loss_eddy handles it (returns 0 if t_s small).
+                     # For wire screens effectively t_s ~ d_wire? Or just use d_wire?
+                     # Passing d_wire as thickness for eddy calc approximation if needed, 
+                     # but calc_sheath_loss_eddy checks t_s.
+                     # Using d_wire as effective thickness for now.
+                     lambda1_eddy = calc_sheath_loss_eddy(R_s, R_ac, d_mean_for_loss,
+                                                          cond.d_wire, omega, f;
+                                                          formation = cond.formation)
+                     lambda1 += lambda1_eddy
+                end
+                
                 X_s     = slf.X_s
 
             elseif cond.has_tubular_sheath

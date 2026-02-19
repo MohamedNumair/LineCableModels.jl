@@ -115,6 +115,19 @@ mutable struct IEC60287CableCondition
 	# ── Screen / sheath wire data ────────────────────────────────────────
 	"Whether a wire screen is present."
 	has_wire_screen::Bool
+	"Whether a tubular sheath is present."
+	has_tubular_sheath::Bool
+	"Inner radius of tubular sheath [m]."
+	r_sheath_in::Float64
+	"Outer radius of tubular sheath [m]."
+	r_sheath_ext::Float64
+	"Sheath material resistivity at T₀ [Ω·m]."
+	rho_sheath::Float64
+	"Sheath temperature coefficient [1/K]."
+	alpha_sheath::Float64
+	"Sheath/Screen thickness [m] (for eddy current calc)."
+	t_sheath::Float64
+
 	"Screen material resistivity at T₀ [Ω·m]."
 	rho_s::Float64
 	"Screen temperature coefficient [1/K]."
@@ -129,22 +142,48 @@ mutable struct IEC60287CableCondition
 	L_lay::Float64
 	"Mean diameter of screen [m]."
 	d_mean_screen::Float64
+	"Mean diameter of tubular sheath [m]."
+	d_mean_sheath::Float64
 	"Lay factor of screen wires."
 	LF_s::Float64
 
 	# ── Armour data ──────────────────────────────────────────────────────
 	"Whether armour is present."
 	has_armour::Bool
+	"Whether armour is magnetic."
+	is_magnetic_armour::Bool
+	"Armour resistivity at T₀ [Ω·m]."
+	rho_a::Float64
+	"Armour temperature coefficient [1/K]."
+	alpha_a::Float64
+	"Number of armour wires."
+	n_armour_wires::Int
+	"Diameter of armour wires [m]."
+	d_armour_wire::Float64
+	"Mean diameter of armour [m]."
+	d_mean_armour::Float64
+	"Cross-sectional area of armour [m²]."
+	A_armour::Float64
 
 	# ── Thermal resistivities [K·m/W] ───────────────────────────────────
 	"Soil thermal resistivity [K·m/W]."
 	rho_soil::Float64
+
+	# ── Solar Radiation ─────────────────────────────────────────────────
+	"Solar absorption coefficient of cable surface."
+	sigma_solar::Float64
+	"Solar radiation intensity [W/m²]."
+	H_solar::Float64
 
 	# ── Multi-layer thermal data ─────────────────────────────────────────
 	"Core insulator layers: vector of (rho_thermal, r_in, r_ext)."
 	core_insulator_layers::Vector{Tuple{Float64, Float64, Float64}}
 	"Sheath insulator layers: vector of (rho_thermal, r_in, r_ext)."
 	sheath_insulator_layers::Vector{Tuple{Float64, Float64, Float64}}
+	"Armour bedding layers: vector of (rho_thermal, r_in, r_ext)."
+	armour_bedding_layers::Vector{Tuple{Float64, Float64, Float64}}
+	"Armour jacket layers: vector of (rho_thermal, r_in, r_ext)."
+	armour_jacket_layers::Vector{Tuple{Float64, Float64, Float64}}
 
 	# ── Iteration state ─────────────────────────────────────────────────
 	"Current guess for rated current [A]."
@@ -169,33 +208,6 @@ Extracts geometry, material properties, and environmental data from the
 unit conversions and derived-quantity calculations needed by the IEC 60287
 formulas.
 
-All geometric quantities are converted to **meters** (SI) at this stage.
-Temperature guesses are initialised as ``\\theta_{\\text{conductor}} = \\theta_{\\max}``,
-``\\theta_{\\text{sheath}} = \\theta_{\\max}``.
-
-# Formulation
-
-No formula — this is a data extraction / unit conversion step.  Derived geometry:
-
-``s = D_e`` (touching trefoil), ``\\omega = 2\\pi f``, conductor diameter
-``D_c = 2 r_{\\text{ext}}``, cable diameter ``D_e = 2 r_{\\text{ext,last}}``.
-
-# Source
-
-IEC 60287-1-1:2006 / IEC 60287-2-1:2015 (multiple clauses)
-
-# CIGRE TB880 Guidance
-
-Dielectric losses (``W_d``) should always be calculated and included, regardless
-of voltage level (Guidance Point 7).  Do not round intermediate values.  Enforce
-strict convergence tolerances (``10^{-3}``  A / K) (Guidance Point 2).
-
-# Arguments
-- `problem`: The ampacity problem definition.
-- `formulation`: The IEC 60287 formulation configuration.
-
-# Returns
-- An [`IEC60287CableCondition`](@ref) ready for the iterative solver.
 """
 function iec60287_triage(problem::AmpacityProblem, formulation::IEC60287Formulation)
 	system = problem.system
@@ -207,16 +219,54 @@ function iec60287_triage(problem::AmpacityProblem, formulation::IEC60287Formulat
 	theta_amb = problem.ambient_temperature
 
 	n_cables = system.num_cables
-	f = 50.0
+	f = 50.0  # Default, overridden if nominal data available or passed in problem
 	omega = 2 * π * f
 
-	# ── Formation detection ───────────────────────────────────────────────
-	formation = if n_cables == 3
-		:trefoil
-	elseif n_cables == 1
-		:single
+	# ── Geometry Extraction & Formation Detection ─────────────────────────
+	# Only supporting single circuit analysis for now (1-3 cables).
+	# Assuming identical cables.
+    
+    # Extract positions
+	positions = [(Float64(c.horz), Float64(c.vert)) for c in system.cables]
+    
+	formation = :single
+	s = 0.0
+	L_burial = 0.0
+
+	if n_cables == 1
+		formation = :single
+		L_burial = abs(positions[1][2])
+		s = 0.0
+	elseif n_cables == 3
+        # Calculate pairwise distances
+		d12 = sqrt((positions[1][1] - positions[2][1])^2 + (positions[1][2] - positions[2][2])^2)
+		d23 = sqrt((positions[2][1] - positions[3][1])^2 + (positions[2][2] - positions[3][2])^2)
+		d13 = sqrt((positions[1][1] - positions[3][1])^2 + (positions[1][2] - positions[3][2])^2)
+        
+        # Check vertical variance to distinguish flat vs trefoil
+		ys = [p[2] for p in positions]
+		y_range = maximum(ys) - minimum(ys)
+        
+        # Heuristic: if y coordinates are very close, it's flat
+		if y_range < 0.1 * min(d12, d23)
+			formation = :flat
+			s = (d12 + d23) / 2.0  # Average spacing adjacent
+			L_burial = abs(sum(ys) / 3)
+			@debug "Formation detected: FLAT (s= $(round(s, digits=4)) m, L=$(round(L_burial, digits=3)))"
+		else
+            # Assume trefoil if not flat
+			formation = :trefoil
+            # Geometric mean spacing for trefoil is effectively De if touching
+			s = (d12 + d23 + d13) / 3.0
+			L_burial = abs(sum(ys) / 3) # Approximate center
+			@debug "Formation detected: TREFOIL (s= $(round(s, digits=4)) m, L=$(round(L_burial, digits=3)))"
+		end
 	else
-		:flat
+		formation = :flat # Default fallback for 2 cables or >3
+		# simplistic spacing
+		s = abs(positions[2][1] - positions[1][1])
+		L_burial = abs(positions[1][2])
+		@debug "Formation fallback: FLAT (n=$n_cables, s=$s)"
 	end
 
 	# ── Representative cable ──────────────────────────────────────────────
@@ -225,18 +275,13 @@ function iec60287_triage(problem::AmpacityProblem, formulation::IEC60287Formulat
 	cable_id = cable.cable_id
 
 	# ── Installation type ─────────────────────────────────────────────────
-	is_buried = cable_pos.vert < 0
+    # If center of cable is above ground (y > 0), it's in air.
+	is_buried = L_burial > 0.0 && positions[1][2] < 0
 	installation = is_buried ? :buried : :in_air
-
-	L_burial = if is_buried
-		if formation == :trefoil
-			sum(Float64(-cp.vert) for cp in system.cables) / n_cables
-		else
-			Float64(-cable_pos.vert)
-		end
-	else
-		0.0
-	end
+    
+    # Solar radiation defaults
+	sigma_solar = 0.5  # Default absorption coefficient
+	H_solar = 1000.0   # Default intensity [W/m^2]
 
 	# ── Identify core and sheath components ───────────────────────────────
 	core_comp = nothing
@@ -260,46 +305,46 @@ function iec60287_triage(problem::AmpacityProblem, formulation::IEC60287Formulat
 	if sheath_comp === nothing && length(cable.components) >= 2
 		sheath_comp = cable.components[2]
 	end
-
-	# ── Geometry (meters) ─────────────────────────────────────────────────
+    
+    # ── Geometry (meters) ─────────────────────────────────────────────────
 	Dc = 0.0
-	A_c = 0.0
-	rho_c = 0.0
-	alpha_c = 0.0
-	theta_max = 90.0
-	k_s = 1.0
-	k_p = 1.0
-	C_cable = 0.0
+	De = 0.0  # Cable De
+	
+	if core_comp !== nothing
+		Dc = Float64(2 * core_comp.conductor_group.radius_ext)
+	end
+	if !isempty(cable.components)
+		last_comp = cable.components[end]
+		De = Float64(2 * last_comp.insulator_group.radius_ext)
+	end
+    
+    # If touching trefoil, enforce s = De
+	if formation == :trefoil && s < De
+		s = De
+	end
 
+	# ── Conductor Properties ──────────────────────────────────────────────
+	A_c = 0.0; rho_c = 0.0; alpha_c = 0.0; theta_max = 90.0
+	k_s = 1.0; k_p = 1.0; C_cable = 0.0
+    
 	if core_comp !== nothing
 		cond = core_comp.conductor_group
-		Dc = Float64(2 * cond.radius_ext)
 		A_c = Float64(cond.cross_section)
 		rho_c = Float64(cond.layers[1].material_props.rho)
 		alpha_c = Float64(cond.alpha)
-
-		theta_max_raw = Float64(core_comp.insulator_props.theta_max)
-		if !isnan(theta_max_raw) && theta_max_raw > 0
-			theta_max = theta_max_raw
+        
+        # Use provided theta_max or default to 90
+		tm = Float64(core_comp.insulator_props.theta_max)
+		if !isnan(tm) && tm > 0
+			theta_max = tm
 		end
 
-		# IEC 60287-1-1 Table 2 — round stranded conductors
-		k_s = 1.0
-		k_p = 1.0
-
+		k_s = 1.0; k_p = 1.0 # Standard defaults
 		C_cable = Float64(core_comp.insulator_group.shunt_capacitance)
 	end
 
-	last_comp = cable.components[end]
-	De = Float64(2 * last_comp.insulator_group.radius_ext)
-
-	# Conductor spacing — touching trefoil / flat default
-	s = De
-
-	# ── Insulation / dielectric ───────────────────────────────────────────
-	tan_delta = 0.004  # XLPE default (IEC 60287-1-1 Table 3)
-
-	# Voltage to earth [V] from nominal data
+	# ── Voltage & Insulation ──────────────────────────────────────────────
+	tan_delta = 0.001 # Default XLPE
 	U0 = 0.0
 	nd = cable.nominal_data
 	if nd !== nothing
@@ -308,9 +353,94 @@ function iec60287_triage(problem::AmpacityProblem, formulation::IEC60287Formulat
 		elseif nd.U0 !== nothing
 			U0 = Float64(nd.U0) * 1e3
 		end
+		if nd.freq !== nothing
+			f = Float64(nd.freq)
+			omega = 2 * π * f
+		end
 	end
 
-	# ── Core insulator layers (for T1) ────────────────────────────────────
+	# ── Screen / Sheath Properties ────────────────────────────────────────
+	has_wire_screen = false; has_tubular_sheath = false
+	rho_s = 0.0; alpha_s = 0.0; 
+	n_wires = 0; d_wire = 0.0; D_under = 0.0; L_lay = 0.0; d_mean_screen = 0.0
+	LF_s = 1.0
+	r_sheath_in = 0.0; r_sheath_ext = 0.0; rho_sheath = 0.0; alpha_sheath = 0.0
+	d_mean_sheath = 0.0; t_sheath = 0.0
+    
+    # Attempt to extract from 'sheath_comp' if it exists and looks like a screen
+	if sheath_comp !== nothing
+		cond_group = sheath_comp.conductor_group
+		
+        # Is it a wire array?
+		if cond_group isa ConductorGroup && !isempty(cond_group.layers) && cond_group.layers[1] isa WireArray
+			has_wire_screen = true
+			wa = cond_group.layers[1]
+			n_wires = wa.num_wires
+			d_wire = Float64(wa.diameter)
+			rho_s = Float64(wa.material_props.rho)
+			alpha_s = Float64(wa.material_props.alpha)
+			D_under = Float64(2 * wa.radius_in)
+			L_lay = wa.lay_length !== nothing ? Float64(wa.lay_length) : 10 * De # Default guess
+			
+			d_mean_screen = D_under + d_wire
+			LF_s = sqrt(1 + (π * d_mean_screen / L_lay)^2)
+            
+        # Is it a tubular sheath? (Tape or Lead)
+		elseif cond_group isa ConductorGroup && !isempty(cond_group.layers) && cond_group.layers[1] isa Tubular
+			has_tubular_sheath = true
+			tube = cond_group.layers[1]
+			r_sheath_in = Float64(tube.radius_in)
+			r_sheath_ext = Float64(tube.radius_ext)
+			rho_sheath = Float64(tube.material_props.rho)
+			alpha_sheath = Float64(tube.material_props.alpha)
+			t_sheath = r_sheath_ext - r_sheath_in
+			d_mean_sheath = (r_sheath_in + r_sheath_ext)
+		end
+	end
+
+	# ── Armour Properties (Placeholder / Basic Extraction) ────────────────
+	has_armour = false
+	is_magnetic_armour = false
+	rho_a = 0.0; alpha_a = 0.0
+	n_armour_wires = 0; d_armour_wire = 0.0; d_mean_armour = 0.0; A_armour = 0.0
+	armour_bedding_layers = Tuple{Float64, Float64, Float64}[]
+	armour_jacket_layers = Tuple{Float64, Float64, Float64}[]
+	
+    # Basic check: if there is a 3rd component, assume it's armour
+	if length(cable.components) >= 3
+		arm_comp = cable.components[3]
+		# Only treat as true armour if conductive
+		if arm_comp.conductor_group.cross_section > 0
+			has_armour = true
+			ag = arm_comp.conductor_group
+			# Simple Magnetic Check: if relative permeability >> 1
+			if ag.layers[1].material_props.mu_r > 1.1
+				is_magnetic_armour = true
+			end
+			rho_a = Float64(ag.layers[1].material_props.rho)
+			alpha_a = Float64(ag.layers[1].material_props.alpha)
+			A_armour = Float64(ag.cross_section)
+            
+            # Extract geometry if wire array
+			if ag.layers[1] isa WireArray
+				wa = ag.layers[1]
+				n_armour_wires = wa.num_wires
+				d_armour_wire = Float64(wa.diameter)
+				d_mean_armour = Float64(2 * wa.radius_in + wa.diameter)
+			end
+            
+            # Populate jacket layers
+			for layer in arm_comp.insulator_group.layers
+				push!(armour_jacket_layers, (
+					Float64(layer.material_props.rho_thermal),
+					Float64(layer.radius_in),
+					Float64(layer.radius_ext),
+				))
+			end
+		end
+	end
+
+	# ── Core & Sheath Insulation Layers ───────────────────────────────────
 	core_insulator_layers = Tuple{Float64, Float64, Float64}[]
 	if core_comp !== nothing
 		for layer in core_comp.insulator_group.layers
@@ -321,8 +451,7 @@ function iec60287_triage(problem::AmpacityProblem, formulation::IEC60287Formulat
 			))
 		end
 	end
-
-	# ── Sheath insulator layers (for T3) ──────────────────────────────────
+	
 	sheath_insulator_layers = Tuple{Float64, Float64, Float64}[]
 	if sheath_comp !== nothing
 		for layer in sheath_comp.insulator_group.layers
@@ -334,57 +463,21 @@ function iec60287_triage(problem::AmpacityProblem, formulation::IEC60287Formulat
 		end
 	end
 
-	# ── Screen / sheath wire data ─────────────────────────────────────────
-	has_wire_screen = false
-	rho_s = 0.0
-	alpha_s = 0.0
-	n_wires = 0
-	d_wire = 0.0
-	D_under = 0.0
-	L_lay = 0.0
-	d_mean_screen = 0.0
-	LF_s = 1.0
-
-	if sheath_comp !== nothing && !isempty(sheath_comp.conductor_group.layers)
-		wire_lyr = sheath_comp.conductor_group.layers[1]
-		if hasproperty(wire_lyr, :radius_wire)          # it is a WireArray
-			has_wire_screen = true
-			d_wire = Float64(2 * wire_lyr.radius_wire)
-			n_wires = wire_lyr.num_wires
-			D_under = Float64(2 * wire_lyr.radius_in)
-			d_mean_screen = D_under + d_wire
-			L_lay = Float64(wire_lyr.lay_ratio) * d_mean_screen
-			LF_s = sqrt(1.0 + (π * d_mean_screen)^2 / L_lay^2)
-			rho_s = Float64(wire_lyr.material_props.rho)
-			alpha_s = Float64(wire_lyr.material_props.alpha)
-		end
-	end
-
-	# ── Armour (not present for this cable type) ──────────────────────────
-	has_armour = false
-
-	# ── Construct condition ───────────────────────────────────────────────
 	return IEC60287CableCondition(
-		# categorical
 		installation, formulation.bonding_type, formulation.solar_radiation,
 		formation, n_cables, cable_id,
-		# geometry [m]
 		Dc, De, s, L_burial,
-		# conductor
 		A_c, rho_c, alpha_c, theta_max, k_s, k_p,
-		# dielectric
 		C_cable, U0, tan_delta, f, omega,
-		# screen
-		has_wire_screen, rho_s, alpha_s, n_wires, d_wire, D_under,
-		L_lay, d_mean_screen, LF_s,
-		# armour
-		has_armour,
-		# thermal
+		has_wire_screen, has_tubular_sheath, r_sheath_in, r_sheath_ext,
+		rho_sheath, alpha_sheath, t_sheath,
+		rho_s, alpha_s, n_wires, d_wire, D_under, L_lay, d_mean_screen, d_mean_sheath, LF_s,
+		has_armour, is_magnetic_armour, rho_a, alpha_a, n_armour_wires, d_armour_wire,
+		d_mean_armour, A_armour,
 		rho_soil,
-		# multi-layer
+		sigma_solar, H_solar,
 		core_insulator_layers, sheath_insulator_layers,
-		# iteration state
-		0.0, theta_max, theta_amb,
-		1e-3, 1e-3, 100,
+		armour_bedding_layers, armour_jacket_layers,
+		0.0, 90.0, theta_amb, 1e-3, 1e-3, 100
 	)
 end
