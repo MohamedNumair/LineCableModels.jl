@@ -94,6 +94,14 @@ end
             @test model.layers[2].t == 20.0
         end
 
+        @testset "Thermal Resistivity Input" begin
+            model_kw = EarthModel(frequencies, rho_g, epsr_g, mur_g; rho_thermal=2.7)
+            @test model_kw.layers[2].rho_thermal == 2.7
+
+            model_pos = EarthModel(frequencies, rho_g, epsr_g, mur_g, 3.1)
+            @test model_pos.layers[2].rho_thermal == 3.1
+        end
+
         @testset "Vertical Layers" begin
             model = EarthModel(frequencies, rho_g, epsr_g, mur_g, vertical_layers=true)
             @test model.vertical_layers == true
@@ -104,6 +112,7 @@ end
             @test_throws AssertionError EarthModel(frequencies, -100.0, epsr_g, mur_g)
             @test_throws AssertionError EarthModel(frequencies, rho_g, -10.0, mur_g)
             @test_throws AssertionError EarthModel(frequencies, rho_g, epsr_g, -1.0)
+            @test_throws AssertionError EarthModel(frequencies, rho_g, epsr_g, mur_g; rho_thermal=-1.0)
             @test_throws AssertionError EarthModel(frequencies, rho_g, epsr_g, mur_g, t=-5.0)
         end
     end

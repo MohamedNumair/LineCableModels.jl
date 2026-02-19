@@ -181,6 +181,7 @@ Constructs an [`EarthModel`](@ref) instance with a specified first earth layer. 
 - `rho_g`: Base (DC) electrical resistivity of the first earth layer \\[Ω·m\\].
 - `epsr_g`: Base (DC) relative permittivity of the first earth layer \\[dimensionless\\].
 - `mur_g`: Base (DC) relative permeability of the first earth layer \\[dimensionless\\].
+- `rho_thermal`: Thermal resistivity of the first earth layer \\[K·m/W\\] (default: `1.0`).
 - `t`: Thickness of the first earth layer \\[m\\]. For homogeneous earth models (or the bottommost layer), set `t = Inf`.
 - `freq_dependence`: Instance of a subtype of [`AbstractFDEMFormulation`](@ref) defining the computation method for frequency-dependent properties (default: [`CPEarth`](@ref)).
 - `vertical_layers`: Boolean flag indicating whether the model should be treated as vertically-layered (default: `false`).
@@ -209,6 +210,7 @@ function EarthModel(
 	rho_g::T,
 	epsr_g::T,
 	mur_g::T;
+	rho_thermal::T = one(T),
 	t::T = T(Inf),
 	freq_dependence::AbstractFDEMFormulation = CPEarth(),
 	vertical_layers::Bool = false,
@@ -220,6 +222,7 @@ function EarthModel(
 	@assert rho_g > 0 "Resistivity must be positive"
 	@assert epsr_g > 0 "Relative permittivity must be positive"
 	@assert mur_g > 0 "Relative permeability must be positive"
+	@assert rho_thermal > 0 "Thermal resistivity must be positive"
 	@assert t > 0 || isinf(t) "Layer thickness must be positive or infinite"
 
 	# Enforce rule for vertical model initialization
@@ -235,7 +238,7 @@ function EarthModel(
 	end
 
 	# Create top earth layer
-	top_layer = EarthLayer(frequencies, rho_g, epsr_g, mur_g, t, freq_dependence)
+	top_layer = EarthLayer(frequencies, rho_g, epsr_g, mur_g, t, freq_dependence, rho_thermal)
 
 	return EarthModel{T}(
 		freq_dependence,
@@ -249,6 +252,7 @@ function EarthModel(
 	rho_g,
 	epsr_g,
 	mur_g;
+	rho_thermal = 1.0,
 	t = Inf,
 	freq_dependence = CPEarth(),
 	vertical_layers = false,
@@ -259,6 +263,7 @@ function EarthModel(
 		rho_g,
 		epsr_g,
 		mur_g,
+		rho_thermal,
 		t,
 		freq_dependence,
 		vertical_layers,
@@ -269,10 +274,59 @@ function EarthModel(
 		coerce_to_T(rho_g, T),
 		coerce_to_T(epsr_g, T),
 		coerce_to_T(mur_g, T);
+		rho_thermal = coerce_to_T(rho_thermal, T),
 		t = coerce_to_T(t, T),
 		freq_dependence = freq_dependence,
 		vertical_layers = vertical_layers,
 		air_layer = air_layer === nothing ? nothing : coerce_to_T(air_layer, T),
+	)
+end
+
+function EarthModel(
+	frequencies::Vector{T},
+	rho_g::T,
+	epsr_g::T,
+	mur_g::T,
+	rho_thermal::T;
+	t::T = T(Inf),
+	freq_dependence::AbstractFDEMFormulation = CPEarth(),
+	vertical_layers::Bool = false,
+	air_layer::Union{EarthLayer{T}, Nothing} = nothing,
+) where {T <: REALSCALAR}
+	return EarthModel(
+		frequencies,
+		rho_g,
+		epsr_g,
+		mur_g;
+		rho_thermal = rho_thermal,
+		t = t,
+		freq_dependence = freq_dependence,
+		vertical_layers = vertical_layers,
+		air_layer = air_layer,
+	)
+end
+
+function EarthModel(
+	frequencies::AbstractVector,
+	rho_g,
+	epsr_g,
+	mur_g,
+	rho_thermal;
+	t = Inf,
+	freq_dependence = CPEarth(),
+	vertical_layers = false,
+	air_layer = nothing,
+)
+	return EarthModel(
+		frequencies,
+		rho_g,
+		epsr_g,
+		mur_g;
+		rho_thermal = rho_thermal,
+		t = t,
+		freq_dependence = freq_dependence,
+		vertical_layers = vertical_layers,
+		air_layer = air_layer,
 	)
 end
 
