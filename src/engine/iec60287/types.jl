@@ -12,6 +12,10 @@ struct AmpacityProblem{T <: REALSCALAR} <: ProblemDefinition
 	system::LineCableSystem{T}
 	"Earth environment with thermal properties."
 	environment::EarthModel{T}
+	"System frequency [Hz]."
+	frequency::Float64
+	"System line-to-line voltage [V]."
+	voltage_phase_to_phase::Float64
 
 	@doc """
 	$(TYPEDSIGNATURES)
@@ -22,9 +26,11 @@ struct AmpacityProblem{T <: REALSCALAR} <: ProblemDefinition
 	- `ambient_temperature`: Ambient temperature [°C].
 	- `system`: The cable system to analyze.
 	- `environment`: The earth model (including thermal properties).
+	- `frequency`: System frequency [Hz].
+	- `voltage_phase_to_phase`: System line-to-line voltage [V].
 	"""
-	function AmpacityProblem(ambient_temperature::Real, system::LineCableSystem{T}, environment::EarthModel{T}) where {T <: REALSCALAR}
-		return new{T}(Float64(ambient_temperature), system, environment)
+	function AmpacityProblem(ambient_temperature::Real, system::LineCableSystem{T}, environment::EarthModel{T}; frequency::Real, voltage_phase_to_phase::Real) where {T <: REALSCALAR}
+		return new{T}(Float64(ambient_temperature), system, environment, Float64(frequency), Float64(voltage_phase_to_phase))
 	end
 end
 
@@ -219,7 +225,7 @@ function iec60287_triage(problem::AmpacityProblem, formulation::IEC60287Formulat
 	theta_amb = problem.ambient_temperature
 
 	n_cables = system.num_cables
-	f = 50.0  # Default, overridden if nominal data available or passed in problem
+	f = problem.frequency
 	omega = 2 * π * f
 
 	# ── Geometry Extraction & Formation Detection ─────────────────────────
@@ -345,19 +351,8 @@ function iec60287_triage(problem::AmpacityProblem, formulation::IEC60287Formulat
 
 	# ── Voltage & Insulation ──────────────────────────────────────────────
 	tan_delta = 0.001 # Default XLPE
-	U0 = 0.0
-	nd = cable.nominal_data
-	if nd !== nothing
-		if nd.U !== nothing
-			U0 = Float64(nd.U) * 1e3 / sqrt(3.0)
-		elseif nd.U0 !== nothing
-			U0 = Float64(nd.U0) * 1e3
-		end
-		if nd.freq !== nothing
-			f = Float64(nd.freq)
-			omega = 2 * π * f
-		end
-	end
+	
+	U0 = problem.voltage_phase_to_phase / sqrt(3.0)
 
 	# ── Screen / Sheath Properties ────────────────────────────────────────
 	has_wire_screen = false; has_tubular_sheath = false
@@ -376,11 +371,11 @@ function iec60287_triage(problem::AmpacityProblem, formulation::IEC60287Formulat
 			has_wire_screen = true
 			wa = cond_group.layers[1]
 			n_wires = wa.num_wires
-			d_wire = Float64(wa.diameter)
+			d_wire = Float64(2 * wa.radius_wire)
 			rho_s = Float64(wa.material_props.rho)
 			alpha_s = Float64(wa.material_props.alpha)
 			D_under = Float64(2 * wa.radius_in)
-			L_lay = wa.lay_length !== nothing ? Float64(wa.lay_length) : 10 * De # Default guess
+			L_lay = Float64(wa.pitch_length)
 			
 			d_mean_screen = D_under + d_wire
 			LF_s = sqrt(1 + (π * d_mean_screen / L_lay)^2)
@@ -425,8 +420,8 @@ function iec60287_triage(problem::AmpacityProblem, formulation::IEC60287Formulat
 			if ag.layers[1] isa WireArray
 				wa = ag.layers[1]
 				n_armour_wires = wa.num_wires
-				d_armour_wire = Float64(wa.diameter)
-				d_mean_armour = Float64(2 * wa.radius_in + wa.diameter)
+				d_armour_wire = Float64(2 * wa.radius_wire)
+				d_mean_armour = Float64(2 * wa.radius_in + 2 * wa.radius_wire)
 			end
             
             # Populate jacket layers
