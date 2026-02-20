@@ -125,7 +125,7 @@ function compute_ampacity(problem::AmpacityProblem, formulation::IEC60287Formula
          y_p = calc_proximity_effect_factor_flat(R_dc_th, f, cond.k_p, Dc, s, n_cables)
          @debug "Using Flat Formation Proximity Factor: $y_p"
     else
-         y_p = calc_proximity_effect_factor(R_dc_th, f, cond.k_p, Dc, s)
+         y_p = calc_proximity_effect_factor(R_dc_th, f, cond.k_p, Dc, s; is_sector=cond.is_sector)
          @debug "Using Trefoil/Standard Proximity Factor: $y_p"
     end
     
@@ -240,7 +240,7 @@ function compute_ampacity(problem::AmpacityProblem, formulation::IEC60287Formula
     # 10. AMPACITY -- iterative solution for screen/sheath temperature
     # =====================================================================
 
-    n = 1.0              # single core per cable
+    n = Float64(cond.num_cores)              # cores per cable
     delta_theta = theta_max - theta_amb
 
     lambda1 = 0.0
@@ -296,37 +296,60 @@ function compute_ampacity(problem::AmpacityProblem, formulation::IEC60287Formula
                 X_s     = slf.X_s
 
             elseif cond.has_tubular_sheath
-                tsr = calc_tubular_sheath_resistance(cond.rho_sheath, cond.alpha_sheath,
-                                                      cond.r_sheath_in, cond.r_sheath_ext,
+                tsr = calc_tubular_sheath_resistance(cond.R_s_20, cond.alpha_sheath,
                                                       theta_s)
                 R_s = tsr.R_s
                 d_mean_for_loss = cond.d_mean_sheath
 
-                slf = calc_sheath_loss_factors(R_s, R_ac, s, d_mean_for_loss, omega;
-                                               bonding = cond.bonding_type)
-                # Add eddy current component for tubular sheaths (GP6: never neglect)
-                lambda1_eddy = calc_sheath_loss_eddy(R_s, R_ac, d_mean_for_loss,
-                                                      cond.t_sheath, omega, f;
-                                                      formation = cond.formation)
-                lambda1 = slf.lambda1 + lambda1_eddy
-                X_s     = slf.X_s
+                if cond.num_cores >= 3
+                    # 3-core cable with common sheath: eddy current formula + f_A
+                    slf = calc_sheath_loss_factors_3core(R_s, R_ac,
+                                                         cond.r1, cond.t_i1,
+                                                         d_mean_for_loss, omega;
+                                                         has_armour = cond.has_armour,
+                                                         d_A = cond.d_mean_armour,
+                                                         mu_r = cond.mu_r_armour,
+                                                         delta_armour = cond.delta_armour)
+                    lambda1 = slf.lambda1
+                    X_s = zero(Float64)
+                else
+                    # Single-core with tubular sheath
+                    slf = calc_sheath_loss_factors(R_s, R_ac, s, d_mean_for_loss, omega;
+                                                   bonding = cond.bonding_type)
+                    # Add eddy current component for tubular sheaths (GP6: never neglect)
+                    lambda1_eddy = calc_sheath_loss_eddy(R_s, R_ac, d_mean_for_loss,
+                                                          cond.t_sheath, omega, f;
+                                                          formation = cond.formation)
+                    lambda1 = slf.lambda1 + lambda1_eddy
+                    X_s     = slf.X_s
+                end
             end
 
             # -- Armour loss factor lambda2 --
             if cond.has_armour
-                theta_a = theta_s  # approximate armour temp as sheath temp
-                if cond.has_armour && !isempty(cond.armour_bedding_layers)
-                    # Armour temperature = sheath temp minus T2 drop
-                    W_through_T2 = n * (I_rated^2 * R_ac * (1 + lambda1) + Wd)
-                    theta_a = theta_s - W_through_T2 * T2
+                if cond.num_cores >= 3 && cond.is_magnetic_armour && cond.delta_armour > 0
+                    # 3-core cable with steel tape armour (Section 2.4.2.4)
+                    alf = calc_armour_loss_factors_steel_tape(R_ac, s,
+                                                              cond.d_mean_armour,
+                                                              cond.delta_armour,
+                                                              cond.mu_r_armour)
+                    lambda2 = alf.lambda2
+                    R_A     = alf.R_A
+                else
+                    # Single-core or non-magnetic armour
+                    theta_a = theta_s
+                    if !isempty(cond.armour_bedding_layers)
+                        W_through_T2 = n * (I_rated^2 * R_ac * (1 + lambda1) + Wd)
+                        theta_a = theta_s - W_through_T2 * T2
+                    end
+                    alf = calc_armour_loss_factors(R_ac, cond.R_a_20, cond.alpha_a,
+                                                   theta_a,
+                                                   cond.d_mean_armour, omega,
+                                                   cond.n_armour_wires;
+                                                   is_magnetic = cond.is_magnetic_armour)
+                    lambda2 = alf.lambda2
+                    R_A     = alf.R_A
                 end
-                alf = calc_armour_loss_factors(R_ac, cond.rho_a, cond.alpha_a,
-                                               theta_a, cond.A_armour,
-                                               cond.d_mean_armour, omega,
-                                               cond.n_armour_wires;
-                                               bonding = cond.bonding_type)
-                lambda2 = alf.lambda2
-                R_A     = alf.R_A
             end
 
             # -- Re-evaluate ampacity --

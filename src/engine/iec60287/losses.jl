@@ -19,9 +19,12 @@ export calc_ac_resistance,
        calc_proximity_effect_factor_flat,
        calc_dielectric_loss,
        calc_sheath_loss_factors,
+       calc_sheath_loss_factors_3core,
        calc_sheath_loss_eddy,
        calc_armour_loss_factors,
+       calc_armour_loss_factors_steel_tape,
        calc_screen_resistance,
+       calc_tubular_sheath_resistance,
        calc_screen_degree_of_cover,
        calc_capacitance
 
@@ -105,7 +108,7 @@ equivalent circular conductor and select the one giving the worst-case rating
 (Guidance Point 22). For magnetic armoured cables, this factor is multiplied by 1.5
 in the final resistance calculation (Guidance Point 25).
 """
-function calc_proximity_effect_factor(R_dc::T, f::T, k_p::T, dc::T, s::T) where {T<:Real}
+function calc_proximity_effect_factor(R_dc::T, f::T, k_p::T, dc::T, s::T; is_sector::Bool=false) where {T<:Real}
     # IEC 60287-1-1 Section 2.1.3 — Three single-core cables (trefoil)
     # x_p^2 = 8*pi*f / R' * 10^-7 * k_p
     xp2 = 8 * π * f / R_dc * 1e-7 * k_p
@@ -118,6 +121,10 @@ function calc_proximity_effect_factor(R_dc::T, f::T, k_p::T, dc::T, s::T) where 
 
     # y_p = F1 * (dc/s)^2 * [0.312 * (dc/s)^2 + 1.18 / (F1 + 0.27)]
     yp = F1 * dcs2 * (T(0.312) * dcs2 + T(1.18) / (F1 + T(0.27)))
+
+    if is_sector
+        yp = yp * T(2/3)
+    end
 
     return yp
 end
@@ -362,18 +369,83 @@ function calc_sheath_loss_factors(R_s::T, R_ac::T, s::T, d_mean::T, omega::T;
 end
 
 """
-    calc_armour_loss_factors(R_ac, rho_a, alpha_a, theta_a, A_a, d_m, omega, n_wires; is_magnetic=false)
+    calc_sheath_loss_factors_3core(R_s, R_ac, r1, t_i1, d_mean_sheath, omega;
+                                   has_armour, d_A, mu_r, delta_armour)
+
+Calculates the sheath/screen loss factor ``\\lambda_1`` for a three-core cable
+with a common metallic sheath (no circulating currents).
+
+# Formulation
+
+Circulating current losses: ``\\lambda_1' = 0`` (common sheath).
+
+Eddy current losses (IEC 60287-1-1n Section 2.3.8):
+
+``\\lambda_1'' = 0.94 \\frac{R_s}{R} \\left(\\frac{2 r_1 + t_{i1}}{d}\\right)^2
+              \\frac{1}{1 + \\left(\\frac{R_s}{\\omega \\cdot 10^{-7}}\\right)^2}``
+
+Additional factor for steel tape armour (IEC 60287-1-1 Section 2.3.9):
+
+``f_A = \\left[1 + \\left(\\frac{d}{d_A}\\right)^2
+       \\frac{1}{1 + \\frac{d_A}{\\mu \\delta}}\\right]^2``
+
+Total: ``\\lambda_1 = \\lambda_1' + f_A \\cdot \\lambda_1''``
+
+# Arguments
+- `R_s`: Sheath resistance at operating temperature [Ω/m].
+- `R_ac`: Conductor AC resistance [Ω/m].
+- `r1`: Circumscribing radius of conductors [m].
+- `t_i1`: Insulation thickness between conductors [m].
+- `d_mean_sheath`: Mean diameter of sheath [m].
+- `omega`: Angular frequency [rad/s].
+- `has_armour`: Whether armour is present.
+- `d_A`: Mean diameter of armour [m].
+- `mu_r`: Relative permeability of armour.
+- `delta_armour`: Equivalent thickness of armour [m].
+
+# Source
+IEC 60287-1-1:2006, Section 2.3.8 / 2.3.9
+"""
+function calc_sheath_loss_factors_3core(R_s::T, R_ac::T, r1::T, t_i1::T,
+                                         d_mean_sheath::T, omega::T;
+                                         has_armour::Bool = false,
+                                         d_A::T = zero(T),
+                                         mu_r::T = one(T),
+                                         delta_armour::T = zero(T)) where {T<:Real}
+    # lambda1' = 0 (no circulating current for common sheath on 3-core cable)
+    lambda1_circ = zero(T)
+
+    # lambda1'' = eddy current losses (Section 2.3.8)
+    # 0.94 * (R_s/R) * ((2*r1 + t_i1)/d)^2 * 1/(1 + (R_s/(omega*1e-7))^2)
+    ratio_R = R_s / R_ac
+    geometric_ratio = ((2 * r1 + t_i1) / d_mean_sheath)^2
+    omega_term = (R_s / (omega * T(1e-7)))^2
+    lambda1_eddy = T(0.94) * ratio_R * geometric_ratio / (1 + omega_term)
+
+    # f_A factor for steel tape armour (Section 2.3.9)
+    f_A = one(T)
+    if has_armour && mu_r > T(1) && delta_armour > 0
+        k = one(T) / (one(T) + d_A / (mu_r * delta_armour))
+        f_A = (one(T) + (d_mean_sheath / d_A)^2 * k)^2
+    end
+
+    lambda1 = lambda1_circ + f_A * lambda1_eddy
+    return (; lambda1, lambda1_circ, lambda1_eddy, f_A, X_s = zero(T))
+end
+
+"""
+    calc_armour_loss_factors(R_ac, R_a_20, alpha_a, theta_a, d_m, omega, n_wires; is_magnetic=false)
 
 Calculates armour loss factor ``\\lambda_2``.
 
 # Source
 IEC 60287-1-1:2006, Clause 2.4
 """
-function calc_armour_loss_factors(R_ac::T, rho_a::T, alpha_a::T, theta_a::T,
-                                  A_a::T, d_m::T, omega::T, n_wires::Int;
+function calc_armour_loss_factors(R_ac::T, R_a_20::T, alpha_a::T, theta_a::T,
+                                  d_m::T, omega::T, n_wires::Int;
                                   is_magnetic::Bool = false) where {T<:Real}
     # Resistance of armour at temp
-    R_a = rho_a * (1 + alpha_a * (theta_a - 20)) / A_a
+    R_a = R_a_20 * (1 + alpha_a * (theta_a - 20))
     
     if is_magnetic
         # Clause 2.4.2.2 - Magnetic wire armour
@@ -390,6 +462,49 @@ function calc_armour_loss_factors(R_ac::T, rho_a::T, alpha_a::T, theta_a::T,
         lambda2 = R_a / R_ac 
         return (; lambda2, R_A = R_a)
     end
+end
+
+"""
+    calc_armour_loss_factors_steel_tape(R_ac, s, d_A, delta, mu_r)
+
+Calculates armour loss factor ``\\lambda_2`` for steel tape armour on three-core cables.
+
+# Formulation (IEC 60287-1-1 Section 2.4.2.4)
+
+Factor: ``k = \\frac{1}{1 + \\frac{d_A}{\\mu \\delta}}``
+
+Hysteresis loss: ``\\lambda_2' = \\frac{s^2 k^2 \\cdot 10^{-7}}{R \\cdot d_A \\cdot \\delta}``
+
+Eddy current loss (SI units): ``\\lambda_2'' = 2.25 \\frac{s^2 k^2 \\delta \\cdot 10^{-2}}{R \\cdot d_A}``
+
+Total: ``\\lambda_2 = \\lambda_2' + \\lambda_2''``
+
+Note: s, d_A, \u03b4 must all be in meters; R in Ω/m.
+
+# Arguments
+- `R_ac`: Conductor AC resistance [Ω/m].
+- `s`: Distance between conductor axes [m].
+- `d_A`: Mean diameter of armour [m].
+- `delta`: Equivalent thickness of armour [m].
+- `mu_r`: Relative permeability of armour.
+
+# Returns
+- Named tuple `(lambda2, lambda2_hyst, lambda2_eddy, k, R_A)`.
+
+# Source
+IEC 60287-1-1:2006, Section 2.4.2.4
+"""
+function calc_armour_loss_factors_steel_tape(R_ac::T, s::T, d_A::T, delta::T, mu_r::T) where {T<:Real}
+    k = one(T) / (one(T) + d_A / (mu_r * delta))
+
+    # Hysteresis loss: \u03bb2' = s² k² 10^-7 / (R d_A \u03b4)  [SI]
+    lambda2_hyst = s^2 * k^2 * T(1e-7) / (R_ac * d_A * delta)
+
+    # Eddy current loss: \u03bb2'' = 2.25 s² k² \u03b4 10^-2 / (R d_A)  [SI]
+    lambda2_eddy = T(2.25) * s^2 * k^2 * delta * T(1e-2) / (R_ac * d_A)
+
+    lambda2 = lambda2_hyst + lambda2_eddy
+    return (; lambda2, lambda2_hyst, lambda2_eddy, k, R_A = zero(T))
 end
 
 """
@@ -509,6 +624,24 @@ function calc_sheath_loss_eddy(R_s::T, R_ac::T, d_mean::T, t_s::T, omega::T, f::
     else
         return T(0.0) # Usually negligible for touching trefoil
     end
+end
+
+"""
+    calc_tubular_sheath_resistance(R_s_20, alpha, theta)
+
+Calculates the DC resistance of a tubular sheath at operating temperature.
+
+# Arguments
+- `R_s_20`: Resistance at 20 °C [Ω/m].
+- `alpha`: Temperature coefficient of resistance [1/K].
+- `theta`: Operating temperature [°C].
+
+# Returns
+- Named tuple `(R_s_20, R_s)`.
+"""
+function calc_tubular_sheath_resistance(R_s_20::T, alpha::T, theta::T) where {T<:Real}
+    R_s = R_s_20 * (1 + alpha * (theta - 20))
+    return (; R_s_20, R_s)
 end
 
 end # module
