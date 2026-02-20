@@ -109,6 +109,10 @@ coerces values to `T`, and calls the strict numeric kernel.
 	)
 end
 
+@inline function Material(; rho, eps_r, mu_r, T0, alpha, rho_thermal=3.5, theta_max=90.0, tan_delta=0.004, sigma_solar=0.6)
+	return Material(rho, eps_r, mu_r, T0, alpha, rho_thermal, theta_max, tan_delta, sigma_solar)
+end
+
 include("materialslibrary.jl")
 include("dataframe.jl")
 include("base.jl")
