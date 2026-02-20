@@ -287,6 +287,14 @@ function iec60287_triage(problem::AmpacityProblem, formulation::IEC60287Formulat
     
     # Solar radiation defaults
 	sigma_solar = 0.5  # Default absorption coefficient
+	if !isempty(cable.components)
+		last_comp = cable.components[end]
+		if !isempty(last_comp.insulator_group.layers)
+			sigma_solar = Float64(last_comp.insulator_group.layers[end].material_props.sigma_solar)
+		else
+			sigma_solar = Float64(last_comp.insulator_props.sigma_solar)
+		end
+	end
 	H_solar = 1000.0   # Default intensity [W/m^2]
 
 	# ── Identify core and sheath components ───────────────────────────────
@@ -350,7 +358,21 @@ function iec60287_triage(problem::AmpacityProblem, formulation::IEC60287Formulat
 	end
 
 	# ── Voltage & Insulation ──────────────────────────────────────────────
-	tan_delta = 0.001 # Default XLPE
+	tan_delta = 0.004 # Default XLPE
+	if core_comp !== nothing
+		# Find the main insulation layer (first Insulator layer)
+		found_insulator = false
+		for layer in core_comp.insulator_group.layers
+			if layer isa Insulator
+				tan_delta = Float64(layer.material_props.tan_delta)
+				found_insulator = true
+				break
+			end
+		end
+		if !found_insulator
+			tan_delta = Float64(core_comp.insulator_props.tan_delta)
+		end
+	end
 	
 	U0 = problem.voltage_phase_to_phase / sqrt(3.0)
 

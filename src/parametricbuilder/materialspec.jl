@@ -23,12 +23,14 @@ struct MaterialSpec
 	T0::Any;
 	alpha::Any;
 	rho_thermal::Any;
-	theta_max::Any
+	theta_max::Any;
+	tan_delta::Any;
+	sigma_solar::Any
 end
-MaterialSpec(; rho, eps_r, mu_r, T0, alpha, rho_thermal, theta_max) = MaterialSpec(rho, eps_r, mu_r, T0, alpha, rho_thermal, theta_max)
+MaterialSpec(; rho, eps_r, mu_r, T0, alpha, rho_thermal, theta_max, tan_delta, sigma_solar) = MaterialSpec(rho, eps_r, mu_r, T0, alpha, rho_thermal, theta_max, tan_delta, sigma_solar)
 
 # --- 1) Ad-hoc numeric: values (or (value,pct)) ---
-Material(; rho, eps_r = 1.0, mu_r = 1.0, T0 = 20.0, alpha = 0.0, rho_thermal = 3.5, theta_max = 90.0) =
+Material(; rho, eps_r = 1.0, mu_r = 1.0, T0 = 20.0, alpha = 0.0, rho_thermal = 3.5, theta_max = 90.0, tan_delta = 0.004, sigma_solar = 0.6) =
 	MaterialSpec(
 		rho = _spec(rho),
 		eps_r = _spec(eps_r),
@@ -37,6 +39,8 @@ Material(; rho, eps_r = 1.0, mu_r = 1.0, T0 = 20.0, alpha = 0.0, rho_thermal = 3
 		alpha = _spec(alpha),
 		rho_thermal = _spec(rho_thermal),
 		theta_max = _spec(theta_max),
+		tan_delta = _spec(tan_delta),
+		sigma_solar = _spec(sigma_solar),
 	)
 
 # --- 2) From an existing Material: append %unc by default, or override with (value,pct) ---
@@ -49,6 +53,8 @@ function Material(
 	alpha = nothing,
 	rho_thermal = nothing,
 	theta_max = nothing,
+	tan_delta = nothing,
+	sigma_solar = nothing,
 )
 	MaterialSpec(
 		rho   = _pair_from_nominal(m.rho, rho),
@@ -58,6 +64,8 @@ function Material(
 		alpha = _pair_from_nominal(m.alpha, alpha),
 		rho_thermal = _pair_from_nominal(m.rho_thermal, rho_thermal),
 		theta_max   = _pair_from_nominal(m.theta_max, theta_max),
+		tan_delta   = _pair_from_nominal(m.tan_delta, tan_delta),
+		sigma_solar = _pair_from_nominal(m.sigma_solar, sigma_solar),
 	)
 end
 
@@ -76,5 +84,7 @@ function _make_range(ms::MaterialSpec)
 	αs = _make_range(ms.alpha[1]; pct = ms.alpha[2])
 	ρths = _make_range(ms.rho_thermal[1]; pct = ms.rho_thermal[2])
 	θms  = _make_range(ms.theta_max[1]; pct = ms.theta_max[2])
-	[Materials.Material(ρ, ε, μ, T, α, ρth, θm) for (ρ, ε, μ, T, α, ρth, θm) in product(ρs, εs, μs, Ts, αs, ρths, θms)]
+	tds  = _make_range(ms.tan_delta[1]; pct = ms.tan_delta[2])
+	sss  = _make_range(ms.sigma_solar[1]; pct = ms.sigma_solar[2])
+	[Materials.Material(ρ, ε, μ, T, α, ρth, θm, td, ss) for (ρ, ε, μ, T, α, ρth, θm, td, ss) in product(ρs, εs, μs, Ts, αs, ρths, θms, tds, sss)]
 end

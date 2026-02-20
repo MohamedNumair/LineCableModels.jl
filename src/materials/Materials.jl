@@ -53,6 +53,10 @@ struct Material{T <: REALSCALAR}
 	rho_thermal::T
 	"Maximum operating temperature \\[°C\\]."
 	theta_max::T
+	"Dielectric loss factor \\[dimensionless\\]."
+	tan_delta::T
+	"Solar absorption coefficient \\[dimensionless\\]."
+	sigma_solar::T
 
 	@inline function Material{T}(
 		rho::T,
@@ -61,9 +65,11 @@ struct Material{T <: REALSCALAR}
 		T0::T,
 		alpha::T,
 		rho_thermal::T,
-		theta_max::T
+		theta_max::T,
+		tan_delta::T,
+		sigma_solar::T
 	) where {T <: REALSCALAR}
-		return new{T}(rho, eps_r, mu_r, T0, alpha, rho_thermal, theta_max)
+		return new{T}(rho, eps_r, mu_r, T0, alpha, rho_thermal, theta_max, tan_delta, sigma_solar)
 	end
 
 end
@@ -82,12 +88,14 @@ coerces values to `T`, and calls the strict numeric kernel.
 - `alpha`: Temperature coefficient of resistivity \\[1/°C\\].
 - `rho_thermal`: Thermal resistivity \\[K·m/W\\].
 - `theta_max`: Maximum operating temperature \\[°C\\].
+- `tan_delta`: Dielectric loss factor \\[1\\].
+- `sigma_solar`: Solar absorption coefficient \\[1\\].
 
 # Returns
-- `Material{T}` where `T = resolve_T(rho, eps_r, mu_r, T0, alpha, rho_thermal, theta_max)`.
+- `Material{T}` where `T = resolve_T(rho, eps_r, mu_r, T0, alpha, rho_thermal, theta_max, tan_delta, sigma_solar)`.
 """
-@inline function Material(rho, eps_r, mu_r, T0, alpha, rho_thermal=3.5, theta_max=90.0)
-	T = resolve_T(rho, eps_r, mu_r, T0, alpha, rho_thermal, theta_max)
+@inline function Material(rho, eps_r, mu_r, T0, alpha, rho_thermal=3.5, theta_max=90.0, tan_delta=0.004, sigma_solar=0.6)
+	T = resolve_T(rho, eps_r, mu_r, T0, alpha, rho_thermal, theta_max, tan_delta, sigma_solar)
 	return Material{T}(
 		coerce_to_T(rho, T),
 		coerce_to_T(eps_r, T),
@@ -95,7 +103,9 @@ coerces values to `T`, and calls the strict numeric kernel.
 		coerce_to_T(T0, T),
 		coerce_to_T(alpha, T),
 		coerce_to_T(rho_thermal, T),
-		coerce_to_T(theta_max, T)
+		coerce_to_T(theta_max, T),
+		coerce_to_T(tan_delta, T),
+		coerce_to_T(sigma_solar, T)
 	)
 end
 

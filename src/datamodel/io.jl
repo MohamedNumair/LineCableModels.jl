@@ -42,7 +42,7 @@ function Base.show(io::IO, ::MIME"text/plain", part::T) where {T<:AbstractCableP
         _print_fields(
             io,
             part.material_props,
-            [:rho, :eps_r, :mu_r, :alpha],
+            [:rho, :eps_r, :mu_r, :alpha, :rho_thermal, :theta_max, :tan_delta, :sigma_solar],
         )
         println(io, "]")
     end

@@ -35,6 +35,8 @@ function DataFrame(library::MaterialsLibrary)::DataFrame
             alpha=m.alpha,
             rho_thermal=m.rho_thermal,
             theta_max=m.theta_max,
+            tan_delta=m.tan_delta,
+            sigma_solar=m.sigma_solar,
         )
         for (name, m) in library
     ]
