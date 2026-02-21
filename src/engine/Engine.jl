@@ -1,7 +1,7 @@
 """
 	LineCableModels.Engine
 
-The [`Engine`](@ref) module provides the main functionalities of the [`LineCableModels.jl`](index.md) package. This module implements data structures, methods and functions for calculating frequency-dependent electrical parameters (Z/Y matrices) of line and cable systems with uncertainty quantification. 
+The [`Engine`](@ref) module provides the main functionalities of the [`LineCableModels.jl`](index.md) package. This module implements data structures, methods and functions for calculating frequency-dependent electrical parameters (Z/Y matrices) of line and cable systems with uncertainty quantification.
 
 # Overview
 
@@ -107,5 +107,8 @@ include("fem/FEM.jl")
 
 include("iec60287/IEC60287.jl")
 @reexport using .IEC60287
+
+include("iec60853/IEC60853.jl")
+@reexport using .IEC60853
 
 end # module Engine
