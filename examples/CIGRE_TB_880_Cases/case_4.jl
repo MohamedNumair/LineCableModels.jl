@@ -17,6 +17,7 @@ The system operates at 50 Hz with both-side bonding of screens (solidly grounded
 using Revise
 using LineCableModels
 using LineCableModels.Engine.IEC60287
+using LineCableModels.Engine.IEC60853
 using DataFrames
 using Printf
 fullfile(filename) = joinpath(@__DIR__, filename); #hide
@@ -24,7 +25,7 @@ set_verbosity!(1); #hide
 set_backend!(:gl); #hide
 
 
-ENV["JULIA_DEBUG"] = "LineCableModels,LineCableModels.Engine.IEC60287"
+ENV["JULIA_DEBUG"] = "LineCableModels,LineCableModels.Engine.IEC60287, LineCableModels.Engine.IEC60287.Solver, LineCableModels.Engine.IEC60853, LineCableModels.Engine.IEC60853.Solver" #hide
 
 
 # Initialize materials library with default values:
@@ -206,6 +207,10 @@ add!(cable_design, sheath_cc)
 plt1, _ = preview(cable_design)
 plt1 #hide
 
+Makie.save("cigre_tb880_case_4_cable_design.svg", plt1)
+Makie.save("cigre_tb880_case_4_cable_design.pdf", plt1)
+Makie.save("cigre_tb880_case_4_cable_design.png", plt1)
+
 #=
 ## Examining the cable parameters (RLC)
 
@@ -232,7 +237,7 @@ library_df = DataFrame(library)
 
 # Save to file for later use:
 library_file = fullfile("cables_library_case4.json")
-save(library, file_name = library_file);
+LineCableModels.save(library, file_name = library_file);
 
 #=
 ## Defining a cable system
@@ -293,6 +298,13 @@ system_df = DataFrame(cable_system)
 plt2, _ = preview(cable_system, zoom_factor = 2.0)
 plt2 #hide
 
+
+
+Makie.save("cigre_tb880_case_4_cable_system.svg", plt2)
+Makie.save("cigre_tb880_case_4_cable_system.pdf", plt2)
+Makie.save("cigre_tb880_case_4_cable_system.png", plt2)
+
+
 #=
 ## IEC 60287 Ampacity Calculation
 
@@ -300,7 +312,6 @@ Compute the steady-state continuous current rating using the IEC 60287 analytica
 formulation. The solver iteratively determines the conductor current at which the
 maximum conductor temperature reaches θ_max = 90 °C.
 =#
-
 
 
 ambient_temperature = 20.0 # Ambient temperature [°C]
@@ -423,4 +434,82 @@ println("\n── Validation vs. CIGRE TB 880 ──")
 @printf("  Wsys:  %.3f  vs  %.3f\n", r.Wsys, ref.Wsys)
 @printf("  θ_s :  %.2f  vs  %.2f\n", r.theta_s, ref.theta_s)
 @printf("  θ_e :  %.2f  vs  %.2f\n", r.theta_e, ref.theta_e)
+println()
+
+
+#=
+## IEC 60853 Cyclic Rating
+
+Compute the cyclic rating factor *M* from a 24-hour load profile using
+the IEC 60853-2 methodology.  The factor *M* multiplies the steady-state
+rated current to yield the permissible peak cyclic current:
+``I_{peak} = M \times I_{rated}``.
+=#
+
+# Load the 24-hour cyclic load profile:
+# profile = load_cyclic_profile(fullfile("loadprofile_IEC60853-2.18033941a3cc.csv"))
+profile = load_cyclic_profile(fullfile("loadprofile_ENA_P17_part3.b7ed0a1dbb1a.csv"))
+
+# Compute cyclic rating using pre-computed steady-state results:
+cyclic_results = compute_cyclic_rating(prob, F, results, profile)
+cr = cyclic_results[cable_id]
+
+# ── Display results ──────────────────────────────────────────────────────
+println("\n" * "=" ^72)
+println("  IEC 60853 Cyclic Rating -- CIGRE TB 880 Case 4")
+println("=" ^72)
+
+println("\n-- Load Profile --")
+@printf("  Peak current           I_max = %.1f A (hour %d)\n",
+	profile.I_max, profile.peak_hour)
+@printf("  Loss-load factor       mu    = %.6f\n", cr.mu)
+@printf("  Y_Nh (peak..5h before)       = [%s]\n",
+	join([@sprintf("%.4f", y) for y in cr.Y_Nh], ", "))
+
+println("\n-- Cable Transient Parameters --")
+@printf("  Van Wormer coeff.      p_i   = %.6f\n", cr.p_i)
+@printf("  Van Wormer jacket      p_j   = %.6f\n", cr.p_j)
+@printf("  Cauer T_A                    = %.6f K.m/W\n", cr.T_A)
+@printf("  Cauer T_B                    = %.6f K.m/W\n", cr.T_B)
+@printf("  Cauer Q_A                    = %.4f J/(m.K)\n", cr.Q_A)
+@printf("  Cauer Q_B                    = %.4f J/(m.K)\n", cr.Q_B)
+@printf("  Eigenvalue a_0               = %.6e 1/s\n", cr.a_0)
+@printf("  Eigenvalue b_0               = %.6e 1/s\n", cr.b_0)
+@printf("  Apparent T_a0                = %.6f K.m/W\n", cr.T_a0)
+@printf("  Apparent T_b0                = %.6f K.m/W\n", cr.T_b0)
+@printf("  Temperature ratio k_t        = %.6f\n", cr.k_t)
+
+println("\n-- Thermal Capacitances --")
+@printf("  Q_c  (conductor)             = %.4f J/(m.K)\n", cr.Q_c)
+@printf("  Q_i  (insulation)            = %.4f J/(m.K)\n", cr.Q_i)
+@printf("  Q_sc (screen)                = %.4f J/(m.K)\n", cr.Q_sc)
+@printf("  Q_j  (jacket)                = %.4f J/(m.K)\n", cr.Q_j)
+
+if cr.N_c > 1
+	@printf("\n-- Mutual Heating --\n")
+	@printf("  N_c (cables in group)        = %d\n", cr.N_c)
+	@printf("  F_mu                         = %.6f\n", cr.F_mu)
+	@printf("  d_hot                        = %.6f m\n", cr.d_hot)
+end
+
+println("\n-- Attainment Factors --")
+for j in 1:cr.N_h
+	@printf("  theta_R(%d h)                 = %.6f\n", j, cr.theta_R[j+1])
+end
+
+println("\n" * "=" ^72)
+@printf("  Cyclic rating factor   M     = %.6f\n", cr.M)
+@printf("  Steady-state current   I_c   = %.2f A\n", cr.I_rated)
+@printf("  Peak cyclic current    I_pk  = %.2f A  (= M x I_c)\n", cr.I_peak)
+println("=" ^72)
+
+# ── Physical validation checks ──
+println("\n-- Physical Validation --")
+mu_ok   = 0 < cr.mu <= 1
+M_ok    = cr.M >= 1.0
+Ipk_ok  = abs(cr.I_peak - cr.M * cr.I_rated) < 0.01
+@printf("  mu in (0,1]  : mu = %.6f   %s\n", cr.mu, mu_ok ? "PASS" : "FAIL")
+@printf("  M >= 1.0     : M  = %.6f   %s\n", cr.M,  M_ok  ? "PASS" : "FAIL")
+@printf("  I_pk = M*I_c : %.2f = %.6f x %.2f   %s\n",
+	cr.I_peak, cr.M, cr.I_rated, Ipk_ok ? "PASS" : "FAIL")
 println()
