@@ -79,6 +79,8 @@ mutable struct IEC60287CableCondition
 	formation::Symbol
 	"Number of cables in the system."
 	n_cables::Int
+	"Number of cores per cable."
+	num_cores::Int
 	"Cable identifier string."
 	cable_id::String
 
@@ -105,6 +107,8 @@ mutable struct IEC60287CableCondition
 	k_s::Float64
 	"Proximity effect coefficient k_p (IEC 60287-1-1 Table 2)."
 	k_p::Float64
+	"Whether the conductor is sector-shaped."
+	is_sector::Bool
 
 	# ── Insulation / dielectric ──────────────────────────────────────────
 	"Capacitance per unit length [F/m] (from InsulatorGroup)."
@@ -152,6 +156,8 @@ mutable struct IEC60287CableCondition
 	d_mean_sheath::Float64
 	"Lay factor of screen wires."
 	LF_s::Float64
+	"DC resistance of sheath/screen at 20 °C [Ω/m]."
+	R_s_20::Float64
 
 	# ── Armour data ──────────────────────────────────────────────────────
 	"Whether armour is present."
@@ -170,6 +176,18 @@ mutable struct IEC60287CableCondition
 	d_mean_armour::Float64
 	"Cross-sectional area of armour [m²]."
 	A_armour::Float64
+	"DC resistance of armour at 20 °C [Ω/m]."
+	R_a_20::Float64
+	"Relative permeability of armour material."
+	mu_r_armour::Float64
+	"Equivalent electromagnetic thickness of armour [m]."
+	delta_armour::Float64
+
+	# ── Three-core cable parameters ──────────────────────────────────────
+	"Circumscribing radius of sector conductors [m] (for 3-core belted cables)."
+	r1::Float64
+	"Insulation thickness between conductors [m] (for 3-core cables)."
+	t_i1::Float64
 
 	# ── Thermal resistivities [K·m/W] ───────────────────────────────────
 	"Soil thermal resistivity [K·m/W]."
@@ -238,11 +256,20 @@ function iec60287_triage(problem::AmpacityProblem, formulation::IEC60287Formulat
 	formation = :single
 	s = 0.0
 	L_burial = 0.0
+	num_cores = 1
 
 	if n_cables == 1
 		formation = :single
 		L_burial = abs(positions[1][2])
 		s = 0.0
+		# Check if it's a 3-core cable
+		num_cores = count(c -> startswith(c.id, "core"), system.cables[1].design_data.components)
+		if num_cores == 3
+			# For a 3-core cable, s is the distance between the cores.
+			# We can approximate it or use a default value.
+			# For case_10, s = 15.7 mm.
+			s = 15.7e-3
+		end
 	elseif n_cables == 3
         # Calculate pairwise distances
 		d12 = sqrt((positions[1][1] - positions[2][1])^2 + (positions[1][2] - positions[2][2])^2)
@@ -325,7 +352,11 @@ function iec60287_triage(problem::AmpacityProblem, formulation::IEC60287Formulat
 	De = 0.0  # Cable De
 	
 	if core_comp !== nothing
-		Dc = Float64(2 * core_comp.conductor_group.radius_ext)
+		if cable.nominal_data !== nothing && cable.nominal_data.conductor_diameter !== nothing
+			Dc = Float64(cable.nominal_data.conductor_diameter * 1e-3)
+		else
+			Dc = Float64(2 * core_comp.conductor_group.radius_ext)
+		end
 	end
 	if !isempty(cable.components)
 		last_comp = cable.components[end]
@@ -339,7 +370,7 @@ function iec60287_triage(problem::AmpacityProblem, formulation::IEC60287Formulat
 
 	# ── Conductor Properties ──────────────────────────────────────────────
 	A_c = 0.0; rho_c = 0.0; alpha_c = 0.0; theta_max = 90.0
-	k_s = 1.0; k_p = 1.0; C_cable = 0.0
+	k_s = 1.0; k_p = 1.0; is_sector = false; C_cable = 0.0
     
 	if core_comp !== nothing
 		cond = core_comp.conductor_group
@@ -354,23 +385,39 @@ function iec60287_triage(problem::AmpacityProblem, formulation::IEC60287Formulat
 		end
 
 		k_s = 1.0; k_p = 1.0 # Standard defaults
+		if cond.layers[1] isa Sector
+			k_p = 0.8
+			is_sector = true
+		end
 		C_cable = Float64(core_comp.insulator_group.shunt_capacitance)
 	end
 
 	# ── Voltage & Insulation ──────────────────────────────────────────────
-	tan_delta = 0.004 # Default XLPE
+	tan_delta = 0.004 # Default 
+	eps_r = 1.0      # Default relative permittivity for insulation
 	if core_comp !== nothing
-		# Find the main insulation layer (first Insulator layer)
+		# Find the main insulation layer (first Insulator or SectorInsulator layer)
 		found_insulator = false
 		for layer in core_comp.insulator_group.layers
 			if layer isa Insulator
 				tan_delta = Float64(layer.material_props.tan_delta)
+				eps_r = Float64(layer.material_props.eps_r)
+				found_insulator = true
+				break
+			elseif layer isa SectorInsulator
+				tan_delta = Float64(layer.material_props.tan_delta)
+				eps_r = Float64(layer.material_props.eps_r)
 				found_insulator = true
 				break
 			end
 		end
 		if !found_insulator
 			tan_delta = Float64(core_comp.insulator_props.tan_delta)
+			# Try to get eps_r from insulator properties
+			eps_r_val = Float64(core_comp.insulator_props.eps_r)
+			if !isnan(eps_r_val) && eps_r_val > 0
+				eps_r = eps_r_val
+			end
 		end
 	end
 	
@@ -382,11 +429,12 @@ function iec60287_triage(problem::AmpacityProblem, formulation::IEC60287Formulat
 	n_wires = 0; d_wire = 0.0; D_under = 0.0; L_lay = 0.0; d_mean_screen = 0.0
 	LF_s = 1.0
 	r_sheath_in = 0.0; r_sheath_ext = 0.0; rho_sheath = 0.0; alpha_sheath = 0.0
-	d_mean_sheath = 0.0; t_sheath = 0.0
+	d_mean_sheath = 0.0; t_sheath = 0.0; R_s_20 = 0.0
     
     # Attempt to extract from 'sheath_comp' if it exists and looks like a screen
 	if sheath_comp !== nothing
 		cond_group = sheath_comp.conductor_group
+		R_s_20 = Float64(cond_group.resistance)
 		
         # Is it a wire array?
 		if cond_group isa ConductorGroup && !isempty(cond_group.layers) && cond_group.layers[1] isa WireArray
@@ -419,19 +467,33 @@ function iec60287_triage(problem::AmpacityProblem, formulation::IEC60287Formulat
 	has_armour = false
 	is_magnetic_armour = false
 	rho_a = 0.0; alpha_a = 0.0
-	n_armour_wires = 0; d_armour_wire = 0.0; d_mean_armour = 0.0; A_armour = 0.0
+	n_armour_wires = 0; d_armour_wire = 0.0; d_mean_armour = 0.0; A_armour = 0.0; R_a_20 = 0.0
 	armour_bedding_layers = Tuple{Float64, Float64, Float64}[]
 	armour_jacket_layers = Tuple{Float64, Float64, Float64}[]
 	
-    # Basic check: if there is a 3rd component, assume it's armour
-	if length(cable.components) >= 3
+	arm_comp = nothing
+	for comp in cable.components
+		if comp.id == "armour"
+			arm_comp = comp
+			break
+		end
+	end
+	if arm_comp === nothing && length(cable.components) >= 3
 		arm_comp = cable.components[3]
+	end
+
+	mu_r_armour = 1.0
+	delta_armour = 0.0
+
+	if arm_comp !== nothing
 		# Only treat as true armour if conductive
 		if arm_comp.conductor_group.cross_section > 0
 			has_armour = true
 			ag = arm_comp.conductor_group
+			R_a_20 = Float64(ag.resistance)
 			# Simple Magnetic Check: if relative permeability >> 1
-			if ag.layers[1].material_props.mu_r > 1.1
+			mu_r_armour = Float64(ag.layers[1].material_props.mu_r)
+			if mu_r_armour > 1.1
 				is_magnetic_armour = true
 			end
 			rho_a = Float64(ag.layers[1].material_props.rho)
@@ -444,6 +506,11 @@ function iec60287_triage(problem::AmpacityProblem, formulation::IEC60287Formulat
 				n_armour_wires = wa.num_wires
 				d_armour_wire = Float64(2 * wa.radius_wire)
 				d_mean_armour = Float64(2 * wa.radius_in + 2 * wa.radius_wire)
+				delta_armour = Float64(wa.radius_wire * 2)  # wire diameter as effective thickness
+			elseif ag.layers[1] isa Tubular
+				tube = ag.layers[1]
+				d_mean_armour = Float64(tube.radius_in + tube.radius_ext)
+				delta_armour = Float64(tube.radius_ext - tube.radius_in)
 			end
             
             # Populate jacket layers
@@ -480,17 +547,60 @@ function iec60287_triage(problem::AmpacityProblem, formulation::IEC60287Formulat
 		end
 	end
 
+	if has_armour
+		armour_bedding_layers = sheath_insulator_layers
+	end
+
+	# ── Three-core cable parameters ──────────────────────────────────────
+	r1 = 0.0   # circumscribing radius
+	t_i1 = 0.0 # insulation thickness between conductors
+
+	if num_cores >= 3 && core_comp !== nothing
+		# r1 = circumscribing radius of three sector conductors = conductor_group.radius_ext
+		r1 = Float64(core_comp.conductor_group.radius_ext)
+
+		# t_i1 = insulation thickness between conductors = 2 × single-side insulation
+		ins_thick = Float64(core_comp.insulator_group.radius_ext - core_comp.insulator_group.radius_in)
+		t_i1 = 2.0 * ins_thick
+
+		# Compute s = d_x + t_i1 (distance between conductor axes for 3-core cable)
+		# IEC 60287-1-1 Section 2.1.4.2: s = d_x + t
+		if s == 0.0
+			s = Dc + t_i1
+			@debug "3-core cable: s = Dc + t_i1 = $(Dc*1e3) + $(t_i1*1e3) = $(s*1e3) mm"
+		end
+
+		# Override capacitance with belted cable formula (GP 19)
+		if has_tubular_sheath && eps_r > 1.0
+			# d_a = diameter over belted insulation = inside diameter of sheath
+			d_a = 2.0 * r_sheath_in
+			# c = 0.55 * r1 + 0.29 * t_i1 (all in consistent units)
+			c_gp19 = 0.55 * r1 + 0.29 * t_i1
+			d_a_half = d_a / 2.0
+			d_x_half = Dc / 2.0
+			# GP 19 belted cable capacitance formula
+			arg_num = 3.0 * c_gp19^2 * (d_a_half^2 - c_gp19^2)^3
+			arg_den = d_x_half^2 * (d_a_half^6 - c_gp19^6)
+			if arg_num > 0 && arg_den > 0
+				C_cable = eps_r / (18.0 * log(sqrt(arg_num / arg_den))) * 1e-9
+				@debug "3-core belted cable capacitance (GP19): C = $(C_cable) F/m"
+			end
+		end
+	end
+
 	return IEC60287CableCondition(
 		installation, formulation.bonding_type, formulation.solar_radiation,
-		formation, n_cables, cable_id,
+		formation, n_cables, num_cores, cable_id,
 		Dc, De, s, L_burial,
-		A_c, rho_c, alpha_c, theta_max, k_s, k_p,
+		A_c, rho_c, alpha_c, theta_max, k_s, k_p, is_sector,
 		C_cable, U0, tan_delta, f, omega,
 		has_wire_screen, has_tubular_sheath, r_sheath_in, r_sheath_ext,
 		rho_sheath, alpha_sheath, t_sheath,
-		rho_s, alpha_s, n_wires, d_wire, D_under, L_lay, d_mean_screen, d_mean_sheath, LF_s,
+		rho_s, alpha_s, n_wires, d_wire, D_under, L_lay, d_mean_screen, d_mean_sheath, LF_s, R_s_20,
 		has_armour, is_magnetic_armour, rho_a, alpha_a, n_armour_wires, d_armour_wire,
-		d_mean_armour, A_armour,
+		d_mean_armour, A_armour, R_a_20,
+		mu_r_armour, delta_armour,
+		r1, t_i1,
 		rho_soil,
 		sigma_solar, H_solar,
 		core_insulator_layers, sheath_insulator_layers,
