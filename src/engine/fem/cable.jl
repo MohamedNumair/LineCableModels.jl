@@ -452,6 +452,97 @@ end
 """
 $(TYPEDSIGNATURES)
 
+Specialized method to create the geometry for a `Sector` conductor.
+"""
+function _make_cablepart!(workspace::FEMWorkspace, part::Sector,
+    cable_idx::Int, comp_idx::Int, comp_id::String,
+    phase::Int, layer_idx::Int)
+
+    # Get the cable's center coordinates from the workspace
+    cable_position = workspace.problem_def.system.cables[cable_idx]
+    x_center = to_nominal(cable_position.horz)
+    y_center = to_nominal(cable_position.vert)
+
+    # The vertices in the Sector object are already rotated and relative to the cable's origin.
+    # We just need to translate them to the cable's position in the system.
+    translated_vertices = [Point(v[1] + x_center, v[2] + y_center) for v in part.vertices]
+
+    # Calculate mesh size for this part
+    num_elements = workspace.formulation.elements_per_length_conductor
+    mesh_size = _calc_mesh_size(part.r_in, part.r_ex, part.material_props, num_elements, workspace)
+
+    # Create the polygon in Gmsh
+    @debug "the translated vertices are $translated_vertices \n they are of type $(typeof(translated_vertices))"
+    surface_tag, marker = draw_polygon(translated_vertices, mesh_size)
+
+    # --- The rest of this function is similar to the other _make_cablepart! methods ---
+
+    # Get material group (1 for conductor)
+    material_group = get_material_group(part)
+    material_id = get_or_register_material_id(workspace, part.material_props)
+
+    # Create physical tag
+    physical_group_tag = encode_physical_group_tag(1, cable_idx, comp_idx, material_group, material_id)
+
+    # Create a descriptive name for the entity
+    elementary_name = create_cable_elementary_name(
+        cable_idx=cable_idx, component_id=comp_id, group_type=material_group,
+        part_type="sector", layer_idx=layer_idx, phase=phase
+    )
+
+    # Create the entity data and add it to the workspace's unassigned entities
+    core_data = CoreEntityData(physical_group_tag, elementary_name, mesh_size)
+    entity_data = CablePartEntity(core_data, part)
+    workspace.unassigned_entities[marker] = entity_data
+
+    # Register the physical group
+    register_physical_group!(workspace, physical_group_tag, part.material_props)
+end
+
+
+"""
+$(TYPEDSIGNATURES)
+
+Specialized method to create the geometry for a `SectorInsulator`.
+"""
+function _make_cablepart!(workspace::FEMWorkspace, part::SectorInsulator,
+    cable_idx::Int, comp_idx::Int, comp_id::String,
+    phase::Int, layer_idx::Int)
+
+    cable_position = workspace.problem_def.system.cables[cable_idx]
+    x_center = to_nominal(cable_position.horz)
+    y_center = to_nominal(cable_position.vert)
+
+    # Translate the vertices for both outer and inner boundaries
+    outer_vertices_translated = [Point(v[1] + x_center, v[2] + y_center) for v in part.outer_vertices]
+    inner_vertices_translated = [Point(v[1] + x_center, v[2] + y_center) for v in part.inner_sector.vertices]
+
+    # Calculate mesh size for this part
+    num_elements = workspace.formulation.elements_per_length_insulator
+    mesh_size = _calc_mesh_size(part.r_in, part.r_ex, part.material_props, num_elements, workspace)
+
+    # Create the polygon with a hole using our new drawing primitive
+    surface_tag, marker = draw_polygon_with_hole(outer_vertices_translated, inner_vertices_translated, mesh_size)
+
+    # --- The rest is similar to the Sector method ---
+
+    material_group = get_material_group(part)
+    material_id = get_or_register_material_id(workspace, part.material_props)
+    physical_group_tag = encode_physical_group_tag(1, cable_idx, comp_idx, material_group, material_id)
+
+    elementary_name = create_cable_elementary_name(
+        cable_idx=cable_idx, component_id=comp_id, group_type=material_group,
+        part_type="sector_insulator", layer_idx=layer_idx, phase=phase
+    )
+
+    core_data = CoreEntityData(physical_group_tag, elementary_name, mesh_size)
+    entity_data = CablePartEntity(core_data, part)
+    workspace.unassigned_entities[marker] = entity_data
+
+    register_physical_group!(workspace, physical_group_tag, part.material_props)
+end
+
+"""
 Create a cable part entity for all tubular shapes. This function is specialized for `Tubular` parts.
 
 # Arguments
@@ -512,8 +603,8 @@ function _make_cablepart!(workspace::FEMWorkspace, part::Tubular,
 	)
 
 	# Extract parameters
-	radius_in = to_nominal(part.radius_in)
-	radius_ext = to_nominal(part.radius_ext)
+	r_in = to_nominal(part.r_in)
+	r_ex = to_nominal(part.r_ex)
 
 	# Calculate mesh size for this part
 	if part isa AbstractConductorPart
@@ -525,7 +616,7 @@ function _make_cablepart!(workspace::FEMWorkspace, part::Tubular,
 	end
 
 	mesh_size_current =
-		_calc_mesh_size(radius_in, radius_ext, part.material_props, num_elements, workspace)
+		_calc_mesh_size(r_in, r_ex, part.material_props, num_elements, workspace)
 
 	# Calculate mesh size for the next part
 	num_layers =
@@ -536,8 +627,8 @@ function _make_cablepart!(workspace::FEMWorkspace, part::Tubular,
 		nothing
 
 	if !isnothing(next_part)
-		next_radius_in = to_nominal(next_part.radius_in)
-		next_radius_ext = to_nominal(next_part.radius_ext)
+		next_radius_in = to_nominal(next_part.r_in)
+		next_radius_ext = to_nominal(next_part.r_ex)
 		mesh_size_next = _calc_mesh_size(
 			next_radius_in,
 			next_radius_ext,
@@ -557,17 +648,17 @@ function _make_cablepart!(workspace::FEMWorkspace, part::Tubular,
 	num_points_circumference = workspace.formulation.points_per_circumference
 
 	# Create annular shape and assign marker
-	if radius_in ≈ 0
+	if r_in ≈ 0
 		# Solid disk
 		_, _, marker, _ =
-			draw_disk(x_center, y_center, radius_ext, mesh_size, num_points_circumference)
+			draw_disk(x_center, y_center, r_ex, mesh_size, num_points_circumference)
 	else
 		# Annular shape
 		_, _, marker, _ = draw_annular(
 			x_center,
 			y_center,
-			radius_in,
-			radius_ext,
+			r_in,
+			r_ex,
 			mesh_size,
 			num_points_circumference,
 		)
