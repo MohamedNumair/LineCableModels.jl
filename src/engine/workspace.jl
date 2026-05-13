@@ -220,6 +220,8 @@ $(TYPEDFIELDS)
     vert::Vector{T}
     "Vector of external conductor radii [m]."
     r_ext::Vector{T}
+	"Vector of external insulation radii [m]."
+	r_ins_ext::Vector{T}
     "Vector of DC resistance values [Ω/m]."
     rdc::Vector{T}
     "Vector of geometric mean radius values [m]."
@@ -259,6 +261,7 @@ function init_workspace(
     horz = Vector{T}(undef, n_phases)
     vert = Vector{T}(undef, n_phases)
     r_ext = Vector{T}(undef, n_phases)
+	r_ins_ext = Vector{T}(undef, n_phases)
     rdc = Vector{T}(undef, n_phases)
     gmr = Vector{T}(undef, n_phases)
     conductor_groups = Vector{AbstractCablePart}(undef, n_phases)
@@ -299,6 +302,7 @@ function init_workspace(
             end
 
             r_ext[idx] = T(component.conductor_group.radius_ext)
+			r_ins_ext[idx] = T(component.insulator_group.radius_ext)
             gmr[idx] = T(component.conductor_group.gmr)
             rdc[idx] = T(component.conductor_group.resistance)
             conductor_groups[idx] = component.conductor_group
@@ -318,7 +322,7 @@ function init_workspace(
     return DSSWorkspace{T}(
         freq = freq, jω = jω,
         horz = horz, vert = vert,
-        r_ext = r_ext, rdc = rdc, gmr = gmr,
+		r_ext = r_ext, r_ins_ext = r_ins_ext, rdc = rdc, gmr = gmr,
         conductor_groups = conductor_groups,
         rho_g = rho_g,
         temp = temp, n_frequencies = n_frequencies, n_phases = n_phases,

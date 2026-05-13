@@ -31,6 +31,9 @@ end
 
 earth_layer_idx = 2 # assuming single layer earth model for now -- 1 is air, 2 is earth
 
+@inline _uses_combined_external_earth(::DSSEarthModel) = false
+@inline _uses_combined_external_earth(::Saad) = true
+
 # --- Internal Bessel function implementations ---
 function _bessel_I0(a::Complex)
     maxterm = 1000
@@ -188,51 +191,32 @@ function get_Ze(ws, i::Int, j::Int, k::Int, ::DeriModel)
 end
 
 function get_Ze(ws, i::Int, j::Int, k::Int, ::Saad)
-    # --- 1. Extract parameters from workspace ---
     ω = 2π * ws.freq[k]
     μ₀ = 4π * 1e-7
-    # Assuming single earth layer for resistivity
     ρ_g = ws.rho_g[earth_layer_idx, k] 
 
-    # --- 2. Calculate the earth propagation constant (gamma_1) ---
-    # This is identical to the 'p_earth' term in the Deri model
     γ₁ = sqrt(1im * ω * μ₀ / ρ_g)
+    h_i = abs(ws.vert[i])
+    h_j = abs(ws.vert[j])
 
-    # --- 3. Determine the geometric distance term (R_ab) ---
-    local R_ab::Float64
+    local R_ab
     if i == j
-        # For SELF-IMPEDANCE, Rab is the conductor's outer radius
-        R_ab = ws.r_ext[i] 
+        # Ametani uses the cable outer insulation radius for the self term.
+        R_ab = ws.r_ins_ext[i]
     else
-        # For MUTUAL-IMPEDANCE, Rab is the horizontal distance
         R_ab = abs(ws.horz[i] - ws.horz[j])
     end
 
-    # --- 4. Get conductor heights ---
-    h_i = ws.vert[i]
-    h_j = ws.vert[j]
-
-    # --- 5. Assemble the Saad formula (Equation 1) piece by piece ---
-    
-    # Argument for the Bessel function and other terms
     arg = γ₁ * R_ab
-    
-    # First term inside the brackets: K_0(gamma_1 * R_ab)
-    # We use besselk(0, z) for the modified Bessel function of the 2nd kind, order 0
     term1 = besselk(0, arg)
-    
-    # Second term inside the brackets
     exp_term = exp(-(h_i + h_j) * γ₁)
-    denominator = 4.0 + arg^2
+    denominator = 4.0 + γ₁^2 * R_ab^2
     term2 = (2.0 * exp_term) / denominator
-    
-    # Final scaling factor outside the brackets
-    scaling_factor = (1im * ω * μ₀) / (2 * π)
-    
-    final_result = scaling_factor * (term1 + term2)
-    
-    @debug "Z earth Saad/Pollaczek: freq=$(ws.freq[k]), i=$i, j=$j is $final_result"
-    
+
+    final_result = (1im * ω * μ₀) / (2 * π) * (term1 + term2)
+
+    @debug "Z external-earth Saad/Pollaczek: freq=$(ws.freq[k]), i=$i, j=$j is $final_result"
+
     return final_result
 end
 
@@ -249,29 +233,40 @@ function compute_impedance_matrix!(
     ω = 2π * ws.freq[k]
     μ₀ = 4π * 1e-7
     L_factor = 1im * ω * μ₀ / (2.0 * π)
+    use_combined_external_earth = _uses_combined_external_earth(formulation.earth_impedance)
 
     for i in 1:nph
         z_int = get_Zint(ws, i, k, formulation.internal_impedance)
         @debug "Z internal: freq=$(ws.freq[k]), i=$i is $z_int"
-        z_spacing = L_factor * log(1.0 / ws.gmr[i])
-        @debug "Z spacing: freq=$(ws.freq[k]), i=$i is $z_spacing"
         z_earth = get_Ze(ws, i, i, k, formulation.earth_impedance)
         @debug "Z earth self: freq=$(ws.freq[k]), i=$i is $z_earth"
-        Ztmp[i, i] = z_int + z_spacing + z_earth
+        if use_combined_external_earth
+            Ztmp[i, i] = z_int + z_earth
+        else
+            z_spacing = L_factor * log(1.0 / ws.gmr[i])
+            @debug "Z spacing: freq=$(ws.freq[k]), i=$i is $z_spacing"
+            Ztmp[i, i] = z_int + z_spacing + z_earth
+        end
         @inbounds @debug "Ztmp[$i, $i] = $(Ztmp[i, i])"
 
         for j in 1:(i-1)
-            @assert length(ws.conductor_groups[i].layers) == 1 "Only single layer conductor groups are supported in DSS formulation for now."
-            @assert length(ws.conductor_groups[j].layers) == 1 "Only single layer conductor groups are supported in DSS formulation for now."
-            d_ij = calc_gmd(ws.conductor_groups[i].layers[1], ws.conductor_groups[j].layers[1])
-            @debug " the dij (gmd) between conductor $i : $(typeof(ws.conductor_groups[i].layers[1])) and $j : $(typeof(ws.conductor_groups[j].layers[1])) is $(d_ij)"
-            z_spacing_mutual = L_factor * log(1.0 / d_ij)
-            @debug "Z spacing mutual: freq=$(ws.freq[k]), i=$i, j=$j is $z_spacing_mutual"
             z_earth_mutual = get_Ze(ws, i, j, k, formulation.earth_impedance)
             @debug "Z earth mutual: freq=$(ws.freq[k]), i=$i, j=$j is $z_earth_mutual"
-            @inbounds @debug "Ztmp[$i, $j] and Ztmp[$j, $i] = $(z_spacing_mutual + z_earth_mutual)"
-            Ztmp[i, j] = z_spacing_mutual + z_earth_mutual
-            Ztmp[j, i] = z_spacing_mutual + z_earth_mutual
+            if use_combined_external_earth
+                @inbounds @debug "Ztmp[$i, $j] and Ztmp[$j, $i] = $z_earth_mutual"
+                Ztmp[i, j] = z_earth_mutual
+                Ztmp[j, i] = z_earth_mutual
+            else
+                @assert length(ws.conductor_groups[i].layers) == 1 "Only single layer conductor groups are supported in DSS formulation for now."
+                @assert length(ws.conductor_groups[j].layers) == 1 "Only single layer conductor groups are supported in DSS formulation for now."
+                d_ij = calc_gmd(ws.conductor_groups[i].layers[1], ws.conductor_groups[j].layers[1])
+                @debug " the dij (gmd) between conductor $i : $(typeof(ws.conductor_groups[i].layers[1])) and $j : $(typeof(ws.conductor_groups[j].layers[1])) is $(d_ij)"
+                z_spacing_mutual = L_factor * log(1.0 / d_ij)
+                @debug "Z spacing mutual: freq=$(ws.freq[k]), i=$i, j=$j is $z_spacing_mutual"
+                @inbounds @debug "Ztmp[$i, $j] and Ztmp[$j, $i] = $(z_spacing_mutual + z_earth_mutual)"
+                Ztmp[i, j] = z_spacing_mutual + z_earth_mutual
+                Ztmp[j, i] = z_spacing_mutual + z_earth_mutual
+            end
         end
     end
 
