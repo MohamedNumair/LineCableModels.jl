@@ -2,7 +2,7 @@ using SpecialFunctions
 
 function compute!(
 	problem::LineParametersProblem{T},
-	formulation::DSSFormulation,
+    formulation::DSSFormulationSet,
 ) where {T <: REALSCALAR}
 
 	@info "Preallocating arrays for DSS formulation"
@@ -30,9 +30,6 @@ function compute!(
 end
 
 earth_layer_idx = 2 # assuming single layer earth model for now -- 1 is air, 2 is earth
-
-@inline _uses_combined_external_earth(::DSSEarthModel) = false
-@inline _uses_combined_external_earth(::Saad) = true
 
 # --- Internal Bessel function implementations ---
 function _bessel_I0(a::Complex)
@@ -116,6 +113,27 @@ function get_Zint(ws, i::Int, k::Int, ::DeriModel)
     return z_int
 end
 
+function get_Zspacing(ws, i::Int, k::Int, ::DSSFormulation)
+    ω = 2π * ws.freq[k]
+    μ₀ = 4π * 1e-7
+    return 1im * ω * μ₀ / (2.0 * π) * log(1.0 / ws.gmr[i])
+end
+
+function get_Zspacing(ws, i::Int, j::Int, k::Int, ::DSSFormulation)
+    ω = 2π * ws.freq[k]
+    μ₀ = 4π * 1e-7
+
+    @assert length(ws.conductor_groups[i].layers) == 1 "Only single layer conductor groups are supported in DSS formulation for now."
+    @assert length(ws.conductor_groups[j].layers) == 1 "Only single layer conductor groups are supported in DSS formulation for now."
+    d_ij = calc_gmd(ws.conductor_groups[i].layers[1], ws.conductor_groups[j].layers[1])
+    @debug " the dij (gmd) between conductor $i : $(typeof(ws.conductor_groups[i].layers[1])) and $j : $(typeof(ws.conductor_groups[j].layers[1])) is $(d_ij)"
+
+    return 1im * ω * μ₀ / (2.0 * π) * log(1.0 / d_ij)
+end
+
+get_Zspacing(ws, i::Int, k::Int, ::Saad) = zero(ws.jω[k])
+get_Zspacing(ws, i::Int, j::Int, k::Int, ::Saad) = zero(ws.jω[k])
+
 
 function get_Ze(ws, i::Int, j::Int, k::Int, ::SimpleCarson)
     ω = 2π * ws.freq[k]
@@ -190,6 +208,7 @@ function get_Ze(ws, i::Int, j::Int, k::Int, ::DeriModel)
     return (1im * ω * μ₀ / (2 * π)) * log(ln_arg)
 end
 
+# see [1] A. Ametani, H. Xue, T. Ohno, and H. Khalilnezhad, Electromagnetic Transients in Large HV Cable Networks: Modeling and calculations. Institution of Engineering and Technology, 2021. doi: 10.1049/PBPO204E. Page 18 (§ 2.5.3.4)
 function get_Ze(ws, i::Int, j::Int, k::Int, ::Saad)
     ω = 2π * ws.freq[k]
     μ₀ = 4π * 1e-7
@@ -225,48 +244,30 @@ function compute_impedance_matrix!(
 	Ztmp::AbstractMatrix{Complex{T}},
 	ws,
 	k::Int,
-	formulation::DSSFormulation,
+	formulation::DSSFormulationSet,
 ) where {T <: REALSCALAR}
 
     nph = ws.n_phases
 	fill!(Ztmp, zero(Complex{T}))
-    ω = 2π * ws.freq[k]
-    μ₀ = 4π * 1e-7
-    L_factor = 1im * ω * μ₀ / (2.0 * π)
-    use_combined_external_earth = _uses_combined_external_earth(formulation.earth_impedance)
 
     for i in 1:nph
         z_int = get_Zint(ws, i, k, formulation.internal_impedance)
         @debug "Z internal: freq=$(ws.freq[k]), i=$i is $z_int"
+        z_spacing = get_Zspacing(ws, i, k, formulation.earth_impedance)
+        @debug "Z spacing: freq=$(ws.freq[k]), i=$i is $z_spacing"
         z_earth = get_Ze(ws, i, i, k, formulation.earth_impedance)
         @debug "Z earth self: freq=$(ws.freq[k]), i=$i is $z_earth"
-        if use_combined_external_earth
-            Ztmp[i, i] = z_int + z_earth
-        else
-            z_spacing = L_factor * log(1.0 / ws.gmr[i])
-            @debug "Z spacing: freq=$(ws.freq[k]), i=$i is $z_spacing"
-            Ztmp[i, i] = z_int + z_spacing + z_earth
-        end
+        Ztmp[i, i] = z_int + z_spacing + z_earth
         @inbounds @debug "Ztmp[$i, $i] = $(Ztmp[i, i])"
 
         for j in 1:(i-1)
+            z_spacing_mutual = get_Zspacing(ws, i, j, k, formulation.earth_impedance)
+            @debug "Z spacing mutual: freq=$(ws.freq[k]), i=$i, j=$j is $z_spacing_mutual"
             z_earth_mutual = get_Ze(ws, i, j, k, formulation.earth_impedance)
             @debug "Z earth mutual: freq=$(ws.freq[k]), i=$i, j=$j is $z_earth_mutual"
-            if use_combined_external_earth
-                @inbounds @debug "Ztmp[$i, $j] and Ztmp[$j, $i] = $z_earth_mutual"
-                Ztmp[i, j] = z_earth_mutual
-                Ztmp[j, i] = z_earth_mutual
-            else
-                @assert length(ws.conductor_groups[i].layers) == 1 "Only single layer conductor groups are supported in DSS formulation for now."
-                @assert length(ws.conductor_groups[j].layers) == 1 "Only single layer conductor groups are supported in DSS formulation for now."
-                d_ij = calc_gmd(ws.conductor_groups[i].layers[1], ws.conductor_groups[j].layers[1])
-                @debug " the dij (gmd) between conductor $i : $(typeof(ws.conductor_groups[i].layers[1])) and $j : $(typeof(ws.conductor_groups[j].layers[1])) is $(d_ij)"
-                z_spacing_mutual = L_factor * log(1.0 / d_ij)
-                @debug "Z spacing mutual: freq=$(ws.freq[k]), i=$i, j=$j is $z_spacing_mutual"
-                @inbounds @debug "Ztmp[$i, $j] and Ztmp[$j, $i] = $(z_spacing_mutual + z_earth_mutual)"
-                Ztmp[i, j] = z_spacing_mutual + z_earth_mutual
-                Ztmp[j, i] = z_spacing_mutual + z_earth_mutual
-            end
+            @inbounds @debug "Ztmp[$i, $j] and Ztmp[$j, $i] = $(z_spacing_mutual + z_earth_mutual)"
+            Ztmp[i, j] = z_spacing_mutual + z_earth_mutual
+            Ztmp[j, i] = z_spacing_mutual + z_earth_mutual
         end
     end
 
@@ -277,7 +278,7 @@ function compute_admittance_matrix!(
 	Ptmp::AbstractMatrix{Complex{T}},
 	ws,
 	k::Int,
-	formulation::DSSFormulation,
+    formulation::DSSFormulationSet,
 ) where {T <: REALSCALAR}
 
     nph = ws.n_phases

@@ -262,11 +262,11 @@ function FormulationSet(::Val{:EMT};
 end
 
 function FormulationSet(::Val{:DSS};
-	internal_impedance::DSSEarthModel = DeriModel(),
-	earth_impedance::DSSEarthModel = FullCarson(),
+	internal_impedance::DSSFormulation = DeriModel(),
+	earth_impedance::DSSFormulation = FullCarson(),
 	options = (;),
 )
 	dss_opts = build_options(DSSOptions, options; strict = true)
-	return DSSFormulation(; internal_impedance, earth_impedance, options = dss_opts)
+	return DSSFormulationSet(; internal_impedance, earth_impedance, options = dss_opts)
 end
 

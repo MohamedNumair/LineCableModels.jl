@@ -246,7 +246,7 @@ Initializes and populates the [`DSSWorkspace`](@ref) by normalizing a
 """
 function init_workspace(
     problem::LineParametersProblem{T},
-    formulation::DSSFormulation,
+	formulation::DSSFormulationSet,
 ) where {T}
 
     opts = formulation.options

@@ -1,12 +1,12 @@
 
 using DocStringExtensions
 
-# Define abstract types for earth models
-abstract type DSSEarthModel end
-struct SimpleCarson <: DSSEarthModel end
-struct FullCarson <: DSSEarthModel end
-struct DeriModel <: DSSEarthModel end
-struct Saad <: DSSEarthModel end
+# Define abstract types for DSS analytical formulations
+abstract type DSSFormulation end
+struct SimpleCarson <: DSSFormulation end
+struct FullCarson <: DSSFormulation end
+struct DeriModel <: DSSFormulation end
+struct Saad <: DSSFormulation end
 
 """
 $(TYPEDEF)
@@ -33,22 +33,22 @@ Represents the DSS formulation set for cable or line systems.
 
 $(TYPEDFIELDS)
 """
-struct DSSFormulation <: AbstractFormulationSet
+struct DSSFormulationSet <: AbstractFormulationSet
     "Internal impedance formulation."
-	internal_impedance::DSSEarthModel
+	internal_impedance::DSSFormulation
 	"Earth impedance formulation."
-	earth_impedance::DSSEarthModel
+	earth_impedance::DSSFormulation
     "Solver options for DSS-type computations."
 	options::DSSOptions
 
     @doc """
 	$(TYPEDSIGNATURES)
 
-	Constructs a [`DSSFormulation`](@ref) instance.
+	Constructs a [`DSSFormulationSet`](@ref) instance.
 	"""
-    function DSSFormulation(;
-        internal_impedance::DSSEarthModel,
-        earth_impedance::DSSEarthModel,
+    function DSSFormulationSet(;
+        internal_impedance::DSSFormulation,
+        earth_impedance::DSSFormulation,
         options::DSSOptions,
     )
         return new(

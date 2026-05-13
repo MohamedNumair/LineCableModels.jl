@@ -28,10 +28,9 @@
             frequencies = [50.0],
         )
 
-        formulation = LineCableModels.Engine.DSSFormulation(
+        formulation = LineCableModels.Engine.FormulationSet(:DSS,
             internal_impedance = LineCableModels.Engine.SimpleCarson(),
             earth_impedance = LineCableModels.Engine.Saad(),
-            options = LineCableModels.Engine.DSSOptions(),
         )
 
         return problem, formulation
