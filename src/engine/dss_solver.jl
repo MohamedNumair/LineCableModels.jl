@@ -134,12 +134,17 @@ end
 get_Zspacing(ws, i::Int, k::Int, ::Saad) = zero(ws.jω[k])
 get_Zspacing(ws, i::Int, j::Int, k::Int, ::Saad) = zero(ws.jω[k])
 
+# Deri formula is the complete combined external+earth impedance (see get_Ze below);
+# the external spacing term is therefore zero — consistent with Saad.
+get_Zspacing(ws, i::Int, k::Int, ::DeriModel) = zero(ws.jω[k])
+get_Zspacing(ws, i::Int, j::Int, k::Int, ::DeriModel) = zero(ws.jω[k])
+
 
 function get_Ze(ws, i::Int, j::Int, k::Int, ::SimpleCarson)
     ω = 2π * ws.freq[k]
     μ₀ = 4π * 1e-7
     @debug "Z earth SimpleCarson: freq=$(ws.freq[k]), i=$i, j=$j is $(complex(ω * μ₀ / 8.0, (ω * μ₀ / (2 * π)) * log(658.5 * sqrt(ws.rho_g[earth_layer_idx,k] / ws.freq[k]))))"
-    return complex(ω * μ₀ / 8.0, (ω * μ₀ / (2 * π)) * log(658.5 * sqrt(ws.rho_g[earth_layer_idx,k] / ws.freq[k])))
+    return complex(ω * μ₀ / 8.0, (ω * μ₀ / (2 * π)) * log(658.5 * sqrt(ws.rho_g[earth_layer_idx,k] / ws.freq[k]))) # should be 658.87 but its customary to use 658.5 in the Carson formula to match historical results 
 end
 
 function get_Ze(ws, i::Int, j::Int, k::Int, ::FullCarson)
@@ -193,18 +198,27 @@ function get_Ze(ws, i::Int, j::Int, k::Int, ::DeriModel)
     ω = 2π * ws.freq[k]
     μ₀ = 4π * 1e-7
 
+    # D_e = 1/γ_e: Deri complex earth-return depth [Ametani (2021), §2.5.3, eq. 2.27-2.28]
     p_earth = sqrt(1im * ω * μ₀ / ws.rho_g[earth_layer_idx,k])
+    D_e = 1.0 / p_earth
 
+    local ln_arg
     if i == j
-        h_term = ws.vert[i] + 1.0 / p_earth
-        ln_arg = 2.0 * h_term
+        # S_ii = 2*(h_i + D_e), denominator = GMR_i
+        S = 2.0 * (abs(ws.vert[i]) + D_e)
+        ln_arg = S / ws.gmr[i]
     else
-        h_term = ws.vert[i] + ws.vert[j] + 2.0 / p_earth
+        # S_ij = sqrt((h_i + h_j + 2*D_e)^2 + (x_i - x_j)^2), denominator = GMD_{ij}
+        h_term = abs(ws.vert[i]) + abs(ws.vert[j]) + 2.0 * D_e
         x_term = ws.horz[i] - ws.horz[j]
-        ln_arg = sqrt(h_term^2 + x_term^2)
+        S = sqrt(h_term^2 + x_term^2)
+        @assert length(ws.conductor_groups[i].layers) == 1 "Only single-layer conductor groups are supported in Deri formulation."
+        @assert length(ws.conductor_groups[j].layers) == 1 "Only single-layer conductor groups are supported in Deri formulation."
+        d_ij = calc_gmd(ws.conductor_groups[i].layers[1], ws.conductor_groups[j].layers[1])
+        ln_arg = S / d_ij
     end
 
-    @debug "Z earth DeriModel: freq=$(ws.freq[k]), i=$i, j=$j is $(1im * ω * μ₀ / (2 * π)) * log($ln_arg)"
+    @debug "Z ext-earth DeriModel: freq=$(ws.freq[k]), i=$i, j=$j is $(1im * ω * μ₀ / (2π)) * log($ln_arg)"
     return (1im * ω * μ₀ / (2 * π)) * log(ln_arg)
 end
 
