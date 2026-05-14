@@ -175,14 +175,16 @@ function assign_physical_groups(workspace::FEMWorkspace)
                 entities_by_physical_group_tag[group_key] = Int[]
             end
 
+            is_new_entity = !(entity.tag in entities_by_physical_group_tag[group_key])
+
             # Add this entity to the collection for this physical tag
             current_physical_group = gmsh.model.get_physical_groups_for_entity(dim, entity.tag)
             if !isempty(current_physical_group)
                 @debug "Entity $(entity.tag) already has physical group: $(current_physical_group)"
             end
-            push!(entities_by_physical_group_tag[group_key], entity.tag)
+            is_new_entity && push!(entities_by_physical_group_tag[group_key], entity.tag)
 
-            if !isempty(elementary_name)
+            if is_new_entity && !isempty(elementary_name)
                 # Append the complete name to the shape
                 current_name = gmsh.model.get_entity_name(dim, entity.tag)
                 if !isempty(current_name)

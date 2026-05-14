@@ -89,9 +89,86 @@ function make_cable_geometry(workspace::FEMWorkspace)
 				end
 			end
 		end
+
+		_add_sector_air_gap_markers!(workspace, cable_idx)
 	end
 
 	@info "Cable geometry created"
+end
+
+function _add_sector_air_gap_markers!(workspace::FEMWorkspace, cable_idx::Int)
+	cable_position = workspace.problem_def.system.cables[cable_idx]
+	components = cable_position.design_data.components
+
+	lobe_angles = Float64[]
+	min_clearance = Inf
+
+	for component in components
+		sector_layer = findfirst(layer -> layer isa Sector, component.conductor_group.layers)
+		isnothing(sector_layer) && continue
+
+		sector = component.conductor_group.layers[sector_layer]
+		push!(lobe_angles, mod(to_nominal(sector.rotation_angle_deg) + 90.0, 360.0))
+
+		sector_boundary = sector.vertices
+		for layer in reverse(component.insulator_group.layers)
+			if layer isa SectorInsulator
+				sector_boundary = layer.outer_vertices
+				break
+			end
+		end
+
+		for vertex in sector_boundary
+			min_clearance = min(min_clearance, hypot(vertex[1], vertex[2]))
+		end
+	end
+
+	length(lobe_angles) > 1 || return
+	isfinite(min_clearance) || return
+	min_clearance > 0.0 || return
+
+	sort!(lobe_angles)
+	gap_angles = Float64[]
+	for idx in eachindex(lobe_angles)
+		θ0 = lobe_angles[idx]
+		θ1 = idx == length(lobe_angles) ? lobe_angles[1] + 360.0 : lobe_angles[idx + 1]
+		θgap = mod((θ0 + θ1) / 2, 360.0)
+		abs(sind(θgap)) > 1e-6 && push!(gap_angles, θgap)
+	end
+
+	if isempty(gap_angles)
+		θfallback = mod((lobe_angles[1] + lobe_angles[2]) / 2 + 1e-3, 360.0)
+		push!(gap_angles, θfallback)
+	end
+
+	air_layer_idx = 1
+	air_material = get_earth_model_material(workspace, air_layer_idx)
+	air_material_id = get_or_register_material_id(workspace, air_material)
+	air_material_group = get_material_group(workspace.problem_def.earth_props, air_layer_idx)
+	air_region_tag = encode_physical_group_tag(
+		2,
+		air_layer_idx,
+		0,
+		air_material_group,
+		air_material_id,
+	)
+
+	mesh_size = workspace.formulation.mesh_size_default
+	air_gap_entity = SurfaceEntity(CoreEntityData(air_region_tag, "", mesh_size), air_material)
+	marker_radius = 0.5 * min_clearance
+	x_center = to_nominal(cable_position.horz)
+	y_center = to_nominal(cable_position.vert)
+
+	for θgap in gap_angles
+		marker = [
+			x_center + marker_radius * cosd(θgap),
+			y_center + marker_radius * sind(θgap),
+			0.0,
+		]
+		workspace.unassigned_entities[marker] = air_gap_entity
+	end
+
+	register_physical_group!(workspace, air_region_tag, air_material)
 end
 
 """
