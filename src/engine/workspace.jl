@@ -218,14 +218,20 @@ $(TYPEDFIELDS)
     horz::Vector{T}
     "Vector of vertical positions [m]."
     vert::Vector{T}
-    "Vector of external conductor radii [m]."
+    "Vector of external conductor radii [m]. Used for capacitance (potential coefficient matrix)."
     r_ext::Vector{T}
 	"Vector of external insulation radii [m]."
 	r_ins_ext::Vector{T}
     "Vector of DC resistance values [Ω/m]."
     rdc::Vector{T}
-    "Vector of geometric mean radius values [m]."
+    "Vector of geometric mean radius values [m]. Includes internal-flux correction (GMR = r·exp(-μr/4))."
     gmr::Vector{T}
+    """Physical self-distance used for the magnetic external self-impedance [m].
+    Equals `r_ext` for solid/tubular/sector conductors (physical outer radius).
+    For WireArray with N > 1, equals the physical bundle GMR without internal-flux correction:
+    `(r_wire · N · R_lay^{N-1})^{1/N}` where `R_lay = radius_in + radius_wire`.
+    This avoids double-counting the internal reactance that `get_Zint` already returns."""
+    r_self::Vector{T}
     "Conductor group for each phase"
     conductor_groups::Vector{AbstractCablePart}
     "Effective earth resistivity (layers × freq)."
@@ -264,6 +270,7 @@ function init_workspace(
 	r_ins_ext = Vector{T}(undef, n_phases)
     rdc = Vector{T}(undef, n_phases)
     gmr = Vector{T}(undef, n_phases)
+    r_self = Vector{T}(undef, n_phases)
     conductor_groups = Vector{AbstractCablePart}(undef, n_phases)
 
     # Fill arrays, ensuring type promotion
@@ -284,18 +291,18 @@ function init_workspace(
 				@debug "(cable_idx :$cable_idx -> comp_idx: $comp_idx) Sector conductor position: horz=$(horz[idx]), vert=$(vert[idx])"
 			elseif layers[1] isa WireArray{T}
 				nW = layers[1].num_wires
-				if nW == 1  # it is used as a solid conductor
-					lay_r = 0.0
+				if nW == 1  # single-wire: treated as a solid circular conductor
 					horz[idx] = T(cable.horz)
 					vert[idx] = T(cable.vert)
-				else # it is a wire array (stranded conductor) #TODO: complete handling of this case
-					lay_r = to_nominal(layers[1].radius_in)
-					coords = calc_wirearray_coords(nW, layers[1].radius_wire, lay_r, C= (cable.horz, cable.vert))
-					@debug "WireArray coordinates: $coords not used for now."
+				else # stranded bundle: DSS treats the bundle as a single equivalent conductor
+					# Position = centre of the wire circle, which is the cable axis (cable.horz, cable.vert).
+					# calc_wirearray_coords returns the centres of each individual wire around the
+					# lay circle — those are not used here because the DSS lumped approximation
+					# represents the entire bundle as a single conductor at the bundle centre.
 					horz[idx] = T(cable.horz)
 					vert[idx] = T(cable.vert)
 				end
-				@debug "(cable_idx :$cable_idx -> comp_idx: $comp_idx) ConductorGroup position: horz=$(horz[idx]), vert=$(vert[idx])"
+				@debug "(cable_idx :$cable_idx -> comp_idx: $comp_idx) WireArray position: horz=$(horz[idx]), vert=$(vert[idx])"
 			else
                 horz[idx] = T(cable.horz)
                 vert[idx] = T(cable.vert)
@@ -306,6 +313,23 @@ function init_workspace(
             gmr[idx] = T(component.conductor_group.gmr)
             rdc[idx] = T(component.conductor_group.resistance)
             conductor_groups[idx] = component.conductor_group
+
+            # Compute the physical self-distance for magnetic external impedance.
+            # This differs from GMR (which includes internal-flux correction) and from
+            # r_ext (which is the outer envelope, used for capacitance, not inductance).
+            if layers[1] isa WireArray{T} && layers[1].num_wires > 1
+                wa = layers[1]
+                R_lay = T(wa.radius_in + wa.radius_wire)   # lay radius (wire centres)
+                N = wa.num_wires
+                r_w = T(wa.radius_wire)
+                # Physical bundle GMR = (r_wire · N · R_lay^{N-1})^{1/N}
+                # Same formula as calc_wirearray_gmr but using r_wire directly (no exp(-μr/4)),
+                # so internal reactance is NOT baked in here.
+                r_self[idx] = exp((log(r_w) + log(N) + (N - 1) * log(R_lay)) / N)
+            else
+                # For Tubular, Sector, and single-wire WireArray the outer physical radius is correct.
+                r_self[idx] = T(component.conductor_group.radius_ext)
+            end
         end
     end
 
@@ -322,7 +346,7 @@ function init_workspace(
     return DSSWorkspace{T}(
         freq = freq, jω = jω,
         horz = horz, vert = vert,
-		r_ext = r_ext, r_ins_ext = r_ins_ext, rdc = rdc, gmr = gmr,
+		r_ext = r_ext, r_ins_ext = r_ins_ext, rdc = rdc, gmr = gmr, r_self = r_self,
         conductor_groups = conductor_groups,
         rho_g = rho_g,
         temp = temp, n_frequencies = n_frequencies, n_phases = n_phases,
