@@ -204,9 +204,13 @@ function get_Ze(ws, i::Int, j::Int, k::Int, ::DeriModel)
 
     local ln_arg
     if i == j
-        # S_ii = 2*(h_i + D_e), denominator = GMR_i
+        # S_ii = 2*(h_i + D_e), denominator = physical outer radius r_ext_i [Ametani (2021), eq. 2.27].
+        # NOTE: Using GMR here would double-count the internal reactance, since
+        #   ln(S/GMR) = ln(S/r) + mu_r/4
+        # and the mu_r/4 term equals j*ω*μ₀*μr/(8π) which is already included in
+        # get_Zint(::DeriModel) via the Bessel function evaluation.
         S = 2.0 * (abs(ws.vert[i]) + D_e)
-        ln_arg = S / ws.gmr[i]
+        ln_arg = S / ws.r_ext[i]
     else
         # S_ij = sqrt((h_i + h_j + 2*D_e)^2 + (x_i - x_j)^2), denominator = GMD_{ij}
         h_term = abs(ws.vert[i]) + abs(ws.vert[j]) + 2.0 * D_e
