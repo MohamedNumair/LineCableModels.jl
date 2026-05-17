@@ -116,11 +116,15 @@ end
 function get_Zspacing(ws, i::Int, k::Int, ::DSSFormulation)
     ω = 2π * ws.freq[k]
     μ₀ = 4π * 1e-7
-    # CORRECTED (vs. OpenDSS): use ws.r_self[i] — the physical self-distance — NOT ws.gmr[i].
-    # GMR = r · exp(-μr/4) encodes the internal flux linkage contribution.
-    # Using GMR here would double-count the internal reactance that get_Zint already
-    # returns explicitly via R_ac + j*ωμ₀/(8π). OpenDSS uses GMR here and therefore
-    # overestimates the total series reactance by j*ωμ₀μr/(8π) per conductor.
+    # Uses ws.r_self[i] — the physical self-distance — not GMR.
+    # This is consistent with explicit computation of get_Zint:
+    #   Z_self = Z_int + j·ωμ₀/(2π)·ln(1/r) + Z_earth
+    # OpenDSS uses an equivalent two-branch approach: at power frequencies (40–1000 Hz)
+    # it zeros Im(Z_int) and substitutes GMR (= r·exp(-μr/4)) for r, which absorbs the
+    # internal inductance via ln(1/GMR) = ln(1/r) + μr/4. Outside that range it uses
+    # the physical radius with the full explicit Z_int. Both paths give the same result
+    # for non-magnetic conductors (μr = 1). Our approach uses physical radius at all
+    # frequencies, which is identical to OpenDSS's non-power-frequency branch.
     # For WireArray with num_wires > 1, ws.r_self[i] is the physical bundle GMR
     # (r_wire · N · R_lay^{N-1})^{1/N} without internal-flux correction.
     # For Tubular and Sector conductors, ws.r_self[i] = ws.r_ext[i] (physical outer radius).
@@ -213,10 +217,12 @@ function get_Ze(ws, i::Int, j::Int, k::Int, ::DeriModel)
     local ln_arg
     if i == j
         # S_ii = 2*(h_i + D_e), denominator = physical self-distance (r_self[i]).
-        # NOTE: Using GMR here would double-count the internal reactance, since
-        #   ln(S/GMR) = ln(S/r) + mu_r/4
-        # and the mu_r/4 term equals j*ωμ₀μr/(8π) which is already included in
-        # get_Zint(::DeriModel) via the Bessel function evaluation.
+        # Using the physical radius here is consistent with the explicit get_Zint
+        # (Bessel-based), which already accounts for internal inductance.
+        # This matches OpenDSS's non-power-frequency Deri branch, where it also uses
+        # physical radius once Im(Z_int) is kept explicitly. At power frequencies
+        # OpenDSS instead zeros Im(Z_int) and substitutes GMR — giving the same result
+        # for non-magnetic conductors (μr = 1).
         # ws.r_self[i] equals r_ext for Tubular/Sector, and the physical bundle GMR
         # (r_wire·N·R_lay^{N-1})^{1/N} for multi-wire WireArrays.
         S = 2.0 * (abs(ws.vert[i]) + D_e)
