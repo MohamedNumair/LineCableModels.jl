@@ -185,7 +185,7 @@ function get_Ze(ws, i::Int, j::Int, k::Int, ::FullCarson)
        theta_ij = acos((vert_i + vert_j) / dij)
     end
 
-    mij = (sqrt(2) / 503) * dij * sqrt(f / ws.rho_g[earth_layer_idx,k])
+    mij = 2π * sqrt(2e-7) * dij * sqrt(f / ws.rho_g[earth_layer_idx,k])  # = 2.8099e-3 (OpenDSS literal); exact: 2π√(2×10⁻⁷)
 
     re_part = π / 8.0 - b1 * mij * cos(theta_ij) + b2 * (mij^2) * (log(exp(c2) / mij) * cos(2.0 * theta_ij) + theta_ij * sin(2.0 * theta_ij)) +
             b3 * (mij^3) * cos(3.0 * theta_ij) - d4 * (mij^4) * cos(4.0 * theta_ij)
