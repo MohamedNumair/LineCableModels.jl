@@ -232,6 +232,8 @@ $(TYPEDFIELDS)
     `(r_wire · N · R_lay^{N-1})^{1/N}` where `R_lay = radius_in + radius_wire`.
     This avoids double-counting the internal reactance that `get_Zint` already returns."""
     r_self::Vector{T}
+    "Relative permeability of each conductor (μ_r). Used in the internal impedance formulas."
+    mu_cond::Vector{T}
     "Conductor group for each phase"
     conductor_groups::Vector{AbstractCablePart}
     "Effective earth resistivity (layers × freq)."
@@ -271,6 +273,7 @@ function init_workspace(
     rdc = Vector{T}(undef, n_phases)
     gmr = Vector{T}(undef, n_phases)
     r_self = Vector{T}(undef, n_phases)
+    mu_cond = Vector{T}(undef, n_phases)
     conductor_groups = Vector{AbstractCablePart}(undef, n_phases)
 
     # Fill arrays, ensuring type promotion
@@ -312,6 +315,7 @@ function init_workspace(
 			r_ins_ext[idx] = T(component.insulator_group.radius_ext)
             gmr[idx] = T(component.conductor_group.gmr)
             rdc[idx] = T(component.conductor_group.resistance)
+            mu_cond[idx] = T(component.conductor_props.mu_r)
             conductor_groups[idx] = component.conductor_group
 
             # Compute the physical self-distance for magnetic external impedance.
@@ -347,7 +351,7 @@ function init_workspace(
         freq = freq, jω = jω,
         horz = horz, vert = vert,
 		r_ext = r_ext, r_ins_ext = r_ins_ext, rdc = rdc, gmr = gmr, r_self = r_self,
-        conductor_groups = conductor_groups,
+        mu_cond = mu_cond, conductor_groups = conductor_groups,
         rho_g = rho_g,
         temp = temp, n_frequencies = n_frequencies, n_phases = n_phases,
     )

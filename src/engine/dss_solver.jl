@@ -80,19 +80,27 @@ end
 function get_Zint(ws, i::Int, k::Int, ::Union{SimpleCarson,FullCarson})
     ω = 2π * ws.freq[k]
     μ₀ = 4π * 1e-7
-    fₛₖᵢₙ = 1.02 #TODO: maybe add it in the options tuble so it can be specified by the user
-    return ws.rdc[i] * fₛₖᵢₙ + 1im * (ω * μ₀) / (8 * π)  
+    μᵣ = ws.mu_cond[i]   # relative permeability of conductor i
+    fₛₖᵢₙ = 1.02  # skin-effect correction factor applied to Rdc to approximate Rac
+    # WARNING: LineCableModels does not support direct Rac assignment. Rdc × 1.02 is
+    # used as a frequency-independent approximation. For frequency-dependent internal
+    # impedance (skin effect), use DeriModel as the internal_impedance formulation.
+    @warn "SimpleCarson/FullCarson internal impedance uses Rdc × $(fₛₖᵢₙ) as a " *
+          "fixed Rac approximation. For accurate skin-effect modelling use DeriModel." maxlog=1
+    return ws.rdc[i] * fₛₖᵢₙ + 1im * (ω * μ₀ * μᵣ) / (8 * π)
 end
 
 function get_Zint(ws, i::Int, k::Int, ::DeriModel)
     f = ws.freq[k]
     w = 2 * pi * f
     mu0 = 4.0 * pi * 1e-7
-    rdc_i = ws.rdc[i] 
+    μᵣ = ws.mu_cond[i]   # relative permeability of conductor i
+    rdc_i = ws.rdc[i]
 
     if rdc_i == 0.0 return 0.0 + 0.0im end
 
-    alpha = sqrt( (1im * w * mu0) / (pi * rdc_i) )
+    # p·r = √(jω μᵣ μ₀ / (π·Rdc)) — propagation constant × radius [paper eq. internal_impedance_bessel]
+    alpha = sqrt( (1im * w * mu0 * μᵣ) / (pi * rdc_i) )
 
     local i0_i1_ratio::ComplexF64
     if abs(alpha) > 35.0
@@ -155,8 +163,15 @@ get_Zspacing(ws, i::Int, j::Int, k::Int, ::DeriModel) = zero(ws.jω[k])
 function get_Ze(ws, i::Int, j::Int, k::Int, ::SimpleCarson)
     ω = 2π * ws.freq[k]
     μ₀ = 4π * 1e-7
-    @debug "Z earth SimpleCarson: freq=$(ws.freq[k]), i=$i, j=$j is $(complex(ω * μ₀ / 8.0, (ω * μ₀ / (2 * π)) * log(658.5 * sqrt(ws.rho_g[earth_layer_idx,k] / ws.freq[k]))))"
-    return complex(ω * μ₀ / 8.0, (ω * μ₀ / (2 * π)) * log(658.5 * sqrt(ws.rho_g[earth_layer_idx,k] / ws.freq[k]))) # should be 658.87 but its customary to use 658.5 in the Carson formula to match historical results 
+    ρ_e = ws.rho_g[earth_layer_idx, k]
+    # Equivalent earth-return depth [paper eq. simple_carson_depth]:
+    #   De = 2√e / (me · e^γ),  me = √(ω μ₀ / ρe),  γ = Euler–Mascheroni ≈ 0.5772
+    # Evaluating the constants gives De ≈ 658.87·√(ρe/f)  [m]
+    # (OpenDSS hardcodes 658.8530451057239, which differs by <0.003%)
+    m_e = sqrt(ω * μ₀ / ρ_e)
+    D_e = 2 * exp(0.5) / (m_e * exp(MathConstants.eulergamma))
+    @debug "Z earth SimpleCarson: freq=$(ws.freq[k]), i=$i, j=$j is $(complex(ω * μ₀ / 8.0, (ω * μ₀ / (2π)) * log(D_e)))"
+    return complex(ω * μ₀ / 8, (ω * μ₀ / (2π)) * log(D_e))
 end
 
 function get_Ze(ws, i::Int, j::Int, k::Int, ::FullCarson)
