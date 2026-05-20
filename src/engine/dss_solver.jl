@@ -267,18 +267,25 @@ function get_Ze(ws, i::Int, j::Int, k::Int, ::Saad)
     h_i = abs(ws.vert[i])
     h_j = abs(ws.vert[j])
 
-    local R_ab
+    # Saad/Pollaczek uses two distinct geometric distances (Ametani §2.5.3.4):
+    #   d_ij = direct distance between conductors  → argument of K₀
+    #   y_ij = horizontal separation only          → appears as (γ·y)² in denominator
+    # For self (i == j) the K₀ argument is the cable outer insulation radius and
+    # the horizontal separation is zero.
+    local d_ij, y_ij
     if i == j
-        # Ametani uses the cable outer insulation radius for the self term.
-        R_ab = ws.r_ins_ext[i]
+        d_ij = ws.r_ins_ext[i]
+        y_ij = zero(d_ij)
     else
-        R_ab = abs(ws.horz[i] - ws.horz[j])
+        Δx = ws.horz[i] - ws.horz[j]
+        Δh = ws.vert[i] - ws.vert[j]
+        d_ij = sqrt(Δx^2 + Δh^2)
+        y_ij = abs(Δx)
     end
 
-    arg = γ₁ * R_ab
-    term1 = besselk(0, arg)
+    term1 = besselk(0, γ₁ * d_ij)
     exp_term = exp(-(h_i + h_j) * γ₁)
-    denominator = 4.0 + γ₁^2 * R_ab^2
+    denominator = 4.0 + γ₁^2 * y_ij^2
     term2 = (2.0 * exp_term) / denominator
 
     final_result = (1im * ω * μ₀) / (2 * π) * (term1 + term2)
